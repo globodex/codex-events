@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import type { ParticipantApplicationTermsDocument } from '~/domains/applications/participant-application'
-import ParticipantRegistrationField from '~/components/applications/participant-registration/molecules/ParticipantRegistrationField.vue'
+import type {
+  ParticipantRegistrationDraft,
+  ResolvedParticipantRegistrationDefinition
+} from '~/domains/applications/participant-registration-definition'
+
+import ParticipantRegistrationField from './ParticipantRegistrationField.vue'
+import { participantRegistrationSectionDomId } from '~/domains/applications/participant-registration-definition'
 
 const props = defineProps<{
+  draft: ParticipantRegistrationDraft
+  definition: ResolvedParticipantRegistrationDefinition
   eventSlug: string
   eventLocationLabel: string
-  inPersonEvent: boolean
   inPersonCommitmentDateLabel: string
-  inPersonAttendanceCommitment: boolean
-  termsAccepted: boolean
-  currentApplicationTerms: ParticipantApplicationTermsDocument | null
   errors: Record<string, string>
   disabled?: boolean
 }>()
@@ -25,8 +28,8 @@ const applicationTermsPageHref = computed(() => `/events/${props.eventSlug}/appl
 <template>
   <div class="space-y-5">
     <section
-      v-if="props.inPersonEvent"
-      id="registration-section-attendance"
+      v-if="props.definition.commitments.inPerson"
+      :id="participantRegistrationSectionDomId('attendance')"
       tabindex="-1"
       class="scroll-mt-24 space-y-3 border-b border-black/8 pb-5 outline-none dark:border-white/[0.08]"
     >
@@ -40,7 +43,7 @@ const applicationTermsPageHref = computed(() => `/events/${props.eventSlug}/appl
         :error="props.errors.inPersonAttendanceCommitment"
       >
         <AppCheckbox
-          :model-value="props.inPersonAttendanceCommitment"
+          :model-value="props.draft.inPersonAttendanceCommitment"
           :disabled="props.disabled"
           @update:model-value="emit('updateInPersonAttendanceCommitment', $event)"
         >
@@ -50,8 +53,8 @@ const applicationTermsPageHref = computed(() => `/events/${props.eventSlug}/appl
     </section>
 
     <section
-      v-if="props.currentApplicationTerms"
-      id="registration-section-terms"
+      v-if="props.definition.commitments.terms"
+      :id="participantRegistrationSectionDomId('terms')"
       tabindex="-1"
       class="scroll-mt-24 space-y-3 border-b border-black/8 pb-5 outline-none dark:border-white/[0.08]"
     >
@@ -65,7 +68,7 @@ const applicationTermsPageHref = computed(() => `/events/${props.eventSlug}/appl
         :error="props.errors.termsAccepted"
       >
         <AppCheckbox
-          :model-value="props.termsAccepted"
+          :model-value="props.draft.termsAccepted"
           :disabled="props.disabled"
           @update:model-value="emit('updateTermsAccepted', $event)"
         >

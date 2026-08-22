@@ -1,35 +1,30 @@
 <script setup lang="ts">
 import type { EventProfileField } from '~/domains/applications/participant-application'
 import type {
-  ParticipantRegistrationProfileForm,
-  ParticipantRegistrationProfileFormKey
-} from '~/domains/applications/participant-application-form'
-import ParticipantRegistrationField from '~/components/applications/participant-registration/molecules/ParticipantRegistrationField.vue'
+  ParticipantRegistrationDraft,
+  ParticipantRegistrationProfileFieldKey,
+  ResolvedParticipantRegistrationDefinition
+} from '~/domains/applications/participant-registration-definition'
+
+import ParticipantRegistrationField from './ParticipantRegistrationField.vue'
+import {
+  participantRegistrationProfileFieldId,
+  participantRegistrationSectionDomId
+} from '~/domains/applications/participant-registration-definition'
 
 const props = defineProps<{
-  profileForm: ParticipantRegistrationProfileForm
-  profileFields: EventProfileField[]
+  draft: ParticipantRegistrationDraft
+  definition: ResolvedParticipantRegistrationDefinition
   errors: Record<string, string>
   disabled?: boolean
   sectionLabel?: string
 }>()
 
 const emit = defineEmits<{
-  updateField: [key: ParticipantRegistrationProfileFormKey, value: string]
+  updateField: [key: ParticipantRegistrationProfileFieldKey, value: string]
 }>()
 
-const primaryFields = computed(() => props.profileFields.filter(field =>
-  field.visible && field.key !== 'chatgptEmail' && field.key !== 'openaiOrgId'
-))
-const openAiFields = computed(() => props.profileFields.filter(field =>
-  field.visible && (field.key === 'chatgptEmail' || field.key === 'openaiOrgId')
-))
-
-function fieldId(key: ParticipantRegistrationProfileFormKey) {
-  return `profileForm.${key}`
-}
-
-function inputId(key: ParticipantRegistrationProfileFormKey) {
+function inputId(key: ParticipantRegistrationProfileFieldKey) {
   return `participant-registration-${key}`
 }
 
@@ -50,7 +45,6 @@ function placeholder(key: EventProfileField['key']) {
     openaiOrgId: 'org_123abc',
     lumaEmail: 'you@example.com'
   }
-
   return placeholders[key]
 }
 </script>
@@ -58,7 +52,7 @@ function placeholder(key: EventProfileField['key']) {
 <template>
   <div class="space-y-6">
     <section
-      id="registration-section-details"
+      :id="participantRegistrationSectionDomId('details')"
       tabindex="-1"
       class="scroll-mt-24 space-y-3 border-b border-black/8 pb-5 outline-none dark:border-white/[0.08]"
     >
@@ -67,42 +61,28 @@ function placeholder(key: EventProfileField['key']) {
       </h2>
       <div class="grid gap-3 md:grid-cols-2">
         <ParticipantRegistrationField
-          field-id="profileForm.firstName"
-          label="First name"
+          v-for="field in props.definition.profile.details"
+          :key="field.id"
+          :field-id="field.id"
+          :label="field.label"
           required
-          label-for="participant-registration-firstName"
-          :error="props.errors['profileForm.firstName']"
+          :label-for="inputId(field.key)"
+          :error="props.errors[field.id]"
         >
           <AppInput
-            id="participant-registration-firstName"
-            :model-value="props.profileForm.firstName"
+            :id="inputId(field.key)"
+            :model-value="props.draft.profileForm[field.key]"
             :disabled="props.disabled"
-            placeholder="Ada"
-            @update:model-value="emit('updateField', 'firstName', String($event ?? ''))"
-          />
-        </ParticipantRegistrationField>
-
-        <ParticipantRegistrationField
-          field-id="profileForm.familyName"
-          label="Family name"
-          required
-          label-for="participant-registration-familyName"
-          :error="props.errors['profileForm.familyName']"
-        >
-          <AppInput
-            id="participant-registration-familyName"
-            :model-value="props.profileForm.familyName"
-            :disabled="props.disabled"
-            placeholder="Lovelace"
-            @update:model-value="emit('updateField', 'familyName', String($event ?? ''))"
+            :placeholder="field.key === 'firstName' ? 'Ada' : 'Lovelace'"
+            @update:model-value="emit('updateField', field.key, String($event ?? ''))"
           />
         </ParticipantRegistrationField>
       </div>
     </section>
 
     <section
-      v-if="primaryFields.length > 0"
-      id="registration-section-links"
+      v-if="props.definition.profile.links.length"
+      :id="participantRegistrationSectionDomId('links')"
       tabindex="-1"
       class="scroll-mt-24 space-y-3 border-b border-black/8 pb-5 outline-none dark:border-white/[0.08]"
     >
@@ -111,17 +91,17 @@ function placeholder(key: EventProfileField['key']) {
       </h2>
       <div class="grid gap-3 md:grid-cols-2">
         <ParticipantRegistrationField
-          v-for="field in primaryFields"
+          v-for="field in props.definition.profile.links"
           :key="field.key"
-          :field-id="fieldId(field.key)"
+          :field-id="participantRegistrationProfileFieldId(field.key)"
           :label="field.label"
           :required="field.required"
           :label-for="inputId(field.key)"
-          :error="props.errors[fieldId(field.key)]"
+          :error="props.errors[participantRegistrationProfileFieldId(field.key)]"
         >
           <AppInput
             :id="inputId(field.key)"
-            :model-value="props.profileForm[field.key]"
+            :model-value="props.draft.profileForm[field.key]"
             :type="fieldType(field.key)"
             :inputmode="fieldInputMode(field.key)"
             :disabled="props.disabled"
@@ -139,8 +119,8 @@ function placeholder(key: EventProfileField['key']) {
     </section>
 
     <section
-      v-if="openAiFields.length > 0"
-      id="registration-section-openai"
+      v-if="props.definition.profile.openAi.length"
+      :id="participantRegistrationSectionDomId('openai')"
       tabindex="-1"
       class="scroll-mt-24 space-y-3 border-b border-black/8 pb-5 outline-none dark:border-white/[0.08]"
     >
@@ -149,17 +129,17 @@ function placeholder(key: EventProfileField['key']) {
       </h2>
       <div class="grid gap-3 md:grid-cols-2">
         <ParticipantRegistrationField
-          v-for="field in openAiFields"
+          v-for="field in props.definition.profile.openAi"
           :key="field.key"
-          :field-id="fieldId(field.key)"
+          :field-id="participantRegistrationProfileFieldId(field.key)"
           :label="field.label"
           :required="field.required"
           :label-for="inputId(field.key)"
-          :error="props.errors[fieldId(field.key)]"
+          :error="props.errors[participantRegistrationProfileFieldId(field.key)]"
         >
           <AppInput
             :id="inputId(field.key)"
-            :model-value="props.profileForm[field.key]"
+            :model-value="props.draft.profileForm[field.key]"
             :type="fieldType(field.key)"
             :disabled="props.disabled"
             :placeholder="placeholder(field.key)"

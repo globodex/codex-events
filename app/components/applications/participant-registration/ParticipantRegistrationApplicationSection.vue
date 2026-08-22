@@ -1,30 +1,23 @@
 <script setup lang="ts">
-import type { PublicEvent } from '~/domains/events/presentation'
 import type {
-  ParticipantAiKnowledgeLevelInput,
-  ParticipantRegistrationTrackOption
+  ParticipantAiKnowledgeLevelInput
 } from '~/domains/applications/participant-application'
+import type {
+  ParticipantRegistrationDraft,
+  ParticipantRegistrationFieldId,
+  ResolvedParticipantRegistrationDefinition
+} from '~/domains/applications/participant-registration-definition'
+
+import ParticipantRegistrationField from './ParticipantRegistrationField.vue'
 import {
   aiKnowledgeLevelOptionLabels,
   aiKnowledgeLevelValues
 } from '~/domains/applications/participant-application'
-import ParticipantRegistrationField from '~/components/applications/participant-registration/molecules/ParticipantRegistrationField.vue'
+import { participantRegistrationSectionDomId } from '~/domains/applications/participant-registration-definition'
 
 const props = defineProps<{
-  event: Pick<PublicEvent,
-  | 'eventType'
-  | 'applicationWhyThisEventVisible'
-  | 'applicationProofOfExecutionVisible'
-  | 'applicationAiKnowledgeVisible'
-  | 'requireWhyThisEvent'
-  | 'requireProofOfExecution'
-  | 'requireAiKnowledge'
-  >
-  trackOptions: ParticipantRegistrationTrackOption[]
-  selectedTrackId: string
-  aiKnowledgeLevel: ParticipantAiKnowledgeLevelInput
-  whyThisEvent: string
-  proofOfExecutionUrl: string
+  draft: ParticipantRegistrationDraft
+  definition: ResolvedParticipantRegistrationDefinition
   errors: Record<string, string>
   disabled?: boolean
 }>()
@@ -36,24 +29,18 @@ const emit = defineEmits<{
   updateProofOfExecutionUrl: [value: string]
 }>()
 
-const sortedTrackOptions = computed(() => [...props.trackOptions].sort((left, right) =>
-  left.displayOrder - right.displayOrder || left.name.localeCompare(right.name) || left.id.localeCompare(right.id)
-))
-const selectedTrack = computed(() => sortedTrackOptions.value.find(track => track.id === props.selectedTrackId) ?? null)
-const showTrackSelection = computed(() => props.event.eventType === 'build' && sortedTrackOptions.value.length > 0)
-const showAiKnowledge = computed(() => props.event.applicationAiKnowledgeVisible && !showTrackSelection.value)
-const visible = computed(() =>
-  showTrackSelection.value
-  || showAiKnowledge.value
-  || props.event.applicationWhyThisEventVisible
-  || props.event.applicationProofOfExecutionVisible
-)
+const selectedTrack = computed(() => props.definition.application.trackOptions
+  .find(track => track.id === props.draft.selectedTrackId) ?? null)
+
+function required(fieldId: ParticipantRegistrationFieldId) {
+  return props.definition.application.fields.find(field => field.id === fieldId)?.required ?? false
+}
 </script>
 
 <template>
   <section
-    v-if="visible"
-    id="registration-section-application"
+    v-if="props.definition.application.visible"
+    :id="participantRegistrationSectionDomId('application')"
     tabindex="-1"
     class="scroll-mt-24 space-y-4 border-b border-black/8 pb-5 outline-none dark:border-white/[0.08]"
   >
@@ -62,7 +49,7 @@ const visible = computed(() =>
     </h2>
 
     <ParticipantRegistrationField
-      v-if="showTrackSelection"
+      v-if="props.definition.application.showTrackSelection"
       field-id="selectedTrackId"
       label="Track"
       required
@@ -71,7 +58,7 @@ const visible = computed(() =>
     >
       <AppSelect
         id="participant-registration-track"
-        :model-value="props.selectedTrackId"
+        :model-value="props.draft.selectedTrackId"
         :disabled="props.disabled"
         @update:model-value="emit('updateSelectedTrackId', String($event ?? ''))"
       >
@@ -79,7 +66,7 @@ const visible = computed(() =>
           Choose your track
         </option>
         <option
-          v-for="track in sortedTrackOptions"
+          v-for="track in props.definition.application.trackOptions"
           :key="track.id"
           :value="track.id"
         >
@@ -98,16 +85,16 @@ const visible = computed(() =>
     </ParticipantRegistrationField>
 
     <ParticipantRegistrationField
-      v-if="showAiKnowledge"
+      v-if="props.definition.application.showAiKnowledge"
       field-id="aiKnowledgeLevel"
       label="AI Knowledge"
-      :required="props.event.requireAiKnowledge"
+      :required="required('aiKnowledgeLevel')"
       label-for="participant-registration-ai-knowledge"
       :error="props.errors.aiKnowledgeLevel"
     >
       <AppSelect
         id="participant-registration-ai-knowledge"
-        :model-value="props.aiKnowledgeLevel"
+        :model-value="props.draft.aiKnowledgeLevel"
         :disabled="props.disabled"
         @update:model-value="emit('updateAiKnowledgeLevel', String($event ?? '') as ParticipantAiKnowledgeLevelInput)"
       >
@@ -125,16 +112,16 @@ const visible = computed(() =>
     </ParticipantRegistrationField>
 
     <ParticipantRegistrationField
-      v-if="props.event.applicationWhyThisEventVisible"
+      v-if="props.definition.application.showWhyThisEvent"
       field-id="whyThisEvent"
       label="Why this event"
-      :required="props.event.requireWhyThisEvent"
+      :required="required('whyThisEvent')"
       label-for="participant-registration-why"
       :error="props.errors.whyThisEvent"
     >
       <AppTextarea
         id="participant-registration-why"
-        :model-value="props.whyThisEvent"
+        :model-value="props.draft.whyThisEvent"
         :disabled="props.disabled"
         :rows="5"
         placeholder="Share what you plan to build and learn."
@@ -143,16 +130,16 @@ const visible = computed(() =>
     </ParticipantRegistrationField>
 
     <ParticipantRegistrationField
-      v-if="props.event.applicationProofOfExecutionVisible"
+      v-if="props.definition.application.showProofOfExecution"
       field-id="proofOfExecutionUrl"
       label="Proof of execution links"
-      :required="props.event.requireProofOfExecution"
+      :required="required('proofOfExecutionUrl')"
       label-for="participant-registration-proof"
       :error="props.errors.proofOfExecutionUrl"
     >
       <AppInput
         id="participant-registration-proof"
-        :model-value="props.proofOfExecutionUrl"
+        :model-value="props.draft.proofOfExecutionUrl"
         :disabled="props.disabled"
         type="text"
         inputmode="url"

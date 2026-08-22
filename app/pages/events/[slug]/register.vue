@@ -14,35 +14,35 @@ import type {
   ParticipantCurrentTermsResponse,
   ParticipantApplicationTermsDocument,
   ParticipantApplicationSubmittedTransition,
-  ParticipantAiKnowledgeLevelInput,
   ParticipantRegistrationTrackOption,
   VisibleEventRecord
 } from '~/domains/applications/participant-application'
 import type {
-  ParticipantRegistrationAdditionalSection,
-  ParticipantRegistrationFormState
-} from '~/domains/applications/participant-registration-experience'
-import type { TalkProposalAnswer } from '#shared/domains/talk-proposals/questions'
+  ParticipantRegistrationDraft
+} from '~/domains/applications/participant-registration-definition'
 
 import EventStateBadge from '~/components/public/events/EventStateBadge.vue'
-import ParticipantRegistrationFormTemplate from '~/components/applications/participant-registration/templates/ParticipantRegistrationFormTemplate.vue'
-import TalkProposalRegistrationSection from '~/components/talk-proposals/organisms/TalkProposalRegistrationSection.vue'
+import ParticipantRegistrationForm from '~/components/applications/participant-registration/ParticipantRegistrationForm.vue'
 import {
   createParticipantTeamMemberHintRows,
   getParticipantApplicationSubmissionPolicy,
   listEventProfileFields,
   normalizeParticipantApiError,
-  normalizeParticipantTeamMemberHintsForSubmission,
   resolveParticipantApplicationSubmittedTransition,
   resolveParticipantRegistrationEntry
 } from '~/domains/applications/participant-application'
-import { normalizeParticipantRegistrationProfileForm } from '~/domains/applications/participant-application-form'
-import { normalizeAccountProfileUrl } from '~/domains/accounts/profile'
 import {
   createTalkProposalAnswers,
-  isTalkProposalWindowOpen,
-  validateTalkProposalSubmission
+  isTalkProposalWindowOpen
 } from '~/domains/talk-proposals'
+import {
+  createParticipantRegistrationDraft,
+  evaluateParticipantRegistration,
+  normalizeParticipantRegistrationProfileForm,
+  projectParticipantRegistrationAccountPatch,
+  projectParticipantRegistrationApplicationPayload,
+  resolveParticipantRegistrationDefinition
+} from '~/domains/applications/participant-registration-definition'
 import { useApiClient } from '~/composables/useApiClient'
 
 definePageMeta({
@@ -97,29 +97,8 @@ const detailBackgroundImageUrl = computed(() => resolveEventDetailBackgroundImag
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
   : undefined)
-const registrationForm = ref<ParticipantRegistrationFormState>({
-  termsAccepted: false,
-  inPersonAttendanceCommitment: false,
-  whyThisEvent: '',
-  proofOfExecutionUrl: '',
-  aiKnowledgeLevel: '' as ParticipantAiKnowledgeLevelInput,
-  selectedTrackId: '',
-  teamIntent: 'unknown',
-  teamMemberHints: [],
-  profileForm: {
-    firstName: '',
-    familyName: '',
-    xProfileUrl: '',
-    linkedinProfileUrl: '',
-    githubProfileUrl: '',
-    chatgptEmail: '',
-    openaiOrgId: '',
-    lumaEmail: ''
-  }
-})
+const registrationDraft = ref<ParticipantRegistrationDraft>(createParticipantRegistrationDraft())
 const profileFields = computed(() => listEventProfileFields(event.value))
-const visibleProfileFields = computed(() => profileFields.value.filter(field => field.visible))
-const visibleProfileFieldKeys = computed(() => new Set(visibleProfileFields.value.map(field => field.key)))
 const detailSummary = computed(() => [
   formatEventWindow(event.value.registrationOpensAt, event.value.submissionClosesAt ?? event.value.registrationClosesAt),
   formatEventLocation(event.value),
@@ -138,13 +117,8 @@ const isSubmitting = ref(false)
 const submissionTransition = ref<ParticipantApplicationSubmittedTransition | null>(null)
 const visibleEventId = ref<string | null>(null)
 const registrationTrackOptions = ref<ParticipantRegistrationTrackOption[]>([])
-const talkProposalTitle = ref('')
-const talkProposalAbstract = ref('')
-const talkProposalDemoOrSlidesUrl = ref('')
-const talkProposalAnswers = ref<TalkProposalAnswer[]>([])
 const talkProposalQuestions = ref<NonNullable<VisibleEventRecord['talkProposalQuestions']>>([])
 const talkProposalQuestionsRevision = ref(0)
-const talkProposalSubmitAttempted = ref(false)
 
 function createDefaultRegistrationRouteState() {
   return {
@@ -177,7 +151,7 @@ watch(() => accountActor.value, (actor) => {
     return
   }
 
-  Object.assign(registrationForm.value.profileForm, normalizeParticipantRegistrationProfileForm({
+  Object.assign(registrationDraft.value.profileForm, normalizeParticipantRegistrationProfileForm({
     firstName: actor.platformUser.firstName,
     familyName: actor.platformUser.familyName,
     xProfileUrl: actor.platformUser.xProfileUrl,
@@ -193,21 +167,21 @@ watch(() => accountActor.value, (actor) => {
 
 watch(() => event.value.maxTeamMembers, (maxTeamMembers) => {
   const nextRows = createParticipantTeamMemberHintRows(maxTeamMembers)
-  const previousRows = registrationForm.value.teamMemberHints
+  const previousRows = registrationDraft.value.teamMemberHints
 
-  registrationForm.value.teamMemberHints = nextRows.map((row, index) => ({
+  registrationDraft.value.teamMemberHints = nextRows.map((row, index) => ({
     fullName: previousRows[index]?.fullName ?? row.fullName,
     email: previousRows[index]?.email ?? row.email
   }))
 }, { immediate: true })
 
 watch(() => currentApplicationTerms.value?.id ?? null, () => {
-  registrationForm.value.termsAccepted = false
+  registrationDraft.value.termsAccepted = false
 })
 
 watch(() => event.value.inPersonEvent, (isInPersonEvent) => {
   if (!isInPersonEvent) {
-    registrationForm.value.inPersonAttendanceCommitment = false
+    registrationDraft.value.inPersonAttendanceCommitment = false
   }
 }, { immediate: true })
 
@@ -373,13 +347,29 @@ watch(() => registrationRouteState.data.value, (state) => {
   workspaceErrorMessage.value = state.workspaceErrorMessage
 }, { immediate: true })
 
-watch(talkProposalQuestions, (questions) => {
-  talkProposalAnswers.value = createTalkProposalAnswers(questions, talkProposalAnswers.value)
-}, { immediate: true })
+watch(
+  [isTalkProposalRegistration, talkProposalQuestions, talkProposalQuestionsRevision],
+  ([enabled, questions, questionSetRevision]) => {
+    if (!enabled) {
+      registrationDraft.value.talkProposal = null
+      return
+    }
+
+    const previous = registrationDraft.value.talkProposal
+    registrationDraft.value.talkProposal = {
+      title: previous?.title ?? '',
+      abstract: previous?.abstract ?? '',
+      demoOrSlidesUrl: previous?.demoOrSlidesUrl ?? '',
+      questionSetRevision,
+      answers: createTalkProposalAnswers(questions, previous?.answers)
+    }
+  },
+  { immediate: true }
+)
 
 watch(registrationTrackOptions, (trackOptions) => {
-  if (registrationForm.value.selectedTrackId && !trackOptions.some(track => track.id === registrationForm.value.selectedTrackId)) {
-    registrationForm.value.selectedTrackId = ''
+  if (registrationDraft.value.selectedTrackId && !trackOptions.some(track => track.id === registrationDraft.value.selectedTrackId)) {
+    registrationDraft.value.selectedTrackId = ''
   }
 })
 
@@ -387,109 +377,48 @@ watch(() => registrationRouteState.data.value.redirectTo, async (redirectTo) => 
   await navigateToRegistrationRedirect(redirectTo)
 })
 
+const registrationDefinition = computed(() => resolveParticipantRegistrationDefinition({
+  event: event.value,
+  profileFields: profileFields.value,
+  trackOptions: registrationTrackOptions.value,
+  maxTeamMembers: event.value.maxTeamMembers,
+  currentApplicationTerms: currentApplicationTerms.value,
+  talkProposal: isTalkProposalRegistration.value
+    ? {
+        questions: talkProposalQuestions.value,
+        questionSetRevision: talkProposalQuestionsRevision.value
+      }
+    : null
+}))
+const registrationEvaluation = computed(() => evaluateParticipantRegistration(
+  registrationDefinition.value,
+  registrationDraft.value
+))
+const missingRequiredProfileFieldCount = computed(() => registrationEvaluation.value.sections
+  .flatMap(section => section.fields)
+  .filter(field => registrationDefinition.value.profile.fieldIds.has(field.id) && field.required && !field.complete)
+  .length
+)
 const participantSubmissionPolicy = computed(() =>
   getParticipantApplicationSubmissionPolicy({
     eventState: event.value.state,
     registrationOpensAt: event.value.registrationOpensAt,
     registrationClosesAt: event.value.registrationClosesAt,
     applicationStatus: hasExistingApplication.value ? 'submitted' : null,
-    missingRequiredProfileFieldCount: missingRequiredProfileFields.value.length,
+    missingRequiredProfileFieldCount: missingRequiredProfileFieldCount.value,
     hasCurrentApplicationTerms: Boolean(currentApplicationTerms.value),
-    hasAcceptedCurrentTerms: registrationForm.value.termsAccepted,
+    hasAcceptedCurrentTerms: registrationDraft.value.termsAccepted,
     requiresInPersonAttendanceCommitment: event.value.inPersonEvent,
-    hasAcceptedInPersonAttendanceCommitment: registrationForm.value.inPersonAttendanceCommitment
+    hasAcceptedInPersonAttendanceCommitment: registrationDraft.value.inPersonAttendanceCommitment
   })
 )
-const showRegistrationTrackSelection = computed(() =>
-  event.value.eventType === 'build' && registrationTrackOptions.value.length > 0
-)
-
-const missingRequiredProfileFields = computed(() =>
-  visibleProfileFields.value.filter((field) => {
-    if (!field.required) {
-      return false
-    }
-
-    const value = registrationForm.value.profileForm[field.key]
-    return typeof value !== 'string' || value.trim().length === 0
-  })
-)
-
-const talkProposalValidation = computed(() => validateTalkProposalSubmission({
-  title: talkProposalTitle.value,
-  abstract: talkProposalAbstract.value,
-  demoOrSlidesUrl: talkProposalDemoOrSlidesUrl.value,
-  questionSetRevision: talkProposalQuestionsRevision.value,
-  answers: talkProposalAnswers.value
-}, talkProposalQuestions.value))
-const talkProposalErrors = computed(() => talkProposalSubmitAttempted.value
-  ? talkProposalValidation.value.errors
-  : { questions: {} })
-const additionalRegistrationSections = computed<ParticipantRegistrationAdditionalSection[]>(() => {
-  if (!isTalkProposalRegistration.value) {
-    return []
-  }
-
-  const answersById = new Map(talkProposalAnswers.value.map(answer => [answer.questionId, answer.value]))
-  const questionFields = talkProposalQuestions.value.map((question) => {
-    const value = answersById.get(question.id)
-    const complete = question.type === 'acknowledgement'
-      ? value === true
-      : typeof value === 'string' && value.trim().length > 0
-
-    return {
-      id: `talkProposal.question.${question.id}`,
-      label: question.prompt,
-      required: question.required,
-      complete: question.required ? complete && !talkProposalValidation.value.errors.questions[question.id] : !talkProposalValidation.value.errors.questions[question.id],
-      error: talkProposalValidation.value.errors.questions[question.id] ?? ''
-    }
-  })
-
-  return [{
-    id: 'talk-proposal',
-    title: 'Talk proposal',
-    summary: 'Title, abstract, and proposal questions',
-    targetId: 'registration-section-talk-proposal',
-    fields: [
-      {
-        id: 'talkProposal.title',
-        label: 'Title',
-        required: true,
-        complete: Boolean(talkProposalTitle.value.trim()) && !talkProposalValidation.value.errors.title,
-        error: talkProposalValidation.value.errors.title ?? ''
-      },
-      {
-        id: 'talkProposal.abstract',
-        label: 'Abstract',
-        required: true,
-        complete: Boolean(talkProposalAbstract.value.trim()) && !talkProposalValidation.value.errors.abstract,
-        error: talkProposalValidation.value.errors.abstract ?? ''
-      },
-      {
-        id: 'talkProposal.demoOrSlidesUrl',
-        label: 'Demo or slides URL',
-        required: false,
-        complete: !talkProposalValidation.value.errors.demoOrSlidesUrl,
-        error: talkProposalValidation.value.errors.demoOrSlidesUrl ?? ''
-      },
-      ...questionFields
-    ]
-  }]
-})
-
-function handleSubmitAttempt() {
-  if (isTalkProposalRegistration.value) {
-    talkProposalSubmitAttempted.value = true
-  }
-}
 
 async function submitParticipantApplication() {
   if (!participantSubmissionPolicy.value.isAllowed) {
     return
   }
 
-  if (isTalkProposalRegistration.value && !talkProposalValidation.value.isValid) {
+  if (!registrationEvaluation.value.readyToSubmit) {
     return
   }
 
@@ -509,41 +438,12 @@ async function submitParticipantApplication() {
   isSavingProfile.value = true
 
   try {
-    const normalizedProfileForm = normalizeParticipantRegistrationProfileForm(registrationForm.value.profileForm)
-    Object.assign(registrationForm.value.profileForm, normalizedProfileForm)
-
-    const accountPatch: Record<string, unknown> = {
-      firstName: normalizedProfileForm.firstName,
-      familyName: normalizedProfileForm.familyName
-    }
-
-    if (visibleProfileFieldKeys.value.has('xProfileUrl')) {
-      accountPatch.xProfileUrl = normalizeAccountProfileUrl(normalizedProfileForm.xProfileUrl)
-    }
-
-    if (visibleProfileFieldKeys.value.has('linkedinProfileUrl')) {
-      accountPatch.linkedinProfileUrl = normalizeAccountProfileUrl(normalizedProfileForm.linkedinProfileUrl)
-    }
-
-    if (visibleProfileFieldKeys.value.has('githubProfileUrl')) {
-      accountPatch.githubProfileUrl = normalizeAccountProfileUrl(normalizedProfileForm.githubProfileUrl)
-    }
-
-    if (visibleProfileFieldKeys.value.has('chatgptEmail')) {
-      accountPatch.chatgptEmail = normalizedProfileForm.chatgptEmail
-    }
-
-    if (visibleProfileFieldKeys.value.has('openaiOrgId')) {
-      accountPatch.openaiOrgId = normalizedProfileForm.openaiOrgId
-    }
-
-    if (visibleProfileFieldKeys.value.has('lumaEmail')) {
-      accountPatch.lumaEmail = normalizedProfileForm.lumaEmail
-    }
+    const normalizedProfileForm = normalizeParticipantRegistrationProfileForm(registrationDraft.value.profileForm)
+    Object.assign(registrationDraft.value.profileForm, normalizedProfileForm)
 
     await apiFetch('/api/account', {
       method: 'PATCH',
-      body: accountPatch
+      body: projectParticipantRegistrationAccountPatch(registrationDefinition.value, registrationDraft.value)
     })
   } catch (error) {
     profileSaveError.value = normalizeParticipantApiError(error).message
@@ -553,51 +453,9 @@ async function submitParticipantApplication() {
   }
 
   try {
-    const applicationPayload: Record<string, unknown> = {}
-
-    if (currentApplicationTerms.value) {
-      applicationPayload.applicationTermsDocumentId = currentApplicationTerms.value.id
-    }
-
-    if (event.value.inPersonEvent) {
-      applicationPayload.inPersonAttendanceCommitment = registrationForm.value.inPersonAttendanceCommitment
-    }
-
-    if (event.value.applicationWhyThisEventVisible) {
-      applicationPayload.whyThisEvent = registrationForm.value.whyThisEvent
-    }
-
-    if (event.value.applicationProofOfExecutionVisible) {
-      applicationPayload.proofOfExecutionUrl = registrationForm.value.proofOfExecutionUrl
-    }
-
-    if (showRegistrationTrackSelection.value) {
-      applicationPayload.selectedTrackId = registrationForm.value.selectedTrackId
-    } else if (event.value.applicationAiKnowledgeVisible) {
-      applicationPayload.aiKnowledgeLevel = registrationForm.value.aiKnowledgeLevel
-    }
-
-    if (event.value.applicationTeamIntentVisible) {
-      applicationPayload.registrationTeamIntent = registrationForm.value.teamIntent
-      applicationPayload.registrationTeamMembers = normalizeParticipantTeamMemberHintsForSubmission(
-        registrationForm.value.teamMemberHints,
-        event.value.maxTeamMembers
-      )
-    }
-
-    if (isTalkProposalRegistration.value) {
-      applicationPayload.talkProposal = {
-        title: talkProposalTitle.value,
-        abstract: talkProposalAbstract.value,
-        demoOrSlidesUrl: talkProposalDemoOrSlidesUrl.value,
-        questionSetRevision: talkProposalQuestionsRevision.value,
-        answers: talkProposalAnswers.value
-      }
-    }
-
     await apiFetch(`/api/events/${visibleEventId.value}/applications`, {
       method: 'POST',
-      body: applicationPayload
+      body: projectParticipantRegistrationApplicationPayload(registrationDefinition.value, registrationDraft.value)
     })
   } catch (error) {
     submissionError.value = normalizeParticipantApiError(error).message
@@ -710,15 +568,12 @@ useSeoMeta({
       />
 
       <template v-else-if="accountActor?.kind === 'platform_user'">
-        <ParticipantRegistrationFormTemplate
-          v-model="registrationForm"
+        <ParticipantRegistrationForm
+          v-model="registrationDraft"
+          :definition="registrationDefinition"
           :event="event"
-          :track-options="registrationTrackOptions"
           :in-person-commitment-date-label="inPersonCommitmentDateLabel"
-          :current-application-terms="currentApplicationTerms"
-          :profile-fields="visibleProfileFields"
           :submission-policy="participantSubmissionPolicy"
-          :max-team-members="event.maxTeamMembers"
           :is-submitting="isSubmitting"
           :is-saving-profile="isSavingProfile"
           :profile-error="profileSaveError"
@@ -726,28 +581,10 @@ useSeoMeta({
           :submission-transition="submissionTransition"
           :is-loading="isRegistrationRouteStateLoading"
           :workspace-error-message="workspaceErrorMessage"
-          :section-label="isTalkProposalRegistration ? 'Event registration' : undefined"
           :submit-label="isTalkProposalRegistration ? 'Register and submit proposal' : undefined"
           :submission-error-title="isTalkProposalRegistration ? 'Registration and proposal submission failed' : undefined"
-          :additional-sections="additionalRegistrationSections"
-          :combine-registration-sections="isTalkProposalRegistration"
-          :hide-post-submission-text="isTalkProposalRegistration"
-          @submit-attempt="handleSubmitAttempt"
           @submit-application="submitParticipantApplication"
-        >
-          <template #additional-section>
-            <TalkProposalRegistrationSection
-              v-if="isTalkProposalRegistration"
-              v-model:title="talkProposalTitle"
-              v-model:abstract="talkProposalAbstract"
-              v-model:demo-or-slides-url="talkProposalDemoOrSlidesUrl"
-              v-model:answers="talkProposalAnswers"
-              :questions="talkProposalQuestions"
-              :errors="talkProposalErrors"
-              :disabled="isSubmitting || isSavingProfile"
-            />
-          </template>
-        </ParticipantRegistrationFormTemplate>
+        />
       </template>
     </AppContainer>
   </div>

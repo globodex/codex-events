@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import type { ParticipantRegistrationFieldId } from '~/domains/applications/participant-registration-definition'
+
 const props = defineProps<{
-  fieldId: string
+  fieldId: ParticipantRegistrationFieldId
   label: string
   required?: boolean
   error?: string

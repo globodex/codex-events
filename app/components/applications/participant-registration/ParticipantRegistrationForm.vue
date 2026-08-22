@@ -1,30 +1,30 @@
 <script setup lang="ts">
-import { formatEventLocation, type PublicEvent } from '~/domains/events/presentation'
+import type { PublicEvent } from '~/domains/events/presentation'
 import type {
-  EventProfileField,
   ParticipantApplicationSubmittedTransition,
   ParticipantApplicationSubmissionPolicy,
-  ParticipantApplicationTermsDocument,
-  ParticipantRegistrationTrackOption,
-  ParticipantRegistrationTeamIntent,
   ParticipantRegistrationTeamMemberHint
 } from '~/domains/applications/participant-application'
 import type {
-  ParticipantRegistrationAdditionalSection,
-  ParticipantRegistrationFormState
-} from '~/domains/applications/participant-registration-experience'
-import type { ParticipantRegistrationProfileFormKey } from '~/domains/applications/participant-application-form'
+  ParticipantRegistrationDraft,
+  ParticipantRegistrationProfileFieldKey,
+  ResolvedParticipantRegistrationDefinition
+} from '~/domains/applications/participant-registration-definition'
 
-import ParticipantRegistrationApplicationSection from '~/components/applications/participant-registration/organisms/ParticipantRegistrationApplicationSection.vue'
-import ParticipantRegistrationCommitmentsSection from '~/components/applications/participant-registration/organisms/ParticipantRegistrationCommitmentsSection.vue'
-import ParticipantRegistrationParticipationSection from '~/components/applications/participant-registration/organisms/ParticipantRegistrationParticipationSection.vue'
-import ParticipantRegistrationProfileSection from '~/components/applications/participant-registration/organisms/ParticipantRegistrationProfileSection.vue'
-import ParticipantRegistrationProgressRail from '~/components/applications/participant-registration/organisms/ParticipantRegistrationProgressRail.vue'
-import { useParticipantRegistrationForm } from '~/composables/useParticipantRegistrationForm'
+import ParticipantRegistrationApplicationSection from './ParticipantRegistrationApplicationSection.vue'
+import ParticipantRegistrationCommitmentsSection from './ParticipantRegistrationCommitmentsSection.vue'
+import ParticipantRegistrationParticipationSection from './ParticipantRegistrationParticipationSection.vue'
+import ParticipantRegistrationProfileSection from './ParticipantRegistrationProfileSection.vue'
+import ParticipantRegistrationProgressRail from './ParticipantRegistrationProgressRail.vue'
+import ParticipantRegistrationTalkProposalSection from './ParticipantRegistrationTalkProposalSection.vue'
+import { formatEventLocation } from '~/domains/events/presentation'
+import { participantRegistrationSectionDomId } from '~/domains/applications/participant-registration-definition'
+import { useParticipantRegistrationController } from './useParticipantRegistrationController'
 
-const form = defineModel<ParticipantRegistrationFormState>({ required: true })
+const draft = defineModel<ParticipantRegistrationDraft>({ required: true })
 
 const props = withDefaults(defineProps<{
+  definition: ResolvedParticipantRegistrationDefinition
   event: Pick<PublicEvent,
   | 'eventType'
   | 'slug'
@@ -32,22 +32,9 @@ const props = withDefaults(defineProps<{
   | 'city'
   | 'country'
   | 'autoApproveApplications'
-  | 'inPersonEvent'
-  | 'applicationWhyThisEventVisible'
-  | 'applicationProofOfExecutionVisible'
-  | 'applicationTeamIntentVisible'
-  | 'applicationAiKnowledgeVisible'
-  | 'requireWhyThisEvent'
-  | 'requireProofOfExecution'
-  | 'requireTeamIntent'
-  | 'requireAiKnowledge'
   >
-  trackOptions?: ParticipantRegistrationTrackOption[]
-  currentApplicationTerms: ParticipantApplicationTermsDocument | null
-  profileFields: EventProfileField[]
   submissionPolicy: ParticipantApplicationSubmissionPolicy
   inPersonCommitmentDateLabel: string
-  maxTeamMembers: number
   isSubmitting?: boolean
   isSavingProfile?: boolean
   profileError?: string
@@ -55,56 +42,35 @@ const props = withDefaults(defineProps<{
   submissionTransition?: ParticipantApplicationSubmittedTransition | null
   isLoading?: boolean
   workspaceErrorMessage?: string
-  sectionLabel?: string
   submitLabel?: string
   submissionErrorTitle?: string
-  additionalSections?: ParticipantRegistrationAdditionalSection[]
-  combineRegistrationSections?: boolean
-  hidePostSubmissionText?: boolean
 }>(), {
-  trackOptions: () => [],
-  sectionLabel: undefined,
   submitLabel: 'Submit application',
-  submissionErrorTitle: 'Application submission failed',
-  additionalSections: () => [],
-  combineRegistrationSections: false,
-  hidePostSubmissionText: false
+  submissionErrorTitle: 'Application submission failed'
 })
 
 const emit = defineEmits<{
-  submitAttempt: []
   submitApplication: []
 }>()
 
 const formRoot = useTemplateRef<HTMLElement>('formRoot')
 const submissionErrorRoot = useTemplateRef<HTMLElement>('submissionErrorRoot')
-const controller = useParticipantRegistrationForm({
-  form,
-  configuration: () => ({
-    event: props.event,
-    profileFields: props.profileFields,
-    trackOptions: props.trackOptions,
-    maxTeamMembers: props.maxTeamMembers,
-    hasCurrentApplicationTerms: Boolean(props.currentApplicationTerms),
-    combineRegistrationSections: props.combineRegistrationSections
-  }),
-  additionalSections: () => props.additionalSections
+const controller = useParticipantRegistrationController({
+  draft,
+  definition: () => props.definition
 })
 const isBusy = computed(() => Boolean(props.isSubmitting || props.isSavingProfile))
 const canRenderSubmissionForm = computed(() => props.event.state === 'registration_open')
 const eventLocationLabel = computed(() => formatEventLocation(props.event))
 const submissionPolicyReason = computed(() => {
-  if (props.submissionPolicy.isAllowed || !props.submissionPolicy.reason) {
-    return ''
-  }
-
-  const validationReasons = new Set([
+  if (props.submissionPolicy.isAllowed || !props.submissionPolicy.reason) return ''
+  return new Set([
     'Complete the required profile fields before submitting this application.',
     'Accept the current application terms before submitting.',
     'Confirm in-person attendance commitment before submitting this application.'
-  ])
-
-  return validationReasons.has(props.submissionPolicy.reason) ? '' : props.submissionPolicy.reason
+  ]).has(props.submissionPolicy.reason)
+    ? ''
+    : props.submissionPolicy.reason
 })
 const postSubmissionText = computed(() => {
   if (props.event.eventType === 'hackathon') {
@@ -118,38 +84,31 @@ const postSubmissionText = computed(() => {
     : 'After you apply, we will review your application and update your event workspace after a decision.'
 })
 
-function updateProfileField(key: ParticipantRegistrationProfileFormKey, value: string) {
-  form.value.profileForm[key] = value
+function updateProfileField(key: ParticipantRegistrationProfileFieldKey, value: string) {
+  draft.value.profileForm[key] = value
 }
 
 function updateTeamMember(index: number, key: keyof ParticipantRegistrationTeamMemberHint, value: string) {
-  const member = form.value.teamMemberHints[index]
-  if (member) {
-    member[key] = value
-  }
+  const member = draft.value.teamMemberHints[index]
+  if (member) member[key] = value
+}
+
+function updateTalkProposalAnswer(index: number, value: string | boolean) {
+  const proposal = draft.value.talkProposal
+  if (!proposal) return
+  proposal.answers = proposal.answers.map((answer, currentIndex) => currentIndex === index
+    ? { ...answer, value }
+    : answer)
 }
 
 async function handleSubmitAttempt() {
-  emit('submitAttempt')
-  await nextTick()
-
-  if (!formRoot.value || isBusy.value) {
-    return
-  }
-
-  const valid = await controller.validateSubmitAttempt(formRoot.value)
-  if (!valid || !props.submissionPolicy.isAllowed) {
-    return
-  }
-
+  if (!formRoot.value || isBusy.value) return
+  if (!await controller.validateSubmitAttempt(formRoot.value) || !props.submissionPolicy.isAllowed) return
   emit('submitApplication')
 }
 
 watch(() => props.profileError || props.submissionError, async (error) => {
-  if (!error) {
-    return
-  }
-
+  if (!error) return
   await nextTick()
   submissionErrorRoot.value?.scrollIntoView({ block: 'center' })
   submissionErrorRoot.value?.focus({ preventScroll: true })
@@ -242,68 +201,75 @@ watch(() => props.profileError || props.submissionError, async (error) => {
             </p>
           </div>
 
-          <ParticipantRegistrationProfileSection
-            :profile-form="form.profileForm"
-            :profile-fields="props.profileFields"
+          <div
+            :id="props.definition.talkProposal ? participantRegistrationSectionDomId('registration') : undefined"
+            :tabindex="props.definition.talkProposal ? -1 : undefined"
+            class="space-y-5 outline-none"
+          >
+            <ParticipantRegistrationProfileSection
+              :draft="draft"
+              :definition="props.definition"
+              :errors="controller.displayedErrors.value"
+              :disabled="isBusy"
+              :section-label="props.definition.talkProposal ? 'Event registration' : undefined"
+              @update-field="updateProfileField"
+            />
+
+            <AppAlert
+              v-if="submissionPolicyReason"
+              color="neutral"
+              variant="soft"
+              :description="submissionPolicyReason"
+            />
+
+            <ParticipantRegistrationApplicationSection
+              :draft="draft"
+              :definition="props.definition"
+              :errors="controller.displayedErrors.value"
+              :disabled="isBusy"
+              @update-selected-track-id="draft.selectedTrackId = $event"
+              @update-ai-knowledge-level="draft.aiKnowledgeLevel = $event"
+              @update-why-this-event="draft.whyThisEvent = $event"
+              @update-proof-of-execution-url="draft.proofOfExecutionUrl = $event"
+            />
+
+            <ParticipantRegistrationParticipationSection
+              :draft="draft"
+              :definition="props.definition"
+              :event-type="props.event.eventType"
+              :errors="controller.displayedErrors.value"
+              :disabled="isBusy"
+              @update-team-intent="draft.teamIntent = $event"
+              @update-team-member="updateTeamMember"
+            />
+
+            <ParticipantRegistrationCommitmentsSection
+              :draft="draft"
+              :definition="props.definition"
+              :event-slug="props.event.slug"
+              :event-location-label="eventLocationLabel"
+              :in-person-commitment-date-label="props.inPersonCommitmentDateLabel"
+              :errors="controller.displayedErrors.value"
+              :disabled="isBusy"
+              @update-in-person-attendance-commitment="draft.inPersonAttendanceCommitment = $event"
+              @update-terms-accepted="draft.termsAccepted = $event"
+            />
+          </div>
+
+          <ParticipantRegistrationTalkProposalSection
+            v-if="props.definition.talkProposal && draft.talkProposal"
+            :draft="draft.talkProposal"
+            :definition="props.definition"
             :errors="controller.displayedErrors.value"
             :disabled="isBusy"
-            :section-label="props.sectionLabel"
-            @update-field="updateProfileField"
+            @update-title="draft.talkProposal.title = $event"
+            @update-abstract="draft.talkProposal.abstract = $event"
+            @update-demo-or-slides-url="draft.talkProposal.demoOrSlidesUrl = $event"
+            @update-answer="updateTalkProposalAnswer"
           />
-
-          <AppAlert
-            v-if="submissionPolicyReason"
-            color="neutral"
-            variant="soft"
-            :description="submissionPolicyReason"
-          />
-
-          <ParticipantRegistrationApplicationSection
-            :event="props.event"
-            :track-options="props.trackOptions"
-            :selected-track-id="form.selectedTrackId"
-            :ai-knowledge-level="form.aiKnowledgeLevel"
-            :why-this-event="form.whyThisEvent"
-            :proof-of-execution-url="form.proofOfExecutionUrl"
-            :errors="controller.displayedErrors.value"
-            :disabled="isBusy"
-            @update-selected-track-id="form.selectedTrackId = $event"
-            @update-ai-knowledge-level="form.aiKnowledgeLevel = $event"
-            @update-why-this-event="form.whyThisEvent = $event"
-            @update-proof-of-execution-url="form.proofOfExecutionUrl = $event"
-          />
-
-          <ParticipantRegistrationParticipationSection
-            :visible="props.event.applicationTeamIntentVisible"
-            :required="props.event.requireTeamIntent"
-            :event-type="props.event.eventType"
-            :team-intent="form.teamIntent"
-            :team-member-hints="form.teamMemberHints"
-            :max-team-members="props.maxTeamMembers"
-            :errors="controller.displayedErrors.value"
-            :disabled="isBusy"
-            @update-team-intent="form.teamIntent = $event as ParticipantRegistrationTeamIntent"
-            @update-team-member="updateTeamMember"
-          />
-
-          <ParticipantRegistrationCommitmentsSection
-            :event-slug="props.event.slug"
-            :event-location-label="eventLocationLabel"
-            :in-person-event="props.event.inPersonEvent"
-            :in-person-commitment-date-label="props.inPersonCommitmentDateLabel"
-            :in-person-attendance-commitment="form.inPersonAttendanceCommitment"
-            :terms-accepted="form.termsAccepted"
-            :current-application-terms="props.currentApplicationTerms"
-            :errors="controller.displayedErrors.value"
-            :disabled="isBusy"
-            @update-in-person-attendance-commitment="form.inPersonAttendanceCommitment = $event"
-            @update-terms-accepted="form.termsAccepted = $event"
-          />
-
-          <slot name="additional-section" />
 
           <section
-            id="registration-section-confirmation"
+            :id="participantRegistrationSectionDomId('confirmation')"
             tabindex="-1"
             class="scroll-mt-24 space-y-3 outline-none"
           >
@@ -314,7 +280,7 @@ watch(() => props.profileError || props.submissionError, async (error) => {
               {{ controller.readinessText.value }}
             </p>
             <AppButton
-              v-if="!props.combineRegistrationSections"
+              v-if="!props.definition.talkProposal"
               type="submit"
               color="neutral"
               variant="solid"
@@ -327,7 +293,7 @@ watch(() => props.profileError || props.submissionError, async (error) => {
           </section>
 
           <p
-            v-if="!props.hidePostSubmissionText"
+            v-if="!props.definition.talkProposal"
             class="text-[11px] leading-4 text-muted"
           >
             {{ postSubmissionText }}
@@ -336,12 +302,10 @@ watch(() => props.profileError || props.submissionError, async (error) => {
 
         <div class="hidden lg:block">
           <ParticipantRegistrationProgressRail
-            :sections="controller.experience.value.sections"
-            :completed-required-count="controller.experience.value.completedRequiredCount"
-            :required-count="controller.experience.value.requiredCount"
+            :evaluation="controller.evaluation.value"
             :progress-percent="controller.progressPercent.value"
             :submit-label="props.submitLabel"
-            :show-submit="props.combineRegistrationSections"
+            :show-submit="Boolean(props.definition.talkProposal)"
             :submitting="isBusy"
             @navigate="formRoot && controller.navigateToSection(formRoot, $event)"
           />
