@@ -11,7 +11,7 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'delete.event-organizers.by-userId',
-  toolName: 'delete_event-organizers_by_userId',
+  domain: 'administration',
   description: 'DELETE /api/event-organizers/:userId',
   rest: { method: 'DELETE', path: '/api/event-organizers/:userId' },
   input: { params: eventOrganizerUserParamsSchema },

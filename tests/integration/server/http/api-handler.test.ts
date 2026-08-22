@@ -86,7 +86,7 @@ describe('api handler error responses', () => {
     const outputSchema = z.object({ data: z.string() })
     const operation = {
       id: 'test.http-output-failure',
-      toolName: 'test_http_output_failure',
+      domain: 'events',
       description: 'Test operation',
       rest: { method: 'GET', path: '/api/test-output-failure' },
       inputSchema,

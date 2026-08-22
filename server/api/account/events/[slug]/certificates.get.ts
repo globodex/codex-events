@@ -6,7 +6,7 @@ import { accountEventCertificatesPageRoute } from '#server/domains/events/accoun
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.account.events.by-slug.certificates',
-  toolName: 'get_account_events_by_slug_certificates',
+  domain: 'participation',
   description: 'GET /api/account/events/:slug/certificates',
   rest: { method: 'GET', path: '/api/account/events/:slug/certificates' },
   input: { params: routeSlugParamsSchema },

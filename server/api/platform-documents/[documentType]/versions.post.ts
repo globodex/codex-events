@@ -19,7 +19,7 @@ const paramsSchema = z.object({
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.platform-documents.by-documentType.versions',
-  toolName: 'post_platform-documents_by_documentType_versions',
+  domain: 'administration',
   description: 'POST /api/platform-documents/:documentType/versions',
   rest: { method: 'POST', path: '/api/platform-documents/:documentType/versions' },
   input: { params: paramsSchema, body: createPlatformDocumentVersionBodySchema },

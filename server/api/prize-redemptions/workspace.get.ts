@@ -4,7 +4,7 @@ import { executeAccountPageRoute } from '#server/domains/accounts/account-page-c
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.prize-redemptions.workspace',
-  toolName: 'get_prize_redemptions_workspace',
+  domain: 'participation',
   description: 'GET /api/prize-redemptions/workspace',
   rest: { method: 'GET', path: '/api/prize-redemptions/workspace' },
   input: {},

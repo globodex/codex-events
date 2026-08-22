@@ -66,7 +66,7 @@ function pruneStoredSubmissionIdsJson(
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.teams.by-teamId.submission.actions.disqualify',
-  toolName: 'post_events_by_eventId_teams_by_teamId_submission_actions_disqualify',
+  domain: 'participation',
   description: 'POST /api/events/:eventId/teams/:teamId/submission/actions/disqualify',
   rest: { method: 'POST', path: '/api/events/:eventId/teams/:teamId/submission/actions/disqualify' },
   input: { params: submissionParamsSchema, body: disqualifySubmissionBodySchema },

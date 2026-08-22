@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 import { getQuery, readBody } from 'h3'
 import type { z } from 'zod'
 
-import type { ApplicationOperation, OperationCapability, OperationEffect, OperationRestBinding } from './types'
+import type { ApplicationOperation, OperationCapability, OperationDomain, OperationEffect, OperationRestBinding } from './types'
 import type { StructuredOperationInputComponents } from './contracts'
 import { structuredOperationInputSchema } from './contracts'
 import { executeApplicationOperation } from './execute'
@@ -11,7 +11,7 @@ import { defineApiHandler } from '#server/http/api-handler'
 
 export interface RouteOperationDefinition {
   id: StructuredOperationId
-  toolName: string
+  domain: OperationDomain
   description: string
   rest: OperationRestBinding
   input: StructuredOperationInputComponents

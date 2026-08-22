@@ -12,7 +12,7 @@ import { parseValidatedQuery } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.platform-admins.candidates',
-  toolName: 'get_platform-admins_candidates',
+  domain: 'administration',
   description: 'GET /api/platform-admins/candidates',
   rest: { method: 'GET', path: '/api/platform-admins/candidates' },
   input: { query: listPlatformAdminCandidatesQuerySchema },

@@ -5,7 +5,7 @@ import { getCurrentPlatformDocuments, serializePlatformDocument } from '#server/
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.platform-documents.current',
-  toolName: 'get_platform-documents_current',
+  domain: 'administration',
   description: 'GET /api/platform-documents/current',
   rest: { method: 'GET', path: '/api/platform-documents/current' },
   input: {},

@@ -8,7 +8,7 @@ import { listEventOrganizers } from '#server/domains/platform/event-organizers'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.event-organizers',
-  toolName: 'get_event-organizers',
+  domain: 'administration',
   description: 'GET /api/event-organizers',
   rest: { method: 'GET', path: '/api/event-organizers' },
   input: {},

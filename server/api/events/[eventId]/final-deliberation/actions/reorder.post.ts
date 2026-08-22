@@ -21,7 +21,7 @@ import { parseValidatedBody, parseValidatedParams } from '#server/http/validatio
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.final-deliberation.actions.reorder',
-  toolName: 'post_events_by_eventId_final-deliberation_actions_reorder',
+  domain: 'judging',
   description: 'POST /api/events/:eventId/final-deliberation/actions/reorder',
   rest: { method: 'POST', path: '/api/events/:eventId/final-deliberation/actions/reorder' },
   input: { params: routeIdParamsSchema, body: reorderFinalDeliberationBodySchema },

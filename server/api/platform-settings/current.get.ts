@@ -8,7 +8,7 @@ import {
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.platform-settings.current',
-  toolName: 'get_platform-settings_current',
+  domain: 'administration',
   description: 'GET /api/platform-settings/current',
   rest: { method: 'GET', path: '/api/platform-settings/current' },
   input: {},

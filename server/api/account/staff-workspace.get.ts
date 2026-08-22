@@ -4,7 +4,7 @@ import { executeAccountPageRoute } from '#server/domains/accounts/account-page-c
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.account.staff-workspace',
-  toolName: 'get_account_staff_workspace',
+  domain: 'participation',
   description: 'GET /api/account/staff-workspace',
   rest: { method: 'GET', path: '/api/account/staff-workspace' },
   input: {},

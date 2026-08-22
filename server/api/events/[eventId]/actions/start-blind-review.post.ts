@@ -24,7 +24,7 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.actions.start-blind-review',
-  toolName: 'post_events_by_eventId_actions_start-blind-review',
+  domain: 'events',
   description: 'POST /api/events/:eventId/actions/start-blind-review',
   rest: { method: 'POST', path: '/api/events/:eventId/actions/start-blind-review' },
   input: { params: routeIdParamsSchema },

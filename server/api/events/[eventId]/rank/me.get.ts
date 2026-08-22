@@ -35,7 +35,7 @@ function getMembershipActivityAt(membership: MembershipRow) {
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.events.by-eventId.rank.me',
-  toolName: 'get_events_by_eventId_rank_me',
+  domain: 'judging',
   description: 'GET /api/events/:eventId/rank/me',
   rest: { method: 'GET', path: '/api/events/:eventId/rank/me' },
   input: { params: routeIdParamsSchema },

@@ -10,7 +10,7 @@ import { parseValidatedBody } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'patch.account',
-  toolName: 'patch_account',
+  domain: 'participation',
   description: 'PATCH /api/account',
   rest: { method: 'PATCH', path: '/api/account' },
   input: { body: platformAccountProfileBodySchema },

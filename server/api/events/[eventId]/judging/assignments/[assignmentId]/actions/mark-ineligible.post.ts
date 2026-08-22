@@ -16,7 +16,7 @@ import { parseValidatedBody, parseValidatedParams } from '#server/http/validatio
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.judging.assignments.by-assignmentId.actions.mark-ineligible',
-  toolName: 'post_events_by_eventId_judging_assignments_by_assignmentId_actions_mark-ineligible',
+  domain: 'judging',
   description: 'POST /api/events/:eventId/judging/assignments/:assignmentId/actions/mark-ineligible',
   rest: { method: 'POST', path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/mark-ineligible' },
   input: { params: judgingAssignmentParamsSchema, body: markAssignmentIneligibleBodySchema },

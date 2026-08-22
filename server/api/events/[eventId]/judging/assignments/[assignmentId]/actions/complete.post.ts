@@ -20,7 +20,7 @@ import { parseValidatedParams, validateWithSchema } from '#server/http/validatio
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.judging.assignments.by-assignmentId.actions.complete',
-  toolName: 'post_events_by_eventId_judging_assignments_by_assignmentId_actions_complete',
+  domain: 'judging',
   description: 'POST /api/events/:eventId/judging/assignments/:assignmentId/actions/complete',
   rest: { method: 'POST', path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/complete' },
   input: { params: judgingAssignmentParamsSchema },

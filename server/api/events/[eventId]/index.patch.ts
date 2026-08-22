@@ -27,7 +27,7 @@ import { and, eq, notExists } from 'drizzle-orm'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'patch.events.by-eventId',
-  toolName: 'patch_events_by_eventId',
+  domain: 'events',
   description: 'PATCH /api/events/:eventId',
   rest: { method: 'PATCH', path: '/api/events/:eventId' },
   input: { params: routeIdParamsSchema, body: updateEventBodySchema },

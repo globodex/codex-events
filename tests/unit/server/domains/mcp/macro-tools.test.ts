@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'vitest'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { z } from 'zod'
 
 import { loadApplicationOperationCatalog } from '../../../../../server/application/operations/catalog'
@@ -30,6 +32,30 @@ describe('MCP macro tools', () => {
       .toBe('post.events.builder.analyze')
     expect(findMcpMacroAction(macros.find(macro => macro.name === 'events_upsert')!, 'post.events')?.id)
       .toBe('post.events')
+
+    const prizeOperations = operations.filter(operation => /(?:^|\.)prizes?(?:\.|$)|prize-redemptions/u.test(operation.id))
+    expect(prizeOperations.length).toBeGreaterThan(0)
+    expect(prizeOperations.every(operation => operation.domain === 'participation')).toBe(true)
+    expect(macros.filter(macro => macro.name.startsWith('events_')).flatMap(macro => macro.operations))
+      .not.toEqual(expect.arrayContaining(prizeOperations))
+    expect(macros.filter(macro => macro.name.startsWith('participation_')).flatMap(macro => macro.operations))
+      .toEqual(expect.arrayContaining(prizeOperations))
+  })
+
+  test('groups only by the explicit operation domain without inferred routing', async () => {
+    const source = await readFile(join(process.cwd(), 'server/domains/mcp/macro-tools.ts'), 'utf8')
+    expect(source).toContain('`${operation.domain}_${kind}`')
+    expect(source).not.toContain('mcpMacroDomainForOperation')
+    expect(source).not.toMatch(/ActionPattern|\.test\(operation\.id\)|return 'events'/u)
+  })
+
+  test('shares one selected mutation between execution and audit without reparsing arguments', async () => {
+    const source = await readFile(join(process.cwd(), 'server/routes/mcp.post.ts'), 'utf8')
+    expect(source.match(/resolveMcpPlatformActor\(/gu)).toHaveLength(1)
+    expect(source).toContain('if (selectedMutation) mutationAttempt = selectedMutation')
+    expect(source).toContain('action: mutationAttempt.operation.id')
+    expect(source).toContain('await mutationAttempt.settled')
+    expect(source).not.toMatch(/attemptedArguments|attemptedOperation|params\?: \{ name/u)
   })
 
   test('publishes only authorized actions inside each macro', async () => {

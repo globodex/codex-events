@@ -6,7 +6,7 @@ import { getDatabase } from '#server/database/client'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.events.participation',
-  toolName: 'get_events_participation',
+  domain: 'events',
   description: 'GET /api/events/participation',
   rest: { method: 'GET', path: '/api/events/participation' },
   input: {},

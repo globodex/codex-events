@@ -14,7 +14,7 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.public.events.by-slug.published-projects',
-  toolName: 'get_public_events_by_slug_published-projects',
+  domain: 'events',
   description: 'GET /api/public/events/:slug/published-projects',
   rest: { method: 'GET', path: '/api/public/events/:slug/published-projects' },
   input: { params: routeSlugParamsSchema },

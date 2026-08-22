@@ -4,7 +4,7 @@ import { executeAccountPageRoute } from '#server/domains/accounts/account-page-c
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.account.overview',
-  toolName: 'get_account_overview',
+  domain: 'participation',
   description: 'GET /api/account/overview',
   rest: { method: 'GET', path: '/api/account/overview' },
   input: {},

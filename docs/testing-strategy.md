@@ -287,7 +287,7 @@ repeated access constructs none, a second selected ID adds exactly one, and no
 unselected factory runs. Source and generator checks verify the deterministic
 factory artifact. Unit and HTTP integration tests verify one final-envelope
 output-validation owner, generic internal-error semantics with sanitized
-server logs, unchanged REST/MCP operation metadata, and canonical page
+server logs, shared REST/MCP operation metadata, and canonical page
 serializers for any page-shaped contract.
 
 ## MCP Validation

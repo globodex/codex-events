@@ -5,7 +5,7 @@ import { parseValidatedParams, parseValidatedQuery } from '#server/http/validati
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.events.by-eventId.talk-proposals',
-  toolName: 'get_events_by_eventId_talk-proposals',
+  domain: 'participation',
   description: 'GET /api/events/:eventId/talk-proposals',
   rest: { method: 'GET', path: '/api/events/:eventId/talk-proposals' },
   input: { params: talkProposalEventParamsSchema, query: listTalkProposalsQuerySchema },

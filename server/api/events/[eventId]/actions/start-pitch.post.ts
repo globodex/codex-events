@@ -33,7 +33,7 @@ type UserRecord = typeof users.$inferSelect
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.actions.start-pitch',
-  toolName: 'post_events_by_eventId_actions_start-pitch',
+  domain: 'judging',
   description: 'POST /api/events/:eventId/actions/start-pitch',
   rest: { method: 'POST', path: '/api/events/:eventId/actions/start-pitch' },
   input: { params: routeIdParamsSchema },

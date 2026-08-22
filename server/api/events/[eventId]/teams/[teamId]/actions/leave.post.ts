@@ -18,7 +18,7 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.teams.by-teamId.actions.leave',
-  toolName: 'post_events_by_eventId_teams_by_teamId_actions_leave',
+  domain: 'participation',
   description: 'POST /api/events/:eventId/teams/:teamId/actions/leave',
   rest: { method: 'POST', path: '/api/events/:eventId/teams/:teamId/actions/leave' },
   input: { params: teamParamsSchema },

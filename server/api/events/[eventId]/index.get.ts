@@ -50,7 +50,7 @@ type EventDetailResponse = {
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.events.by-eventId',
-  toolName: 'get_events_by_eventId',
+  domain: 'events',
   description: 'GET /api/events/:eventId',
   rest: { method: 'GET', path: '/api/events/:eventId' },
   input: { params: routeIdParamsSchema },

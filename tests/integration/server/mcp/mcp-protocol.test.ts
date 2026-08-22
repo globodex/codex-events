@@ -8,6 +8,7 @@ import builderAnalyzeHandler from '../../../../server/api/events/builder/analyze
 import builderCatalogHandler from '../../../../server/api/events/builder/catalog.get'
 import * as operationExecution from '../../../../server/application/operations/execute'
 import { validateApplicationOperationOutput } from '../../../../server/application/operations/output-validation'
+import * as actorResolution from '../../../../server/auth/actor'
 import protectedResourceHandler from '../../../../server/routes/.well-known/oauth-protected-resource.get'
 import mcpHandler from '../../../../server/routes/mcp.post'
 import { auditLogs, eventRoleAssignments, events, mcpAccessTokens, platformDocuments, userPlatformDocumentAcceptances, users } from '../../../../server/database/schema'
@@ -236,6 +237,18 @@ describe('stateless MCP protocol', () => {
     expect(called.status).toBe(200)
     expect(await rpcPayload(called)).toMatchObject({ result: { structuredContent: { data: [] } } })
     expect(rateLimiter.limit).toHaveBeenCalledWith({ key: expect.stringContaining('mcp-credential:manual:') })
+  })
+
+  test('resolves the MCP actor once per request', async () => {
+    const { harness, credential } = await setup()
+    const resolveActor = vi.spyOn(actorResolution, 'resolveMcpPlatformActor')
+
+    const response = await rpc(harness, credential, {
+      jsonrpc: '2.0', id: 1, method: 'tools/list', params: {}
+    })
+
+    expect(response.status).toBe(200)
+    expect(resolveActor).toHaveBeenCalledOnce()
   })
 
   test('publishes OAuth protected-resource metadata and challenges unauthenticated clients', async () => {

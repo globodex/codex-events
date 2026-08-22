@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
+import { mcpEligibilityManifest } from '../../../../server/application/operations/eligibility-manifest'
+
 describe('generated structured operation output schemas', () => {
   afterEach(() => {
     vi.doUnmock('zod')
@@ -33,6 +35,7 @@ describe('generated structured operation output schemas', () => {
     const events = schemas.getStructuredOperationOutputSchema('get.events')
     expect(events).not.toBe(overview)
     expect(fromJSONSchema).toHaveBeenCalledTimes(2)
-    expect(Object.keys(schemas.structuredOperationOutputSchemaFactories)).toHaveLength(169)
+    const includedCount = mcpEligibilityManifest.filter(entry => entry.disposition === 'include').length
+    expect(Object.keys(schemas.structuredOperationOutputSchemaFactories)).toHaveLength(includedCount)
   })
 })

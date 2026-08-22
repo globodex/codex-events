@@ -14,7 +14,7 @@ import {
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.public.events.by-slug.photos',
-  toolName: 'get_public_events_by_slug_photos',
+  domain: 'administration',
   description: 'GET /api/public/events/:slug/photos',
   rest: { method: 'GET', path: '/api/public/events/:slug/photos' },
   input: { params: routeSlugParamsSchema },

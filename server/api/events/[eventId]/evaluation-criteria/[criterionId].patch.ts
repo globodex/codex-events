@@ -19,7 +19,7 @@ import { parseValidatedBody, parseValidatedParams } from '#server/http/validatio
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'patch.events.by-eventId.evaluation-criteria.by-criterionId',
-  toolName: 'patch_events_by_eventId_evaluation-criteria_by_criterionId',
+  domain: 'judging',
   description: 'PATCH /api/events/:eventId/evaluation-criteria/:criterionId',
   rest: { method: 'PATCH', path: '/api/events/:eventId/evaluation-criteria/:criterionId' },
   input: { params: criterionParamsSchema, body: updateEvaluationCriterionBodySchema },

@@ -24,7 +24,7 @@ describe('application operation execution', () => {
     const outputSchema = z.object({ data: z.string() })
     const operation = {
       id: 'test.execute',
-      toolName: 'test_execute',
+      domain: 'events',
       description: 'Test operation',
       rest: { method: 'GET', path: '/api/test' },
       inputSchema,
@@ -50,7 +50,7 @@ describe('application operation execution', () => {
     const outputSchema = z.object({ data: z.string() })
     const operation = {
       id: 'test.output.failure',
-      toolName: 'test_output_failure',
+      domain: 'events',
       description: 'Test operation',
       rest: { method: 'GET', path: '/api/test-output-failure' },
       inputSchema,

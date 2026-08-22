@@ -24,7 +24,7 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.team-join-requests.by-requestId.actions.approve',
-  toolName: 'post_events_by_eventId_team-join-requests_by_requestId_actions_approve',
+  domain: 'participation',
   description: 'POST /api/events/:eventId/team-join-requests/:requestId/actions/approve',
   rest: { method: 'POST', path: '/api/events/:eventId/team-join-requests/:requestId/actions/approve' },
   input: { params: teamJoinRequestParamsSchema },

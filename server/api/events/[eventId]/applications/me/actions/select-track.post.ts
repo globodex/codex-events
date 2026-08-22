@@ -24,7 +24,7 @@ const selectTrackBodySchema = z.object({
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.applications.me.actions.select-track',
-  toolName: 'post_events_by_eventId_applications_me_actions_select-track',
+  domain: 'participation',
   description: 'POST /api/events/:eventId/applications/me/actions/select-track',
   rest: { method: 'POST', path: '/api/events/:eventId/applications/me/actions/select-track' },
   input: { params: routeIdParamsSchema, body: selectTrackBodySchema },

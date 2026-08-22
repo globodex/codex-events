@@ -18,7 +18,7 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.public.events.by-slug.evaluation-criteria',
-  toolName: 'get_public_events_by_slug_evaluation-criteria',
+  domain: 'judging',
   description: 'GET /api/public/events/:slug/evaluation-criteria',
   rest: { method: 'GET', path: '/api/public/events/:slug/evaluation-criteria' },
   input: { params: routeSlugParamsSchema },

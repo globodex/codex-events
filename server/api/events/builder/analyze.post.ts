@@ -10,7 +10,7 @@ import {
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.builder.analyze',
-  toolName: 'post_events_builder_analyze',
+  domain: 'events',
   description: 'Use this when an event organizer wants the current builder score and recommendations for an unsaved event agenda.',
   rest: { method: 'POST', path: '/api/events/builder/analyze' },
   input: { body: eventBuilderAnalyzeInputSchema },

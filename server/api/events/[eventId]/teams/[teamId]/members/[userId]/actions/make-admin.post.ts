@@ -15,7 +15,7 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.teams.by-teamId.members.by-userId.actions.make-admin',
-  toolName: 'post_events_by_eventId_teams_by_teamId_members_by_userId_actions_make-admin',
+  domain: 'participation',
   description: 'POST /api/events/:eventId/teams/:teamId/members/:userId/actions/make-admin',
   rest: { method: 'POST', path: '/api/events/:eventId/teams/:teamId/members/:userId/actions/make-admin' },
   input: { params: teamMemberParamsSchema },

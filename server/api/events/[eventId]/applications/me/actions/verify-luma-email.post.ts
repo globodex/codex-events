@@ -54,7 +54,7 @@ function getVerificationStatus(application: typeof userApplications.$inferSelect
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.applications.me.actions.verify-luma-email',
-  toolName: 'post_events_by_eventId_applications_me_actions_verify-luma-email',
+  domain: 'participation',
   description: 'POST /api/events/:eventId/applications/me/actions/verify-luma-email',
   rest: { method: 'POST', path: '/api/events/:eventId/applications/me/actions/verify-luma-email' },
   input: { params: routeIdParamsSchema, body: verifyOwnApplicationLumaEmailBodySchema },

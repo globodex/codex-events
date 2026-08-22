@@ -11,7 +11,7 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'delete.platform-admins.by-userId',
-  toolName: 'delete_platform-admins_by_userId',
+  domain: 'administration',
   description: 'DELETE /api/platform-admins/:userId',
   rest: { method: 'DELETE', path: '/api/platform-admins/:userId' },
   input: { params: platformAdminUserParamsSchema },

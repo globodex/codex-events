@@ -6,7 +6,7 @@ import { accountEventRostersPageRoute } from '#server/domains/events/account-eve
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.account.events.by-slug.rosters',
-  toolName: 'get_account_events_by_slug_rosters',
+  domain: 'participation',
   description: 'GET /api/account/events/:slug/rosters',
   rest: { method: 'GET', path: '/api/account/events/:slug/rosters' },
   input: { params: routeSlugParamsSchema },

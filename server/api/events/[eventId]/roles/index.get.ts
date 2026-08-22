@@ -16,7 +16,7 @@ type UserRecord = typeof users.$inferSelect
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.events.by-eventId.roles',
-  toolName: 'get_events_by_eventId_roles',
+  domain: 'administration',
   description: 'GET /api/events/:eventId/roles',
   rest: { method: 'GET', path: '/api/events/:eventId/roles' },
   input: { params: routeIdParamsSchema },

@@ -11,7 +11,7 @@ import {
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.events.by-eventId.teams.by-teamId.submission',
-  toolName: 'get_events_by_eventId_teams_by_teamId_submission',
+  domain: 'participation',
   description: 'GET /api/events/:eventId/teams/:teamId/submission',
   rest: { method: 'GET', path: '/api/events/:eventId/teams/:teamId/submission' },
   input: { params: submissionParamsSchema },

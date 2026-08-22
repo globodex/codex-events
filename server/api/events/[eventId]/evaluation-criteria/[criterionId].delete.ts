@@ -18,7 +18,7 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'delete.events.by-eventId.evaluation-criteria.by-criterionId',
-  toolName: 'delete_events_by_eventId_evaluation-criteria_by_criterionId',
+  domain: 'judging',
   description: 'DELETE /api/events/:eventId/evaluation-criteria/:criterionId',
   rest: { method: 'DELETE', path: '/api/events/:eventId/evaluation-criteria/:criterionId' },
   input: { params: criterionParamsSchema },

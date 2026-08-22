@@ -24,7 +24,7 @@ const setCertificateVisibilityBodySchema = z.object({
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.applications.me.actions.set-certificate-visibility',
-  toolName: 'post_events_by_eventId_applications_me_actions_set-certificate-visibility',
+  domain: 'participation',
   description: 'POST /api/events/:eventId/applications/me/actions/set-certificate-visibility',
   rest: { method: 'POST', path: '/api/events/:eventId/applications/me/actions/set-certificate-visibility' },
   input: { params: routeIdParamsSchema, body: setCertificateVisibilityBodySchema },

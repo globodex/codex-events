@@ -22,7 +22,7 @@ const overrideCheckInBodySchema = z.object({
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.applications.by-applicationId.actions.override-check-in',
-  toolName: 'post_events_by_eventId_applications_by_applicationId_actions_override-check-in',
+  domain: 'participation',
   description: 'POST /api/events/:eventId/applications/:applicationId/actions/override-check-in',
   rest: { method: 'POST', path: '/api/events/:eventId/applications/:applicationId/actions/override-check-in' },
   input: { params: applicationParamsSchema, body: overrideCheckInBodySchema },

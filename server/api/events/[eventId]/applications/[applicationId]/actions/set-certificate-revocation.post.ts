@@ -22,7 +22,7 @@ const setCertificateRevocationBodySchema = z.object({
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.applications.by-applicationId.actions.set-certificate-revocation',
-  toolName: 'post_events_by_eventId_applications_by_applicationId_actions_set-certificate-revocation',
+  domain: 'participation',
   description: 'POST /api/events/:eventId/applications/:applicationId/actions/set-certificate-revocation',
   rest: { method: 'POST', path: '/api/events/:eventId/applications/:applicationId/actions/set-certificate-revocation' },
   input: { params: applicationParamsSchema, body: setCertificateRevocationBodySchema },

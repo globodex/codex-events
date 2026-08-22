@@ -6,7 +6,7 @@ import { accountEventEntryPageRoute } from '#server/domains/events/account-event
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.account.events.by-slug.entry',
-  toolName: 'get_account_events_by_slug_entry',
+  domain: 'participation',
   description: 'GET /api/account/events/:slug/entry',
   rest: { method: 'GET', path: '/api/account/events/:slug/entry' },
   input: { params: routeSlugParamsSchema },

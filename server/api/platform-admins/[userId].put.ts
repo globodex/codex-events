@@ -11,7 +11,7 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'put.platform-admins.by-userId',
-  toolName: 'put_platform-admins_by_userId',
+  domain: 'administration',
   description: 'PUT /api/platform-admins/:userId',
   rest: { method: 'PUT', path: '/api/platform-admins/:userId' },
   input: { params: platformAdminUserParamsSchema },

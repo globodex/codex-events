@@ -15,7 +15,7 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.judging.assignments.by-assignmentId.actions.start',
-  toolName: 'post_events_by_eventId_judging_assignments_by_assignmentId_actions_start',
+  domain: 'judging',
   description: 'POST /api/events/:eventId/judging/assignments/:assignmentId/actions/start',
   rest: { method: 'POST', path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/start' },
   input: { params: judgingAssignmentParamsSchema },
