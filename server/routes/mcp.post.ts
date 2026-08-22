@@ -238,7 +238,7 @@ export default defineEventHandler(async (event) => {
               toolName: macro.name,
               operation,
               outcome: 'failed',
-              settled: new Promise(resolve => { settleSelectedMutation = resolve })
+              settled: new Promise((resolve) => { settleSelectedMutation = resolve })
             }
           : undefined
         if (selectedMutation) mutationAttempt = selectedMutation

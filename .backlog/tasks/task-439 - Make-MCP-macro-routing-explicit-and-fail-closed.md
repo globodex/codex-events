@@ -1,11 +1,11 @@
 ---
 id: TASK-439
 title: Make MCP macro routing explicit and fail closed
-status: Done
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-08-22 18:47'
-updated_date: '2026-08-22 19:00'
+updated_date: '2026-08-22 19:02'
 labels: []
 dependencies: []
 priority: high
@@ -57,6 +57,8 @@ Make every MCP operation declare its business domain so macro routing cannot sil
 
 <!-- SECTION:NOTES:BEGIN -->
 Implemented explicit operation domains across every MCP-eligible structured route and removed per-operation toolName metadata. Macro grouping now uses only the operation domain and existing effect. Exact persona snapshots verify unchanged permissions and the approved prize move. Mutation integration coverage verifies successful and failed audits from the selected operation, and actor coverage verifies one resolution per request. Final validation passed: bun run lint; bun run typecheck; bun run test:unit with 172 files and 1,143 tests; bun run test:integration with 44 files and 496 tests; bun run test:bdd with 92 regular and 2 destructive browser tests; and git diff --check. No automation gaps, setup changes, task-specific risks, or follow-up work remain.
+
+The first pull request head failed CI lint because the Linux CI rule requires parentheses around the Promise resolver arrow argument in server/routes/mcp.post.ts. The duplicated push and pull-request runs reported the same deterministic finding. The task was reopened for the scoped correction before review and merge.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
