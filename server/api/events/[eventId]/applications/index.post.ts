@@ -27,7 +27,7 @@ import { parseValidatedBody, parseValidatedParams } from '#server/http/validatio
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.applications',
-  toolName: 'post_events_by_eventId_applications',
+  domain: 'participation',
   description: 'POST /api/events/:eventId/applications',
   rest: { method: 'POST', path: '/api/events/:eventId/applications' },
   input: { params: routeIdParamsSchema, body: submitApplicationBodySchema },

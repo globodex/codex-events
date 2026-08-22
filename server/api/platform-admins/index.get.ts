@@ -8,7 +8,7 @@ import { listPlatformAdmins } from '#server/domains/platform/admins'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.platform-admins',
-  toolName: 'get_platform-admins',
+  domain: 'administration',
   description: 'GET /api/platform-admins',
   rest: { method: 'GET', path: '/api/platform-admins' },
   input: {},

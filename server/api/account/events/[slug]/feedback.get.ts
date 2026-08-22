@@ -6,7 +6,7 @@ import { accountEventFeedbackPageRoute } from '#server/domains/events/account-ev
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.account.events.by-slug.feedback',
-  toolName: 'get_account_events_by_slug_feedback',
+  domain: 'participation',
   description: 'GET /api/account/events/:slug/feedback',
   rest: { method: 'GET', path: '/api/account/events/:slug/feedback' },
   input: { params: routeSlugParamsSchema },

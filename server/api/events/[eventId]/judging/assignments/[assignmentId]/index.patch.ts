@@ -16,7 +16,7 @@ import {
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'patch.events.by-eventId.judging.assignments.by-assignmentId',
-  toolName: 'patch_events_by_eventId_judging_assignments_by_assignmentId',
+  domain: 'judging',
   description: 'PATCH /api/events/:eventId/judging/assignments/:assignmentId',
   rest: { method: 'PATCH', path: '/api/events/:eventId/judging/assignments/:assignmentId' },
   input: { params: judgingAssignmentParamsSchema, body: saveJudgeAssignmentBodySchema },

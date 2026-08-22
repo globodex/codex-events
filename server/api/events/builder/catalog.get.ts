@@ -6,7 +6,7 @@ import { getEventBuilderCatalog } from '#shared/domains/events/builder-api'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.events.builder.catalog',
-  toolName: 'get_events_builder_catalog',
+  domain: 'events',
   description: 'Use this when an event organizer wants to inspect the current event-builder blocks, paytable, and templates before drafting an event.',
   rest: { method: 'GET', path: '/api/events/builder/catalog' },
   input: {},

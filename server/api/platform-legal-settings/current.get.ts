@@ -9,7 +9,7 @@ import { measureRequestPhase } from '#server/http/request-timing'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.platform-legal-settings.current',
-  toolName: 'get_platform-legal-settings_current',
+  domain: 'administration',
   description: 'GET /api/platform-legal-settings/current',
   rest: { method: 'GET', path: '/api/platform-legal-settings/current' },
   input: {},

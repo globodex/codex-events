@@ -11,7 +11,7 @@ const auditLogReadLimit = 200
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.events.by-eventId.audit',
-  toolName: 'get_events_by_eventId_audit',
+  domain: 'administration',
   description: 'GET /api/events/:eventId/audit',
   rest: { method: 'GET', path: '/api/events/:eventId/audit' },
   input: { params: routeIdParamsSchema },

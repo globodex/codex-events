@@ -29,7 +29,7 @@ type UserApplicationLumaSyncStatus = typeof userApplications.$inferSelect['lumaS
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.applications.me.actions.withdraw',
-  toolName: 'post_events_by_eventId_applications_me_actions_withdraw',
+  domain: 'participation',
   description: 'POST /api/events/:eventId/applications/me/actions/withdraw',
   rest: { method: 'POST', path: '/api/events/:eventId/applications/me/actions/withdraw' },
   input: { params: routeIdParamsSchema },

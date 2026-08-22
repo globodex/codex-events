@@ -20,7 +20,7 @@ import { parseValidatedBody, parseValidatedParams } from '#server/http/validatio
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'put.events.by-eventId.roles.by-userId',
-  toolName: 'put_events_by_eventId_roles_by_userId',
+  domain: 'administration',
   description: 'PUT /api/events/:eventId/roles/:userId',
   rest: { method: 'PUT', path: '/api/events/:eventId/roles/:userId' },
   input: { params: roleAssignmentParamsSchema, body: roleAssignmentUpsertBodySchema },

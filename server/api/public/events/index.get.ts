@@ -14,7 +14,7 @@ type EventRecord = Awaited<ReturnType<typeof listPublicEvents>>['items'][number]
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.public.events',
-  toolName: 'get_public_events',
+  domain: 'events',
   description: 'GET /api/public/events',
   rest: { method: 'GET', path: '/api/public/events' },
   input: { query: eventListQuerySchema },

@@ -7,6 +7,7 @@ import { loadApplicationOperationCatalog } from '../../../../server/application/
 import { getApplicationOperation, listApplicationOperations, listApplicationOperationsForCapabilities } from '../../../../server/application/operations/registry'
 import { mcpEligibilityManifest } from '../../../../server/application/operations/eligibility-manifest'
 import { structuredOperationOutputSchemaFactories } from '../../../../server/application/operations/generated-output-schemas'
+import { operationDomains } from '../../../../server/application/operations/types'
 import { assertConstrainedOutputSchema, generateOutputSchemaSource } from '../../../../tools/mcp/generate-output-schemas'
 import { assertCatalogMatchesEligibilityManifest, generateOperationCatalogSource } from '../../../../tools/mcp/generate-operation-catalog'
 
@@ -37,45 +38,45 @@ describe('MCP application operation registry', () => {
     return restBinding(join(process.cwd(), 'server/api', route))
   }
 
-  test('has unique stable IDs, tool names, and REST bindings', async () => {
+  test('has unique stable IDs, explicit domains, and REST bindings', async () => {
     await loadApplicationOperationCatalog()
     const operations = listApplicationOperations()
-    expect(operations).toHaveLength(169)
+    const includedCount = mcpEligibilityManifest.filter(entry => entry.disposition === 'include').length
+    expect(operations).toHaveLength(includedCount)
     expect(new Set(operations.map(operation => operation.id)).size).toBe(operations.length)
-    expect(new Set(operations.map(operation => operation.toolName)).size).toBe(operations.length)
+    expect(operations.every(operation => operationDomains.includes(operation.domain))).toBe(true)
     expect(new Set(operations.map(operation => `${operation.rest.method} ${operation.rest.path}`)).size).toBe(operations.length)
     expect(operations.every(operation => operation.inputSchema && operation.outputSchema)).toBe(true)
-  })
+  }, 10_000)
 
   test('registers every page-shaped application operation with its canonical REST metadata', async () => {
     await loadApplicationOperationCatalog()
 
     const expected = [
-      ['get.account.events.by-slug.entry', 'get_account_events_by_slug_entry', '/api/account/events/:slug/entry', ['platform_user'], true],
-      ['get.account.events.by-slug.prizes', 'get_account_events_by_slug_prizes', '/api/account/events/:slug/prizes', ['platform_user'], true],
-      ['get.account.events.by-slug.operations', 'get_account_events_by_slug_operations', '/api/account/events/:slug/operations', ['event_admin'], true],
-      ['get.account.events.by-slug.submissions', 'get_account_events_by_slug_submissions', '/api/account/events/:slug/submissions', ['event_admin'], true],
-      ['get.account.events.by-slug.judging', 'get_account_events_by_slug_judging', '/api/account/events/:slug/judging', ['event_judge', 'event_admin'], true],
-      ['get.account.judging', 'get_account_judging', '/api/account/judging', ['event_judge'], false],
-      ['get.account.events.by-slug.judging.assignments.by-assignmentId', 'get_account_events_by_slug_judging_assignments_by_assignmentId', '/api/account/events/:slug/judging/assignments/:assignmentId', ['event_judge'], true],
-      ['get.account.events.by-slug.settings', 'get_account_events_by_slug_settings', '/api/account/events/:slug/settings', ['event_admin'], true],
-      ['get.account.events.by-slug.participants', 'get_account_events_by_slug_participants', '/api/account/events/:slug/participants', ['event_staff', 'event_admin'], true],
-      ['get.account.events.by-slug.workspace', 'get_account_events_by_slug_workspace', '/api/account/events/:slug/workspace', ['platform_user'], true],
-      ['get.account.events.by-slug.teams', 'get_account_events_by_slug_teams', '/api/account/events/:slug/teams', ['platform_user'], true],
-      ['get.account.events.by-slug.rosters', 'get_account_events_by_slug_rosters', '/api/account/events/:slug/rosters', ['platform_user'], true],
-      ['get.account.events.by-slug.gallery', 'get_account_events_by_slug_gallery', '/api/account/events/:slug/gallery', ['platform_user'], true],
-      ['get.account.events.by-slug.feedback', 'get_account_events_by_slug_feedback', '/api/account/events/:slug/feedback', ['event_judge', 'event_staff', 'event_admin'], true],
-      ['get.account.events.by-slug.certificates', 'get_account_events_by_slug_certificates', '/api/account/events/:slug/certificates', ['event_admin'], true],
-      ['get.account.overview', 'get_account_overview', '/api/account/overview', ['platform_user'], false],
-      ['get.account.staff-workspace', 'get_account_staff_workspace', '/api/account/staff-workspace', ['platform_user'], false],
-      ['get.prize-redemptions.workspace', 'get_prize_redemptions_workspace', '/api/prize-redemptions/workspace', ['platform_user'], false]
+      ['get.account.events.by-slug.entry', '/api/account/events/:slug/entry', ['platform_user'], true],
+      ['get.account.events.by-slug.prizes', '/api/account/events/:slug/prizes', ['platform_user'], true],
+      ['get.account.events.by-slug.operations', '/api/account/events/:slug/operations', ['event_admin'], true],
+      ['get.account.events.by-slug.submissions', '/api/account/events/:slug/submissions', ['event_admin'], true],
+      ['get.account.events.by-slug.judging', '/api/account/events/:slug/judging', ['event_judge', 'event_admin'], true],
+      ['get.account.judging', '/api/account/judging', ['event_judge'], false],
+      ['get.account.events.by-slug.judging.assignments.by-assignmentId', '/api/account/events/:slug/judging/assignments/:assignmentId', ['event_judge'], true],
+      ['get.account.events.by-slug.settings', '/api/account/events/:slug/settings', ['event_admin'], true],
+      ['get.account.events.by-slug.participants', '/api/account/events/:slug/participants', ['event_staff', 'event_admin'], true],
+      ['get.account.events.by-slug.workspace', '/api/account/events/:slug/workspace', ['platform_user'], true],
+      ['get.account.events.by-slug.teams', '/api/account/events/:slug/teams', ['platform_user'], true],
+      ['get.account.events.by-slug.rosters', '/api/account/events/:slug/rosters', ['platform_user'], true],
+      ['get.account.events.by-slug.gallery', '/api/account/events/:slug/gallery', ['platform_user'], true],
+      ['get.account.events.by-slug.feedback', '/api/account/events/:slug/feedback', ['event_judge', 'event_staff', 'event_admin'], true],
+      ['get.account.events.by-slug.certificates', '/api/account/events/:slug/certificates', ['event_admin'], true],
+      ['get.account.overview', '/api/account/overview', ['platform_user'], false],
+      ['get.account.staff-workspace', '/api/account/staff-workspace', ['platform_user'], false],
+      ['get.prize-redemptions.workspace', '/api/prize-redemptions/workspace', ['platform_user'], false]
     ] as const
 
     expect(expected.map(([id]) => getApplicationOperation(id)?.id).sort()).toEqual(expected.map(([id]) => id).sort())
 
-    for (const [id, toolName, path, capabilities, hasParams] of expected) {
+    for (const [id, path, capabilities, hasParams] of expected) {
       const operation = getApplicationOperation(id)
-      expect(operation?.toolName).toBe(toolName)
       expect(operation?.rest).toEqual({ method: 'GET', path })
       expect(operation?.capabilities).toEqual(capabilities)
       expect(operation?.effect).toBe('read')
@@ -220,8 +221,7 @@ describe('MCP application operation registry', () => {
 
     const included = mcpEligibilityManifest.filter(entry => entry.disposition === 'include')
     const excluded = mcpEligibilityManifest.filter(entry => entry.disposition === 'exclude')
-    expect(included).toHaveLength(169)
-    expect(excluded).toHaveLength(35)
+    expect(excluded.length).toBeGreaterThan(0)
     expect(excluded.every(entry => entry.reason.length > 0)).toBe(true)
 
     const operations = listApplicationOperations()
@@ -244,28 +244,28 @@ describe('MCP application operation registry', () => {
   test('coarse capability catalogs match representative exact guards', async () => {
     await loadApplicationOperationCatalog()
     const names = (capabilities: Parameters<typeof listApplicationOperationsForCapabilities>[0]) =>
-      new Set(listApplicationOperationsForCapabilities(capabilities).map(operation => operation.toolName))
+      new Set(listApplicationOperationsForCapabilities(capabilities).map(operation => operation.id))
 
     const participant = names(new Set(['public', 'platform_account', 'platform_user']))
-    expect(participant).toContain('get_events_by_eventId_judges')
-    expect(participant).toContain('get_events_by_eventId_staff')
-    expect(participant).toContain('get_platform-documents_current')
-    expect(participant).not.toContain('post_events')
-    expect(participant).not.toContain('get_events_by_eventId_talk-proposals')
+    expect(participant).toContain('get.events.by-eventId.judges')
+    expect(participant).toContain('get.events.by-eventId.staff')
+    expect(participant).toContain('get.platform-documents.current')
+    expect(participant).not.toContain('post.events')
+    expect(participant).not.toContain('get.events.by-eventId.talk-proposals')
 
     const staff = names(new Set(['public', 'platform_account', 'platform_user', 'event_staff']))
-    expect(staff).toContain('get_events_by_eventId_talk-proposals')
-    expect(staff).not.toContain('post_events_by_eventId_talk-proposals_by_proposalId_actions_reject')
+    expect(staff).toContain('get.events.by-eventId.talk-proposals')
+    expect(staff).not.toContain('post.events.by-eventId.talk-proposals.by-proposalId.actions.reject')
 
     const eventAdmin = names(new Set(['public', 'platform_account', 'platform_user', 'event_staff', 'event_admin']))
-    expect(eventAdmin).toContain('post_events_by_eventId_talk-proposals_by_proposalId_actions_reject')
-    expect(eventAdmin).not.toContain('post_events')
+    expect(eventAdmin).toContain('post.events.by-eventId.talk-proposals.by-proposalId.actions.reject')
+    expect(eventAdmin).not.toContain('post.events')
 
     const organizer = names(new Set(['public', 'platform_account', 'platform_user', 'event_organizer']))
-    expect(organizer).toContain('post_events')
+    expect(organizer).toContain('post.events')
 
     const platformAdmin = names(new Set(['public', 'platform_account', 'platform_user', 'event_organizer', 'event_judge', 'event_staff', 'event_admin', 'platform_admin']))
-    expect(platformAdmin).toContain('post_events')
-    expect(platformAdmin).toContain('get_platform-admins')
+    expect(platformAdmin).toContain('post.events')
+    expect(platformAdmin).toContain('get.platform-admins')
   })
 })

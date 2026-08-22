@@ -10,7 +10,7 @@ import { routeIdParamsSchema } from '#server/domains/events'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.events.by-eventId.applications',
-  toolName: 'get_events_by_eventId_applications',
+  domain: 'participation',
   description: 'GET /api/events/:eventId/applications',
   rest: { method: 'GET', path: '/api/events/:eventId/applications' },
   input: { params: routeIdParamsSchema, query: listApplicationsQuerySchema },

@@ -4,7 +4,7 @@ import { accountJudgeInboxPageRoute } from '#server/domains/judging/account-judg
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.account.judging',
-  toolName: 'get_account_judging',
+  domain: 'judging',
   description: 'GET /api/account/judging',
   rest: { method: 'GET', path: '/api/account/judging' },
   input: {},

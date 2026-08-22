@@ -13,7 +13,7 @@ const bodySchema = z.object({
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.platform-document-acceptances',
-  toolName: 'post_platform-document-acceptances',
+  domain: 'administration',
   description: 'POST /api/platform-document-acceptances',
   rest: { method: 'POST', path: '/api/platform-document-acceptances' },
   input: { body: bodySchema },

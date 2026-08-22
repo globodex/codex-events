@@ -12,7 +12,7 @@ import { eventCertificatePreviewUserId } from '#shared/domains/events/certificat
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.public.events.by-slug.participants.by-userId.certificate',
-  toolName: 'get_public_events_by_slug_participants_by_userId_certificate',
+  domain: 'participation',
   description: 'GET /api/public/events/:slug/participants/:userId/certificate',
   rest: { method: 'GET', path: '/api/public/events/:slug/participants/:userId/certificate' },
   input: { params: certificateRouteParamsSchema, query: certificatePreviewQuerySchema },

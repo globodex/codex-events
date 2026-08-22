@@ -18,7 +18,7 @@ import { parseValidatedBody, parseValidatedParams } from '#server/http/validatio
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.terms.by-documentType.versions',
-  toolName: 'post_events_by_eventId_terms_by_documentType_versions',
+  domain: 'administration',
   description: 'POST /api/events/:eventId/terms/:documentType/versions',
   rest: { method: 'POST', path: '/api/events/:eventId/terms/:documentType/versions' },
   input: { params: termsDocumentParamsSchema, body: createTermsVersionBodySchema },

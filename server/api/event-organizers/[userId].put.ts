@@ -11,7 +11,7 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'put.event-organizers.by-userId',
-  toolName: 'put_event-organizers_by_userId',
+  domain: 'administration',
   description: 'PUT /api/event-organizers/:userId',
   rest: { method: 'PUT', path: '/api/event-organizers/:userId' },
   input: { params: eventOrganizerUserParamsSchema },

@@ -6,7 +6,7 @@ import { accountEventWorkspacePageRoute } from '#server/domains/events/account-e
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.account.events.by-slug.workspace',
-  toolName: 'get_account_events_by_slug_workspace',
+  domain: 'participation',
   description: 'GET /api/account/events/:slug/workspace',
   rest: { method: 'GET', path: '/api/account/events/:slug/workspace' },
   input: { params: routeSlugParamsSchema },

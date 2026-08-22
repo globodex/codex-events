@@ -4,7 +4,7 @@ import { listOwnPendingPrizeRedemptions } from '#server/domains/prize-redemption
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.prize-redemptions.me',
-  toolName: 'get_prize-redemptions_me',
+  domain: 'participation',
   description: 'GET /api/prize-redemptions/me',
   rest: { method: 'GET', path: '/api/prize-redemptions/me' },
   input: {},

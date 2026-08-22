@@ -14,6 +14,10 @@ export const operationCapabilities = [
 
 export type OperationCapability = (typeof operationCapabilities)[number]
 
+export const operationDomains = ['events', 'participation', 'judging', 'administration'] as const
+
+export type OperationDomain = (typeof operationDomains)[number]
+
 export interface OperationAnnotations {
   readOnlyHint: boolean
   destructiveHint: boolean
@@ -37,18 +41,13 @@ export interface OperationRestBinding {
   path: string
 }
 
-export interface ApplicationOperationTransportContext {
-  tokenId?: string
-  toolName?: string
-}
-
 export interface RouteApplicationOperation<TInputSchema extends z.ZodType = z.ZodType, TOutputSchema extends z.ZodType = z.ZodType> extends ApplicationOperation<TInputSchema, TOutputSchema> {
   eligibleForMcp: true
 }
 
 export interface ApplicationOperation<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny, TOutputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
   id: string
-  toolName: string
+  domain: OperationDomain
   description: string
   rest: OperationRestBinding
   inputSchema: TInputSchema

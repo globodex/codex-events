@@ -24,7 +24,7 @@ const prizeRedemptionQuerySchema = z.object({
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.events.by-eventId.prize-redemptions',
-  toolName: 'get_events_by_eventId_prize-redemptions',
+  domain: 'participation',
   description: 'GET /api/events/:eventId/prize-redemptions',
   rest: { method: 'GET', path: '/api/events/:eventId/prize-redemptions' },
   input: { params: routeIdParamsSchema, query: prizeRedemptionQuerySchema },

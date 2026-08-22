@@ -19,7 +19,7 @@ import { routeIdParamsSchema } from '#server/domains/events'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.team-join-requests',
-  toolName: 'post_events_by_eventId_team-join-requests',
+  domain: 'participation',
   description: 'POST /api/events/:eventId/team-join-requests',
   rest: { method: 'POST', path: '/api/events/:eventId/team-join-requests' },
   input: { params: routeIdParamsSchema, body: createJoinRequestBodySchema },

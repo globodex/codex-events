@@ -16,7 +16,7 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.credits.by-creditId.actions.claim',
-  toolName: 'post_events_by_eventId_credits_by_creditId_actions_claim',
+  domain: 'participation',
   description: 'POST /api/events/:eventId/credits/:creditId/actions/claim',
   rest: { method: 'POST', path: '/api/events/:eventId/credits/:creditId/actions/claim' },
   input: { params: creditParamsSchema },

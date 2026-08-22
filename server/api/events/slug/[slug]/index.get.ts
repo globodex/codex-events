@@ -19,7 +19,7 @@ import { parseTalkProposalQuestionsJson } from '#shared/domains/talk-proposals/q
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.events.slug.by-slug',
-  toolName: 'get_events_slug_by_slug',
+  domain: 'events',
   description: 'GET /api/events/slug/:slug',
   rest: { method: 'GET', path: '/api/events/slug/:slug' },
   input: { params: routeSlugParamsSchema },

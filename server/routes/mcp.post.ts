@@ -6,8 +6,8 @@ import { defineEventHandler, getRequestHeader, setResponseHeader, setResponseSta
 import { loadApplicationOperationCatalog } from '#server/application/operations/catalog'
 import { executeApplicationOperation } from '#server/application/operations/execute'
 import { listApplicationOperationsForCapabilities } from '#server/application/operations/registry'
-import type { OperationCapability } from '#server/application/operations/types'
-import { resolveMcpPlatformActor, setRequestActor } from '#server/auth/actor'
+import type { ApplicationOperation, OperationCapability } from '#server/application/operations/types'
+import { resolveMcpPlatformActor, setRequestActor, type PlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
 import { eventRoleAssignments } from '#server/database/schema'
 import { authenticateMcpRequest } from '#server/domains/mcp/authentication'
@@ -28,6 +28,7 @@ import {
   createMcpMacroTools,
   describeMcpMacroAction,
   findMcpMacroAction,
+  type McpMacroToolName,
   validateMcpMacroActionInput
 } from '#server/domains/mcp/macro-tools'
 import { ApiError, isApiError, toApiError } from '#server/http/api-error'
@@ -60,19 +61,6 @@ function forbiddenRequestTargetResponse() {
   return Response.json({
     error: { code: 'mcp_request_target_forbidden', message: 'The MCP request target is not allowed.' }
   }, { status: 403 })
-}
-
-async function readProtocolResponse(response: Response) {
-  const text = await response.clone().text()
-  const serialized = response.headers.get('content-type')?.includes('text/event-stream')
-    ? text.split('\n').find(line => line.startsWith('data: '))?.slice(6)
-    : text
-  if (!serialized) return null
-  try {
-    return JSON.parse(serialized) as { result?: { isError?: boolean }, error?: unknown }
-  } catch {
-    return null
-  }
 }
 
 export async function addMcpToolSecuritySchemes(response: Response, method: unknown, scopes: string[]) {
@@ -116,13 +104,12 @@ export async function addMcpToolSecuritySchemes(response: Response, method: unkn
   })
 }
 
-async function actorCapabilities(event: Parameters<typeof getDatabase>[0], userId: string, isPlatformAdmin: boolean) {
-  const actor = await resolveMcpPlatformActor(event, userId)
+async function actorCapabilities(event: Parameters<typeof getDatabase>[0], actor: PlatformActor) {
   const capabilities = new Set<OperationCapability>(['public', 'platform_account'])
   if (!actor.hasAcceptedCurrentPlatformDocuments) return capabilities
   capabilities.add('platform_user')
   if (actor.platformUser.isEventOrganizer) capabilities.add('event_organizer')
-  if (isPlatformAdmin) {
+  if (actor.platformUser.isPlatformAdmin) {
     capabilities.add('platform_admin')
     capabilities.add('event_organizer')
     capabilities.add('event_admin')
@@ -133,7 +120,7 @@ async function actorCapabilities(event: Parameters<typeof getDatabase>[0], userI
 
   const roles = await getDatabase(event).select({ role: eventRoleAssignments.role })
     .from(eventRoleAssignments)
-    .where(eq(eventRoleAssignments.userId, userId))
+    .where(eq(eventRoleAssignments.userId, actor.platformUser.id))
   if (roles.some((item: { role: string }) => item.role === 'event_admin')) {
     capabilities.add('event_admin')
     capabilities.add('event_staff')
@@ -185,10 +172,16 @@ export default defineEventHandler(async (event) => {
   setRequestActor(event, actor)
   if (authenticated.tokenId) await coalesceMcpTokenLastUse(database, authenticated.tokenId)
   await loadApplicationOperationCatalog()
-  const capabilities = await actorCapabilities(event, actor.platformUser.id, actor.platformUser.isPlatformAdmin)
+  const capabilities = await actorCapabilities(event, actor)
   const operations = listApplicationOperationsForCapabilities(capabilities)
   const macros = createMcpMacroTools(operations)
   const server = new McpServer({ name: 'codex-events', version: '1.0.0' })
+  let mutationAttempt: {
+    toolName: McpMacroToolName
+    operation: ApplicationOperation
+    outcome: 'succeeded' | 'failed'
+    settled: Promise<void>
+  } | undefined
 
   const builderMacro = macros.find(macro =>
     macro.operations.some(operation => operation.id === 'post.events.builder.analyze')
@@ -228,6 +221,8 @@ export default defineEventHandler(async (event) => {
         ? { _meta: { ui: { resourceUri: eventBuilderAppResourceUri } } }
         : {})
     }, async (input) => {
+      let settleSelectedMutation = () => {}
+      let selectedMutation: typeof mutationAttempt
       try {
         const request = input as { action?: unknown, input?: unknown }
         const operation = findMcpMacroAction(macro, request.action)
@@ -238,6 +233,15 @@ export default defineEventHandler(async (event) => {
             message: 'This action is not available to the current user.'
           })
         }
+        selectedMutation = request.input !== undefined && operation.effect !== 'read'
+          ? {
+              toolName: macro.name,
+              operation,
+              outcome: 'failed',
+              settled: new Promise((resolve) => { settleSelectedMutation = resolve })
+            }
+          : undefined
+        if (selectedMutation) mutationAttempt = selectedMutation
         const output = request.input === undefined
           ? describeMcpMacroAction(operation)
           : await executeApplicationOperation(
@@ -245,6 +249,7 @@ export default defineEventHandler(async (event) => {
               operation,
               validateMcpMacroActionInput(operation, request.input)
             )
+        if (selectedMutation) selectedMutation.outcome = 'succeeded'
         return {
           content: [{ type: 'text', text: JSON.stringify(output) }],
           structuredContent: output as Record<string, unknown>
@@ -260,6 +265,8 @@ export default defineEventHandler(async (event) => {
           content: [{ type: 'text', text: JSON.stringify(safeError) }],
           structuredContent: safeError
         }
+      } finally {
+        if (selectedMutation) settleSelectedMutation()
       }
     })
   }
@@ -270,43 +277,24 @@ export default defineEventHandler(async (event) => {
     legacy: 'stateless',
     responseMode: 'json'
   })
-  const payload = await request.clone().json().catch(() => null) as {
-    method?: unknown
-    params?: { name?: unknown, arguments?: unknown }
-  } | null
-  const attemptedMacro = payload?.method === 'tools/call' && typeof payload.params?.name === 'string'
-    ? macros.find(macro => macro.name === payload.params!.name)
-    : undefined
-  const attemptedArguments = payload?.params?.arguments && typeof payload.params.arguments === 'object'
-    ? payload.params.arguments as { action?: unknown, input?: unknown }
-    : undefined
-  const attemptedOperation = attemptedMacro
-    && attemptedArguments
-    && Object.prototype.hasOwnProperty.call(attemptedArguments, 'input')
-    ? findMcpMacroAction(attemptedMacro, attemptedArguments.action)
-    : undefined
-  let outcome: 'succeeded' | 'failed' = 'failed'
+  const payload = await request.clone().json().catch(() => null) as { method?: unknown } | null
   try {
-    const response = await addMcpToolSecuritySchemes(
+    return await addMcpToolSecuritySchemes(
       await handler.fetch(request),
       payload?.method,
       []
     )
-    if (attemptedOperation && !attemptedOperation.annotations.readOnlyHint) {
-      const result = await readProtocolResponse(response)
-      outcome = response.ok && !result?.error && result?.result?.isError !== true ? 'succeeded' : 'failed'
-    }
-    return response
   } finally {
-    if (attemptedOperation && !attemptedOperation.annotations.readOnlyHint) {
+    if (mutationAttempt) {
+      await mutationAttempt.settled
       await recordMcpMutationAttempt(database, {
         userId: actor.platformUser.id,
         authenticationMethod: authenticated.method,
         entityType: authenticated.auditEntityType,
         entityId: authenticated.auditEntityId,
-        toolName: attemptedMacro!.name,
-        action: attemptedOperation.id,
-        outcome
+        toolName: mutationAttempt.toolName,
+        action: mutationAttempt.operation.id,
+        outcome: mutationAttempt.outcome
       })
     }
   }

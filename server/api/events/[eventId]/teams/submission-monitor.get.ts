@@ -8,7 +8,7 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.events.by-eventId.teams.submission-monitor',
-  toolName: 'get_events_by_eventId_teams_submission-monitor',
+  domain: 'participation',
   description: 'GET /api/events/:eventId/teams/submission-monitor',
   rest: { method: 'GET', path: '/api/events/:eventId/teams/submission-monitor' },
   input: { params: routeIdParamsSchema },

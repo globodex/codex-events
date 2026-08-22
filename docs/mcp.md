@@ -76,7 +76,7 @@ The source inventory is the shared operation registry. Eligibility is explicit:
   backfill integration controls, queue consumers, startup recovery, email-send
   controls, and other system-only entrypoints.
 
-The explicit manifest contains 169 included method/path pairs, including all
+The explicit manifest contains every included method/path pair, including all
 ten talk-proposal operations and the two read-only event-builder operations.
 Each appears once with a stable operation ID and is routed through one compact
 macro tool.
@@ -100,6 +100,10 @@ The MCP surface has at most eight tools:
 - `judging_read` and `judging_upsert`;
 - `administration_read` and `administration_upsert`.
 
+An operation's explicit domain selects its macro family, and its existing
+effect selects `read` or `upsert`. Prize configuration, prize discovery, and
+prize redemption operations use the participation macros.
+
 A macro is registered only when the current actor has at least one operation in
 that group. Its `action` enum contains only operation IDs authorized by the
 actor's combined current capabilities. An unauthorized operation is absent
@@ -122,12 +126,13 @@ the model context small while preserving exact operation contracts on demand.
 Every operation routed by a macro declares:
 
 - stable ID and user-facing tool description;
+- one explicit macro domain: events, participation, judging, or administration;
 - one REST method and route template;
 - operation-specific Zod input and output schemas for the complete structured
   envelope;
 - explicit coarse capabilities that mirror the operation's actual guard and
   are used only for discovery;
-- an explicit domain-effect classification from which read-only, destructive,
+- an explicit effect classification from which read-only, destructive,
   and idempotent annotations are derived;
 - an OAuth `securitySchemes` declaration with no resource scopes, because D1
   actor permissions rather than OAuth scopes authorize operations;

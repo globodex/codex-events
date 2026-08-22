@@ -6,7 +6,7 @@ import { accountEventGalleryPageRoute } from '#server/domains/events/account-eve
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.account.events.by-slug.gallery',
-  toolName: 'get_account_events_by_slug_gallery',
+  domain: 'participation',
   description: 'GET /api/account/events/:slug/gallery',
   rest: { method: 'GET', path: '/api/account/events/:slug/gallery' },
   input: { params: routeSlugParamsSchema },

@@ -6,7 +6,7 @@ import { accountEventJudgingPageRoute } from '#server/domains/events/account-eve
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.account.events.by-slug.judging',
-  toolName: 'get_account_events_by_slug_judging',
+  domain: 'judging',
   description: 'GET /api/account/events/:slug/judging',
   rest: { method: 'GET', path: '/api/account/events/:slug/judging' },
   input: { params: routeSlugParamsSchema },

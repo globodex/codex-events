@@ -19,7 +19,7 @@ import { parseValidatedBody, parseValidatedParams } from '#server/http/validatio
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.judging.assignments.by-assignmentId.actions.skip',
-  toolName: 'post_events_by_eventId_judging_assignments_by_assignmentId_actions_skip',
+  domain: 'judging',
   description: 'POST /api/events/:eventId/judging/assignments/:assignmentId/actions/skip',
   rest: { method: 'POST', path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/skip' },
   input: { params: judgingAssignmentParamsSchema, body: skipJudgeAssignmentBodySchema },

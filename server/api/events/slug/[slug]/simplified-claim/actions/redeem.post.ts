@@ -43,7 +43,7 @@ function createUniqueClaimTimestamp() {
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.slug.by-slug.simplified-claim.actions.redeem',
-  toolName: 'post_events_slug_by_slug_simplified-claim_actions_redeem',
+  domain: 'participation',
   description: 'POST /api/events/slug/:slug/simplified-claim/actions/redeem',
   rest: { method: 'POST', path: '/api/events/slug/:slug/simplified-claim/actions/redeem' },
   input: { params: routeSlugParamsSchema, body: redeemBodySchema },

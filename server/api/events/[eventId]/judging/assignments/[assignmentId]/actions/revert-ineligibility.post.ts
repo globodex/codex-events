@@ -15,7 +15,7 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.judging.assignments.by-assignmentId.actions.revert-ineligibility',
-  toolName: 'post_events_by_eventId_judging_assignments_by_assignmentId_actions_revert-ineligibility',
+  domain: 'judging',
   description: 'POST /api/events/:eventId/judging/assignments/:assignmentId/actions/revert-ineligibility',
   rest: { method: 'POST', path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/revert-ineligibility' },
   input: { params: judgingAssignmentParamsSchema },

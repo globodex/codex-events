@@ -18,7 +18,7 @@ import {
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.teams.by-teamId.submission.actions.admin-withdraw',
-  toolName: 'post_events_by_eventId_teams_by_teamId_submission_actions_admin-withdraw',
+  domain: 'participation',
   description: 'POST /api/events/:eventId/teams/:teamId/submission/actions/admin-withdraw',
   rest: { method: 'POST', path: '/api/events/:eventId/teams/:teamId/submission/actions/admin-withdraw' },
   input: { params: submissionParamsSchema, body: adminWithdrawSubmissionBodySchema },

@@ -17,7 +17,7 @@ import { parseValidatedBody, parseValidatedParams } from '#server/http/validatio
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'patch.events.by-eventId.teams.by-teamId',
-  toolName: 'patch_events_by_eventId_teams_by_teamId',
+  domain: 'participation',
   description: 'PATCH /api/events/:eventId/teams/:teamId',
   rest: { method: 'PATCH', path: '/api/events/:eventId/teams/:teamId' },
   input: { params: teamParamsSchema, body: updateTeamBodySchema },

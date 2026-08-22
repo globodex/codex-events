@@ -9,7 +9,7 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.talk-proposals.me.actions.submit',
-  toolName: 'post_events_by_eventId_talk-proposals_me_actions_submit',
+  domain: 'participation',
   description: 'POST /api/events/:eventId/talk-proposals/me/actions/submit',
   rest: { method: 'POST', path: '/api/events/:eventId/talk-proposals/me/actions/submit' },
   input: { params: talkProposalEventParamsSchema },

@@ -19,7 +19,7 @@ import { parseValidatedBody, parseValidatedParams } from '#server/http/validatio
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'patch.events.by-eventId.credits.by-creditId',
-  toolName: 'patch_events_by_eventId_credits_by_creditId',
+  domain: 'participation',
   description: 'PATCH /api/events/:eventId/credits/:creditId',
   rest: { method: 'PATCH', path: '/api/events/:eventId/credits/:creditId' },
   input: { params: creditParamsSchema, body: updateEventCreditOfferBodySchema },

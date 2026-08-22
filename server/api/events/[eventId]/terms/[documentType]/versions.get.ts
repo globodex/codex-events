@@ -14,7 +14,7 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.events.by-eventId.terms.by-documentType.versions',
-  toolName: 'get_events_by_eventId_terms_by_documentType_versions',
+  domain: 'administration',
   description: 'GET /api/events/:eventId/terms/:documentType/versions',
   rest: { method: 'GET', path: '/api/events/:eventId/terms/:documentType/versions' },
   input: { params: termsDocumentParamsSchema },

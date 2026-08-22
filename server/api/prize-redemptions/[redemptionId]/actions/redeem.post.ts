@@ -16,7 +16,7 @@ import { parseValidatedBody, parseValidatedParams } from '#server/http/validatio
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.prize-redemptions.by-redemptionId.actions.redeem',
-  toolName: 'post_prize-redemptions_by_redemptionId_actions_redeem',
+  domain: 'participation',
   description: 'POST /api/prize-redemptions/:redemptionId/actions/redeem',
   rest: { method: 'POST', path: '/api/prize-redemptions/:redemptionId/actions/redeem' },
   input: { params: prizeRedemptionParamsSchema, body: redeemPrizeRedemptionBodySchema },

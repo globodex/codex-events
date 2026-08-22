@@ -9,7 +9,7 @@ type EventRecord = Awaited<ReturnType<typeof listVisibleEvents>>['items'][number
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.events',
-  toolName: 'get_events',
+  domain: 'events',
   description: 'GET /api/events',
   rest: { method: 'GET', path: '/api/events' },
   input: { query: eventListQuerySchema },

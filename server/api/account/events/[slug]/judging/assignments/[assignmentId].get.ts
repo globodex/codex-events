@@ -8,7 +8,7 @@ import { accountJudgeAssignmentWorkspacePageRoute } from '#server/domains/events
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.account.events.by-slug.judging.assignments.by-assignmentId',
-  toolName: 'get_account_events_by_slug_judging_assignments_by_assignmentId',
+  domain: 'judging',
   description: 'GET /api/account/events/:slug/judging/assignments/:assignmentId',
   rest: { method: 'GET', path: '/api/account/events/:slug/judging/assignments/:assignmentId' },
   input: { params: accountJudgeAssignmentParamsSchema },

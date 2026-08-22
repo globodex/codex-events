@@ -131,7 +131,7 @@ function serializeEventParticipation(
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.account.events',
-  toolName: 'get_account_events',
+  domain: 'participation',
   description: 'GET /api/account/events',
   rest: { method: 'GET', path: '/api/account/events' },
   input: {},

@@ -12,7 +12,7 @@ import { parseValidatedBody } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'patch.platform-legal-settings.current',
-  toolName: 'patch_platform-legal-settings_current',
+  domain: 'administration',
   description: 'PATCH /api/platform-legal-settings/current',
   rest: { method: 'PATCH', path: '/api/platform-legal-settings/current' },
   input: { body: platformLegalSettingsBodySchema },

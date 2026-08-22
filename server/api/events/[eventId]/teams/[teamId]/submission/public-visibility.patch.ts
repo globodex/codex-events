@@ -17,7 +17,7 @@ import { refreshCompletedOutcomeCache } from '#server/domains/outcomes'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'patch.events.by-eventId.teams.by-teamId.submission.public-visibility',
-  toolName: 'patch_events_by_eventId_teams_by_teamId_submission_public-visibility',
+  domain: 'participation',
   description: 'PATCH /api/events/:eventId/teams/:teamId/submission/public-visibility',
   rest: { method: 'PATCH', path: '/api/events/:eventId/teams/:teamId/submission/public-visibility' },
   input: { params: submissionParamsSchema, body: updateSubmissionPublicVisibilityBodySchema },

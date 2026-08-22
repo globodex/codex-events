@@ -17,7 +17,7 @@ const paramsSchema = z.object({
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.platform-documents.by-documentType.versions',
-  toolName: 'get_platform-documents_by_documentType_versions',
+  domain: 'administration',
   description: 'GET /api/platform-documents/:documentType/versions',
   rest: { method: 'GET', path: '/api/platform-documents/:documentType/versions' },
   input: { params: paramsSchema },

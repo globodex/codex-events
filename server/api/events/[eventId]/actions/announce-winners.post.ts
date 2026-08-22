@@ -44,7 +44,7 @@ const announceWinnersBodySchema = z.object({
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.actions.announce-winners',
-  toolName: 'post_events_by_eventId_actions_announce-winners',
+  domain: 'judging',
   description: 'POST /api/events/:eventId/actions/announce-winners',
   rest: { method: 'POST', path: '/api/events/:eventId/actions/announce-winners' },
   input: { params: routeIdParamsSchema, body: announceWinnersBodySchema },

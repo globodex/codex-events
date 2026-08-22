@@ -20,7 +20,7 @@ import { eq } from 'drizzle-orm'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'patch.events.by-eventId.roles.by-userId',
-  toolName: 'patch_events_by_eventId_roles_by_userId',
+  domain: 'administration',
   description: 'PATCH /api/events/:eventId/roles/:userId',
   rest: { method: 'PATCH', path: '/api/events/:eventId/roles/:userId' },
   input: { params: roleAssignmentParamsSchema, body: roleAssignmentPatchBodySchema },
