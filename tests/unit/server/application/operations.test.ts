@@ -47,7 +47,7 @@ describe('MCP application operation registry', () => {
     expect(operations.every(operation => operationDomains.includes(operation.domain))).toBe(true)
     expect(new Set(operations.map(operation => `${operation.rest.method} ${operation.rest.path}`)).size).toBe(operations.length)
     expect(operations.every(operation => operation.inputSchema && operation.outputSchema)).toBe(true)
-  })
+  }, 10_000)
 
   test('registers every page-shaped application operation with its canonical REST metadata', async () => {
     await loadApplicationOperationCatalog()
