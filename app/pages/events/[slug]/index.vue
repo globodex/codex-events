@@ -37,6 +37,8 @@ import { resolvePublicEventPrimaryAction } from '~/domains/applications/particip
 import { isTalkProposalWindowOpen } from '~/domains/talk-proposals'
 import { usePublicEventWorkspaceAccess } from '~/composables/usePublicEventWorkspaceAccess'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
+import type { WebMcpTool } from '~/composables/useWebMcpTool'
+import { useWebMcpTool } from '~/composables/useWebMcpTool'
 
 definePageMeta({
   layout: 'public'
@@ -90,6 +92,22 @@ if (import.meta.server) {
 }
 
 const event = computed(() => eventData.value!)
+const eventDetailsWebMcpTool = computed<WebMcpTool>(() => ({
+  name: 'get_event_details',
+  title: 'Get event details',
+  description: 'Read the canonical public event details currently loaded on this Codex Events page. This tool does not change data.',
+  inputSchema: {
+    type: 'object',
+    properties: {},
+    additionalProperties: false
+  },
+  annotations: {
+    readOnlyHint: true,
+    untrustedContentHint: true
+  },
+  execute: async () => event.value
+}))
+useWebMcpTool(eventDetailsWebMcpTool)
 const isCompetitionEvent = computed(() => event.value.eventType === 'hackathon')
 const eventState = computed(() => event.value.state)
 const {

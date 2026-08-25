@@ -5,6 +5,12 @@ import type { EventRecord } from '~/domains/events/records'
 import { normalizeApiError } from '~/lib/api'
 import AdminBuilderWorkspace from '~/components/admin/builder/AdminBuilderWorkspace.vue'
 import { useApiClient } from '~/composables/useApiClient'
+import type { WebMcpTool } from '~/composables/useWebMcpTool'
+import { useWebMcpTool } from '~/composables/useWebMcpTool'
+import {
+  buildWebMcpEventCreateBody,
+  createEventWebMcpJsonSchema
+} from '~/domains/events/webmcp'
 
 definePageMeta({
   middleware: ['require-event-creator']
@@ -14,6 +20,40 @@ const workspace = useAdminWorkspace({ loadEvents: false })
 const apiFetch = useApiClient()
 const toast = useToast()
 const builder = useEventBuilder({ mode: 'create' })
+
+const createEventWebMcpTool = computed<WebMcpTool | null>(() => {
+  if (!workspace.session.isReady.value
+    || !workspace.session.capabilities.value.canCreateEvent) {
+    return null
+  }
+
+  return {
+    name: 'create_event',
+    title: 'Create event draft',
+    description: 'Create and persist one Codex Events draft through the signed-in session. This changes platform data but does not navigate away from the current page.',
+    inputSchema: createEventWebMcpJsonSchema,
+    annotations: { readOnlyHint: false },
+    execute: async (input, { signal }) => {
+      if (!workspace.session.isReady.value
+        || !workspace.session.capabilities.value.canCreateEvent) {
+        throw new Error('Event creator access is no longer available.')
+      }
+
+      const body = buildWebMcpEventCreateBody(input)
+      const response = await apiFetch<ApiDataResponse<EventRecord>>('/api/events', {
+        method: 'POST',
+        body,
+        signal
+      })
+
+      return {
+        event: response.data,
+        url: new URL(`/account/events/${response.data.slug}?tab=settings`, window.location.origin).href
+      }
+    }
+  }
+})
+useWebMcpTool(createEventWebMcpTool)
 
 const isSubmitting = ref(false)
 const submitError = ref('')

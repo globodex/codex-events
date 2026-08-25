@@ -1,4 +1,41 @@
-# Model Context Protocol
+# Agent Tools
+
+Codex Events supports two independent ways for agents to use platform
+operations: page-scoped WebMCP site tools and the remote Model Context Protocol
+(MCP) server.
+
+## Page-Scoped WebMCP
+
+WebMCP tools belong to the current browser page and use that page's live,
+signed-in session. Browsers without WebMCP support keep the same interface and
+behavior without registering tools.
+
+Codex Events provides exactly two site tools:
+
+- `get_event_details` is available on `/events/:slug`. It is read-only and
+  returns the canonical `PublicEvent` object already loaded by that page. It
+  does not load the shared account bootstrap solely for tool discovery.
+- `create_event` is available on `/admin/events/builder/new` only after the
+  shared account bootstrap confirms `canCreateEvent`. It is removed when the
+  actor loses that capability or leaves the page. The tool creates one draft
+  through the session-authenticated `POST /api/events` endpoint and returns the
+  created event plus its Codex Events account-workspace URL. It does not
+  navigate after creation.
+
+The `create_event` input is a compact event-draft contract. It includes event
+type, name, slug, description, location, registration window, optional agenda,
+participant limit, automatic approval, and hackathon team size. Hackathons also
+require a submission window; Meetup and Build events do not accept one. Values
+not present in this contract use the existing event-form defaults. Luma
+credentials, tracks, judging controls, application-field configuration, and
+other advanced settings remain in the normal event configuration interface.
+
+The browser schema narrows tool input, and the existing client event form
+validation runs before submission. The REST endpoint still performs the
+authoritative authorization, schedule, field, slug, and body validation for
+every creation attempt.
+
+## Independent MCP Server
 
 Codex Events exposes structured platform operations through a stateless
 Streamable HTTP endpoint at `/mcp`. MCP is a protocol, authentication,
