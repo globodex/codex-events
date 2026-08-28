@@ -16,6 +16,7 @@ import AccountEventAdminTermsCard from '~/components/account/events/AccountEvent
 import EventConfigProgramIdentitySection from '~/components/admin/EventConfigProgramIdentitySection.vue'
 import EventTalkProposalControl from '~/components/admin/EventTalkProposalControl.vue'
 import AdminBuilderCreditsSection from '~/components/admin/builder/organisms/AdminBuilderCreditsSection.vue'
+import AdminBuilderCreditsInfoDialog from '~/components/admin/builder/molecules/AdminBuilderCreditsInfoDialog.vue'
 import type {
   AccountEventSettingsCreditOffer,
   AccountEventSimplifiedClaimingStatus
@@ -668,6 +669,10 @@ const lumaWebhookStatusColor = computed(() => {
         :group="groupById('credits')!"
         :complete="groupById('credits')!.isComplete(form, event)"
       >
+        <template #action>
+          <AdminBuilderCreditsInfoDialog />
+        </template>
+
         <AdminBuilderCreditsSection
           v-model:form="form"
           :mode="mode"

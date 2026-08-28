@@ -5,6 +5,11 @@ defineProps<{
   group: EventBuilderSettingsGroupDefinition
   complete: boolean
 }>()
+
+defineSlots<{
+  default(): unknown
+  action(): unknown
+}>()
 </script>
 
 <template>
@@ -27,12 +32,18 @@ defineProps<{
           {{ group.description }}
         </p>
       </div>
-      <AppIcon
-        v-if="complete"
-        name="i-lucide-circle-check-big"
-        class="size-4.5 shrink-0 text-emerald-500"
-        :aria-label="`${group.title} configured`"
-      />
+      <div
+        v-if="$slots.action || complete"
+        class="flex shrink-0 items-center gap-1"
+      >
+        <slot name="action" />
+        <AppIcon
+          v-if="complete"
+          name="i-lucide-circle-check-big"
+          class="size-4.5 shrink-0 text-emerald-500"
+          :aria-label="`${group.title} configured`"
+        />
+      </div>
     </div>
 
     <div class="border-t border-black/6 p-4 dark:border-white/[0.06]">
