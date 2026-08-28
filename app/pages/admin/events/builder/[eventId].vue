@@ -23,6 +23,7 @@ const currentEvent = computed<EventRecord | null>(() => settingsPage.value?.even
 const currentApplicationTerms = computed(() => settingsPage.value?.terms.application.current ?? null)
 const currentWinnerTerms = computed(() => settingsPage.value?.terms.winner.current ?? null)
 const initialSimplifiedClaimingStatus = computed(() => settingsPage.value?.simplifiedClaiming ?? null)
+const creditOffers = computed(() => settingsPage.value?.credits ?? [])
 const hasExistingTalkProposal = computed(() => settingsPage.value?.talkProposals.hasExistingProposal ?? false)
 
 const builder = useEventBuilder({
@@ -248,6 +249,7 @@ useSeoMeta({
       :current-winner-terms="currentWinnerTerms"
       :saving-terms-document-type="savingTermsDocumentType"
       :initial-simplified-claiming-status="initialSimplifiedClaimingStatus"
+      :credit-offers="creditOffers"
       :has-existing-talk-proposal="hasExistingTalkProposal"
       @submit="saveEvent"
       @upload-background-image="file => uploadEventImage('background', file)"

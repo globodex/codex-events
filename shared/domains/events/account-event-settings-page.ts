@@ -242,6 +242,19 @@ export const accountEventTalkProposalConfigurationSchema = z.object({
   hasExistingProposal: z.boolean()
 })
 
+export const accountEventSettingsCreditOfferSchema = z.object({
+  id: z.string(),
+  eventId: z.string(),
+  name: z.string(),
+  description: z.string(),
+  displayOrder: z.number().int(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  availableCount: z.number().int().nonnegative(),
+  claimedCount: z.number().int().nonnegative(),
+  totalCount: z.number().int().nonnegative()
+})
+
 export const accountEventSettingsPageSchema = z.object({
   event: accountEventSettingsEventSchema,
   criteria: z.array(evaluationCriterionSchema),
@@ -264,6 +277,7 @@ export const accountEventSettingsPageSchema = z.object({
       judges: z.number().int().nonnegative()
     })
   }),
+  credits: z.array(accountEventSettingsCreditOfferSchema),
   simplifiedClaiming: accountEventSimplifiedClaimingStatusSchema,
   talkProposals: accountEventTalkProposalConfigurationSchema,
   builder: z.object({
@@ -277,6 +291,7 @@ export const accountEventSettingsPageSchema = z.object({
 
 export type AccountEventSettingsPage = z.infer<typeof accountEventSettingsPageSchema>
 export type AccountEventSettingsEvent = z.infer<typeof accountEventSettingsEventSchema>
+export type AccountEventSettingsCreditOffer = z.infer<typeof accountEventSettingsCreditOfferSchema>
 export type AccountEventSimplifiedClaimingStatus = z.infer<typeof accountEventSimplifiedClaimingStatusSchema>
 export type AccountEventTalkProposalConfiguration = z.infer<typeof accountEventTalkProposalConfigurationSchema>
 export type AccountEventSettingsTermsDocument = z.infer<typeof termsDocumentSchema>

@@ -593,7 +593,7 @@ export type EventBuilderSettingsGroupId
     | 'call-for-talks'
     | 'submission-requirements'
     | 'luma-sync'
-    | 'simplified-claiming'
+    | 'credits'
     | 'images'
     | 'terms'
 
@@ -720,14 +720,14 @@ export const eventBuilderSettingsGroupDefinitions: readonly EventBuilderSettings
     isComplete: form => form.lumaEventApiId.trim().length > 0 && form.lumaApiKey.trim().length > 0
   },
   {
-    id: 'simplified-claiming',
+    id: 'credits',
     icon: 'i-lucide-ticket-check',
-    title: 'Simplified claiming',
-    description: 'Let approved Luma attendees claim credits without accounts.',
-    appliesTo: ['meetup'],
+    title: 'Credits',
+    description: 'Upload credit codes or links and choose how participants claim them.',
+    appliesTo: allTypes,
     parity: true,
     editOnly: false,
-    isComplete: form => form.simplifiedClaimingEnabled
+    isComplete: (_form, event) => event !== null
   },
   {
     id: 'images',

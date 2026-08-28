@@ -20,6 +20,7 @@ import {
   users
 } from '#server/database/schema'
 import { getSimplifiedClaimingSummary } from '#server/domains/credits/simplified-claiming'
+import { listAdminEventCreditOfferSummaries } from '#server/domains/credits'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
 import { accountEventSettingsPageSchema } from '#shared/domains/events/account-event-settings-page'
@@ -87,6 +88,7 @@ export const accountEventSettingsPageRoute = defineAccountEventPageRoute({
       applicationTermVersions,
       winnerTermVersions,
       imageOptions,
+      credits,
       simplifiedClaimingSummary,
       existingTalkProposals
     ] = await Promise.all([
@@ -138,6 +140,7 @@ export const accountEventSettingsPageRoute = defineAccountEventPageRoute({
         limit: settingsTermsVersionLimit
       }),
       getEventDisplayImageOptions(context.database),
+      listAdminEventCreditOfferSummaries(context.database, event.id),
       event.eventType === 'meetup'
         ? getSimplifiedClaimingSummary(context.database, event)
         : Promise.resolve(emptySimplifiedClaimingSummary),
@@ -197,6 +200,7 @@ export const accountEventSettingsPageRoute = defineAccountEventPageRoute({
           judges: assignments.filter(isJudgeAssignment).length
         }
       },
+      credits,
       simplifiedClaiming: {
         enabled: event.simplifiedClaimingEnabled,
         redemptionUrl: `/events/${event.slug}/redeem`,

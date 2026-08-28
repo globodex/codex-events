@@ -586,6 +586,8 @@ describe('settings group definitions', () => {
     expect(meetupEdit.some(group => group.id === 'images')).toBe(true)
     expect(meetupCreate.some(group => group.id === 'call-for-talks')).toBe(true)
     expect(hackathonCreate.some(group => group.id === 'call-for-talks')).toBe(false)
+    expect(meetupCreate.some(group => group.id === 'credits')).toBe(true)
+    expect(hackathonCreate.some(group => group.id === 'credits')).toBe(true)
   })
 
   test('completion reads the form and event record', () => {

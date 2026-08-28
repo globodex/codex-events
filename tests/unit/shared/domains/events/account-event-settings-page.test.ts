@@ -10,6 +10,7 @@ describe('account-event-settings page contract', () => {
       'prizes',
       'terms',
       'roles',
+      'credits',
       'simplifiedClaiming',
       'talkProposals',
       'builder'
@@ -29,6 +30,23 @@ describe('account-event-settings page contract', () => {
       'balanceScore',
       'balanceBreakdown'
     ])
+  })
+
+  test('includes bounded regular credit inventory for builder management', () => {
+    const offerSchema = accountEventSettingsPageSchema.shape.credits.element
+
+    expect(offerSchema.safeParse({
+      id: 'offer-1',
+      eventId: 'event-1',
+      name: 'OpenAI credits',
+      description: 'Claim one code.',
+      displayOrder: 0,
+      createdAt: '2026-08-19T12:00:00.000Z',
+      updatedAt: '2026-08-19T12:00:00.000Z',
+      availableCount: 1,
+      claimedCount: 0,
+      totalCount: 1
+    }).success).toBe(true)
   })
 
   test('does not make version metadata a second content payload', () => {

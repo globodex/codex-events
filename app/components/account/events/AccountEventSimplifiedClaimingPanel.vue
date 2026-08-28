@@ -7,10 +7,13 @@ import { normalizeApiError } from '~/lib/api'
 import type { AccountEventSimplifiedClaimingStatus } from '#shared/domains/events/account-event-settings-page'
 import { useApiClient } from '~/composables/useApiClient'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   eventId: string
   initialStatus: AccountEventSimplifiedClaimingStatus
-}>()
+  variant?: 'workspace' | 'builder'
+}>(), {
+  variant: 'workspace'
+})
 const emit = defineEmits<{
   lockChange: [locked: boolean]
   updated: []
@@ -183,7 +186,8 @@ function downloadQrSvg() {
 <template>
   <section
     data-testid="simplified-claiming-settings-panel"
-    class="min-w-0 px-4 pb-2 sm:px-5"
+    class="min-w-0"
+    :class="props.variant === 'workspace' ? 'px-4 pb-2 sm:px-5' : ''"
   >
     <div class="flex flex-col gap-3 border-b border-primary/15 py-5 sm:flex-row sm:items-start sm:justify-between">
       <div class="space-y-1">

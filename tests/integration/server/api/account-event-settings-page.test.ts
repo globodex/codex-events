@@ -6,6 +6,8 @@ import settingsPageGetHandler from '../../../../server/api/account/events/[slug]
 import eventPatchHandler from '../../../../server/api/events/[eventId]/index.patch'
 import {
   evaluationCriteria,
+  eventCreditCodes,
+  eventCreditOffers,
   eventRoleAssignments,
   eventTermsDocuments,
   eventTracks,
@@ -136,6 +138,21 @@ describe('GET /api/account/events/:slug/settings', () => {
       displayOrder: 0,
       createdAt: now
     })
+    await harness.database.insert(eventCreditOffers).values({
+      id: 'credit_offer_1',
+      eventId: 'event_settings',
+      name: 'OpenAI credits',
+      description: 'Use this code in your OpenAI account.',
+      displayOrder: 0,
+      createdAt: now,
+      updatedAt: now
+    })
+    await harness.database.insert(eventCreditCodes).values({
+      id: 'credit_code_1',
+      creditOfferId: 'credit_offer_1',
+      value: 'settings-credit-code',
+      createdAt: now
+    })
     if (options.withEventAdmin) {
       await harness.database.insert(eventRoleAssignments).values({
         id: 'assignment_admin',
@@ -246,6 +263,12 @@ describe('GET /api/account/events/:slug/settings', () => {
         assignments: [{ id: 'assignment_admin', userId: 'settings_admin' }],
         counts: { admins: 1, staff: 1, judges: 1 }
       },
+      credits: [{
+        id: 'credit_offer_1',
+        availableCount: 1,
+        claimedCount: 0,
+        totalCount: 1
+      }],
       simplifiedClaiming: {
         enabled: false
       },

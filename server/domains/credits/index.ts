@@ -1,20 +1,19 @@
 import type { H3Event } from 'h3'
-import type { users as usersTable } from '#server/database/schema'
 
-import { and, asc, eq, getTableColumns } from 'drizzle-orm'
+import { and, asc, eq, getTableColumns, isNotNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { resolveEventAuthorization } from '#server/auth/authorization'
 import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
-import { eventCreditCodes, eventCreditOffers, userApplications } from '#server/database/schema'
+import { eventCreditCodes, eventCreditOffers, userApplications, users } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
 import { getVisibleEventOrThrow, routeIdParamsSchema } from '#server/domains/events'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 
 type EventCreditOfferRecord = typeof eventCreditOffers.$inferSelect
 type EventCreditCodeRecord = typeof eventCreditCodes.$inferSelect
-type UserRecord = typeof usersTable.$inferSelect
+type UserRecord = typeof users.$inferSelect
 
 export const creditParamsSchema = routeIdParamsSchema.extend({
   creditId: z.string().trim().min(1)
@@ -156,6 +155,67 @@ export async function listEventCreditCodesForEvent(
       eq(eventCreditOffers.simplifiedClaimingOnly, false)
     ))
     .orderBy(asc(eventCreditCodes.createdAt), asc(eventCreditCodes.id))
+}
+
+export async function listAdminEventCreditOffers(
+  database: ReturnType<typeof getDatabase>,
+  eventId: string
+) {
+  const [offers, codes, claimingUsers] = await Promise.all([
+    listEventCreditOffers(database, eventId),
+    listEventCreditCodesForEvent(database, eventId),
+    database
+      .select(getTableColumns(users))
+      .from(users)
+      .innerJoin(eventCreditCodes, eq(eventCreditCodes.claimedByUserId, users.id))
+      .innerJoin(eventCreditOffers, eq(eventCreditOffers.id, eventCreditCodes.creditOfferId))
+      .where(and(
+        eq(eventCreditOffers.eventId, eventId),
+        eq(eventCreditOffers.simplifiedClaimingOnly, false),
+        isNotNull(eventCreditCodes.claimedByUserId)
+      ))
+  ])
+  const usersById = new Map(claimingUsers.map(user => [user.id, user] as const))
+  const codesByOfferId = new Map<string, EventCreditCodeRecord[]>()
+
+  for (const code of codes) {
+    const existing = codesByOfferId.get(code.creditOfferId) ?? []
+    existing.push(code)
+    codesByOfferId.set(code.creditOfferId, existing)
+  }
+
+  return offers.map(offer => serializeAdminEventCreditOffer(
+    offer,
+    codesByOfferId.get(offer.id) ?? [],
+    usersById
+  ))
+}
+
+export async function listAdminEventCreditOfferSummaries(
+  database: ReturnType<typeof getDatabase>,
+  eventId: string
+) {
+  return await database
+    .select({
+      id: eventCreditOffers.id,
+      eventId: eventCreditOffers.eventId,
+      name: eventCreditOffers.name,
+      description: eventCreditOffers.description,
+      displayOrder: eventCreditOffers.displayOrder,
+      createdAt: eventCreditOffers.createdAt,
+      updatedAt: eventCreditOffers.updatedAt,
+      availableCount: sql<number>`sum(case when ${eventCreditCodes.id} is not null and ${eventCreditCodes.claimedByUserId} is null then 1 else 0 end)`,
+      claimedCount: sql<number>`sum(case when ${eventCreditCodes.claimedByUserId} is not null then 1 else 0 end)`,
+      totalCount: sql<number>`count(${eventCreditCodes.id})`
+    })
+    .from(eventCreditOffers)
+    .leftJoin(eventCreditCodes, eq(eventCreditCodes.creditOfferId, eventCreditOffers.id))
+    .where(and(
+      eq(eventCreditOffers.eventId, eventId),
+      eq(eventCreditOffers.simplifiedClaimingOnly, false)
+    ))
+    .groupBy(eventCreditOffers.id)
+    .orderBy(asc(eventCreditOffers.displayOrder), asc(eventCreditOffers.createdAt))
 }
 
 async function getApprovedUserApplication(

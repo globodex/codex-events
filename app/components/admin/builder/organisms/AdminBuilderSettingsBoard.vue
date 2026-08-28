@@ -13,10 +13,13 @@ import AdminBuilderFrictionGauge from '~/components/admin/builder/molecules/Admi
 import AdminBuilderWeightSlider from '~/components/admin/builder/molecules/AdminBuilderWeightSlider.vue'
 import AdminMarkdownEditorField from '~/components/admin/AdminMarkdownEditorField.vue'
 import AccountEventAdminTermsCard from '~/components/account/events/AccountEventAdminTermsCard.vue'
-import AccountEventSimplifiedClaimingControl from '~/components/account/events/AccountEventSimplifiedClaimingControl.vue'
 import EventConfigProgramIdentitySection from '~/components/admin/EventConfigProgramIdentitySection.vue'
 import EventTalkProposalControl from '~/components/admin/EventTalkProposalControl.vue'
-import type { AccountEventSimplifiedClaimingStatus } from '#shared/domains/events/account-event-settings-page'
+import AdminBuilderCreditsSection from '~/components/admin/builder/organisms/AdminBuilderCreditsSection.vue'
+import type {
+  AccountEventSettingsCreditOffer,
+  AccountEventSimplifiedClaimingStatus
+} from '#shared/domains/events/account-event-settings-page'
 
 const form = defineModel<EventFormState>('form', { required: true })
 
@@ -35,6 +38,7 @@ const props = defineProps<{
   currentWinnerTerms?: TermsDocument | null
   savingTermsDocumentType?: TermsDocument['documentType'] | null
   initialSimplifiedClaimingStatus?: AccountEventSimplifiedClaimingStatus | null
+  creditOffers?: AccountEventSettingsCreditOffer[]
   hasExistingTalkProposal?: boolean
 }>()
 
@@ -660,32 +664,18 @@ const lumaWebhookStatusColor = computed(() => {
       </AdminBuilderSettingsGroupCard>
 
       <AdminBuilderSettingsGroupCard
-        v-if="groupById('simplified-claiming')"
-        :group="groupById('simplified-claiming')!"
-        :complete="groupById('simplified-claiming')!.isComplete(form, event)"
+        v-if="groupById('credits')"
+        :group="groupById('credits')!"
+        :complete="groupById('credits')!.isComplete(form, event)"
       >
-        <div class="space-y-2">
-          <!-- The classic control, invariants and readiness logic included. -->
-          <AccountEventSimplifiedClaimingControl
-            v-model="form.simplifiedClaimingEnabled"
-            :event-id="event?.id ?? null"
-            :persisted-enabled="event?.simplifiedClaimingEnabled"
-            :initial-status="props.initialSimplifiedClaimingStatus ?? null"
-            variant="plain"
-            @updated="emit('updated')"
-          />
-          <p
-            v-if="mode === 'edit' && event"
-            class="text-[11px] text-dimmed"
-          >
-            <NuxtLink
-              :to="`/account/events/${event.slug}?tab=credits`"
-              class="underline decoration-black/30 underline-offset-2 hover:text-highlighted dark:decoration-white/30"
-            >
-              Manage offers and eligibility in the workspace.
-            </NuxtLink>
-          </p>
-        </div>
+        <AdminBuilderCreditsSection
+          v-model:form="form"
+          :mode="mode"
+          :event="event"
+          :offers="props.creditOffers ?? []"
+          :simplified-claiming-status="props.initialSimplifiedClaimingStatus ?? null"
+          @updated="emit('updated')"
+        />
       </AdminBuilderSettingsGroupCard>
 
       <AdminBuilderSettingsGroupCard
