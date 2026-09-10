@@ -230,7 +230,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `final_ranking_submission_ids_json` stores the full saved shortlist order when `shortlist` is used and is later updated by any explicit final-ranking reorder recorded during `final_deliberation`.
 - `participants_limit` is an indicative planning target surfaced in admin approval workflows and does not enforce staged or applied admin approval writes by itself. When auto approval is enabled, it is also the capacity boundary for automatic approval.
 - `auto_approve_applications` controls whether newly submitted applications are approved immediately after required submission checks pass while approved participation is below `participants_limit` when one is configured. It defaults to false and does not affect already submitted applications when changed.
-- `simplified_claiming_enabled` is available only for Meetups. It requires no application terms, required registration fields, or Luma API Sync configuration. It uses the event slug and sole credit offer instead of a token or selected-offer field.
+- `simplified_claiming_enabled` is available only for Meetups. It requires no application terms or required registration fields. Optional paired `luma_event_api_id` and `luma_api_key` credentials connect check-ins without approval/rejection sync. It uses the event slug and sole credit offer instead of a token or selected-offer field.
 - `talk_proposals_enabled` defaults to false. `talk_proposal_questions_json` defaults to `[]`, and `talk_proposal_questions_revision` defaults to `0`. After the first `TalkProposal` exists for the event, the feature cannot be disabled and the question definition cannot change. Its closing timestamp can change until the event is completed.
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
 - Application field visibility columns control whether each optional application field appears on the participant application form. First name and family name are always visible and required.
@@ -249,7 +249,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `background_image_object_key` and `banner_image_object_key` point to independent immutable private R2 objects. Their corresponding revisions increment whenever the active pointer is replaced or cleared. `public_content_revision` is an independent non-negative revision for public event HTML/JSON visibility; it rotates for public media, gallery visibility/removal, submission public visibility, completion, and hide/unhide. Versioned public URLs must contain the exact current resource revision and consumer variant; `updated_at` is not a revision. Replaced or cleared objects are recorded as fixed-kind outbox intents in the same D1 mutation and dispatched after the 30-second safety window.
 - `luma_event_url` is optional because not every event has a public Luma event page to link.
 - `luma_event_api_id` and `luma_api_key` are optional because not every event has Luma configured for approval, rejection, and attendance sync.
-- Luma email visibility and requirement are enabled together when an event uses Luma Sync because guest sync matches Codex participants to Luma guests by that email.
+- Outside simplified claiming, Luma email visibility and requirement are enabled together when an event uses Luma Sync because guest sync matches Codex participants to Luma guests by that email.
 - `luma_webhook_id`, `luma_webhook_secret`, `luma_webhook_status`, `luma_webhook_error`, and `luma_webhook_registered_at` store the event's webhook registration state. Webhook status is `not_configured` until the event has enough Luma configuration for registration, `configured` after Luma returns a webhook ID and signing secret, and `failed` when registration cannot be completed with the stored event API ID and key.
 - `agenda_items_json` stores a validated ordered JSON array of agenda items (`id`, `startsAt`, optional `endsAt`, `title`, optional `details`, `displayOrder`, optional `builderBlockType`, optional `builderFocusCost`, optional `builderEnergyDelta`). `builderBlockType` is a bounded string annotation written by the event builder; `builderFocusCost` (0..99) and `builderEnergyDelta` (-99..99) are organizer-declared scoring dials for custom builder blocks. A malformed annotation or dial is dropped during parsing without affecting the agenda, unknown block types resolve to a custom block in the builder, and all three annotations are suppressed from public event payloads.
 - `creation_flow` records which flow created the event (`classic` or `builder`). It is set at creation, immutable through updates, and used only to route builder-created events to the builder editor — it never changes how event data is interpreted. Builder events remain fully editable in the classic form.
@@ -1015,7 +1015,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - Unclaimed rows are available inventory for the credit offer.
 - Claiming permanently assigns one uploaded value to one claiming user.
 - Only approved participants and event staff can claim from a credit offer.
-- Simplified claiming stores HTTPS coupon URLs, links the assigned row to the imported attendee eligibility, and denies the generic claim operation.
+- Simplified claiming stores HTTPS coupon URLs, links the assigned row to attendee eligibility, and denies the generic claim operation.
 
 ## EventAttendeeEligibility
 
@@ -1035,7 +1035,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Notes
 
-- Rows contain only the approved attendee fields needed for simplified claiming. The source CSV and other Luma export columns are not persisted.
+- Rows contain only the attendee eligibility fields needed for simplified claiming, populated by Luma check-ins or approved CSV rows. Both sources merge by event and normalized email without replacing the row ID or claim. The source CSV and other Luma export columns are not persisted.
 - Re-import merges new eligibility and refreshes names without removing existing rows.
 
 ## PrizeEligibilitySnapshot

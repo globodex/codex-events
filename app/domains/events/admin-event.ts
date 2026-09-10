@@ -456,7 +456,7 @@ const eventConfigFormBaseSchema = z.object({
       })
     }
 
-    if (!input.applicationLumaEmailVisible) {
+    if (!input.simplifiedClaimingEnabled && !input.applicationLumaEmailVisible) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['applicationLumaEmailVisible'],
@@ -464,7 +464,7 @@ const eventConfigFormBaseSchema = z.object({
       })
     }
 
-    if (!input.requireLumaEmail) {
+    if (!input.simplifiedClaimingEnabled && !input.requireLumaEmail) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['requireLumaEmail'],
@@ -479,14 +479,6 @@ const eventConfigFormBaseSchema = z.object({
         code: z.ZodIssueCode.custom,
         path: ['simplifiedClaimingEnabled'],
         message: 'Simplified claiming is available only for Meetup events.'
-      })
-    }
-
-    if (hasLumaSyncConfiguration || hasLumaRegistrationEmail) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['simplifiedClaimingEnabled'],
-        message: 'Turn off Luma Sync before enabling simplified claiming.'
       })
     }
 

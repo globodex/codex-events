@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { and, eq } from 'drizzle-orm'
 
+import importCheckInsHandler from '../../../../server/api/events/[eventId]/simplified-claiming/attendees/import-check-ins.post'
+import lumaWebhookHandler from '../../../../server/api/public/events/[slug]/luma/webhooks.post'
+import { buildLumaWebhookSignatureHeader } from '../../../../server/domains/applications/luma-webhooks'
 import simplifiedClaimGetHandler from '../../../../server/api/events/slug/[slug]/simplified-claim.get'
 import simplifiedClaimRedeemHandler from '../../../../server/api/events/slug/[slug]/simplified-claim/actions/redeem.post'
 import simplifiedClaimingAdminGetHandler from '../../../../server/api/events/[eventId]/simplified-claiming/index.get'
@@ -44,6 +47,8 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     const queueSend = vi.fn(async () => undefined)
     const harness = createApiRouteTestHarness({
       routes: [
+        { method: 'post', path: '/api/events/:eventId/simplified-claiming/attendees/import-check-ins', handler: importCheckInsHandler },
+        { method: 'post', path: '/api/public/events/:slug/luma/webhooks', handler: lumaWebhookHandler },
         { method: 'get', path: '/api/events/slug/:slug/simplified-claim', handler: simplifiedClaimGetHandler },
         { method: 'post', path: '/api/events/slug/:slug/simplified-claim/actions/redeem', handler: simplifiedClaimRedeemHandler },
         { method: 'post', path: '/api/events/:eventId/simplified-claiming/attendees/import', handler: simplifiedClaimingAttendeeImportHandler }
@@ -133,6 +138,93 @@ describe('TASK-420 simplified attendee claiming routes', () => {
 
     return { harness, queueSend }
   }
+
+  async function connectLuma(harness: ReturnType<typeof createApiRouteTestHarness>) {
+    await harness.database.update(events).set({
+      lumaEventApiId: 'evt-123', lumaApiKey: 'luma_key',
+      lumaWebhookSecret: 'whsec_test', lumaWebhookStatus: 'configured'
+    }).where(eq(events.id, 'meetup'))
+  }
+
+  async function deliverCheckIn(harness: ReturnType<typeof createApiRouteTestHarness>, data: Record<string, unknown>, valid = true) {
+    const body = JSON.stringify({ type: 'guest.updated', data })
+    const signature = await buildLumaWebhookSignatureHeader('whsec_test', String(Math.floor(Date.now() / 1000)), body)
+    return harness.request('/api/public/events/meetup/luma/webhooks', {
+      method: 'POST', body,
+      headers: { 'content-type': 'application/json', 'webhook-signature': valid ? signature : 'invalid' }
+    })
+  }
+
+  test('signed check-ins add unknown guests once and leave applications and claimed rewards unchanged', async () => {
+    const { harness, queueSend } = await createContext()
+    await connectLuma(harness)
+    const data = {
+      event: { id: 'evt-123' }, user_email: ' NEW@example.com ', approval_status: 'approved',
+      event_tickets: [{ checked_in_at: '2026-09-10T10:00:00Z' }]
+    }
+    expect((await deliverCheckIn(harness, data, false)).status).toBe(401)
+    await deliverCheckIn(harness, { ...data, event: { id: 'evt-wrong' } })
+    await deliverCheckIn(harness, { ...data, event_tickets: [] })
+    expect(await harness.database.query.eventAttendeeEligibilities.findMany()).toHaveLength(1)
+    expect((await deliverCheckIn(harness, data)).status).toBe(200)
+    await deliverCheckIn(harness, data)
+    expect(await harness.database.query.eventAttendeeEligibilities.findMany()).toHaveLength(2)
+    expect(await harness.database.query.userApplications.findMany()).toHaveLength(0)
+    const claim = await harness.request('/api/events/slug/vienna-meetup/simplified-claim/actions/redeem', {
+      method: 'POST', body: JSON.stringify({ lumaEmail: 'new@example.com' })
+    })
+    expect(claim.status).toBe(200)
+    await deliverCheckIn(harness, data)
+    await deliverCheckIn(harness, { ...data, approval_status: 'declined' })
+    const application = await harness.database.query.userApplications.findFirst()
+    expect(application?.status).toBe('approved')
+    expect(application?.lumaSyncStatus).toBeNull()
+    const repeat = await harness.request('/api/events/slug/vienna-meetup/simplified-claim/actions/redeem', {
+      method: 'POST', body: JSON.stringify({ lumaEmail: 'new@example.com' })
+    })
+    expect(repeat.status).toBe(200)
+    expect(queueSend).toHaveBeenCalledTimes(1)
+  })
+
+  test('manual Luma import merges pages and CSV eligibility and preserves an existing claim', async () => {
+    const { harness } = await createContext()
+    await connectLuma(harness)
+    const claim = await harness.request('/api/events/slug/vienna-meetup/simplified-claim/actions/redeem', {
+      method: 'POST', body: JSON.stringify({ lumaEmail: 'guest@example.com' })
+    })
+    expect(claim.status).toBe(200)
+    const codeBefore = await harness.database.query.eventCreditCodes.findFirst()
+    const guest = (email: string, checkedIn: boolean) => ({
+      user_email: email, user_first_name: 'Updated', user_last_name: 'Guest', approval_status: 'approved',
+      event_tickets: [{ checked_in_at: checkedIn ? '2026-09-10T10:00:00Z' : null }]
+    })
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      const next = new URL(String(input)).searchParams.has('pagination_cursor')
+      return Response.json(next
+        ? { entries: [guest('new@example.com', true), guest('absent@example.com', false)], has_more: false }
+        : { entries: [guest('GUEST@example.com', true)], has_more: true, next_cursor: 'next' })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    for (let index = 0; index < 2; index++) {
+      const response = await harness.request('/api/events/meetup/simplified-claiming/attendees/import-check-ins', { method: 'POST' })
+      expect(response.status).toBe(200)
+      expect(await response.json()).toMatchObject({ data: { eligibleCount: 2, attendeeCount: 2 } })
+    }
+    expect(await harness.database.query.eventCreditCodes.findFirst()).toEqual(codeBefore)
+    expect(await harness.database.query.eventAttendeeEligibilities.findFirst({ where: eq(eventAttendeeEligibilities.id, 'eligibility') })).toMatchObject({ firstName: 'Updated' })
+    fetchMock.mockResolvedValueOnce(Response.json({ entries: [guest('partial@example.com', true)], has_more: true, next_cursor: 'next' }))
+      .mockResolvedValueOnce(new Response('', { status: 503 }))
+    expect((await harness.request('/api/events/meetup/simplified-claiming/attendees/import-check-ins', { method: 'POST' })).status).toBe(502)
+    expect(await harness.database.query.eventAttendeeEligibilities.findMany()).toHaveLength(2)
+  })
+
+  test('manual check-in import requires saved credentials and event admin access', async () => {
+    const { harness } = await createContext()
+    expect((await harness.request('/api/events/meetup/simplified-claiming/attendees/import-check-ins', { method: 'POST' })).status).toBe(409)
+    await connectLuma(harness)
+    await harness.database.delete(eventRoleAssignments).where(eq(eventRoleAssignments.eventId, 'meetup'))
+    expect((await harness.request('/api/events/meetup/simplified-claiming/attendees/import-check-ins', { method: 'POST' })).status).toBe(403)
+  })
 
   test('saved attendee email redeems once, approves, checks in, and returns the same coupon', async () => {
     const { harness, queueSend } = await createContext()

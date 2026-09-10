@@ -87,6 +87,15 @@ function normalizeIsoTimestamp(value: unknown) {
   return Number.isNaN(timestamp) ? null : new Date(timestamp).toISOString()
 }
 
+export function firstLumaTicketCheckIn(tickets: unknown) {
+  if (!Array.isArray(tickets)) {
+    return null
+  }
+  return tickets.map(ticket => normalizeIsoTimestamp(getNestedValue(ticket, ['checked_in_at'])))
+    .filter((value): value is string => value !== null)
+    .sort()[0] ?? null
+}
+
 function normalizeLumaGuestStatus(value: unknown) {
   const normalized = normalizeOptionalString(value)
 
@@ -400,7 +409,8 @@ export function extractLumaAttendanceCheckInEvent(rawBody: string): {
   const checkedInAt = normalizeIsoTimestamp(
     firstString(
       getNestedValue(envelope.data, ['guest', 'checked_in_at']),
-      getNestedValue(envelope.data, ['checked_in_at'])
+      getNestedValue(envelope.data, ['checked_in_at']),
+      firstLumaTicketCheckIn(getNestedValue(envelope.data, ['event_tickets']))
     )
   )
 

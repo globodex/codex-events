@@ -99,12 +99,12 @@ Key characteristics:
 - Each event has a registration flow that can be activated manually within its configured registration window.
 - Each event can optionally define a participant approval limit used as an indicative planning target during admin review and as the capacity boundary for automatic approval.
 - Each event can approve new participant applications automatically after required submission checks pass while approved participation is below the participant approval limit when one is configured.
-- A Meetup can enable simplified attendee claiming. This setting uses the event slug, one credit offer, imported approved Luma attendee eligibility, and HTTPS coupon-link inventory without a redemption token.
+- A Meetup can enable simplified attendee claiming. This setting uses the event slug, one credit offer, Luma check-in or imported approved attendee eligibility, and HTTPS coupon-link inventory without a redemption token.
 - A Meetup can enable one private Call for talks with its own opening and closing timestamps and up to 20 ordered custom questions. Existing Meetups and newly created Meetups default to disabled with null Call for talks timestamps and no custom questions.
-- Simplified claiming is incompatible with event application terms, required registration fields, and Luma API Sync configuration. It is ready to share only after one offer, at least one eligible attendee, and HTTPS coupon inventory exist.
+- Simplified claiming is incompatible with event application terms and required registration fields. Its optional Luma connection receives check-ins only; it never sends approval or rejection updates or withdraws applications from Luma cancellations. It is ready to share only after one offer, at least one eligible attendee, and HTTPS coupon inventory exist.
 - Each event can optionally reference a restricted Discord server URL.
 - Each event has a fixed application field configuration. First name and family name are always visible and required. Event admins can mark X, LinkedIn, GitHub, ChatGPT email, OpenAI org ID, `why this event`, proof-of-execution links, participation mode, and AI Knowledge as visible or hidden.
-- When Luma Sync is enabled for an event, Luma email is visible and required during registration so the platform can match Codex participants with Luma guests.
+- Outside simplified claiming, when Luma Sync is enabled for an event, Luma email is visible and required during registration so the platform can match Codex participants with Luma guests.
 - Each visible application field can be optional or required. A field cannot be required while hidden.
 - AI Knowledge is optional by default when visible. Event admins can require it when they need every applicant to self-assess AI agent experience as Beginner, Intermediate, or Advanced.
 - The current application field configuration applies when a participant views or submits the form. Changing the configuration does not rewrite existing application records.
@@ -388,7 +388,7 @@ Rules:
 - If the event auto-approves applications and shows and requires a Luma email with configured Luma sync, application submission also enqueues a Luma approval sync.
 - If the event shows and requires a Luma email and has configured Luma sync, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
 - If the event shows and requires a Luma email and has configured Luma sync, participant withdrawal and admin-managed withdrawal both enqueue the canonical Luma rejection sync so the user is removed from the event guest list.
-- If a valid signed Luma guest update says the participant is no longer going, the matching submitted or approved application is withdrawn through the admin-managed withdrawal behavior.
+- Outside simplified claiming, if a valid signed Luma guest update says the participant is no longer going, the matching submitted or approved application is withdrawn through the admin-managed withdrawal behavior.
 - Platform admins can run an event-scoped operational backfill route to resolve stored legacy Luma usernames into canonical Luma emails for already-registered users.
 - In Hackathon events, a user must be approved before creating or joining a team in that event.
 - In Meetup and Build events, an approved application is the participant's event access record.
@@ -618,14 +618,17 @@ Rules:
 
 ### EventAttendeeEligibility
 
-An event-scoped approved Luma attendee who can use simplified claiming.
+An event-scoped attendee who can use simplified claiming through a Luma check-in or an approved-attendee CSV import.
 
-Approved-attendee imports remain appendable after claiming begins. Each normalized email identifies one eligibility row; later imports refresh that attendee's names without creating another row or removing attendees omitted from the new file.
+Luma check-ins and approved-attendee imports remain appendable after claiming begins. Each normalized email identifies one eligibility row; later imports refresh that attendee's names without creating another row or removing attendees omitted from the new file.
 
 Rules:
 
 - Eligibility stores only the event, normalized Luma email, optional first and family names, and timestamps.
-- Import accepts approved rows from a bounded Luma guest CSV and merges names without removing existing eligibility.
+- CSV import accepts approved rows from a bounded Luma guest CSV. The optional Luma connection adds eligibility from signed check-ins for the configured event, including guests without a platform account.
+- In the event builder, the simplified credits section contains a Connect Luma toggle with event ID and API key fields. Saving both credentials verifies access and registers check-in delivery; it does not fetch earlier check-ins.
+- Event admins can use Import existing check-ins to fetch approved guests with at least one checked-in ticket, across all pages up to 10,000 guests. Failed fetches do not change eligibility. CSV import remains available with or without Luma connected.
+- Both sources merge by normalized email, preserve existing eligibility IDs and claims, and retain names when an update supplies none. Repeated delivery or import never grants another claim. Unchecking or cancelling in Luma does not remove eligibility. Disconnecting Luma stops new check-ins after saving and leaves existing eligibility available.
 - An eligibility email can be consumed by at most one simplified credit claim.
 
 ### EventCreditCode
@@ -780,7 +783,7 @@ Judging applies only to Hackathon events.
 - Approved participants and event staff see event credits in the account event workspace only when uploaded credit inventory exists for the event.
 - A claiming user can claim at most one uploaded value from each credit offer.
 - Simplified-only offers remain hidden from normal participant and admin Credits views. Event admins manage their HTTPS reward links, approved attendee roster, redemption URL, and QR in Settings. Authenticated attendees use `/events/:slug/redeem`, and repeat visits redirect to the same assigned coupon.
-- For a first simplified claim, the page prefills the account's saved Luma email when available and waits for the participant to confirm or edit it before redemption. The claim verifies the entered normalized email against imported eligibility, consumes that email once, approves the application, records attendance, queues one receipt with the assigned HTTPS coupon link to the account email, and redirects to the coupon. Repeated claims return the same coupon without queuing another receipt.
+- For a first simplified claim, the page prefills the account's saved Luma email when available and waits for the participant to confirm or edit it before redemption. The claim verifies the entered normalized email against attendee eligibility, consumes that email once, approves the application, records attendance, queues one receipt with the assigned HTTPS coupon link to the account email, and redirects to the coupon. Repeated claims return the same coupon without queuing another receipt.
 
 ## Compliance
 

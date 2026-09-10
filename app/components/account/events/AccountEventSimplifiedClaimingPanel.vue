@@ -195,7 +195,7 @@ function downloadQrSvg() {
           Attendee claiming setup
         </h3>
         <p class="text-sm text-muted">
-          Prepare the QR and private rewards now, then add the final attendee list during the event.
+          Prepare the QR and private rewards, then add attendees through Luma check-ins or CSV import.
         </p>
       </div>
       <AppBadge
@@ -214,7 +214,7 @@ function downloadQrSvg() {
         color="info"
         variant="soft"
         title="Claiming is active"
-        description="The event URL and claiming option are locked after the first redemption. You can keep adding unique reward links and approved attendees."
+        description="The event URL and claiming option are locked after the first redemption. You can keep adding unique reward links and eligible attendees."
       />
       <AppAlert
         v-else-if="!claimStatus.ready"
@@ -228,7 +228,7 @@ function downloadQrSvg() {
         color="success"
         variant="soft"
         title="Ready for attendees"
-        description="Approved attendees can redeem while event registration is open."
+        description="Eligible attendees can redeem while event registration is open."
       />
 
       <div class="mt-1 divide-y divide-primary/15">
@@ -251,7 +251,7 @@ function downloadQrSvg() {
                 {{ claimStatus.redemptionUrl }}
               </p>
               <p class="mt-2 text-sm text-toned">
-                Prepare or share this QR now. Redemption stays unavailable until rewards and approved attendees are ready.
+                Prepare or share this QR now. Redemption stays unavailable until rewards and eligible attendees are ready.
               </p>
               <div class="mt-4 flex flex-wrap gap-2">
                 <AppButton
@@ -339,7 +339,7 @@ function downloadQrSvg() {
 
         <AccountEventSimplifiedClaimingStep
           :number="3"
-          title="Approved attendees"
+          title="Eligible attendees"
         >
           <template #status>
             <AppBadge
@@ -351,7 +351,7 @@ function downloadQrSvg() {
           </template>
 
           <p class="text-sm text-muted">
-            Upload the final Luma guest CSV during the event. Add more at any time; duplicate emails are treated as one attendee, and later imports refresh names without removing anyone.
+            Luma check-ins and approved attendees imported by CSV share one list. CSV import remains available at any time; duplicate emails are treated as one attendee.
           </p>
           <input
             ref="attendeeFileInput"

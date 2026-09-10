@@ -20,13 +20,13 @@ export function isEventLumaAttendanceSyncEnabled(
 }
 
 export function isEventLumaSyncEnabled(
-  event: Pick<EventRecord, 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId' | 'lumaApiKey' | 'lumaWebhookSecret' | 'lumaWebhookStatus'>
+  event: Pick<EventRecord, 'simplifiedClaimingEnabled' | 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId' | 'lumaApiKey' | 'lumaWebhookSecret' | 'lumaWebhookStatus'>
 ) {
-  return isEventLumaEmailRequired(event) && isEventLumaAttendanceSyncEnabled(event)
+  return !event.simplifiedClaimingEnabled && isEventLumaEmailRequired(event) && isEventLumaAttendanceSyncEnabled(event)
 }
 
 export function getInitialApplicationLumaSyncStatus(
-  event: Pick<EventRecord, 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId' | 'lumaApiKey' | 'lumaWebhookSecret' | 'lumaWebhookStatus'>
+  event: Pick<EventRecord, 'simplifiedClaimingEnabled' | 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId' | 'lumaApiKey' | 'lumaWebhookSecret' | 'lumaWebhookStatus'>
 ) {
   return isEventLumaSyncEnabled(event) ? 'not_synced' as const : null
 }

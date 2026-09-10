@@ -373,10 +373,10 @@ function addSimplifiedClaimingConfigurationIssues(
     addIssue(['simplifiedClaimingEnabled'], 'Simplified claiming is available only for Meetup events.')
   }
 
-  if (input.lumaEventApiId || input.lumaApiKey) {
+  if (Boolean(input.lumaEventApiId) !== Boolean(input.lumaApiKey)) {
     addIssue(
       ['simplifiedClaimingEnabled'],
-      'Remove the Luma API Sync configuration before enabling simplified claiming.'
+      'Enter both the Luma event ID and API key to connect Luma.'
     )
   }
 

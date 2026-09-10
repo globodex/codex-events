@@ -1,11 +1,10 @@
 import { readMultipartFormData } from 'h3'
-import { sql } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
-import { eventAttendeeEligibilities } from '#server/database/schema'
 import {
+  mergeSimplifiedClaimingAttendees,
   getSimplifiedClaimingSummary,
   parseLumaAttendeeCsv,
   simplifiedClaimingAttendeeImportLimits
@@ -59,29 +58,7 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  const importedAtBase = Date.now()
-  const rows = parsed.rows.map((row, index) => ({
-    id: crypto.randomUUID(),
-    eventId,
-    normalizedEmail: row.normalizedEmail,
-    firstName: row.firstName,
-    familyName: row.familyName,
-    createdAt: new Date(importedAtBase + index).toISOString(),
-    updatedAt: new Date(importedAtBase + index).toISOString()
-  }))
-
-  for (let index = 0; index < rows.length; index += 10) {
-    await database.insert(eventAttendeeEligibilities)
-      .values(rows.slice(index, index + 10))
-      .onConflictDoUpdate({
-        target: [eventAttendeeEligibilities.eventId, eventAttendeeEligibilities.normalizedEmail],
-        set: {
-          firstName: sql`excluded.first_name`,
-          familyName: sql`excluded.family_name`,
-          updatedAt: sql`excluded.updated_at`
-        }
-      })
-  }
+  await mergeSimplifiedClaimingAttendees(database, eventId, parsed.rows)
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,
@@ -92,7 +69,7 @@ export default defineApiHandler(async (h3Event) => {
       eventId,
       parsedRowCount: parsed.parsedRowCount,
       approvedRowCount: parsed.approvedRowCount,
-      eligibleCount: rows.length
+      eligibleCount: parsed.rows.length
     }
   })
 
@@ -100,7 +77,7 @@ export default defineApiHandler(async (h3Event) => {
   return apiData({
     parsedRowCount: parsed.parsedRowCount,
     approvedRowCount: parsed.approvedRowCount,
-    eligibleCount: rows.length,
+    eligibleCount: parsed.rows.length,
     attendeeCount: summary.attendeeCount
   })
 })

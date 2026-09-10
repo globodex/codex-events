@@ -273,8 +273,10 @@ state.
   enqueue recovery; expiring delivery claims; at-least-once duplicate delivery
   and crash-retry states; conditional create-versus-disable races;
   public upcoming/open callout visibility; and account deletion.
-- Simplified Meetup claiming coverage includes bounded and appendable reward
-  and attendee imports, normalized-email and duplicate handling, PII
+- Simplified Meetup claiming coverage includes signed check-ins before account
+  creation, check-in-only Luma behavior, paginated manual check-in import,
+  shared email deduplication and claim preservation, builder credential
+  visibility, bounded and appendable reward and attendee CSV imports, and PII
   minimization, offer visibility, configuration locking, authenticated email
   matching, idempotent coupon allocation, receipt delivery, attendance-source
   precedence, certificate eligibility, rate limiting, and the external coupon

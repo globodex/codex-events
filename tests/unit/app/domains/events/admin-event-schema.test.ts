@@ -54,6 +54,15 @@ describe('event config form schema', () => {
       applicationLumaEmailVisible: true,
       requireLumaEmail: true
     }).success).toBe(false)
+    expect(eventConfigFormSchema.safeParse({
+      ...meetup,
+      lumaEventApiId: 'evt-123',
+      lumaApiKey: 'secret'
+    }).success).toBe(true)
+    expect(eventConfigFormSchema.safeParse({
+      ...meetup,
+      lumaEventApiId: 'evt-123'
+    }).success).toBe(false)
     expect(buildEventConfigurationPatch({
       ...meetup,
       eventType: 'build'

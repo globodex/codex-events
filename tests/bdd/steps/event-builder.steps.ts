@@ -209,3 +209,18 @@ Then('the builder track short description should retain its Markdown', async ({ 
   await expect(editor.getByRole('textbox')).toContainText('Build **useful tools** for event teams.')
   await expect(editor.getByRole('button', { name: 'bold' })).toBeVisible()
 })
+
+Then('I can reveal and hide Luma credentials in simplified claiming', async ({ page }) => {
+  await page.getByRole('radio', { name: /Simplified claiming/ }).click()
+  await expect(page.getByLabel('Luma event ID', { exact: true })).toBeHidden()
+  await page.getByRole('checkbox', { name: 'Connect Luma', exact: true }).check()
+  await page.getByLabel('Luma event ID', { exact: true }).fill('evt-bdd')
+  await page.getByLabel('Luma API key', { exact: true }).fill('bdd-key')
+  await expect(page.getByLabel('Luma API key', { exact: true })).toHaveAttribute('type', 'password')
+  await expect(page.getByRole('button', { name: 'Import existing check-ins' })).toBeDisabled()
+  await page.getByRole('checkbox', { name: 'Connect Luma', exact: true }).uncheck()
+  await expect(page.getByLabel('Luma event ID', { exact: true })).toBeHidden()
+  await page.getByRole('checkbox', { name: 'Connect Luma', exact: true }).check()
+  await expect(page.getByLabel('Luma event ID', { exact: true })).toHaveValue('')
+  await expect(page.getByLabel('Luma API key', { exact: true })).toHaveValue('')
+})

@@ -19,6 +19,7 @@ import {
   resolveLumaAttendanceGuestEmail,
   verifyLumaWebhookRequest
 } from '#server/domains/applications/luma-webhooks'
+import { mergeSimplifiedClaimingAttendees, normalizeLumaEmail } from '#server/domains/credits/simplified-claiming'
 import { getEventOrThrow } from '#server/domains/events'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
@@ -117,6 +118,18 @@ export default defineApiHandler(async (h3Event) => {
   })
 
   if (!guestEmail) {
+    return acknowledgeLumaWebhook()
+  }
+
+  if (event.simplifiedClaimingEnabled) {
+    const email = z.string().trim().email().safeParse(guestEmail)
+    if (email.success) {
+      await mergeSimplifiedClaimingAttendees(database, event.id, [{
+        normalizedEmail: normalizeLumaEmail(email.data),
+        firstName: null,
+        familyName: null
+      }])
+    }
     return acknowledgeLumaWebhook()
   }
 

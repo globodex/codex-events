@@ -603,7 +603,7 @@ describe('event management utilities', () => {
     })).toEqual({ simplifiedClaimingEnabled: true })
   })
 
-  test('rejects required fields, Luma Sync, and terms while simplified claiming is enabled', () => {
+  test('rejects required fields, incomplete Luma credentials, and terms while simplified claiming is enabled', () => {
     expect(() => buildEventUpdatePayload(buildEventRecord({
       eventType: 'meetup',
       submissionOpensAt: null,
@@ -619,7 +619,7 @@ describe('event management utilities', () => {
       submissionClosesAt: null,
       simplifiedClaimingEnabled: true,
       lumaEventApiId: 'evt-123'
-    }), {})).toThrow('Remove the Luma API Sync configuration before enabling simplified claiming.')
+    }), {})).toThrow('Enter both the Luma event ID and API key to connect Luma.')
 
     expect(() => buildEventUpdatePayload(buildEventRecord({
       eventType: 'meetup',
@@ -628,6 +628,13 @@ describe('event management utilities', () => {
       simplifiedClaimingEnabled: true,
       currentApplicationTermsDocumentId: 'terms-1'
     }), {})).toThrow('Remove the application terms before enabling simplified claiming.')
+  })
+
+  test('allows paired Luma credentials with simplified claiming', () => {
+    expect(() => buildEventUpdatePayload(buildEventRecord({
+      eventType: 'meetup', submissionOpensAt: null, submissionClosesAt: null,
+      simplifiedClaimingEnabled: true, lumaEventApiId: 'evt-123', lumaApiKey: 'secret'
+    }), {})).not.toThrow()
   })
 
   test('requires event type on creation', () => {

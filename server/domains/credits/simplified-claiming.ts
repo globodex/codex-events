@@ -188,7 +188,7 @@ export async function getSimplifiedClaimingSummary(database: AppDatabase, event:
     issues.push({ code: 'generic_claims', message: 'Attendee claiming cannot use rewards that were claimed through Credits.' })
   }
   if (attendeeCount === 0) {
-    issues.push({ code: 'attendees_missing', message: 'Import approved Luma attendees.' })
+    issues.push({ code: 'attendees_missing', message: 'Add attendees through Luma check-ins or CSV import.' })
   }
   if (offer && totalInventoryCount === 0) {
     issues.push({ code: 'inventory_missing', message: 'Upload HTTPS reward links in Settings.' })
@@ -200,9 +200,6 @@ export async function getSimplifiedClaimingSummary(database: AppDatabase, event:
   }
   if (hasRequiredRegistrationFields(event)) {
     issues.push({ code: 'required_fields', message: 'Remove required registration fields.' })
-  }
-  if (event.lumaEventApiId || event.lumaApiKey) {
-    issues.push({ code: 'luma_sync', message: 'Remove the Luma API Sync configuration.' })
   }
 
   return {
@@ -217,5 +214,31 @@ export async function getSimplifiedClaimingSummary(database: AppDatabase, event:
     availableInventoryCount,
     genericClaimCount,
     simplifiedClaimCount
+  }
+}
+
+export async function mergeSimplifiedClaimingAttendees(
+  database: AppDatabase,
+  eventId: string,
+  attendees: SimplifiedClaimingAttendeeRow[]
+) {
+  const importedAtBase = Date.now()
+  for (let index = 0; index < attendees.length; index += 10) {
+    await database.insert(eventAttendeeEligibilities)
+      .values(attendees.slice(index, index + 10).map((row, offset) => ({
+        ...row,
+        id: crypto.randomUUID(),
+        eventId,
+        createdAt: new Date(importedAtBase + index + offset).toISOString(),
+        updatedAt: new Date(importedAtBase + index + offset).toISOString()
+      })))
+      .onConflictDoUpdate({
+        target: [eventAttendeeEligibilities.eventId, eventAttendeeEligibilities.normalizedEmail],
+        set: {
+          firstName: sql`coalesce(excluded.first_name, ${eventAttendeeEligibilities.firstName})`,
+          familyName: sql`coalesce(excluded.family_name, ${eventAttendeeEligibilities.familyName})`,
+          updatedAt: sql`excluded.updated_at`
+        }
+      })
   }
 }

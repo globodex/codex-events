@@ -191,6 +191,9 @@ function updateParticipantsLimitInput(event: Event) {
 }
 
 function requireLumaRegistrationEmail() {
+  if (form.value.simplifiedClaimingEnabled) {
+    return
+  }
   form.value.applicationLumaEmailVisible = true
   form.value.requireLumaEmail = true
 }

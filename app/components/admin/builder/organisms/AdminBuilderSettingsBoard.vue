@@ -629,7 +629,7 @@ const lumaWebhookStatusColor = computed(() => {
       </AdminBuilderSettingsGroupCard>
 
       <AdminBuilderSettingsGroupCard
-        v-if="groupById('luma-sync')"
+        v-if="groupById('luma-sync') && !form.simplifiedClaimingEnabled"
         :group="groupById('luma-sync')!"
         :complete="groupById('luma-sync')!.isComplete(form, event)"
       >

@@ -44,7 +44,7 @@ function getReviewSourceMetadata(source: ApplicationReviewSource): AuditMetadata
 export async function finalizeUserApplicationReview(options: {
   h3Event: H3Event
   database: AppDatabase
-  event: Pick<EventRecord, 'id' | 'name' | 'slug' | 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId' | 'lumaApiKey' | 'lumaWebhookSecret' | 'lumaWebhookStatus'>
+  event: Pick<EventRecord, 'id' | 'name' | 'slug' | 'simplifiedClaimingEnabled' | 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId' | 'lumaApiKey' | 'lumaWebhookSecret' | 'lumaWebhookStatus'>
   application: UserApplicationRecord
   applicant: Pick<UserRecord, 'email' | 'displayName'> | null
   decision: ApplicationReviewDecision

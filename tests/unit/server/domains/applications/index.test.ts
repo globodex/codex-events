@@ -7,6 +7,7 @@ import {
   assertApplicationReviewable,
   assertEventAllowsApplications,
   isEventLumaAttendanceSyncEnabled,
+  isEventLumaSyncEnabled,
   assertUserMeetsEventProfileRequirements,
   serializeUserApplication,
   serializeRegistrationDetailsJson
@@ -99,6 +100,18 @@ describe('application utilities', () => {
       lumaApiKey: 'luma_test_key',
       lumaWebhookSecret: 'whsec_test',
       lumaWebhookStatus: 'failed'
+    })).toBe(false)
+  })
+
+  test('simplified claiming never enables approval or rejection sync', () => {
+    expect(isEventLumaSyncEnabled({
+      simplifiedClaimingEnabled: true,
+      applicationLumaEmailVisible: true,
+      requireLumaEmail: true,
+      lumaEventApiId: 'evt-123',
+      lumaApiKey: 'luma_test_key',
+      lumaWebhookSecret: 'whsec_test',
+      lumaWebhookStatus: 'configured'
     })).toBe(false)
   })
 
