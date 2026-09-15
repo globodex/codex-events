@@ -1019,6 +1019,8 @@ function buildFixtureSql(personas: StablePersona[]) {
       ${sqlLiteral(fixtureTimestamp)},
       ${sqlLiteral(fixtureTimestamp)}
     )`,
+    `update events set luma_event_api_id = 'evt-bdd-simplified', luma_api_key = 'bdd-luma-key', luma_webhook_status = 'configured'
+      where id = ${sqlLiteral(fixtureSimplifiedClaimingEventId)}`,
     `insert into event_attendee_eligibilities (
       id, event_id, normalized_email, first_name, family_name, created_at, updated_at
     ) values (

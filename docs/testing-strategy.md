@@ -275,8 +275,8 @@ state.
   public upcoming/open callout visibility; and account deletion.
 - Simplified Meetup claiming coverage includes signed check-ins before account
   creation, check-in-only Luma behavior, paginated manual check-in import,
-  shared email deduplication and claim preservation, builder credential
-  visibility, bounded and appendable reward and attendee CSV imports, and PII
+  shared email deduplication and claim preservation, a stable builder Luma section
+  across claiming methods, collapsed verified credentials, edit cancellation, bounded and appendable reward and attendee CSV imports, and PII
   minimization, offer visibility, configuration locking, authenticated email
   matching, atomic multi-giveaway allocation, link/code detection, exhausted-giveaway skipping, nullable redirects, immutable repeat claims, combined receipt delivery and escaping, redirect selection locking, email preview, attendance-source
   precedence, certificate eligibility, rate limiting, and the external coupon

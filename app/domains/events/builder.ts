@@ -712,12 +712,14 @@ export const eventBuilderSettingsGroupDefinitions: readonly EventBuilderSettings
   {
     id: 'luma-sync',
     icon: 'i-lucide-refresh-cw',
-    title: 'Luma API sync',
-    description: 'Sync guests and check-ins with your Luma event.',
+    title: 'Luma connection',
+    description: 'Connect your Luma event.',
     appliesTo: allTypes,
     parity: true,
     editOnly: false,
-    isComplete: form => form.lumaEventApiId.trim().length > 0 && form.lumaApiKey.trim().length > 0
+    isComplete: (form, event) => Boolean(event?.lumaWebhookStatus === 'configured'
+      && form.lumaEventApiId.trim() === event.lumaEventApiId
+      && form.lumaApiKey.trim() === event.lumaApiKey)
   },
   {
     id: 'credits',

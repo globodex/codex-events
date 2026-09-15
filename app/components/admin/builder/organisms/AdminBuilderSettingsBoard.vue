@@ -15,6 +15,7 @@ import AdminMarkdownEditorField from '~/components/admin/AdminMarkdownEditorFiel
 import AccountEventAdminTermsCard from '~/components/account/events/AccountEventAdminTermsCard.vue'
 import EventConfigProgramIdentitySection from '~/components/admin/EventConfigProgramIdentitySection.vue'
 import EventTalkProposalControl from '~/components/admin/EventTalkProposalControl.vue'
+import AdminBuilderLumaConnection from '~/components/admin/builder/organisms/AdminBuilderLumaConnection.vue'
 import AdminBuilderCreditsSection from '~/components/admin/builder/organisms/AdminBuilderCreditsSection.vue'
 import AdminBuilderCreditsInfoDialog from '~/components/admin/builder/molecules/AdminBuilderCreditsInfoDialog.vue'
 import type {
@@ -26,6 +27,7 @@ const form = defineModel<EventFormState>('form', { required: true })
 
 const props = defineProps<{
   groups: readonly EventBuilderSettingsGroupDefinition[]
+  saving: boolean
   mode: 'create' | 'edit'
   event: EventRecord | null
   requiredApplicationFieldCount: number
@@ -50,6 +52,7 @@ const emit = defineEmits<{
   removeBannerImage: []
   saveTerms: [documentType: TermsDocument['documentType'], content: string]
   updated: []
+  save: []
 }>()
 
 const applicationTermsDraft = ref('')
@@ -190,17 +193,6 @@ function removeTrackResource(track: EventFormTrack, resourceId: string) {
 function groupById(id: string) {
   return props.groups.find(group => group.id === id)
 }
-
-const lumaWebhookStatusColor = computed(() => {
-  switch (props.event?.lumaWebhookStatus) {
-    case 'configured':
-      return 'success' as const
-    case 'failed':
-      return 'error' as const
-    default:
-      return 'neutral' as const
-  }
-})
 </script>
 
 <template>
@@ -629,39 +621,17 @@ const lumaWebhookStatusColor = computed(() => {
       </AdminBuilderSettingsGroupCard>
 
       <AdminBuilderSettingsGroupCard
-        v-if="groupById('luma-sync') && !form.simplifiedClaimingEnabled"
+        v-if="groupById('luma-sync')"
         :group="groupById('luma-sync')!"
         :complete="groupById('luma-sync')!.isComplete(form, event)"
       >
-        <div class="space-y-3">
-          <AppBadge
-            v-if="mode === 'edit' && event"
-            :color="lumaWebhookStatusColor"
-            variant="soft"
-            size="sm"
-          >
-            Webhook: {{ event.lumaWebhookStatus ?? 'not configured' }}
-          </AppBadge>
-          <div class="grid gap-3 sm:grid-cols-2">
-            <AppFormField label="Luma event API ID">
-              <AppInput
-                v-model="form.lumaEventApiId"
-                size="sm"
-                placeholder="evt-…"
-              />
-            </AppFormField>
-            <AppFormField label="Luma API key">
-              <AppInput
-                v-model="form.lumaApiKey"
-                type="password"
-                size="sm"
-              />
-            </AppFormField>
-          </div>
-          <p class="text-[11px] text-dimmed">
-            The key is stored per event and only used for guest sync. Saving verifies access and registers the guest webhook automatically.
-          </p>
-        </div>
+        <AdminBuilderLumaConnection
+          v-model:form="form"
+          :event="event"
+          :saving="saving"
+          @save="emit('save')"
+          @updated="emit('updated')"
+        />
       </AdminBuilderSettingsGroupCard>
 
       <AdminBuilderSettingsGroupCard

@@ -49,10 +49,10 @@ Feature: Gamified event builder creation flow
     Then the first builder block duration should be 17 minutes
     And the second builder block should run from 8:17 AM to 8:32 AM
 
-  Scenario: Organizer connects Luma inside simplified credits setup
+  Scenario: Organizer keeps one Luma connection across claiming methods
     Given the saved "platform_admin" local session state exists
     When I open the event builder with the saved "platform_admin" session
     And I name the event "BDD Luma Claiming Meetup"
     And I choose the "meetup" event type in the builder
     And I apply the "meetup-community-evening" builder template
-    Then I can reveal and hide Luma credentials in simplified claiming
+    Then Luma credentials stay in one section when I change claiming methods

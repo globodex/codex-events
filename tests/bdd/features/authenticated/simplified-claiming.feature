@@ -34,3 +34,8 @@ Feature: Simplified Meetup claiming
     Given the saved "event_admin" local session state exists
     When I add a code giveaway in the simplified event builder
     Then I should see automatically detected codes and the combined email preview
+
+  Scenario: Organizer sees the saved Luma connection with credentials collapsed
+    Given the saved "event_admin" local session state exists
+    When I open the connected Luma event in the builder
+    Then I can edit and cancel the saved Luma connection without losing it

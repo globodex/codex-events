@@ -201,6 +201,7 @@ function onSubmit() {
           />
 
           <AdminBuilderSettingsBoard
+            :saving="isSubmitting"
             :form="builder.state.form"
             :groups="builder.settingsGroups.value"
             :mode="mode"
@@ -218,6 +219,7 @@ function onSubmit() {
             :initial-simplified-claiming-status="initialSimplifiedClaimingStatus"
             :credit-offers="creditOffers"
             :has-existing-talk-proposal="hasExistingTalkProposal"
+            @save="onSubmit"
             @upload-background-image="file => emit('uploadBackgroundImage', file)"
             @remove-background-image="emit('removeBackgroundImage')"
             @upload-banner-image="file => emit('uploadBannerImage', file)"

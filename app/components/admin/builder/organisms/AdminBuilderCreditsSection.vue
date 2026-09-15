@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { normalizeApiError, type ApiDataResponse } from '~/lib/api'
 import type { EventFormState } from '~/domains/events/admin-event'
 import type { EventRecord } from '~/domains/events/records'
 import type {
@@ -32,51 +31,6 @@ const selectedMethodIsSaved = computed(() => Boolean(
 const claimingLocked = computed(() => props.simplifiedClaimingStatus?.locked ?? false)
 const hasRegularClaims = computed(() => props.offers.some(offer => offer.claimedCount > 0))
 const canChooseSimplified = computed(() => !claimingLocked.value && props.offers.length === 0)
-
-const apiFetch = useApiClient()
-const toast = useToast()
-const connectLuma = shallowRef(Boolean(form.value.lumaEventApiId || form.value.lumaApiKey))
-const importPending = shallowRef(false)
-const importError = shallowRef('')
-const savedLumaConnection = computed(() => Boolean(
-  props.event?.simplifiedClaimingEnabled
-  && props.event.lumaEventApiId
-  && props.event.lumaApiKey
-  && form.value.lumaEventApiId.trim() === props.event.lumaEventApiId
-  && form.value.lumaApiKey.trim() === props.event.lumaApiKey
-))
-watch(() => [form.value.lumaEventApiId, form.value.lumaApiKey], ([id, key]) => {
-  if (id || key) connectLuma.value = true
-})
-
-function toggleLuma(enabled: boolean) {
-  connectLuma.value = enabled
-  if (!enabled) {
-    form.value.lumaEventApiId = ''
-    form.value.lumaApiKey = ''
-  }
-}
-
-async function importCheckIns() {
-  importPending.value = true
-  importError.value = ''
-  try {
-    const response = await apiFetch<ApiDataResponse<{ eligibleCount: number }>>(
-      `/api/events/${props.event!.id}/simplified-claiming/attendees/import-check-ins`,
-      { method: 'POST' }
-    )
-    toast.add({
-      title: 'Luma check-ins imported',
-      description: `${response.data.eligibleCount} eligible attendees added or refreshed.`,
-      color: 'success'
-    })
-    emit('updated')
-  } catch (error) {
-    importError.value = normalizeApiError(error).message
-  } finally {
-    importPending.value = false
-  }
-}
 
 function selectMethod(method: 'regular' | 'simplified') {
   if (method === 'simplified' && (!isMeetup.value || !canChooseSimplified.value)) {
@@ -153,74 +107,6 @@ function selectMethod(method: 'regular' | 'simplified') {
         ? 'This event already has credits claimed through participant accounts.'
         : 'Remove regular offers before switching to simplified giveaways.'"
     />
-
-    <div
-      v-if="isSimplified"
-      class="space-y-3"
-    >
-      <AppCheckbox
-        :model-value="connectLuma"
-        label="Connect Luma"
-        @update:model-value="toggleLuma"
-      />
-      <template v-if="connectLuma">
-        <div class="grid gap-3 sm:grid-cols-2">
-          <AppFormField
-            name="simplified-luma-event-id"
-            label="Luma event ID"
-          >
-            <AppInput
-              id="simplified-luma-event-id"
-              v-model="form.lumaEventApiId"
-              placeholder="evt-…"
-              size="sm"
-            />
-          </AppFormField>
-          <AppFormField
-            name="simplified-luma-api-key"
-            label="Luma API key"
-          >
-            <AppInput
-              id="simplified-luma-api-key"
-              v-model="form.lumaApiKey"
-              type="password"
-              size="sm"
-            />
-          </AppFormField>
-        </div>
-        <p class="text-sm text-muted">
-          New Luma check-ins add eligible attendees after you save. Import earlier check-ins with the button below.
-        </p>
-        <AppAlert
-          v-if="savedLumaConnection && event?.lumaWebhookStatus !== 'configured'"
-          color="warning"
-          title="Luma check-ins are not connected"
-          description="Check your credentials and save the event again to retry. CSV import remains available."
-        />
-        <AppButton
-          type="button"
-          color="neutral"
-          variant="outline"
-          :disabled="!savedLumaConnection"
-          :loading="importPending"
-          @click="importCheckIns"
-        >
-          Import existing check-ins
-        </AppButton>
-        <p
-          v-if="!savedLumaConnection"
-          class="text-sm text-muted"
-        >
-          Save the event and Luma credentials before importing check-ins.
-        </p>
-        <AppAlert
-          v-if="importError"
-          color="error"
-          title="Check-ins could not be imported"
-          :description="importError"
-        />
-      </template>
-    </div>
 
     <AppAlert
       v-if="props.mode === 'create'"
