@@ -278,7 +278,7 @@ state.
   shared email deduplication and claim preservation, a stable builder Luma section
   across claiming methods, collapsed verified credentials, edit cancellation, bounded and appendable reward and attendee CSV imports, and PII
   minimization, offer visibility, configuration locking, authenticated email
-  matching, atomic multi-giveaway allocation, link/code detection, exhausted-giveaway skipping, nullable redirects, immutable repeat claims, combined receipt delivery and escaping, redirect selection locking, email preview, attendance-source
+  matching, pre-creation credit staging for both claiming methods, draft-save retry retention and atomic creation rollback, atomic multi-giveaway allocation, link/code detection, exhausted-giveaway skipping, nullable redirects, immutable repeat claims, combined receipt delivery and escaping, redirect selection locking, email preview, attendance-source
   precedence, certificate eligibility, rate limiting, and the external coupon
   redirect.
 

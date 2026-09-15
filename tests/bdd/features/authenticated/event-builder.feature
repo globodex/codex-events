@@ -56,3 +56,21 @@ Feature: Gamified event builder creation flow
     And I choose the "meetup" event type in the builder
     And I apply the "meetup-community-evening" builder template
     Then Luma credentials stay in one section when I change claiming methods
+
+  Scenario Outline: Organizer stages credits before creating a draft and retries a failed save
+    Given the saved "platform_admin" local session state exists
+    When I open the event builder with the saved "platform_admin" session
+    And I name the event "BDD Staged <method> Credits"
+    And I choose the "meetup" event type in the builder
+    And I apply the "meetup-community-evening" builder template
+    And I fill the builder basics for "BDD Staged <method> Credits"
+    And I stage link and code giveaways with "<method>" claiming
+    And I create the draft after a failed save
+    Then I should land on the workspace settings tab for "bdd-staged-<method>-credits"
+    When I open the event in the builder from the workspace banner
+    Then the builder should show the saved staged credits
+
+    Examples:
+      | method     |
+      | simplified |
+      | regular    |

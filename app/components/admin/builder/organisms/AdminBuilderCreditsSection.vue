@@ -1,12 +1,16 @@
 <script setup lang="ts">
+import type { StagedCredit } from '#shared/domains/credits/draft-credits'
 import type { EventFormState } from '~/domains/events/admin-event'
 import type { EventRecord } from '~/domains/events/records'
 import type {
   AccountEventSettingsCreditOffer,
   AccountEventSimplifiedClaimingStatus
 } from '#shared/domains/events/account-event-settings-page'
+import SimplifiedGiveawaysManager from '~/components/account/events/organisms/SimplifiedGiveawaysManager.vue'
 import AccountEventSimplifiedClaimingPanel from '~/components/account/events/AccountEventSimplifiedClaimingPanel.vue'
 import AdminBuilderRegularCreditsManager from './AdminBuilderRegularCreditsManager.vue'
+
+const stagedCredits = defineModel<StagedCredit[]>('stagedCredits', { default: () => [] })
 
 const form = defineModel<EventFormState>('form', { required: true })
 
@@ -108,12 +112,14 @@ function selectMethod(method: 'regular' | 'simplified') {
         : 'Remove regular offers before switching to simplified giveaways.'"
     />
 
-    <AppAlert
+    <SimplifiedGiveawaysManager
       v-if="props.mode === 'create'"
-      color="info"
-      variant="soft"
-      title="Create the event to upload credits"
-      description="Your claiming method will be saved with the draft event."
+      v-model:staged-credits="stagedCredits"
+      :event-id="null"
+      :event-name="form.name"
+      :offers="[]"
+      :locked="false"
+      :simplified="isSimplified"
     />
 
     <AppAlert

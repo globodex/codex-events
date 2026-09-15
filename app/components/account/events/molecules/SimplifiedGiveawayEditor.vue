@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { describeGiveawayValues, parseGiveawayValues } from '#shared/domains/credits/simplified-giveaways'
 
-const props = defineProps<{ name: string, description: string, pending: boolean, creating?: boolean }>()
+const props = defineProps<{ name: string, description: string, pending: boolean, creating?: boolean, descriptionLabel?: string, descriptionRequired?: boolean }>()
 const emit = defineEmits<{ save: [value: { name: string, description: string, file: File | null }] }>()
 const name = shallowRef(props.name)
 const description = shallowRef(props.description)
@@ -37,13 +37,13 @@ async function selectFile(event: Event) {
         aria-label="Giveaway name"
       />
     </AppFormField>
-    <AppFormField label="Email instructions (optional)">
+    <AppFormField :label="descriptionLabel ?? 'Email instructions (optional)'">
       <AppTextarea
         v-model="description"
         :maxlength="2000"
         :rows="3"
         :disabled="pending"
-        aria-label="Email instructions (optional)"
+        :aria-label="descriptionLabel ?? 'Email instructions (optional)'"
       />
     </AppFormField>
     <p class="text-xs text-muted">
@@ -75,7 +75,7 @@ async function selectFile(event: Event) {
       <AppButton
         type="button"
         :loading="pending"
-        :disabled="!name.trim() || Boolean(error) || (creating && !file)"
+        :disabled="!name.trim() || (descriptionRequired && !description.trim()) || Boolean(error) || (creating && !file)"
         @click="emit('save', { name, description, file })"
       >
         {{ creating ? 'Add giveaway' : file ? 'Save and upload' : 'Save giveaway' }}

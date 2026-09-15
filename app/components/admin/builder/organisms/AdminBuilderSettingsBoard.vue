@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { StagedCredit } from '#shared/domains/credits/draft-credits'
 import { Switch as UiSwitch } from '~/components/ui/switch'
 import type { TermsDocument, EventRecord } from '~/domains/events/records'
 import type { EventFormState, EventFormTrack } from '~/domains/events/admin-event'
@@ -22,6 +23,8 @@ import type {
   AccountEventSettingsCreditOffer,
   AccountEventSimplifiedClaimingStatus
 } from '#shared/domains/events/account-event-settings-page'
+
+const stagedCredits = defineModel<StagedCredit[]>('stagedCredits', { default: () => [] })
 
 const form = defineModel<EventFormState>('form', { required: true })
 
@@ -644,6 +647,7 @@ function groupById(id: string) {
         </template>
 
         <AdminBuilderCreditsSection
+          v-model:staged-credits="stagedCredits"
           v-model:form="form"
           :mode="mode"
           :event="event"

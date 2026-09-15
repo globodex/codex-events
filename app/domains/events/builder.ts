@@ -1,3 +1,4 @@
+import type { StagedCredit } from '#shared/domains/credits/draft-credits'
 import { z } from 'zod'
 
 import type { EventBuilderBlockType, EventBuilderEventType } from '#shared/domains/events/builder-blocks'
@@ -38,6 +39,7 @@ export interface EventBuilderBlockInstance {
 }
 
 export interface EventBuilderState {
+  credits: StagedCredit[]
   /** Local datetime (YYYY-MM-DDTHH:mm) the first agenda block starts at. */
   eventStartsAt: string
   blocks: EventBuilderBlockInstance[]
@@ -125,6 +127,7 @@ export function createEmptyEventBuilderState(): EventBuilderState {
   form.inPersonEvent = true
 
   return {
+    credits: [],
     eventStartsAt: '',
     blocks: [],
     form,
@@ -273,6 +276,7 @@ export function createBuilderStateFromEvent(event: EventRecord): EventBuilderSta
   })
 
   return {
+    credits: [],
     eventStartsAt: sortedItems.length > 0 ? toDateTimeLocalValue(sortedItems[0]!.startsAt) : '',
     blocks,
     form,

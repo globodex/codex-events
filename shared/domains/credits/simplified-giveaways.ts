@@ -13,6 +13,10 @@ export function parseGiveawayValues(content: string) {
   const values = content.replace(/^\uFEFF/, '').split(/\r?\n/)
     .map(row => row.trim()).filter(Boolean)
     .map(row => row.startsWith('"') && row.endsWith('"') ? row.slice(1, -1).replaceAll('""', '"').trim() : row)
+  return validateGiveawayValues(values)
+}
+
+export function validateGiveawayValues(values: string[]) {
   if (!values.length || values.some(value => !value || value.length > 2048)) {
     throw new Error('Upload one code or HTTPS link per row, without a header (up to 2,048 characters each).')
   }

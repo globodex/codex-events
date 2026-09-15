@@ -1,10 +1,10 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { assertEventCreatorAccess } from '#server/auth/authorization'
-import { writeAuditLog } from '#server/database/audit-log'
+import { buildAuditLogInsert } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
-import { events } from '#server/database/schema'
+import { events, eventCreditOffers, eventCreditCodes } from '#server/database/schema'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
@@ -13,8 +13,8 @@ import {
   assertTalkProposalConfiguration,
   assertEventSlugAvailable,
   computeEventBalanceColumns,
-  createEventAdminAssignmentsForNewEvent,
-  createEventTracks,
+  buildCreateEventAdminAssignmentQueries,
+  buildCreateEventTrackQueries,
   createEventBodySchema,
   listEventTracks,
   serializeEventAgendaItems,
@@ -121,27 +121,39 @@ export const applicationOperation = defineStructuredRouteOperation({
     updatedAt: createdAt
   }
 
-  await database.insert(events).values({
-    ...eventValues,
-    ...computeEventBalanceColumns(eventValues)
-  })
-
-  await createEventAdminAssignmentsForNewEvent(database, {
-    eventId,
-    creatorUserId: actor.platformUser.id,
-    createdAt
-  })
-  await createEventTracks(database, eventId, supportsTracks ? body.tracks : [])
-
-  await writeAuditLog(database, {
-    actorUserId: actor.platformUser.id,
-    entityType: 'event',
-    entityId: eventId,
-    action: 'event.created',
-    metadata: {
-      slug: body.slug
-    }
-  })
+  type Statement = Parameters<typeof database.batch>[0][number]
+  const statements: [Statement, ...Statement[]] = [
+    database.insert(events).values({ ...eventValues, ...computeEventBalanceColumns(eventValues) }),
+    ...await buildCreateEventAdminAssignmentQueries(database, { eventId, creatorUserId: actor.platformUser.id, createdAt }),
+    ...buildCreateEventTrackQueries(database, eventId, supportsTracks ? body.tracks : []),
+    buildAuditLogInsert(database, {
+      actorUserId: actor.platformUser.id, entityType: 'event', entityId: eventId,
+      action: 'event.created', metadata: { slug: body.slug }, createdAt
+    }).query
+  ]
+  for (const [displayOrder, offer] of body.credits.entries()) {
+    const offerId = crypto.randomUUID()
+    const values = [...new Set(offer.values)]
+    statements.push(database.insert(eventCreditOffers).values({
+      id: offerId, eventId, name: offer.name, description: offer.description,
+      simplifiedClaimingOnly: body.simplifiedClaimingEnabled, redirectOnClaim: offer.redirectOnClaim,
+      displayOrder, createdAt, updatedAt: createdAt
+    }))
+    statements.push(database.insert(eventCreditCodes).select(database.select({
+      id: sql<string>`lower(hex(randomblob(16)))`.as('id'),
+      creditOfferId: sql<string>`${offerId}`.as('creditOfferId'),
+      value: sql<string>`inventory.value`.as('value'),
+      claimedByUserId: sql<null>`null`.as('claimedByUserId'),
+      claimedAttendeeEligibilityId: sql<null>`null`.as('claimedAttendeeEligibilityId'),
+      claimedAt: sql<null>`null`.as('claimedAt'),
+      createdAt: sql<string>`strftime('%Y-%m-%dT%H:%M:%fZ', (${Date.parse(createdAt)} + cast(inventory.key as integer)) / 1000.0, 'unixepoch')`.as('createdAt')
+    }).from(sql`json_each(${JSON.stringify(values)}) as inventory`).getSQL()))
+    statements.push(buildAuditLogInsert(database, {
+      actorUserId: actor.platformUser.id, entityType: 'event_credit_offer', entityId: offerId,
+      action: 'event_credit_offer.created', metadata: { eventId, importedCount: values.length }, createdAt
+    }).query)
+  }
+  await database.batch(statements)
 
   const createdEvent = await database.query.events.findFirst({
     where: eq(events.id, eventId)

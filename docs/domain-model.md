@@ -609,6 +609,7 @@ Rules:
 - An ordinary credit offer has a participant-facing name and markdown description.
 - A simplified-only offer is managed privately in Settings. Its name and plain-text instructions appear in the participant’s credit email.
 - An event can define multiple ordinary credit offers or up to 20 simplified-only giveaways. Exactly one simplified giveaway containing only HTTPS links is selected to open after claiming.
+- Event organizers can add credit offers and stage CSV inventory in the event builder before creating a draft. The draft and staged credits are saved together. Staging supports regular and simplified claiming, detects codes and HTTPS links, and retains values in the open builder after a failed save. Luma check-in import requires a saved connection.
 - Enabling simplified attendee claiming requires that the event has no ordinary credit offers. Uploading a named giveaway in Settings creates its private inventory; later uploads target that giveaway.
 - Event admins and platform admins can append inventory to an existing credit offer over time.
 - Simplified giveaway inventory accepts codes and HTTPS links, detects their format on upload, and remains appendable after claiming begins. Imports skip exact values already uploaded for that giveaway. Link-like values must be valid HTTPS URLs without embedded credentials. A redirect giveaway accepts only HTTPS links.

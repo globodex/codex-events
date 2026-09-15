@@ -201,6 +201,7 @@ function onSubmit() {
           />
 
           <AdminBuilderSettingsBoard
+            :staged-credits="builder.state.credits"
             :saving="isSubmitting"
             :form="builder.state.form"
             :groups="builder.settingsGroups.value"
@@ -219,6 +220,7 @@ function onSubmit() {
             :initial-simplified-claiming-status="initialSimplifiedClaimingStatus"
             :credit-offers="creditOffers"
             :has-existing-talk-proposal="hasExistingTalkProposal"
+            @update:staged-credits="builder.setStagedCredits"
             @save="onSubmit"
             @upload-background-image="file => emit('uploadBackgroundImage', file)"
             @remove-background-image="emit('removeBackgroundImage')"

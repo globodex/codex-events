@@ -1,3 +1,4 @@
+import { draftCreditsSchema, validateDraftCredits, draftCreditLimits, jsonByteLength } from '#shared/domains/credits/draft-credits'
 import type { H3Event } from 'h3'
 
 import { and, asc, count, desc, eq, exists, getTableColumns, isNull, like, or, sql, type SQL } from 'drizzle-orm'
@@ -493,7 +494,13 @@ const eventConfigShape = {
 
 export const createEventBodySchema = z.preprocess(
   normalizeCreateEventConfigInput,
-  z.object(eventConfigShape).superRefine((input, ctx) => {
+  z.object({ ...eventConfigShape, credits: draftCreditsSchema.default([]) }).superRefine((input, ctx) => {
+    try {
+      validateDraftCredits(input.credits, input.simplifiedClaimingEnabled)
+      if (jsonByteLength(input) > draftCreditLimits.maxRequestBytes) throw new Error('The draft request must be 8 MB or smaller.')
+    } catch (error) {
+      ctx.addIssue({ code: 'custom', path: ['credits'], message: (error as Error).message })
+    }
     addApplicationFieldConfigurationIssues(input as Record<string, unknown>, (path, message) => {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -1072,35 +1079,28 @@ export function serializePublishedStaffTrack(track: EventTrackRecord) {
   }
 }
 
-export async function createEventTracks(
+export function buildCreateEventTrackQueries(
   database: AppDatabase,
   eventId: string,
   tracks: EventTrackInput[]
 ) {
-  if (tracks.length === 0) {
-    return
-  }
-
   const createdAt = new Date().toISOString()
-
-  await database.insert(eventTracks).values(
-    [...tracks]
-      .sort((left, right) => left.displayOrder - right.displayOrder || left.id.localeCompare(right.id))
-      .map(track => ({
-        id: track.id,
-        eventId,
-        name: track.name,
-        shortDescription: track.shortDescription,
-        fullDescription: track.fullDescription,
-        staffInstructions: track.staffInstructions,
-        resourcesJson: serializeEventTrackResources(track.resources),
-        displayOrder: track.displayOrder,
-        createdAt
-      }))
-  )
+  return [...tracks]
+    .sort((left, right) => left.displayOrder - right.displayOrder || left.id.localeCompare(right.id))
+    .map(track => database.insert(eventTracks).values({
+      id: track.id,
+      eventId,
+      name: track.name,
+      shortDescription: track.shortDescription,
+      fullDescription: track.fullDescription,
+      staffInstructions: track.staffInstructions,
+      resourcesJson: serializeEventTrackResources(track.resources),
+      displayOrder: track.displayOrder,
+      createdAt
+    }))
 }
 
-export async function createEventAdminAssignmentsForNewEvent(
+export async function buildCreateEventAdminAssignmentQueries(
   database: AppDatabase,
   input: {
     eventId: string
@@ -1122,21 +1122,15 @@ export async function createEventAdminAssignmentsForNewEvent(
   })
   const userIds = [...new Set(adminUsers.map(user => user.id))]
 
-  if (userIds.length === 0) {
-    return
-  }
-
-  await database.insert(eventRoleAssignments).values(
-    userIds.map(userId => ({
-      id: crypto.randomUUID(),
-      eventId: input.eventId,
-      userId,
-      role: 'event_admin' as const,
-      isInJudgePool: false,
-      isStaff: false,
-      createdAt: input.createdAt
-    }))
-  ).onConflictDoNothing()
+  return userIds.map(userId => database.insert(eventRoleAssignments).values({
+    id: crypto.randomUUID(),
+    eventId: input.eventId,
+    userId,
+    role: 'event_admin' as const,
+    isInJudgePool: false,
+    isStaff: false,
+    createdAt: input.createdAt
+  }).onConflictDoNothing())
 }
 
 export async function assertRemovedEventTracksAreUnreferenced(

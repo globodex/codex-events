@@ -1,3 +1,4 @@
+import { validateDraftCredits, draftCreditLimits, jsonByteLength, type StagedCredit } from '#shared/domains/credits/draft-credits'
 import type { MaybeRefOrGetter } from 'vue'
 
 import type { EventBuilderBlockType, EventBuilderEventType } from '#shared/domains/events/builder-blocks'
@@ -231,8 +232,19 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
     justSubmitted.value = true
   }
 
+  function setStagedCredits(credits: StagedCredit[]) {
+    state.credits = credits
+  }
+
   function buildCreateBody() {
-    return buildEventCreateBody(toEventBuilderFormState(state))
+    const body = {
+      ...buildEventCreateBody(toEventBuilderFormState(state)),
+      credits: validateDraftCredits(state.credits.map(offer => ({
+        ...offer, redirectOnClaim: state.form.simplifiedClaimingEnabled && offer.redirectOnClaim
+      })), state.form.simplifiedClaimingEnabled)
+    }
+    if (jsonByteLength(body) > draftCreditLimits.maxRequestBytes) throw new Error('The draft request must be 8 MB or smaller.')
+    return body
   }
 
   function buildPatchBody() {
@@ -269,6 +281,7 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
     markSubmitted,
     hydrateFromEvent,
     resetBaseline,
+    setStagedCredits,
     buildCreateBody,
     buildPatchBody
   }

@@ -233,3 +233,51 @@ Then('Luma credentials stay in one section when I change claiming methods', asyn
   await expect(luma.getByLabel('Luma event ID', { exact: true })).toHaveValue('')
   await expect(luma.getByLabel('Luma API key', { exact: true })).toHaveValue('')
 })
+
+When('I stage link and code giveaways with {string} claiming', async ({ page }, method: string) => {
+  const mutations: string[] = []
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname.startsWith('/api/events')) mutations.push(request.url())
+  })
+  if (method === 'simplified') await page.getByRole('radio', { name: /^Simplified claiming/ }).click()
+  const manager = page.getByTestId('simplified-giveaways')
+  for (const [name, csv, detected] of [
+    ['Staged links', 'https://example.com/claim/1\nhttps://example.com/claim/2', '2 links detected'],
+    ['Staged codes', 'STAGED-CODE-1\nSTAGED-CODE-2', '2 codes detected']
+  ]) {
+    await manager.getByRole('button', { name: 'Add giveaway', exact: true }).click()
+    await manager.getByLabel('Giveaway name', { exact: true }).fill(name!)
+    await manager.getByRole('textbox', { name: /instructions/ }).fill('Use these credits in billing.')
+    await manager.getByLabel('Giveaway CSV', { exact: true }).setInputFiles({ name: 'credits.csv', mimeType: 'text/csv', buffer: Buffer.from(csv!) })
+    await expect(manager.getByRole('status')).toContainText(detected!)
+    await manager.getByRole('button', { name: 'Add giveaway', exact: true }).click()
+    await expect(manager.getByRole('button', { name: new RegExp(`^${name}`) })).toBeVisible()
+  }
+  if (method === 'simplified') await expect(manager.getByRole('radio', { name: 'Open Staged links after claiming' })).toBeChecked()
+  expect(mutations).toEqual([])
+})
+
+When('I create the draft after a failed save', async ({ page }) => {
+  await page.route('**/api/events', async route => route.fulfill({
+    status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'temporarily_unavailable', message: 'Please try saving again.' } })
+  }), { times: 1 })
+  await page.getByTestId('event-builder-submit').click()
+  await expect(page.getByText('Please try saving again.', { exact: true })).toBeVisible()
+  const manager = page.getByTestId('simplified-giveaways')
+  await expect(manager.getByRole('button', { name: /^Staged links/ })).toContainText('2 available')
+  await expect(manager.getByRole('button', { name: /^Staged codes/ })).toContainText('2 available')
+  const requestPromise = page.waitForRequest(request => request.method() === 'POST' && new URL(request.url()).pathname === '/api/events')
+  await page.getByTestId('event-builder-submit').click()
+  const body = (await requestPromise).postDataJSON()
+  expect(body.credits).toEqual([
+    { name: 'Staged links', description: 'Use these credits in billing.', redirectOnClaim: body.simplifiedClaimingEnabled, values: ['https://example.com/claim/1', 'https://example.com/claim/2'] },
+    { name: 'Staged codes', description: 'Use these credits in billing.', redirectOnClaim: false, values: ['STAGED-CODE-1', 'STAGED-CODE-2'] }
+  ])
+})
+
+Then('the builder should show the saved staged credits', async ({ page }) => {
+  const credits = page.getByTestId('event-builder-settings-credits')
+  await expect(credits.getByText('Staged links', { exact: true })).toBeVisible()
+  await expect(credits.getByText('Staged codes', { exact: true })).toBeVisible()
+  await expect(credits.getByText(/2 available/)).toHaveCount(2)
+})
