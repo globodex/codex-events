@@ -151,7 +151,7 @@ function selectMethod(method: 'regular' | 'simplified') {
       :title="hasRegularClaims ? 'Simplified claiming is unavailable' : 'Delete regular offers to change methods'"
       :description="hasRegularClaims
         ? 'This event already has credits claimed through participant accounts.'
-        : 'Simplified claiming uses one private reward offer, so regular offers must be removed first.'"
+        : 'Remove regular offers before switching to simplified giveaways.'"
     />
 
     <div
@@ -241,6 +241,7 @@ function selectMethod(method: 'regular' | 'simplified') {
     <AccountEventSimplifiedClaimingPanel
       v-else-if="isSimplified && event && simplifiedClaimingStatus"
       :event-id="event.id"
+      :event-name="event.name"
       :initial-status="simplifiedClaimingStatus"
       variant="builder"
       @updated="emit('updated')"

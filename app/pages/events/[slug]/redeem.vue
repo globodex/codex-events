@@ -9,7 +9,7 @@ import { useApiFetch } from '~/composables/useProtectedApiFetch'
 type SimplifiedClaimState = {
   status: 'claimed'
   eventName: string
-  redirectUrl: string
+  redirectUrl: string | null
   claimedAt: string | null
 } | {
   status: 'ready'
@@ -80,7 +80,8 @@ watch(claimState, (nextState) => {
   }
 }, { immediate: true })
 
-async function redirectToCoupon(url: string) {
+async function redirectToCoupon(url: string | null) {
+  if (!url) return
   if (import.meta.client) {
     window.location.replace(url)
     return
@@ -103,12 +104,13 @@ async function redeem() {
   try {
     const response = await apiFetch<ApiDataResponse<{
       status: 'claimed'
-      redirectUrl: string
+      redirectUrl: string | null
       claimedAt: string | null
     }>>(`/api/events/slug/${slug.value}/simplified-claim/actions/redeem`, {
       method: 'POST',
       body: { lumaEmail: email }
     })
+    data.value = { data: { ...response.data, eventName: claimState.value!.eventName } }
     await redirectToCoupon(response.data.redirectUrl)
   } catch (caught) {
     redeemError.value = normalizeApiError(caught).message
@@ -163,15 +165,15 @@ onMounted(async () => {
           v-else-if="claimState?.status === 'sold_out'"
           color="warning"
           variant="soft"
-          title="All coupons have been claimed"
-          description="There are no coupons left for this event."
+          title="All credits have been claimed"
+          description="There are no credits left for this event."
         />
         <AppAlert
           v-else-if="claimState?.status === 'closed'"
           color="warning"
           variant="soft"
           title="Redemption has closed"
-          description="Coupons can no longer be claimed for this event."
+          description="Credits can no longer be claimed for this event."
         />
         <AppAlert
           v-else-if="claimState?.status === 'unavailable'"
@@ -179,6 +181,12 @@ onMounted(async () => {
           variant="soft"
           title="Redemption unavailable"
           description="This redemption page is not available right now."
+        />
+        <AppAlert
+          v-else-if="claimState?.status === 'claimed'"
+          color="success"
+          title="Your credits are claimed"
+          description="Check your account email for your personal links and codes."
         />
         <form
           v-else-if="showEmailForm"
@@ -220,7 +228,7 @@ onMounted(async () => {
               :loading="isRedeeming"
               :disabled="!isInteractive"
             >
-              Continue to ChatGPT
+              Claim credits
             </AppButton>
           </div>
         </form>

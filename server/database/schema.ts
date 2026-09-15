@@ -956,15 +956,16 @@ export const eventCreditOffers = sqliteTable(
     name: text('name').notNull(),
     description: text('description').notNull(),
     simplifiedClaimingOnly: integer('simplified_claiming_only', { mode: 'boolean' }).notNull().default(false),
+    redirectOnClaim: integer('redirect_on_claim', { mode: 'boolean' }).notNull().default(false),
     displayOrder: integer('display_order').notNull().default(0),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn()
   },
   table => [
     index('event_credit_offers_event_display_order_idx').on(table.eventId, table.displayOrder),
-    uniqueIndex('event_credit_offers_simplified_claiming_event_idx')
+    uniqueIndex('event_credit_offers_redirect_event_idx')
       .on(table.eventId)
-      .where(sql`${table.simplifiedClaimingOnly} = true`)
+      .where(sql`${table.redirectOnClaim} = true`)
   ]
 )
 
@@ -992,7 +993,7 @@ export const eventCreditCodes = sqliteTable(
       .on(table.creditOfferId, table.claimedByUserId)
       .where(sql`${table.claimedByUserId} is not null`),
     uniqueIndex('event_credit_codes_claimed_attendee_eligibility_idx')
-      .on(table.claimedAttendeeEligibilityId)
+      .on(table.claimedAttendeeEligibilityId, table.creditOfferId)
       .where(sql`${table.claimedAttendeeEligibilityId} is not null`)
   ]
 )

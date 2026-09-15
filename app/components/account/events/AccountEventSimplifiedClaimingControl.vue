@@ -7,6 +7,7 @@ const enabled = defineModel<boolean>({
 })
 
 const props = withDefaults(defineProps<{
+  eventName: string
   eventId?: string | null
   persistedEnabled?: boolean
   initialStatus: AccountEventSimplifiedClaimingStatus | null
@@ -70,6 +71,7 @@ const emit = defineEmits<{
       <AccountEventSimplifiedClaimingPanel
         v-if="props.persistedEnabled && persistedEventId && props.initialStatus"
         :event-id="persistedEventId"
+        :event-name="eventName"
         :initial-status="props.initialStatus"
         @lock-change="claimingLocked = $event"
         @updated="emit('updated')"

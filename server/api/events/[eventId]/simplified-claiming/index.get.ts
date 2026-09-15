@@ -26,13 +26,7 @@ export const applicationOperation = defineStructuredRouteOperation({
   return apiData({
     enabled: event.simplifiedClaimingEnabled,
     redemptionUrl,
-    ...summary,
-    offer: summary.offer
-      ? {
-          id: summary.offer.id,
-          name: summary.offer.name
-        }
-      : null
+    ...summary
   })
 })
 

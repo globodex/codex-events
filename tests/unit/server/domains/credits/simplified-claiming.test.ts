@@ -47,3 +47,14 @@ describe('TASK-420 simplified claiming domain', () => {
     expect(isHttpsCouponUrl('CODE-1')).toBe(false)
   })
 })
+
+describe('giveaway upload detection', () => {
+  test('detects links and codes without a format selector', async () => {
+    const { parseGiveawayValues, describeGiveawayValues } = await import('../../../../../shared/domains/credits/simplified-giveaways')
+    expect(describeGiveawayValues(parseGiveawayValues('\uFEFF"https://example.com/claim"\r\nCODE-123\n'))).toBe('1 link · 1 code')
+    expect(() => parseGiveawayValues('https://')).toThrow('valid HTTPS')
+    expect(() => parseGiveawayValues('javascript:alert(1)')).toThrow('valid HTTPS')
+    expect(() => parseGiveawayValues('https://user:secret@example.com')).toThrow('embedded credentials')
+    expect(() => parseGiveawayValues('')).toThrow('one code')
+  })
+})

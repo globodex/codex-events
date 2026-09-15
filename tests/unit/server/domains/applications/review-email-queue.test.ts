@@ -114,14 +114,14 @@ describe('application review email queue utilities', () => {
       recipientEmail: 'participant@example.com',
       recipientDisplayName: 'Ada Lovelace',
       eventName: 'Codex Spring',
-      couponUrl: 'https://chatgpt.com/coupon/example'
+      giveaways: [{ name: 'Codex credits', description: '', value: 'https://chatgpt.com/coupon/example' }]
     }))
 
     expect(result).toEqual({ status: 'enqueued' })
     expect(send).toHaveBeenCalledWith(expect.objectContaining({
       notificationType: 'simplified_claim_receipt',
       creditCodeId: 'coupon_1',
-      couponUrl: 'https://chatgpt.com/coupon/example'
+      giveaways: [{ name: 'Codex credits', description: '', value: 'https://chatgpt.com/coupon/example' }]
     }), {
       contentType: 'json'
     })

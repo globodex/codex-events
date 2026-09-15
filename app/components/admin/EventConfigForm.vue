@@ -1551,6 +1551,7 @@ const submitConfigForm = handleSubmit(() => {
                   <AccountEventSimplifiedClaimingControl
                     v-if="isMeetup"
                     v-model="form.simplifiedClaimingEnabled"
+                    :event-name="form.name"
                     :event-id="props.eventId"
                     :persisted-enabled="props.persistedSimplifiedClaimingEnabled"
                     :initial-status="props.initialSimplifiedClaimingStatus ?? null"
@@ -1930,6 +1931,7 @@ const submitConfigForm = handleSubmit(() => {
             <AccountEventSimplifiedClaimingControl
               v-if="isMeetup"
               v-model="form.simplifiedClaimingEnabled"
+              :event-name="form.name"
               :event-id="props.eventId"
               :persisted-enabled="props.persistedSimplifiedClaimingEnabled"
               :initial-status="props.initialSimplifiedClaimingStatus ?? null"

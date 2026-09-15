@@ -96,7 +96,7 @@ When('I open the closed simplified claiming link with the saved {string} session
 })
 
 When('I confirm the simplified claim', async ({ page }) => {
-  await page.getByRole('button', { name: 'Continue to ChatGPT' }).click()
+  await page.getByRole('button', { name: 'Claim credits' }).click()
 })
 
 When('I replace the Luma email with {string}', async ({ page }, lumaEmail: string) => {
@@ -128,7 +128,7 @@ Then('I should see my saved Luma email ready to confirm', async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`/events/${fixtureSlug}/redeem$`))
   await expect(page.getByRole('heading', { name: 'Confirm your Luma email' })).toBeVisible()
   await expect(page.getByLabel('Luma email')).toHaveValue(getRegularUserEmail())
-  await expect(page.getByRole('button', { name: 'Continue to ChatGPT' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Claim credits' })).toBeVisible()
 })
 
 Then('I should be able to correct the unmatched Luma email', async ({ page }) => {
@@ -140,7 +140,7 @@ Then('I should be able to correct the unmatched Luma email', async ({ page }) =>
 Then('I should see that redemption has closed', async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`/events/${closedFixtureSlug}/redeem$`))
   await expect(page.getByText('Redemption has closed', { exact: true })).toBeVisible()
-  await expect(page.getByText('Coupons can no longer be claimed for this event.', { exact: true })).toBeVisible()
+  await expect(page.getByText('Credits can no longer be claimed for this event.', { exact: true })).toBeVisible()
 })
 
 Then('I should see the attendee claiming QR settings', async ({ page }) => {
@@ -170,8 +170,8 @@ Then('I should see the attendee claiming QR settings', async ({ page }) => {
   await expect(page.getByText(redemptionUrl, { exact: true })).toBeVisible()
   await expect(page.getByRole('img', { name: 'Redemption QR code' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Download QR as SVG' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Upload reward links' })).toBeEnabled()
-  await expect(page.getByRole('button', { name: 'Upload Luma attendees' })).toBeEnabled()
+  await expect(page.getByRole('button', { name: 'Add giveaway' })).toBeEnabled()
+  await expect(page.getByRole('button', { name: 'Import attendees CSV' })).toBeEnabled()
   await expect(inlinePanel.getByText('Locked', { exact: true })).toHaveCount(0)
   await expect(page.getByRole('tab', { name: 'Credits' })).toHaveCount(0)
 })
@@ -211,4 +211,34 @@ Then('the {string} should see the simplified claiming participant checked in', a
   } finally {
     await apiClient.dispose()
   }
+})
+
+When('I add a code giveaway in the simplified event builder', async ({ page }) => {
+  await applyStoredStateToPage('event_admin', page)
+  await page.goto(`/admin/events/builder/${fixtureSlug}`)
+  const manager = page.getByTestId('simplified-giveaways')
+  await expect(manager).toBeVisible()
+  await manager.getByRole('button', { name: 'Add giveaway', exact: true }).click()
+  await manager.getByLabel('Giveaway name', { exact: true }).fill('API credits BDD')
+  await manager.getByLabel('Email instructions (optional)', { exact: true }).fill('Use this code in billing.')
+  await manager.getByLabel('Giveaway CSV', { exact: true }).setInputFiles({ name: 'codes.csv', mimeType: 'text/csv', buffer: Buffer.from('PRIVATE-BDD-CODE-1\nPRIVATE-BDD-CODE-2') })
+  await expect(manager.getByRole('status')).toContainText('2 codes detected')
+  await manager.getByRole('button', { name: 'Add giveaway', exact: true }).click()
+  await expect(manager.getByRole('button', { name: /^API credits BDD/ })).toBeVisible()
+})
+
+Then('I should see automatically detected codes and the combined email preview', async ({ page }) => {
+  const manager = page.getByTestId('simplified-giveaways')
+  await expect(manager.getByText('0 links · 2 codes · 2 available')).toBeVisible()
+  await expect(page.getByTestId('event-builder-submit')).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: 'Connect Luma', exact: true })).toBeVisible()
+  await manager.getByRole('button', { name: 'Preview email', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('Codex event credit')
+  await expect(dialog).toContainText('API credits BDD')
+  await expect(dialog).toContainText('Use this code in billing.')
+  await expect(dialog).toContainText('DEMO-ABCD-1234')
+  await expect(dialog).not.toContainText('PRIVATE-BDD-CODE')
+  await dialog.getByRole('button', { name: 'Close email preview' }).click()
+  await expect(dialog).toBeHidden()
 })

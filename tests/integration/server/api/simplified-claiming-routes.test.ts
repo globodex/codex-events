@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { and, eq } from 'drizzle-orm'
 
+import giveawayPatchHandler from '../../../../server/api/events/[eventId]/simplified-claiming/rewards/[creditId].patch'
 import importCheckInsHandler from '../../../../server/api/events/[eventId]/simplified-claiming/attendees/import-check-ins.post'
 import lumaWebhookHandler from '../../../../server/api/public/events/[slug]/luma/webhooks.post'
 import { buildLumaWebhookSignatureHeader } from '../../../../server/domains/applications/luma-webhooks'
@@ -47,6 +48,8 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     const queueSend = vi.fn(async () => undefined)
     const harness = createApiRouteTestHarness({
       routes: [
+        { method: 'patch', path: '/api/events/:eventId/simplified-claiming/rewards/:creditId', handler: giveawayPatchHandler },
+        { method: 'post', path: '/api/events/:eventId/simplified-claiming/rewards/import', handler: simplifiedClaimingRewardImportHandler },
         { method: 'post', path: '/api/events/:eventId/simplified-claiming/attendees/import-check-ins', handler: importCheckInsHandler },
         { method: 'post', path: '/api/public/events/:slug/luma/webhooks', handler: lumaWebhookHandler },
         { method: 'get', path: '/api/events/slug/:slug/simplified-claim', handler: simplifiedClaimGetHandler },
@@ -107,7 +110,7 @@ describe('TASK-420 simplified attendee claiming routes', () => {
       eventId: 'meetup',
       name: 'Codex credit',
       description: 'Private offer',
-      simplifiedClaimingOnly: true
+      simplifiedClaimingOnly: true, redirectOnClaim: true
     })
     await harness.database.insert(eventCreditCodes).values({
       id: 'coupon',
@@ -154,6 +157,87 @@ describe('TASK-420 simplified attendee claiming routes', () => {
       headers: { 'content-type': 'application/json', 'webhook-signature': valid ? signature : 'invalid' }
     })
   }
+
+  async function addGiveaway(harness: ReturnType<typeof createApiRouteTestHarness>, id: string, value?: string) {
+    await harness.database.insert(eventCreditOffers).values({
+      id, eventId: 'meetup', name: id, description: `Instructions for ${id}`, simplifiedClaimingOnly: true
+    })
+    if (value) await harness.database.insert(eventCreditCodes).values({ id: `${id}-value`, creditOfferId: id, value })
+  }
+  const redeem = (harness: ReturnType<typeof createApiRouteTestHarness>) => harness.request('/api/events/slug/vienna-meetup/simplified-claim/actions/redeem', {
+    method: 'POST', body: JSON.stringify({ lumaEmail: 'guest@example.com' })
+  })
+
+  test('assigns links and codes together, emails all three once, and keeps repeat assignments', async () => {
+    const { harness, queueSend } = await createContext()
+    await addGiveaway(harness, 'api', 'API-CODE')
+    await addGiveaway(harness, 'partner', 'https://partner.example/claim')
+    const responses = await Promise.all([redeem(harness), redeem(harness)])
+    for (const response of responses) {
+      expect(response.status).toBe(200)
+      expect(await response.json()).toMatchObject({ data: { redirectUrl: 'https://chatgpt.com/coupon/example' } })
+    }
+    expect(queueSend).toHaveBeenCalledTimes(1)
+    expect(queueSend.mock.calls[0]![0]).toMatchObject({
+      recipientEmail: 'account@example.com',
+      giveaways: expect.arrayContaining([
+        expect.objectContaining({ value: 'API-CODE', name: 'api' }),
+        expect.objectContaining({ value: 'https://partner.example/claim' }),
+        expect.objectContaining({ value: 'https://chatgpt.com/coupon/example' })
+      ])
+    })
+    const claimed = await harness.database.query.eventCreditCodes.findMany()
+    expect(claimed).toHaveLength(3)
+    expect(claimed.every(code => code.claimedByUserId === 'participant' && code.claimedAttendeeEligibilityId === 'eligibility')).toBe(true)
+    expect(new Set(claimed.map(code => code.claimedAt)).size).toBe(1)
+    await addGiveaway(harness, 'late', 'LATE-CODE')
+    expect((await redeem(harness)).status).toBe(200)
+    expect(queueSend).toHaveBeenCalledTimes(1)
+    expect((await harness.database.query.eventCreditCodes.findFirst({ where: eq(eventCreditCodes.id, 'late-value') }))!.claimedByUserId).toBeNull()
+  })
+
+  test('skips exhausted giveaways and confirms by email when no redirect value remains', async () => {
+    const { harness, queueSend } = await createContext()
+    // A sold-out redirect retains its uploaded link, already assigned to a different attendee.
+    await harness.database.insert(users).values({ id: 'other', auth0Subject: 'auth0|other', email: 'other@example.com', displayName: 'Other' })
+    await harness.database.insert(eventAttendeeEligibilities).values({ id: 'other-eligibility', eventId: 'meetup', normalizedEmail: 'other@example.com' })
+    await harness.database.update(eventCreditCodes).set({ claimedByUserId: 'other', claimedAttendeeEligibilityId: 'other-eligibility', claimedAt: '2026-01-01' }).where(eq(eventCreditCodes.id, 'coupon'))
+    await addGiveaway(harness, 'api', 'API-CODE')
+    await addGiveaway(harness, 'empty')
+    const response = await redeem(harness)
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ data: { redirectUrl: null } })
+    expect(queueSend.mock.calls[0]![0]).toMatchObject({ giveaways: [{ name: 'api', description: 'Instructions for api', value: 'API-CODE' }] })
+    const repeat = await harness.request('/api/events/slug/vienna-meetup/simplified-claim')
+    expect(await repeat.json()).toMatchObject({ data: { status: 'claimed', redirectUrl: null } })
+  })
+
+  test('uploads detected codes and protects the selected redirect from code imports', async () => {
+    const { harness } = await createContext()
+    const body = new FormData()
+    body.append('name', 'API credits')
+    body.append('description', 'Use in billing')
+    body.append('file', new Blob(['CODE-A\nCODE-B']), 'codes.csv')
+    const response = await harness.request('/api/events/meetup/simplified-claiming/rewards/import', { method: 'POST', body })
+    expect(response.status).toBe(200)
+    const { data } = await response.json()
+    expect(data.importedCount).toBe(2)
+    const invalid = new FormData()
+    invalid.append('creditId', 'offer')
+    invalid.append('file', new Blob(['CODE-C']), 'codes.csv')
+    expect((await harness.request('/api/events/meetup/simplified-claiming/rewards/import', { method: 'POST', body: invalid })).status).toBe(400)
+    const patch = (id: string, redirectOnClaim: boolean) => harness.request(`/api/events/meetup/simplified-claiming/rewards/${id}`, {
+      method: 'PATCH', body: JSON.stringify({ name: 'Edited', description: '', redirectOnClaim })
+    })
+    expect((await patch(data.creditId, true)).status).toBe(409)
+    await addGiveaway(harness, 'links', 'https://partner.example/claim')
+    expect((await patch('links', true)).status).toBe(200)
+    expect((await redeem(harness)).status).toBe(200)
+    expect((await patch('offer', true)).status).toBe(409)
+    expect((await patch('links', true)).status).toBe(200)
+    await harness.database.delete(eventRoleAssignments)
+    expect((await patch('links', true)).status).toBe(403)
+  })
 
   test('signed check-ins add unknown guests once and leave applications and claimed rewards unchanged', async () => {
     const { harness, queueSend } = await createContext()
@@ -288,7 +372,7 @@ describe('TASK-420 simplified attendee claiming routes', () => {
       creditCodeId: 'coupon',
       recipientEmail: 'account@example.com',
       eventName: 'Vienna Meetup',
-      couponUrl: 'https://chatgpt.com/coupon/example'
+      giveaways: [{ name: 'Codex credit', description: 'Private offer', value: 'https://chatgpt.com/coupon/example' }]
     }), {
       contentType: 'json'
     })
@@ -410,7 +494,7 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     expect(queueSend).toHaveBeenCalledTimes(1)
     expect(queueSend).toHaveBeenCalledWith(expect.objectContaining({
       notificationType: 'simplified_claim_receipt',
-      couponUrl: 'https://chatgpt.com/coupon/example'
+      giveaways: [{ name: 'Codex credit', description: 'Private offer', value: 'https://chatgpt.com/coupon/example' }]
     }), {
       contentType: 'json'
     })
@@ -570,7 +654,7 @@ describe('TASK-420 simplified attendee claiming routes', () => {
       data: {
         ready: false,
         issues: expect.arrayContaining([
-          { code: 'offer_missing', message: 'Upload reward links in Settings.' }
+          { code: 'offer_missing', message: 'Add a giveaway and upload its credits.' }
         ])
       }
     })
@@ -584,8 +668,12 @@ describe('TASK-420 simplified attendee claiming routes', () => {
       error: { code: 'simplified_claiming_credits_managed_in_settings' }
     })
 
+    let uploadedOfferId = ''
     function rewardUpload(value: string) {
       const body = new FormData()
+      body.append('name', 'Codex credits')
+      body.append('description', '')
+      if (uploadedOfferId) body.append('creditId', uploadedOfferId)
       body.append('file', new Blob([value], { type: 'text/csv' }), 'rewards.csv')
       return harness.request('/api/events/admin-meetup/simplified-claiming/rewards/import', {
         method: 'POST',
@@ -599,12 +687,12 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     )
     const firstRewardUpload = await rewardUpload(initialRewardLinks.join('\n'))
     expect(firstRewardUpload.status).toBe(200)
-    expect(await firstRewardUpload.json()).toMatchObject({
+    const firstUploadBody = await firstRewardUpload.json()
+    uploadedOfferId = firstUploadBody.data.creditId
+    expect(firstUploadBody).toMatchObject({
       data: {
         importedCount: 120,
-        skippedCount: 0,
-        totalInventoryCount: 120,
-        availableInventoryCount: 120
+        skippedCount: 0
       }
     })
 
@@ -615,7 +703,7 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     ].join('\n'))
     expect(duplicateRewardUpload.status).toBe(200)
     expect(await duplicateRewardUpload.json()).toMatchObject({
-      data: { importedCount: 1, skippedCount: 2, totalInventoryCount: 121 }
+      data: { importedCount: 1, skippedCount: 2 }
     })
 
     const concurrentUploads = await Promise.all([
@@ -626,7 +714,7 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     expect(await harness.database.select().from(eventCreditOffers)).toHaveLength(1)
     expect(await harness.database.select().from(eventCreditCodes)).toHaveLength(123)
     expect(await harness.database.query.eventCreditOffers.findFirst()).toMatchObject({
-      simplifiedClaimingOnly: true
+      simplifiedClaimingOnly: true, redirectOnClaim: true
     })
 
     const importForm = new FormData()
@@ -680,7 +768,7 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     ].join('\n'))
     expect(postClaimUpload.status).toBe(200)
     expect(await postClaimUpload.json()).toMatchObject({
-      data: { importedCount: 1, skippedCount: 2, totalInventoryCount: 124 }
+      data: { importedCount: 1, skippedCount: 2 }
     })
 
     const duplicateConcurrentUploads = await Promise.all([

@@ -278,7 +278,7 @@ state.
   shared email deduplication and claim preservation, builder credential
   visibility, bounded and appendable reward and attendee CSV imports, and PII
   minimization, offer visibility, configuration locking, authenticated email
-  matching, idempotent coupon allocation, receipt delivery, attendance-source
+  matching, atomic multi-giveaway allocation, link/code detection, exhausted-giveaway skipping, nullable redirects, immutable repeat claims, combined receipt delivery and escaping, redirect selection locking, email preview, attendance-source
   precedence, certificate eligibility, rate limiting, and the external coupon
   redirect.
 

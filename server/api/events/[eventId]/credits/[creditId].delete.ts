@@ -29,6 +29,11 @@ export const applicationOperation = defineStructuredRouteOperation({
     delete from event_credit_offers
     where id = ?
       and event_id = ?
+      and (redirect_on_claim = false or not exists (
+        select 1 from event_credit_codes code
+        join event_credit_offers offer on offer.id = code.credit_offer_id
+        where offer.event_id = event_credit_offers.event_id and code.claimed_attendee_eligibility_id is not null
+      ))
       and not exists (
         select 1
         from event_credit_codes

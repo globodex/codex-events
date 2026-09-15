@@ -1,4 +1,4 @@
-import { and, eq, isNotNull } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { requirePlatformActor } from '#server/auth/actor'
@@ -7,7 +7,6 @@ import { getDatabase, getDatabaseSession } from '#server/database/client'
 import {
   eventAttendeeEligibilities,
   eventCreditCodes,
-  eventCreditOffers,
   userApplications
 } from '#server/database/schema'
 import { assertEventAllowsApplications } from '#server/domains/applications'
@@ -17,7 +16,8 @@ import {
 } from '#server/domains/applications/review-email-queue'
 import {
   getSimplifiedClaimingSummary,
-  isHttpsCouponUrl,
+  readSimplifiedClaims,
+  simplifiedClaimResult,
   normalizeLumaEmail
 } from '#server/domains/credits/simplified-claiming'
 import { getVisibleEventBySlugOrThrow, routeSlugParamsSchema } from '#server/domains/events'
@@ -57,45 +57,16 @@ export const applicationOperation = defineStructuredRouteOperation({
   const database = getDatabase(h3Event)
   const event = await getVisibleEventBySlugOrThrow(h3Event, slug)
 
-  async function readExistingClaim() {
-    const rows = await database.select({
-      id: eventCreditCodes.id,
-      value: eventCreditCodes.value,
-      claimedAt: eventCreditCodes.claimedAt
-    })
-      .from(eventCreditCodes)
-      .innerJoin(eventCreditOffers, eq(eventCreditOffers.id, eventCreditCodes.creditOfferId))
-      .where(and(
-        eq(eventCreditOffers.eventId, event.id),
-        eq(eventCreditOffers.simplifiedClaimingOnly, true),
-        eq(eventCreditCodes.claimedByUserId, actor.platformUser.id),
-        isNotNull(eventCreditCodes.claimedAttendeeEligibilityId)
-      ))
-      .limit(1)
-    return rows[0] ?? null
-  }
-
-  const existingClaim = await readExistingClaim()
-  if (existingClaim) {
-    assertGuard(isHttpsCouponUrl(existingClaim.value), {
-      statusCode: 500,
-      code: 'simplified_claiming_coupon_url_invalid',
-      message: 'The assigned coupon link is invalid. Contact the event organizer.'
-    })
-    return apiData({
-      status: 'claimed' as const,
-      redirectUrl: existingClaim.value,
-      claimedAt: existingClaim.claimedAt
-    })
-  }
+  const readExistingClaims = () => readSimplifiedClaims(database, event.id, actor.platformUser.id)
+  const existingClaims = await readExistingClaims()
+  if (existingClaims.length) return apiData(simplifiedClaimResult(existingClaims))
 
   await assertSimplifiedClaimingRateLimit(
     h3Event,
     `simplified-claim:${event.id}:${actor.platformUser.id}`
   )
   const summary = await getSimplifiedClaimingSummary(database, event)
-  const offer = summary.offer
-  assertGuard(summary.ready && offer, {
+  assertGuard(summary.ready, {
     statusCode: 409,
     code: 'simplified_claiming_not_ready',
     message: 'This redemption page is not ready yet.'
@@ -122,7 +93,7 @@ export const applicationOperation = defineStructuredRouteOperation({
   assertGuard(!existingEligibilityClaim || existingEligibilityClaim.claimedByUserId === actor.platformUser.id, {
     statusCode: 409,
     code: 'simplified_claiming_attendee_already_used',
-    message: 'A coupon has already been claimed for that Luma attendee.'
+    message: 'Credits have already been claimed for that Luma attendee.'
   })
 
   const existingApplication = await database.query.userApplications.findFirst({
@@ -134,7 +105,7 @@ export const applicationOperation = defineStructuredRouteOperation({
   assertGuard(existingApplication?.status !== 'rejected' && existingApplication?.status !== 'withdrawn', {
     statusCode: 409,
     code: 'simplified_claiming_application_blocked',
-    message: 'This account cannot redeem a coupon for the event.'
+    message: 'This account cannot claim credits for the event.'
   })
 
   const claimTimestamp = createUniqueClaimTimestamp()
@@ -148,47 +119,24 @@ export const applicationOperation = defineStructuredRouteOperation({
 
   await session.batch([
     session.prepare(`
+      with candidates as materialized (
+        select code.id from event_credit_codes code
+        join event_credit_offers offer on offer.id = code.credit_offer_id
+        where offer.event_id = ? and offer.simplified_claiming_only = true
+          and code.id = (select next.id from event_credit_codes next
+            where next.credit_offer_id = offer.id and next.claimed_by_user_id is null
+            order by next.created_at, next.id limit 1)
+          and not exists (select 1 from event_credit_codes where claimed_attendee_eligibility_id = ?)
+          and not exists (select 1 from event_credit_codes previous
+            join event_credit_offers previous_offer on previous_offer.id = previous.credit_offer_id
+            where previous_offer.event_id = ? and previous_offer.simplified_claiming_only = true and previous.claimed_by_user_id = ?)
+          and not exists (select 1 from user_applications where event_id = ? and user_id = ? and (status = 'rejected' or status = 'withdrawn'))
+      )
       update event_credit_codes
       set claimed_by_user_id = ?, claimed_attendee_eligibility_id = ?, claimed_at = ?
-      where id = (
-        select code.id
-        from event_credit_codes code
-        inner join event_credit_offers offer on offer.id = code.credit_offer_id
-        where offer.event_id = ?
-          and offer.simplified_claiming_only = true
-          and code.claimed_by_user_id is null
-          and code.value like 'https://%'
-        order by code.created_at asc, code.id asc
-        limit 1
-      )
-        and claimed_by_user_id is null
-        and not exists (
-          select 1 from event_credit_codes where claimed_attendee_eligibility_id = ?
-        )
-        and not exists (
-          select 1
-          from event_credit_codes code
-          inner join event_credit_offers offer on offer.id = code.credit_offer_id
-          where offer.event_id = ?
-            and offer.simplified_claiming_only = true
-            and code.claimed_by_user_id = ?
-        )
-        and not exists (
-          select 1 from user_applications
-          where event_id = ? and user_id = ?
-            and (status = 'rejected' or status = 'withdrawn')
-        )
-    `).bind(
-      actor.platformUser.id,
-      eligibility!.id,
-      claimTimestamp,
-      event.id,
-      eligibility!.id,
-      event.id,
-      actor.platformUser.id,
-      event.id,
-      actor.platformUser.id
-    ),
+      where claimed_by_user_id is null and exists (select 1 from candidates where candidates.id = event_credit_codes.id)
+    `).bind(event.id, eligibility!.id, event.id, actor.platformUser.id, event.id, actor.platformUser.id,
+      actor.platformUser.id, eligibility!.id, claimTimestamp),
     session.prepare(`
       insert into user_applications (
         id, event_id, user_id, status, pre_approval_status, luma_sync_status,
@@ -259,7 +207,7 @@ export const applicationOperation = defineStructuredRouteOperation({
     ),
     session.prepare(`
       insert into audit_logs (id, actor_user_id, entity_type, entity_id, action, metadata, created_at)
-      select ?, ?, 'event_credit_code', id, 'event_credit_code.claimed', ?, ?
+      select ? || ':' || id, ?, 'event_credit_code', id, 'event_credit_code.claimed', ?, ?
       from event_credit_codes
       where claimed_by_user_id = ?
         and claimed_attendee_eligibility_id = ?
@@ -267,7 +215,7 @@ export const applicationOperation = defineStructuredRouteOperation({
     `).bind(
       codeAuditId,
       actor.platformUser.id,
-      auditMetadata({ eventId: event.id, creditId: offer!.id, claimedByUserId: actor.platformUser.id, source: 'simplified_claim' }),
+      auditMetadata({ eventId: event.id, claimedByUserId: actor.platformUser.id, source: 'simplified_claim' }),
       claimTimestamp,
       actor.platformUser.id,
       eligibility!.id,
@@ -313,42 +261,19 @@ export const applicationOperation = defineStructuredRouteOperation({
     )
   ])
 
-  const claimedCode = await readExistingClaim()
-  if (!claimedCode) {
+  const claims = await readExistingClaims()
+  if (!claims.length) {
     const usedEligibility = await database.query.eventCreditCodes.findFirst({
-      columns: { id: true },
-      where: eq(eventCreditCodes.claimedAttendeeEligibilityId, eligibility!.id)
+      columns: { id: true }, where: eq(eventCreditCodes.claimedAttendeeEligibilityId, eligibility!.id)
     })
-    if (usedEligibility) {
-      throw new ApiError({
-        statusCode: 409,
-        code: 'simplified_claiming_attendee_already_used',
-        message: 'A coupon has already been claimed for that Luma attendee.'
-      })
-    }
-
     throw new ApiError({
       statusCode: 409,
-      code: 'event_credit_sold_out',
-      message: 'No coupons remain for this event.'
+      code: usedEligibility ? 'simplified_claiming_attendee_already_used' : 'event_credit_sold_out',
+      message: usedEligibility ? 'Credits have already been claimed for that Luma attendee.' : 'No credits remain for this event.'
     })
   }
-
-  if (!isHttpsCouponUrl(claimedCode.value)) {
-    throw new ApiError({
-      statusCode: 500,
-      code: 'simplified_claiming_result_missing',
-      message: 'The coupon could not be resolved after redemption.'
-    })
-  }
-
-  if (claimedCode.claimedAt !== claimTimestamp) {
-    return apiData({
-      status: 'claimed' as const,
-      redirectUrl: claimedCode.value,
-      claimedAt: claimedCode.claimedAt
-    })
-  }
+  const claimedCode = claims[0]!
+  if (claimedCode.claimedAt !== claimTimestamp) return apiData(simplifiedClaimResult(claims))
 
   const application = await database.query.userApplications.findFirst({
     where: and(
@@ -372,7 +297,7 @@ export const applicationOperation = defineStructuredRouteOperation({
       recipientEmail: actor.platformUser.email,
       recipientDisplayName: actor.platformUser.displayName,
       eventName: event.name,
-      couponUrl: claimedCode.value
+      giveaways: claims.map(({ name, description, value }) => ({ name, description, value }))
     })
   )
   await writeAuditLog(database, {
@@ -387,11 +312,7 @@ export const applicationOperation = defineStructuredRouteOperation({
     }
   })
 
-  return apiData({
-    status: 'claimed' as const,
-    redirectUrl: claimedCode.value,
-    claimedAt: claimedCode.claimedAt
-  })
+  return apiData(simplifiedClaimResult(claims))
 })
 
 export default defineStructuredOperationApiHandler(applicationOperation)

@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 
 import { z } from 'zod'
+import { isHttpsCouponUrl, type claimedGiveawaySchema } from '#shared/domains/credits/simplified-giveaways'
 
 import {
   createOutboundEmailMetadataHeaders,
@@ -47,7 +48,7 @@ export interface SimplifiedClaimReceiptEmailInput {
   recipientEmail: string | null
   recipientDisplayName?: string | null
   eventName: string
-  couponUrl: string
+  giveaways: z.infer<typeof claimedGiveawaySchema>[]
 }
 
 export interface SimplifiedClaimCorrectionEmailInput {
@@ -180,37 +181,25 @@ function buildApplicationReviewEmailContent(input: ApplicationReviewDecisionEmai
 }
 
 function buildSimplifiedClaimReceiptEmailContent(input: SimplifiedClaimReceiptEmailInput) {
-  const creditsAnalyticsUrl = 'https://chatgpt.com/codex/cloud/settings/analytics#usage'
   const firstName = toPreferredFirstName(input.recipientDisplayName)
-  const escapedFirstName = escapeHtml(firstName)
-  const escapedEventName = escapeHtml(input.eventName)
-  const escapedCouponUrl = escapeHtml(input.couponUrl)
-
   return {
-    subject: `Your coupon for ${input.eventName}`,
+    subject: `Your credits for ${input.eventName}`,
     text: [
-      `Hi ${firstName},`,
-      '',
-      `Your coupon for ${input.eventName} has been claimed successfully.`,
-      '',
-      'Here\'s a copy of your coupon:',
-      input.couponUrl,
-      '',
-      'After you apply your coupon, you can view your credits here:',
-      creditsAnalyticsUrl,
-      '',
-      'Sol is currently available only on paid plans. You can also build with Terra and Luna - both are strong models.',
-      '',
-      'Best,',
-      'Codex Community Events'
+      `Hi ${firstName},`, '', `Thanks for joining ${input.eventName}. Here are your credits.`, '',
+      ...input.giveaways.flatMap(giveaway => [giveaway.name, giveaway.value, giveaway.description, '']),
+      'Keep this email to access your personal links and codes.', '', 'Codex Community Events'
     ].join('\n'),
     html: [
-      `<p>Hi ${escapedFirstName},</p>`,
-      `<p>Your coupon for <strong>${escapedEventName}</strong> has been claimed successfully.</p>`,
-      `<p>Here's a copy of your coupon:<br><a href="${escapedCouponUrl}">View your coupon</a></p>`,
-      `<p>After you apply your coupon, you can <a href="${creditsAnalyticsUrl}">view your credits in Codex Cloud</a>.</p>`,
-      '<p>Sol is currently available only on paid plans. You can also build with Terra and Luna - both are strong models.</p>',
-      '<p>Best,<br>Codex Community Events</p>'
+      `<p>Hi ${escapeHtml(firstName)},</p>`,
+      `<p>Thanks for joining <strong>${escapeHtml(input.eventName)}</strong>. Here are your credits.</p>`,
+      ...input.giveaways.map(giveaway => [
+        `<h2>${escapeHtml(giveaway.name)}</h2>`,
+        isHttpsCouponUrl(giveaway.value)
+          ? `<p><a href="${escapeHtml(giveaway.value)}">Claim ${escapeHtml(giveaway.name)}</a></p>`
+          : `<p><code>${escapeHtml(giveaway.value)}</code></p>`,
+        giveaway.description ? `<p>${escapeHtml(giveaway.description).replaceAll('\n', '<br>')}</p>` : ''
+      ].join('\n')),
+      '<p>Keep this email to access your personal links and codes.</p>', '<p>Codex Community Events</p>'
     ].join('\n'),
     notificationType: 'simplified_claim_receipt'
   }

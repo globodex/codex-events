@@ -230,7 +230,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `final_ranking_submission_ids_json` stores the full saved shortlist order when `shortlist` is used and is later updated by any explicit final-ranking reorder recorded during `final_deliberation`.
 - `participants_limit` is an indicative planning target surfaced in admin approval workflows and does not enforce staged or applied admin approval writes by itself. When auto approval is enabled, it is also the capacity boundary for automatic approval.
 - `auto_approve_applications` controls whether newly submitted applications are approved immediately after required submission checks pass while approved participation is below `participants_limit` when one is configured. It defaults to false and does not affect already submitted applications when changed.
-- `simplified_claiming_enabled` is available only for Meetups. It requires no application terms or required registration fields. Optional paired `luma_event_api_id` and `luma_api_key` credentials connect check-ins without approval/rejection sync. It uses the event slug and sole credit offer instead of a token or selected-offer field.
+- `simplified_claiming_enabled` is available only for Meetups. It requires no application terms or required registration fields. Optional paired `luma_event_api_id` and `luma_api_key` credentials connect check-ins without approval/rejection sync. It uses the event slug for redemption and the giveaway with `redirect_on_claim = true` as the redirect destination.
 - `talk_proposals_enabled` defaults to false. `talk_proposal_questions_json` defaults to `[]`, and `talk_proposal_questions_revision` defaults to `0`. After the first `TalkProposal` exists for the event, the feature cannot be disabled and the question definition cannot change. Its closing timestamp can change until the event is completed.
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
 - Application field visibility columns control whether each optional application field appears on the participant application form. First name and family name are always visible and required.
@@ -974,6 +974,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `name`
 - `description`
 - `simplified_claiming_only`
+- `redirect_on_claim`
 - `display_order`
 - `created_at`
 - `updated_at`
@@ -982,12 +983,12 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - A credit offer belongs to one event.
 - A credit offer is separate from winner prizes.
-- An event can define multiple ordinary credit offers and at most one offer where `simplified_claiming_only = true`.
+- An event can define multiple ordinary credit offers or up to 20 simplified-only giveaways. A partial unique index permits at most one `redirect_on_claim = true` offer per event; simplified readiness requires exactly one containing only HTTPS links.
 - A simplified-claiming Meetup cannot have ordinary credit offers while the setting is enabled.
 - An offer can be deleted only when none of its inventory rows has been claimed.
-- Ordinary credit offers store participant-facing markdown copy and ordering. The simplified-only offer uses system-owned metadata because participants receive its HTTPS reward links through the redemption page.
+- Ordinary credit offers store participant-facing markdown copy and ordering. Simplified-only giveaways store an organizer-provided name and plain-text email instructions.
 - Disabling simplified claiming leaves the simplified-only offer flagged, private, and unavailable.
-- The simplified-only offer remains fixed after its first claim, while new unique HTTPS reward rows can still be appended to its inventory.
+- The selected redirect giveaway remains fixed after the first simplified claim. Other giveaways and unique inventory values can be added; previous claims remain unchanged.
 - Uploaded redeemable values live on `EventCreditCode`.
 
 ## EventCreditCode
@@ -1006,16 +1007,16 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - `claimed_by_user_id` is null or references one `User`.
 - At most one row per `(credit_offer_id, claimed_by_user_id)` when `claimed_by_user_id` is not null.
-- `claimed_attendee_eligibility_id` is unique when present and references one `EventAttendeeEligibility`.
+- `claimed_attendee_eligibility_id` references one `EventAttendeeEligibility`. The pair `(claimed_attendee_eligibility_id, credit_offer_id)` is unique when eligibility is present. The atomic claim operation ensures that one attendee eligibility cannot be claimed by different accounts across giveaways.
 
 ### Notes
 
 - Each row stores one uploaded redeemable value, which can be a code or a URL.
-- Simplified reward import stores at most one row per exact HTTPS value within its offer.
+- Simplified reward import stores at most one row per exact code or HTTPS link within its giveaway.
 - Unclaimed rows are available inventory for the credit offer.
 - Claiming permanently assigns one uploaded value to one claiming user.
 - Only approved participants and event staff can claim from a credit offer.
-- Simplified claiming stores HTTPS coupon URLs, links the assigned row to attendee eligibility, and denies the generic claim operation.
+- Simplified claiming stores codes or HTTPS links, links all assigned rows to the same attendee eligibility and claim timestamp, and denies the generic claim operation.
 
 ## EventAttendeeEligibility
 

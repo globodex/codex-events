@@ -1043,24 +1043,26 @@ function buildFixtureSql(personas: StablePersona[]) {
       ${sqlLiteral(fixtureTimestamp)}
     )`,
     `insert into event_credit_offers (
-      id, event_id, name, description, simplified_claiming_only, display_order, created_at, updated_at
+      id, event_id, name, description, simplified_claiming_only, redirect_on_claim, display_order, created_at, updated_at
     ) values (
       'offer_closed_simplified_claiming_fixture',
       ${sqlLiteral(fixtureClosedSimplifiedClaimingEventId)},
       'Closed Codex event credit',
       'Private attendee credit for closed-state coverage.',
       true,
+      true,
       1,
       ${sqlLiteral(fixtureTimestamp)},
       ${sqlLiteral(fixtureTimestamp)}
     )`,
     `insert into event_credit_offers (
-      id, event_id, name, description, simplified_claiming_only, display_order, created_at, updated_at
+      id, event_id, name, description, simplified_claiming_only, redirect_on_claim, display_order, created_at, updated_at
     ) values (
       'offer_simplified_claiming_fixture',
       ${sqlLiteral(fixtureSimplifiedClaimingEventId)},
       'Codex event credit',
       'Private attendee credit.',
+      true,
       true,
       1,
       ${sqlLiteral(fixtureTimestamp)},

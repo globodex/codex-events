@@ -100,6 +100,7 @@ export const applicationOperationLoaders = [
   () => import('../../api/events/[eventId]/shortlist/actions/select-finalists.post'),
   () => import('../../api/events/[eventId]/shortlist/index.get'),
   () => import('../../api/events/[eventId]/simplified-claiming/index.get'),
+  () => import('../../api/events/[eventId]/simplified-claiming/rewards/[creditId].patch'),
   () => import('../../api/events/[eventId]/staff/index.get'),
   () => import('../../api/events/[eventId]/submissions/summary.get'),
   () => import('../../api/events/[eventId]/talk-proposals/[proposalId]/actions/accept.post'),

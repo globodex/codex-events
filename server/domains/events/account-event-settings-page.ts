@@ -39,7 +39,7 @@ const emptySimplifiedClaimingSummary = {
   availableInventoryCount: 0,
   genericClaimCount: 0,
   simplifiedClaimCount: 0,
-  offer: null
+  offers: []
 }
 
 function isJudgeAssignment(assignment: typeof eventRoleAssignments.$inferSelect) {
@@ -204,13 +204,7 @@ export const accountEventSettingsPageRoute = defineAccountEventPageRoute({
       simplifiedClaiming: {
         enabled: event.simplifiedClaimingEnabled,
         redemptionUrl: `/events/${event.slug}/redeem`,
-        ...simplifiedClaimingSummary,
-        offer: simplifiedClaimingSummary.offer
-          ? {
-              id: simplifiedClaimingSummary.offer.id,
-              name: simplifiedClaimingSummary.offer.name
-            }
-          : null
+        ...simplifiedClaimingSummary
       },
       talkProposals: {
         hasExistingProposal: existingTalkProposals.length > 0

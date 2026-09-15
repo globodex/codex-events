@@ -81,6 +81,36 @@ describe('shared database migration', () => {
     await database.close()
   })
 
+  test('migrates the existing simplified giveaway without changing assigned credits', async () => {
+    const migration = '0078_simplified_claiming_giveaways.sql'
+    const previous = readdirSync(join(process.cwd(), 'drizzle')).filter(name => /^\d+.*\.sql$/.test(name) && name < migration).sort()
+      .map(name => readFileSync(join(process.cwd(), 'drizzle', name), 'utf8')).join('\n').replaceAll('--> statement-breakpoint', '\n')
+    const db = createTestD1Database({ applyMigrations: false })
+    try {
+      await db.exec(previous)
+      const now = isoTimestamp(0)
+      await seedUser(db, 'existing_user', now)
+      await seedEvent(db, 'existing_event', 'registration_open', now, 'existing_user')
+      await db.exec(`
+        insert into event_credit_offers (id, event_id, name, description, simplified_claiming_only)
+          values ('existing_offer', 'existing_event', 'Credits', 'Instructions', true);
+        insert into event_attendee_eligibilities (id, event_id, normalized_email)
+          values ('existing_attendee', 'existing_event', 'guest@example.com');
+        insert into event_credit_codes (id, credit_offer_id, value, claimed_by_user_id, claimed_attendee_eligibility_id, claimed_at)
+          values ('existing_code', 'existing_offer', 'https://example.com/claim', 'existing_user', 'existing_attendee', '2026-01-01');
+      `)
+      const before = await db.prepare('select * from event_credit_codes').all()
+      await db.exec(readFileSync(join(process.cwd(), 'drizzle', migration), 'utf8').replaceAll('--> statement-breakpoint', '\n'))
+      expect(await db.prepare('select * from event_credit_codes').all()).toEqual(before)
+      expect(await db.prepare('select redirect_on_claim from event_credit_offers').first()).toEqual({ redirect_on_claim: 1 })
+      await db.exec(`insert into event_credit_offers (id, event_id, name, description, simplified_claiming_only)
+        values ('second_offer', 'existing_event', 'More credits', '', true)`)
+      await expect(db.prepare(`update event_credit_offers set redirect_on_claim = true where id = 'second_offer'`).run()).rejects.toThrow()
+    } finally {
+      await db.close()
+    }
+  })
+
   test('allows duplicate emails only after soft deletion', async () => {
     const now = isoTimestamp(0)
     const insertUser = database.prepare(`

@@ -1,5 +1,5 @@
 Feature: Simplified Meetup claiming
-  Approved Luma attendees can use the private event link to receive one coupon and record their attendance.
+  Approved Luma attendees can use the private event link to receive their available giveaways and record their attendance.
 
   Scenario: Regular user redeems from the private link and returns to the same coupon
     Given the saved "regular_user" local session state exists
@@ -29,3 +29,8 @@ Feature: Simplified Meetup claiming
     Given the saved "platform_admin" local session state exists
     When I prepare simplified claiming on a new Meetup with the saved "platform_admin" session
     Then I should see the nested attendee claiming creation state
+
+  Scenario: Organizer adds codes and previews the combined giveaway email in the builder
+    Given the saved "event_admin" local session state exists
+    When I add a code giveaway in the simplified event builder
+    Then I should see automatically detected codes and the combined email preview

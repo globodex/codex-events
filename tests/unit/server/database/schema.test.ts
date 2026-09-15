@@ -74,7 +74,7 @@ describe('shared schema foundation', () => {
     expect(assignmentIndexes).toContain('judge_assignments_pitch_submission_judge_idx')
     expect(assignmentIndexes).toContain('judge_assignments_event_stage_status_judge_idx')
     expect(creditOfferIndexes).toContain('event_credit_offers_event_display_order_idx')
-    expect(creditOfferIndexes).toContain('event_credit_offers_simplified_claiming_event_idx')
+    expect(creditOfferIndexes).toContain('event_credit_offers_redirect_event_idx')
     expect(creditCodeIndexes).toContain('event_credit_codes_offer_claim_state_idx')
     expect(creditCodeIndexes).toContain('event_credit_codes_offer_claimed_user_idx')
     expect(creditCodeIndexes).toContain('event_credit_codes_claimed_attendee_eligibility_idx')

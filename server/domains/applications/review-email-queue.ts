@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 
 import { z } from 'zod'
+import { claimedGiveawaySchema } from '#shared/domains/credits/simplified-giveaways'
 
 import {
   sendParticipantNotificationEmail,
@@ -41,7 +42,7 @@ export const applicationReviewEmailQueueMessageSchema = z.union([
     notificationType: z.literal('simplified_claim_receipt'),
     creditCodeId: z.string().trim().min(1),
     claimedAt: z.string().trim().min(1),
-    couponUrl: z.string().trim().url().refine(value => value.startsWith('https://'))
+    giveaways: z.array(claimedGiveawaySchema).min(1).max(20)
   }),
   participantNotificationEmailQueueMessageSchema.extend({
     notificationType: z.literal('simplified_claim_correction'),

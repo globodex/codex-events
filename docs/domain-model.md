@@ -99,9 +99,9 @@ Key characteristics:
 - Each event has a registration flow that can be activated manually within its configured registration window.
 - Each event can optionally define a participant approval limit used as an indicative planning target during admin review and as the capacity boundary for automatic approval.
 - Each event can approve new participant applications automatically after required submission checks pass while approved participation is below the participant approval limit when one is configured.
-- A Meetup can enable simplified attendee claiming. This setting uses the event slug, one credit offer, Luma check-in or imported approved attendee eligibility, and HTTPS coupon-link inventory without a redemption token.
+- A Meetup can enable simplified attendee claiming. This setting uses the event slug, multiple credit giveaways, Luma check-in or imported approved attendee eligibility, and code or HTTPS-link inventory without a redemption token.
 - A Meetup can enable one private Call for talks with its own opening and closing timestamps and up to 20 ordered custom questions. Existing Meetups and newly created Meetups default to disabled with null Call for talks timestamps and no custom questions.
-- Simplified claiming is incompatible with event application terms and required registration fields. Its optional Luma connection receives check-ins only; it never sends approval or rejection updates or withdraws applications from Luma cancellations. It is ready to share only after one offer, at least one eligible attendee, and HTTPS coupon inventory exist.
+- Simplified claiming is incompatible with event application terms and required registration fields. Its optional Luma connection receives check-ins only; it never sends approval or rejection updates or withdraws applications from Luma cancellations. It is ready to share only after a redirect giveaway with HTTPS links and at least one eligible attendee exist.
 - Each event can optionally reference a restricted Discord server URL.
 - Each event has a fixed application field configuration. First name and family name are always visible and required. Event admins can mark X, LinkedIn, GitHub, ChatGPT email, OpenAI org ID, `why this event`, proof-of-execution links, participation mode, and AI Knowledge as visible or hidden.
 - Outside simplified claiming, when Luma Sync is enabled for an event, Luma email is visible and required during registration so the platform can match Codex participants with Luma guests.
@@ -607,13 +607,13 @@ Rules:
 - Event credits are separate from prizes and are not part of winner selection.
 - Each credit offer belongs to exactly one event.
 - An ordinary credit offer has a participant-facing name and markdown description.
-- A simplified-only offer is private setup inventory for attendee claiming and is not participant-facing.
-- An event can define multiple ordinary credit offers and at most one simplified-only offer.
-- Enabling simplified attendee claiming requires that the event has no ordinary credit offers. Uploading reward links in Settings creates or reuses the simplified-only offer.
+- A simplified-only offer is managed privately in Settings. Its name and plain-text instructions appear in the participant’s credit email.
+- An event can define multiple ordinary credit offers or up to 20 simplified-only giveaways. Exactly one simplified giveaway containing only HTTPS links is selected to open after claiming.
+- Enabling simplified attendee claiming requires that the event has no ordinary credit offers. Uploading a named giveaway in Settings creates its private inventory; later uploads target that giveaway.
 - Event admins and platform admins can append inventory to an existing credit offer over time.
-- Simplified-only reward inventory remains appendable after claiming begins. Imports keep one inventory row per exact HTTPS reward link and skip links already uploaded for the offer.
+- Simplified giveaway inventory accepts codes and HTTPS links, detects their format on upload, and remains appendable after claiming begins. Imports skip exact values already uploaded for that giveaway. Link-like values must be valid HTTPS URLs without embedded credentials. A redirect giveaway accepts only HTTPS links.
 - A credit offer can remain available as long as it has unclaimed inventory.
-- An offer can be deleted only while it has no claims. The simplified-only offer identity and claiming setting are locked after the first simplified claim.
+- An offer can be deleted only while it has no claims. The selected redirect giveaway and claiming setting are locked after the first simplified claim, including when its inventory is exhausted. New giveaways apply only to subsequent first claims; repeat scans do not allocate additional values.
 - Disabling simplified attendee claiming before the first claim leaves its simplified-only offer private and unavailable. It does not convert that inventory into an ordinary credit offer.
 
 ### EventAttendeeEligibility
@@ -629,7 +629,7 @@ Rules:
 - In the event builder, the simplified credits section contains a Connect Luma toggle with event ID and API key fields. Saving both credentials verifies access and registers check-in delivery; it does not fetch earlier check-ins.
 - Event admins can use Import existing check-ins to fetch approved guests with at least one checked-in ticket, across all pages up to 10,000 guests. Failed fetches do not change eligibility. CSV import remains available with or without Luma connected.
 - Both sources merge by normalized email, preserve existing eligibility IDs and claims, and retain names when an update supplies none. Repeated delivery or import never grants another claim. Unchecking or cancelling in Luma does not remove eligibility. Disconnecting Luma stops new check-ins after saving and leaves existing eligibility available.
-- An eligibility email can be consumed by at most one simplified credit claim.
+- An eligibility email can be consumed by one account’s simplified claim, which can assign values from several giveaways.
 
 ### EventCreditCode
 
@@ -643,7 +643,7 @@ Rules:
 - Only approved participants and event staff can claim event credits.
 - A claiming user can claim at most one credit code from a given credit offer.
 - Claiming a credit code permanently reveals that assigned value to the claiming user on later visits.
-- A simplified claim links the assigned code to one `EventAttendeeEligibility`. Its value must be an HTTPS URL and the normal manual claim operation is unavailable.
+- A simplified claim links each assigned code or HTTPS link to the same `EventAttendeeEligibility`. The normal manual claim operation is unavailable.
 
 ### Prize
 
@@ -782,8 +782,8 @@ Judging applies only to Hackathon events.
 - Only approved participants and event staff can claim event credits.
 - Approved participants and event staff see event credits in the account event workspace only when uploaded credit inventory exists for the event.
 - A claiming user can claim at most one uploaded value from each credit offer.
-- Simplified-only offers remain hidden from normal participant and admin Credits views. Event admins manage their HTTPS reward links, approved attendee roster, redemption URL, and QR in Settings. Authenticated attendees use `/events/:slug/redeem`, and repeat visits redirect to the same assigned coupon.
-- For a first simplified claim, the page prefills the account's saved Luma email when available and waits for the participant to confirm or edit it before redemption. The claim verifies the entered normalized email against attendee eligibility, consumes that email once, approves the application, records attendance, queues one receipt with the assigned HTTPS coupon link to the account email, and redirects to the coupon. Repeated claims return the same coupon without queuing another receipt.
+- Simplified-only offers remain hidden from normal participant and admin Credits views. Event admins manage giveaway names, plain-text email instructions, code or link inventory, the redirect choice, approved attendee roster, redemption URL, and QR in Settings. The builder preserves its existing sidebar and Luma controls; Preview email opens a dialog with sample values. Authenticated attendees use `/events/:slug/redeem`.
+- For a first simplified claim, the page prefills the account's saved Luma email when available and waits for the participant to confirm or edit it before redemption. The claim verifies the entered normalized email against attendee eligibility, consumes that email once, approves the application, records attendance, and atomically assigns one available value from each giveaway. Exhausted giveaways are skipped. One receipt to the account email includes all assigned values: links appear as claim links and codes as selectable text, each with its giveaway instructions. The participant is redirected to the assigned value from the selected redirect giveaway. If that giveaway is exhausted, the page confirms the claim without redirecting. If all giveaways are exhausted, no claim is made. Repeated claims keep the original values and do not queue another receipt.
 
 ## Compliance
 

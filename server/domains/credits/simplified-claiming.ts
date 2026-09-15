@@ -1,4 +1,4 @@
-import { and, count, eq, isNotNull, isNull, sql } from 'drizzle-orm'
+import { and, asc, count, eq, isNotNull, sql } from 'drizzle-orm'
 import { parse } from 'csv-parse/sync'
 import { z } from 'zod'
 
@@ -10,6 +10,10 @@ import {
   eventCreditOffers
 } from '#server/database/schema'
 import { assertGuard } from '#server/domains/lifecycle-guard'
+
+import { isHttpsCouponUrl } from '#shared/domains/credits/simplified-giveaways'
+
+export { isHttpsCouponUrl } from '#shared/domains/credits/simplified-giveaways'
 
 type EventRecord = typeof events.$inferSelect
 
@@ -35,14 +39,6 @@ export interface SimplifiedClaimingAttendeeRow {
 
 export function normalizeLumaEmail(value: string) {
   return value.trim().toLowerCase()
-}
-
-export function isHttpsCouponUrl(value: string) {
-  try {
-    return new URL(value).protocol === 'https:'
-  } catch {
-    return false
-  }
 }
 
 export function parseLumaAttendeeCsv(content: string) {
@@ -118,68 +114,44 @@ function hasRequiredRegistrationFields(event: EventRecord) {
 }
 
 export async function getSimplifiedClaimingSummary(database: AppDatabase, event: EventRecord) {
-  const offers = await database.query.eventCreditOffers.findMany({
-    where: and(
-      eq(eventCreditOffers.eventId, event.id),
-      eq(eventCreditOffers.simplifiedClaimingOnly, true)
-    ),
-    limit: 2
-  })
-  const offer = offers.length === 1 ? offers[0]! : null
-  const [eligibilityResult, ordinaryOfferResult, inventoryResult, genericClaimResult, simplifiedClaimResult, inventoryValues] = await Promise.all([
-    database.select({ value: count() })
-      .from(eventAttendeeEligibilities)
-      .where(eq(eventAttendeeEligibilities.eventId, event.id)),
-    database.select({ value: count() })
-      .from(eventCreditOffers)
-      .where(and(
-        eq(eventCreditOffers.eventId, event.id),
-        eq(eventCreditOffers.simplifiedClaimingOnly, false)
-      )),
-    offer
-      ? database.select({
-          totalCount: count(),
-          availableCount: sql<number>`sum(case when ${eventCreditCodes.claimedByUserId} is null then 1 else 0 end)`
-        }).from(eventCreditCodes).where(eq(eventCreditCodes.creditOfferId, offer.id))
-      : Promise.resolve([{ totalCount: 0, availableCount: 0 }]),
-    database.select({ value: count() })
-      .from(eventCreditCodes)
-      .innerJoin(eventCreditOffers, eq(eventCreditOffers.id, eventCreditCodes.creditOfferId))
-      .where(and(
-        eq(eventCreditOffers.eventId, event.id),
-        isNotNull(eventCreditCodes.claimedByUserId),
-        isNull(eventCreditCodes.claimedAttendeeEligibilityId)
-      )),
-    database.select({ value: count() })
-      .from(eventCreditCodes)
-      .innerJoin(eventCreditOffers, eq(eventCreditOffers.id, eventCreditCodes.creditOfferId))
-      .where(and(
-        eq(eventCreditOffers.eventId, event.id),
-        isNotNull(eventCreditCodes.claimedAttendeeEligibilityId)
-      )),
-    offer
-      ? database.query.eventCreditCodes.findMany({
-          columns: { value: true },
-          where: eq(eventCreditCodes.creditOfferId, offer.id)
-        })
-      : Promise.resolve([])
+  const [offerRows, eligibilityResult, claimCounts, ordinaryOfferResult] = await Promise.all([
+    database.select({
+      id: eventCreditOffers.id, name: eventCreditOffers.name, description: eventCreditOffers.description,
+      redirectOnClaim: eventCreditOffers.redirectOnClaim,
+      totalCount: count(eventCreditCodes.id),
+      availableCount: sql<number>`sum(case when ${eventCreditCodes.id} is not null and ${eventCreditCodes.claimedByUserId} is null then 1 else 0 end)`,
+      claimedCount: sql<number>`sum(case when ${eventCreditCodes.claimedByUserId} is not null then 1 else 0 end)`,
+      linkCount: sql<number>`sum(case when ${eventCreditCodes.value} like 'https://%' then 1 else 0 end)`
+    }).from(eventCreditOffers).leftJoin(eventCreditCodes, eq(eventCreditCodes.creditOfferId, eventCreditOffers.id))
+      .where(and(eq(eventCreditOffers.eventId, event.id), eq(eventCreditOffers.simplifiedClaimingOnly, true)))
+      .groupBy(eventCreditOffers.id)
+      .orderBy(asc(eventCreditOffers.displayOrder), asc(eventCreditOffers.createdAt), asc(eventCreditOffers.id)),
+    database.select({ value: count() }).from(eventAttendeeEligibilities).where(eq(eventAttendeeEligibilities.eventId, event.id)),
+    database.select({
+      generic: sql<number>`sum(case when ${eventCreditCodes.claimedByUserId} is not null and ${eventCreditCodes.claimedAttendeeEligibilityId} is null then 1 else 0 end)`,
+      simplified: sql<number>`count(distinct case when ${eventCreditCodes.claimedAttendeeEligibilityId} is not null then ${eventCreditCodes.claimedByUserId} end)`
+    }).from(eventCreditCodes).innerJoin(eventCreditOffers, eq(eventCreditOffers.id, eventCreditCodes.creditOfferId))
+      .where(eq(eventCreditOffers.eventId, event.id)),
+    database.select({ value: count() }).from(eventCreditOffers)
+      .where(and(eq(eventCreditOffers.eventId, event.id), eq(eventCreditOffers.simplifiedClaimingOnly, false)))
   ])
-
+  const offers = offerRows.map(offer => ({
+    ...offer, availableCount: Number(offer.availableCount), claimedCount: Number(offer.claimedCount),
+    linkCount: Number(offer.linkCount), codeCount: offer.totalCount - Number(offer.linkCount)
+  }))
   const attendeeCount = eligibilityResult[0]?.value ?? 0
   const ordinaryOfferCount = ordinaryOfferResult[0]?.value ?? 0
-  const totalInventoryCount = inventoryResult[0]?.totalCount ?? 0
-  const availableInventoryCount = Number(inventoryResult[0]?.availableCount ?? 0)
-  const genericClaimCount = genericClaimResult[0]?.value ?? 0
-  const simplifiedClaimCount = simplifiedClaimResult[0]?.value ?? 0
+  const genericClaimCount = Number(claimCounts[0]?.generic ?? 0)
+  const totalInventoryCount = offers.reduce((sum, offer) => sum + offer.totalCount, 0)
+  const availableInventoryCount = offers.reduce((sum, offer) => sum + offer.availableCount, 0)
+  const simplifiedClaimCount = Number(claimCounts[0]?.simplified ?? 0)
   const issues: Array<{ code: string, message: string }> = []
 
   if (!event.simplifiedClaimingEnabled) {
     issues.push({ code: 'disabled', message: 'Enable simplified attendee claiming.' })
   }
   if (offers.length === 0) {
-    issues.push({ code: 'offer_missing', message: 'Upload reward links in Settings.' })
-  } else if (offers.length > 1) {
-    issues.push({ code: 'multiple_offers', message: 'Simplified claiming supports one private reward set.' })
+    issues.push({ code: 'offer_missing', message: 'Add a giveaway and upload its credits.' })
   }
   if (ordinaryOfferCount > 0) {
     issues.push({ code: 'ordinary_offers', message: 'Remove ordinary credit offers before using attendee claiming.' })
@@ -190,10 +162,11 @@ export async function getSimplifiedClaimingSummary(database: AppDatabase, event:
   if (attendeeCount === 0) {
     issues.push({ code: 'attendees_missing', message: 'Add attendees through Luma check-ins or CSV import.' })
   }
-  if (offer && totalInventoryCount === 0) {
-    issues.push({ code: 'inventory_missing', message: 'Upload HTTPS reward links in Settings.' })
-  } else if (inventoryValues.some(code => !isHttpsCouponUrl(code.value))) {
-    issues.push({ code: 'inventory_invalid', message: 'Every coupon must be an HTTPS link.' })
+  if (offers.filter(offer => offer.redirectOnClaim).length !== 1) {
+    issues.push({ code: 'redirect_missing', message: 'Choose one link giveaway to open after claiming.' })
+  }
+  if (offers.some(offer => offer.redirectOnClaim && (offer.codeCount > 0 || offer.linkCount === 0))) {
+    issues.push({ code: 'inventory_invalid', message: 'The giveaway opened after claiming must contain HTTPS links only.' })
   }
   if (event.currentApplicationTermsDocumentId) {
     issues.push({ code: 'application_terms', message: 'Remove the application terms.' })
@@ -209,7 +182,7 @@ export async function getSimplifiedClaimingSummary(database: AppDatabase, event:
     attendeeCount,
     offerCount: offers.length,
     ordinaryOfferCount,
-    offer,
+    offers,
     totalInventoryCount,
     availableInventoryCount,
     genericClaimCount,
@@ -240,5 +213,24 @@ export async function mergeSimplifiedClaimingAttendees(
           updatedAt: sql`excluded.updated_at`
         }
       })
+  }
+}
+
+export async function readSimplifiedClaims(database: AppDatabase, eventId: string, userId: string) {
+  return database.select({
+    id: eventCreditCodes.id, value: eventCreditCodes.value, claimedAt: eventCreditCodes.claimedAt,
+    name: eventCreditOffers.name, description: eventCreditOffers.description, redirectOnClaim: eventCreditOffers.redirectOnClaim
+  }).from(eventCreditCodes).innerJoin(eventCreditOffers, eq(eventCreditOffers.id, eventCreditCodes.creditOfferId))
+    .where(and(eq(eventCreditOffers.eventId, eventId), eq(eventCreditOffers.simplifiedClaimingOnly, true),
+      eq(eventCreditCodes.claimedByUserId, userId), isNotNull(eventCreditCodes.claimedAttendeeEligibilityId)))
+    .orderBy(asc(eventCreditOffers.displayOrder), asc(eventCreditOffers.createdAt), asc(eventCreditOffers.id))
+}
+
+export function simplifiedClaimResult(claims: Awaited<ReturnType<typeof readSimplifiedClaims>>) {
+  const redirect = claims.find(claim => claim.redirectOnClaim)
+  return {
+    status: 'claimed' as const,
+    redirectUrl: redirect && isHttpsCouponUrl(redirect.value) ? redirect.value : null,
+    claimedAt: claims[0]!.claimedAt
   }
 }

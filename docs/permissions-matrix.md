@@ -244,13 +244,13 @@ Event credit permissions apply to every event type.
 | View credit inventory and claim records | No | No | Yes | Yes |
 | Create or update credit offers | No | No | Yes | Yes |
 | Upload additional credit inventory to an offer | No | No | Yes | Yes |
-| Upload simplified attendee reward links in Settings | No | No | Yes, including after claiming begins | Yes, including after claiming begins |
+| Manage simplified giveaways and upload credits in Settings | No | No | Yes, including after claiming begins | Yes, including after claiming begins |
 | Import approved Luma attendee eligibility | No | No | Yes, including after claiming begins | Yes, including after claiming begins |
 | Import existing Luma check-ins | No | No | Yes | Yes |
-| Redeem the simplified Meetup offer | Yes, with attendee-email verification | Yes, with attendee-email verification | Yes, only when also an eligible attendee | Yes, only when also an eligible attendee |
+| Claim available simplified Meetup giveaways | Yes, with attendee-email verification | Yes, with attendee-email verification | Yes, only when also an eligible attendee | Yes, only when also an eligible attendee |
 | Delete a credit offer with no claims | No | No | Yes | Yes |
 
-Simplified redemption requires an authenticated platform account with current legal consent and an unused attendee email added by Luma check-in or approved CSV import; an event role alone grants no eligibility. A simplified-only offer is hidden from normal participant, staff, and admin Credits views and its generic claim operation is denied regardless of whether simplified claiming is currently enabled. Settings owns its reward-link inventory, attendee import, redemption link, QR, and readiness. Event admins can append unique rewards and merge approved attendees throughout claiming, while the first claim keeps the event slug, claiming setting, and offer identity fixed.
+Simplified redemption requires an authenticated platform account with current legal consent and an unused attendee email added by Luma check-in or approved CSV import; an event role alone grants no eligibility. A simplified-only offer is hidden from normal participant, staff, and admin Credits views and its generic claim operation is denied regardless of whether simplified claiming is currently enabled. Settings owns giveaway names, plain-text email instructions, code/link inventory, the redirect selection, attendee import, redemption link, QR, readiness, and sample email preview. Event admins can append unique rewards and merge approved attendees throughout claiming, while the first claim keeps the event slug, claiming setting, and selected redirect giveaway fixed.
 
 ## Event Photo Gallery
 

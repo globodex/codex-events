@@ -98,7 +98,10 @@ describe('application review email utilities', () => {
       recipientEmail: 'participant@example.com',
       recipientDisplayName: 'Ada Lovelace',
       eventName: 'Codex Spring',
-      couponUrl: 'https://chatgpt.com/coupon/example'
+      giveaways: [
+        { name: 'Codex credits', description: '', value: 'https://chatgpt.com/coupon/example' },
+        { name: 'API <credits>', description: 'Use <billing> & confirm.', value: 'CODE-<123>' }
+      ]
     }, {
       emailBinding: { send }
     })
@@ -109,7 +112,7 @@ describe('application review email utilities', () => {
     })
     expect(send).toHaveBeenCalledWith(expect.objectContaining({
       to: 'participant@example.com',
-      subject: 'Your coupon for Codex Spring',
+      subject: 'Your credits for Codex Spring',
       headers: {
         'X-Codex-Notification-Type': 'simplified_claim_receipt',
         'X-Codex-Email-Key': 'simplified-claim-receipt:coupon_1:2026-07-16T08:00:00.000Z'
@@ -117,19 +120,14 @@ describe('application review email utilities', () => {
     }))
 
     const payload = send.mock.calls[0]?.[0]
-    expect(payload?.text).toContain('Your coupon for Codex Spring has been claimed successfully.')
-    expect(payload?.text).toContain('Here\'s a copy of your coupon:')
+    expect(payload?.text).toContain('Thanks for joining Codex Spring. Here are your credits.')
     expect(payload?.text).toContain('https://chatgpt.com/coupon/example')
-    expect(payload?.text).toContain('https://chatgpt.com/codex/cloud/settings/analytics#usage')
-    expect(payload?.text).toContain('Sol is currently available only on paid plans.')
-    expect(payload?.text).toContain('You can also build with Terra and Luna - both are strong models.')
-    expect(payload?.html).toContain('View your coupon')
-    expect(payload?.html).toContain('https://chatgpt.com/coupon/example')
-    expect(payload?.html).toContain('view your credits in Codex Cloud')
-    expect(payload?.html).toContain('https://chatgpt.com/codex/cloud/settings/analytics#usage')
-    expect(payload?.text).not.toContain('application')
-    expect(payload?.text).not.toContain('Keep this email as a backup')
-    expect(payload?.text).not.toContain('open your coupon again')
+    expect(payload?.text).toContain('CODE-<123>')
+    expect(payload?.html).toContain('Claim Codex credits')
+    expect(payload?.html).toContain('<code>CODE-&lt;123&gt;</code>')
+    expect(payload?.html).toContain('Use &lt;billing&gt; &amp; confirm.')
+    expect(payload?.html).not.toContain('<credits>')
+    expect(payload?.text).not.toContain('Sol is currently')
   })
 
   test('sends a coupon correction with the replacement reward link', async () => {

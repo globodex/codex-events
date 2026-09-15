@@ -232,10 +232,17 @@ export const accountEventSimplifiedClaimingStatusSchema = z.object({
   availableInventoryCount: z.number().int().nonnegative(),
   simplifiedClaimCount: z.number().int().nonnegative(),
   genericClaimCount: z.number().int().nonnegative(),
-  offer: z.object({
+  offers: z.array(z.object({
     id: z.string(),
-    name: z.string()
-  }).nullable()
+    name: z.string(),
+    description: z.string(),
+    redirectOnClaim: z.boolean(),
+    totalCount: z.number(),
+    availableCount: z.number(),
+    claimedCount: z.number(),
+    linkCount: z.number(),
+    codeCount: z.number()
+  }))
 })
 
 export const accountEventTalkProposalConfigurationSchema = z.object({
