@@ -1,4 +1,11 @@
 <script setup lang="ts">
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '~/components/ui/dropdown-menu'
+
 type DropdownItem = {
   label: string
   to?: string
@@ -17,52 +24,27 @@ const props = withDefaults(defineProps<{
   items: () => []
 })
 
-const open = ref(false)
-const root = ref<HTMLElement | null>(null)
-
-function toggleOpen() {
-  open.value = !open.value
-}
-
-function closeMenu() {
-  open.value = false
-}
-
-function handlePointerDown(event: PointerEvent) {
-  if (!root.value?.contains(event.target as Node)) {
-    closeMenu()
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('pointerdown', handlePointerDown)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', handlePointerDown)
-})
+const open = shallowRef(false)
 </script>
 
 <template>
-  <div
-    ref="root"
-    class="relative inline-flex"
-  >
-    <div @click="toggleOpen">
+  <DropdownMenu v-model:open="open">
+    <DropdownMenuTrigger as-child>
       <slot :open="open" />
-    </div>
+    </DropdownMenuTrigger>
 
-    <div
-      v-if="open"
-      class="absolute left-0 top-full z-50 mt-2 min-w-48 overflow-hidden rounded-xl border border-default/80 bg-elevated/95 p-1 shadow-[0_24px_60px_-46px_rgba(15,20,34,0.7)] backdrop-blur"
+    <DropdownMenuContent
+      align="end"
+      :side-offset="8"
+      :collision-padding="8"
+      class="min-w-48 max-w-[calc(100vw-1rem)] rounded-xl border border-default/80 bg-elevated/95 p-1 shadow-[0_24px_60px_-46px_rgba(15,20,34,0.7)] backdrop-blur"
     >
-      <component
-        :is="item.to ? 'a' : 'button'"
+      <DropdownMenuItem
         v-for="item in props.items"
         :key="`${item.label}-${item.to ?? 'action'}`"
+        :as="item.to ? 'a' : 'button'"
         :href="item.to"
-        class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-toned transition-colors hover:bg-default hover:text-highlighted"
-        @click="closeMenu"
+        class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-toned transition-colors hover:bg-default hover:text-highlighted focus:bg-default focus:text-highlighted"
       >
         <span
           v-if="item.type === 'checkbox'"
@@ -71,7 +53,7 @@ onBeforeUnmount(() => {
           {{ item.checked ? '✓' : '' }}
         </span>
         <span>{{ item.label }}</span>
-      </component>
-    </div>
-  </div>
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>
 </template>
