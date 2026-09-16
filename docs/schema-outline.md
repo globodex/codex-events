@@ -986,7 +986,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - An event can define multiple ordinary credit offers or up to 20 simplified-only giveaways. A partial unique index permits at most one `redirect_on_claim = true` offer per event; simplified readiness requires exactly one containing only HTTPS links.
 - A simplified-claiming Meetup cannot have ordinary credit offers while the setting is enabled.
 - An offer can be deleted only when none of its inventory rows has been claimed.
-- Ordinary credit offers store participant-facing markdown copy and ordering. Simplified-only giveaways store an organizer-provided name and plain-text email instructions.
+- Ordinary credit offers store participant-facing markdown copy and ordering. Simplified-only giveaways store an organizer-provided name and Markdown email instructions.
 - Disabling simplified claiming leaves the simplified-only offer flagged, private, and unavailable.
 - The selected redirect giveaway remains fixed after the first simplified claim. Other giveaways and unique inventory values can be added; previous claims remain unchanged.
 - Uploaded redeemable values live on `EventCreditCode`.

@@ -67,9 +67,10 @@ defineProps<{ offers: AccountEventSimplifiedClaimingStatus['offers'], eventName:
           >
             Each participant receives one link or code.
           </p>
-          <p class="whitespace-pre-wrap text-sm">
-            {{ offer.description }}
-          </p>
+          <AppMarkdownRenderer
+            :source="offer.description"
+            class="text-sm"
+          />
         </div>
         <p class="mt-5 text-sm">
           Keep this email to access your personal links and codes.

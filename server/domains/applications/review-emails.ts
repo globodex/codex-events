@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 
 import { z } from 'zod'
+import { renderMarkdown } from '#shared/utils/markdown'
 import { isHttpsCouponUrl, type claimedGiveawaySchema } from '#shared/domains/credits/simplified-giveaways'
 
 import {
@@ -197,7 +198,7 @@ function buildSimplifiedClaimReceiptEmailContent(input: SimplifiedClaimReceiptEm
         isHttpsCouponUrl(giveaway.value)
           ? `<p><a href="${escapeHtml(giveaway.value)}">Claim ${escapeHtml(giveaway.name)}</a></p>`
           : `<p><code>${escapeHtml(giveaway.value)}</code></p>`,
-        giveaway.description ? `<p>${escapeHtml(giveaway.description).replaceAll('\n', '<br>')}</p>` : ''
+        giveaway.description ? renderMarkdown(giveaway.description) : ''
       ].join('\n')),
       '<p>Keep this email to access your personal links and codes.</p>', '<p>Codex Community Events</p>'
     ].join('\n'),

@@ -8,6 +8,7 @@ const description = shallowRef(props.description)
 const file = shallowRef<File | null>(null)
 const detected = shallowRef('')
 const error = shallowRef('')
+const editorId = `giveaway-instructions-${useId()}`
 const input = useTemplateRef<HTMLInputElement>('input')
 async function selectFile(event: Event) {
   const selected = (event.target as HTMLInputElement).files?.[0]
@@ -28,7 +29,10 @@ async function selectFile(event: Event) {
 </script>
 
 <template>
-  <div class="space-y-3 pt-4">
+  <fieldset
+    :disabled="pending"
+    class="min-w-0 space-y-3 pt-4"
+  >
     <AppFormField label="Giveaway name">
       <AppInput
         v-model="name"
@@ -37,15 +41,21 @@ async function selectFile(event: Event) {
         aria-label="Giveaway name"
       />
     </AppFormField>
-    <AppFormField :label="descriptionLabel ?? 'Email instructions (optional)'">
-      <AppTextarea
-        v-model="description"
-        :maxlength="2000"
-        :rows="3"
-        :disabled="pending"
-        :aria-label="descriptionLabel ?? 'Email instructions (optional)'"
-      />
-    </AppFormField>
+    <LazyAdminMarkdownEditorField
+      v-model="description"
+      :name="editorId"
+      :editor-id="editorId"
+      :label="descriptionLabel ?? 'Email instructions (optional)'"
+      height="240px"
+      data-testid="giveaway-instructions"
+    />
+    <p
+      v-if="description.length > 2000"
+      class="text-sm text-error"
+      role="alert"
+    >
+      Instructions must be 2,000 characters or fewer.
+    </p>
     <p class="text-xs text-muted">
       Upload one code or HTTPS link per row, without a header.
     </p>
@@ -75,7 +85,7 @@ async function selectFile(event: Event) {
       <AppButton
         type="button"
         :loading="pending"
-        :disabled="!name.trim() || (descriptionRequired && !description.trim()) || Boolean(error) || (creating && !file)"
+        :disabled="!name.trim() || description.length > 2000 || (descriptionRequired && !description.trim()) || Boolean(error) || (creating && !file)"
         @click="emit('save', { name, description, file })"
       >
         {{ creating ? 'Add giveaway' : file ? 'Save and upload' : 'Save giveaway' }}
@@ -87,5 +97,5 @@ async function selectFile(event: Event) {
       title="Check your CSV"
       :description="error"
     />
-  </div>
+  </fieldset>
 </template>

@@ -2,7 +2,7 @@
 import type { HTMLAttributes } from 'vue'
 
 import { cn } from '~/lib/utils'
-import { renderMarkdown } from '~/utils/markdown'
+import { renderMarkdown } from '#shared/utils/markdown'
 
 const props = withDefaults(defineProps<{
   source?: string | null

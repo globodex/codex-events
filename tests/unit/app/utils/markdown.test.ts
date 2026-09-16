@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { renderMarkdown } from '../../../../app/utils/markdown'
+import { renderMarkdown } from '../../../../shared/utils/markdown'
 
 describe('markdown utils', () => {
   test('renders markdown without stripping headings by default', () => {

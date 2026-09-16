@@ -607,7 +607,7 @@ Rules:
 - Event credits are separate from prizes and are not part of winner selection.
 - Each credit offer belongs to exactly one event.
 - An ordinary credit offer has a participant-facing name and markdown description.
-- A simplified-only offer is managed privately in Settings. Its name and plain-text instructions appear in the participant’s credit email.
+- A simplified-only offer is managed privately in Settings. Its name and Markdown instructions appear in the participant’s credit email. Instructions support formatting such as bold, italics, lists, and links. The email preview and HTML email use the same Markdown renderer with raw HTML disabled; the plain-text email retains the Markdown source.
 - An event can define multiple ordinary credit offers or up to 20 simplified-only giveaways. Exactly one simplified giveaway containing only HTTPS links is selected to open after claiming.
 - Event organizers can add credit offers and stage CSV inventory in the event builder before creating a draft. The draft and staged credits are saved together. Staging supports regular and simplified claiming, detects codes and HTTPS links, and retains values in the open builder after a failed save. Luma check-in import requires a saved connection.
 - Enabling simplified attendee claiming requires that the event has no ordinary credit offers. Uploading a named giveaway in Settings creates its private inventory; later uploads target that giveaway.
@@ -783,7 +783,7 @@ Judging applies only to Hackathon events.
 - Only approved participants and event staff can claim event credits.
 - Approved participants and event staff see event credits in the account event workspace only when uploaded credit inventory exists for the event.
 - A claiming user can claim at most one uploaded value from each credit offer.
-- Simplified-only offers remain hidden from normal participant and admin Credits views. Event admins manage giveaway names, plain-text email instructions, code or link inventory, the redirect choice, approved attendee roster, redemption URL, and QR in Settings. The builder preserves its existing sidebar and Luma controls; Preview email opens a dialog with sample values. Authenticated attendees use `/events/:slug/redeem`.
+- Simplified-only offers remain hidden from normal participant and admin Credits views. Event admins manage giveaway names, Markdown email instructions, code or link inventory, the redirect choice, approved attendee roster, redemption URL, and QR in Settings. The builder preserves its existing sidebar and Luma controls; Preview email opens a dialog with sample values. Authenticated attendees use `/events/:slug/redeem`.
 - For a first simplified claim, the page prefills the account's saved Luma email when available and waits for the participant to confirm or edit it before redemption. The claim verifies the entered normalized email against attendee eligibility, consumes that email once, approves the application, records attendance, and atomically assigns one available value from each giveaway. Exhausted giveaways are skipped. One receipt to the account email includes all assigned values: links appear as claim links and codes as selectable text, each with its giveaway instructions. The participant is redirected to the assigned value from the selected redirect giveaway. If that giveaway is exhausted, the page confirms the claim without redirecting. If all giveaways are exhausted, no claim is made. Repeated claims keep the original values and do not queue another receipt.
 
 ## Compliance

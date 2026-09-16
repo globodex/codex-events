@@ -247,7 +247,7 @@ When('I stage link and code giveaways with {string} claiming', async ({ page }, 
   ]) {
     await manager.getByRole('button', { name: 'Add giveaway', exact: true }).click()
     await manager.getByLabel('Giveaway name', { exact: true }).fill(name!)
-    await manager.getByRole('textbox', { name: /instructions/ }).fill('Use these credits in billing.')
+    await manager.getByTestId('giveaway-instructions').getByRole('textbox').fill('Use these credits in billing.')
     await manager.getByLabel('Giveaway CSV', { exact: true }).setInputFiles({ name: 'credits.csv', mimeType: 'text/csv', buffer: Buffer.from(csv!) })
     await expect(manager.getByRole('status')).toContainText(detected!)
     await manager.getByRole('button', { name: 'Add giveaway', exact: true }).click()

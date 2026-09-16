@@ -100,7 +100,7 @@ describe('application review email utilities', () => {
       eventName: 'Codex Spring',
       giveaways: [
         { name: 'Codex credits', description: '', value: 'https://chatgpt.com/coupon/example' },
-        { name: 'API <credits>', description: 'Use <billing> & confirm.', value: 'CODE-<123>' }
+        { name: 'API <credits>', description: 'Use <billing> & confirm.\n\n**Bold** and *italic*.\n\n- [Billing](https://example.com/billing)\n\n<script>alert(1)</script>\n\n[Unsafe](javascript:alert(1))', value: 'CODE-<123>' }
       ]
     }, {
       emailBinding: { send }
@@ -127,6 +127,11 @@ describe('application review email utilities', () => {
     expect(payload?.html).toContain('<code>CODE-&lt;123&gt;</code>')
     expect(payload?.html).toContain('Use &lt;billing&gt; &amp; confirm.')
     expect(payload?.html).not.toContain('<credits>')
+    expect(payload?.html).toContain('<strong>Bold</strong> and <em>italic</em>')
+    expect(payload?.html).toContain('<li><a href="https://example.com/billing">Billing</a></li>')
+    expect(payload?.html).not.toContain('<script>')
+    expect(payload?.html).not.toContain('href="javascript:')
+    expect(payload?.text).toContain('**Bold** and *italic*')
     expect(payload?.text).not.toContain('Sol is currently')
   })
 
