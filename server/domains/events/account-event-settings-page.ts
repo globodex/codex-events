@@ -69,7 +69,7 @@ function getTermsByType(
   }
 }
 
-export const accountEventSettingsPageRoute = defineAccountEventPageRoute({
+export const createAccountEventSettingsPageRoute = (appBaseUrl: string) => defineAccountEventPageRoute({
   page: 'settings',
   schema: accountEventSettingsPageSchema,
   authorize: async (context) => {
@@ -203,7 +203,7 @@ export const accountEventSettingsPageRoute = defineAccountEventPageRoute({
       credits,
       simplifiedClaiming: {
         enabled: event.simplifiedClaimingEnabled,
-        redemptionUrl: `/events/${event.slug}/redeem`,
+        redemptionUrl: new URL(`/events/${event.slug}/redeem`, appBaseUrl).toString(),
         ...simplifiedClaimingSummary
       },
       talkProposals: {

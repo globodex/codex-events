@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
+import qrcode from 'qrcode-generator'
 
 import { createAuthenticatedApiClient } from '../support/api-client'
 import { platformFixtureIds } from '../support/platform-fixtures'
@@ -144,7 +145,7 @@ Then('I should see that redemption has closed', async ({ page }) => {
 })
 
 Then('I should see the attendee claiming QR settings', async ({ page }) => {
-  const redemptionUrl = `/events/${fixtureSlug}/redeem`
+  const redemptionUrl = new URL(`/events/${fixtureSlug}/redeem`, page.url()).toString()
   const checkbox = page.getByRole('checkbox', { name: 'Simplified attendee claiming' })
   const compoundControl = page.getByTestId('simplified-claiming-control')
   const inlinePanel = compoundControl.getByTestId('simplified-claiming-settings-panel')
@@ -168,7 +169,17 @@ Then('I should see the attendee claiming QR settings', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Attendee claiming setup' })).toBeVisible()
   await expect(page.getByText('3 of 3 prepared', { exact: true })).toBeVisible()
   await expect(page.getByText(redemptionUrl, { exact: true })).toBeVisible()
-  await expect(page.getByRole('img', { name: 'Redemption QR code' })).toBeVisible()
+  const qr = qrcode(0, 'M')
+  qr.addData(redemptionUrl)
+  qr.make()
+  await expect(page.getByRole('img', { name: 'Redemption QR code' })).toHaveAttribute('src', qr.createDataURL(6, 3))
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(page.url()).origin })
+  await inlinePanel.getByRole('button', { name: 'Copy link', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(redemptionUrl)
+  const downloadPromise = page.waitForEvent('download')
+  await inlinePanel.getByRole('button', { name: 'Download QR as SVG' }).click()
+  const download = await downloadPromise
+  expect(readFileSync((await download.path())!, 'utf8')).toBe(qr.createSvgTag({ cellSize: 8, margin: 4, scalable: true }))
   await expect(page.getByRole('button', { name: 'Download QR as SVG' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Add giveaway' })).toBeEnabled()
   await expect(page.getByRole('button', { name: 'Import attendees CSV' })).toBeEnabled()

@@ -14,7 +14,7 @@ describe('account-event settings page boundary', () => {
   test('exposes one named settings route through the shared page executor', () => {
     expect(routeSource).toContain('routeSlugParamsSchema')
     expect(routeSource).toContain('executeAccountEventPageRoute')
-    expect(routeSource).toContain('accountEventSettingsPageRoute')
+    expect(routeSource).toContain('createAccountEventSettingsPageRoute')
     expect(routeSource).not.toContain('fetch(')
     expect(routeSource).not.toContain('$fetch')
   })

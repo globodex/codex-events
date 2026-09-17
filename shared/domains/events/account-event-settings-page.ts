@@ -220,7 +220,7 @@ export const accountEventSimplifiedClaimingStatusSchema = z.object({
   enabled: z.boolean(),
   ready: z.boolean(),
   locked: z.boolean(),
-  redemptionUrl: z.string(),
+  redemptionUrl: z.url({ protocol: /^https?$/ }),
   issues: z.array(z.object({
     code: z.string(),
     message: z.string()

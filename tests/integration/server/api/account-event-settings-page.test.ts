@@ -207,6 +207,7 @@ describe('GET /api/account/events/:slug/settings', () => {
 
   test('returns the complete settings model for an event admin in one strong request session', async () => {
     const harness = createApiRouteTestHarness({
+      runtimeConfig: { auth0: { appBaseUrl: 'https://events.example.com' } },
       routes: [
         { method: 'get', path: '/api/account/events/:slug/settings', handler: settingsPageGetHandler },
         { method: 'patch', path: '/api/events/:eventId', handler: eventPatchHandler }
@@ -270,6 +271,7 @@ describe('GET /api/account/events/:slug/settings', () => {
         totalCount: 1
       }],
       simplifiedClaiming: {
+        redemptionUrl: 'https://events.example.com/events/settings-fixture/redeem',
         enabled: false
       },
       talkProposals: {
@@ -305,6 +307,7 @@ describe('GET /api/account/events/:slug/settings', () => {
 
   test('allows a platform admin to read a hidden draft event', async () => {
     const harness = createApiRouteTestHarness({
+      runtimeConfig: { auth0: { appBaseUrl: 'https://events.example.com' } },
       routes: [
         { method: 'get', path: '/api/account/events/:slug/settings', handler: settingsPageGetHandler }
       ],
@@ -338,6 +341,7 @@ describe('GET /api/account/events/:slug/settings', () => {
 
   test('does not expose a hidden draft event to an actor without event access', async () => {
     const harness = createApiRouteTestHarness({
+      runtimeConfig: { auth0: { appBaseUrl: 'https://events.example.com' } },
       routes: [
         { method: 'get', path: '/api/account/events/:slug/settings', handler: settingsPageGetHandler }
       ],

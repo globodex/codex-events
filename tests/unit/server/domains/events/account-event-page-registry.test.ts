@@ -11,7 +11,7 @@ import {
   accountEventPageRoutePaths as serverPagePaths,
   accountJudgeAssignmentWorkspaceRoutePath as serverAssignmentPath
 } from '../../../../../server/domains/events/account-event-page-contract'
-import { accountEventPageRouteDefinitions } from '../../../../../server/domains/events/account-event-page-routes'
+import { createAccountEventPageRouteDefinitions } from '../../../../../server/domains/events/account-event-page-routes'
 import { accountPageRouteDefinitions } from '../../../../../server/domains/accounts/account-page-routes'
 import {
   accountEventPageNames as sharedPageNames,
@@ -22,6 +22,8 @@ import {
   accountPageNames,
   accountPagePaths
 } from '../../../../../shared/domains/account/account-page-registry'
+
+const accountEventPageRouteDefinitions = createAccountEventPageRouteDefinitions('https://events.example.com')
 
 describe('account-event page registry boundary', () => {
   test('keeps client and server page names and route paths exactly aligned', () => {
