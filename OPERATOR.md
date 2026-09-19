@@ -127,6 +127,22 @@ Grant these Management API scopes:
 - `read:triggers`
 - `update:triggers`
 
+### 3.4 Account emails
+
+Configure an email provider in each Auth0 tenant before accepting registrations. Auth0 sends account verification and password-reset emails separately from the platform's Cloudflare email queues. Its built-in email provider is for testing and is not suitable for production.
+
+After enabling your sending domain in Cloudflare Email Service, create a dedicated account API token with only **Email Sending: Edit**. In Auth0's email-provider settings, enable **Custom SMTP** with:
+
+| Setting | Value |
+| --- | --- |
+| Host | `smtp.mx.cloudflare.net` |
+| Port | `465` (TLS) |
+| Username | `api_token` |
+| Password | The dedicated Cloudflare API token |
+| Default From | Your platform name and an address on the enabled sending domain, e.g. `Codex Events <info@events.example.com>` |
+
+Store the token in Auth0; do not commit it or reuse the deployment token. The deployment workflow does not configure this provider. Follow the [Cloudflare SMTP setup](https://developers.cloudflare.com/email-service/api/send-emails/smtp/) and [Auth0 SMTP settings](https://auth0.com/docs/customize/email/smtp-email-providers/smtp-server). Confirm a verification email reaches a test account and check Cloudflare delivery events before opening registration.
+
 ## 4. GitHub
 
 In GitHub, create an environment named `production`, then add the variables and secrets below. The **Where to find it** column tells you where each value comes from, so you can gather them as you fill the form.
