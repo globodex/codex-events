@@ -5284,6 +5284,17 @@ describe('TASK-3.5 event CRUD routes', () => {
       }
     ])
 
+    const downloadUrl = '/api/events/event_photos_read/photos/photo_1/image?variant=original&v=1&download=1'
+    const downloadResponse = await harness.request(downloadUrl)
+    expect(downloadResponse.status).toBe(200)
+    expect(downloadResponse.headers.get('content-type')).toBe('image/png')
+    expect(downloadResponse.headers.get('content-disposition')).toContain('filename*=UTF-8\'\'gallery-photo.png')
+    expect(downloadResponse.headers.get('cache-control')).toBe('private, no-store')
+    expect(downloadResponse.headers.get('cloudflare-cdn-cache-control')).toBe('private, no-store')
+    expect(new Uint8Array(await downloadResponse.arrayBuffer())).toEqual(pngSignatureBytes)
+    expect(transformCalls).toHaveLength(2)
+    expect((await harness.request(downloadUrl.replace('v=1', 'v=2'))).status).toBe(404)
+
     const uploadForm = new FormData()
     uploadForm.append('file', new Blob([pngSignatureBytes], { type: 'image/png' }), 'blocked-upload.png')
 
@@ -5343,6 +5354,12 @@ describe('TASK-3.5 event CRUD routes', () => {
         code: 'event_photo_manage_required'
       }
     })
+    await harness.database.update(userApplications)
+      .set({ status: 'rejected' })
+      .where(eq(userApplications.id, 'application_participant_photo_read'))
+    expect((await harness.request(downloadUrl)).status).toBe(403)
+    stubAuth0Session(null)
+    expect((await harness.request(downloadUrl)).status).toBe(401)
   })
 
   test('event photo routes let judges upload and delete gallery photos', async () => {
@@ -5924,6 +5941,23 @@ describe('TASK-3.5 event CRUD routes', () => {
       }
     ])
 
+    const downloadUrl = '/api/public/events/public-gallery-event/photos/photo_public/image?variant=original&v=1&download=1'
+    stubAuth0Session(null)
+    const downloadResponse = await harness.request(downloadUrl)
+    expect(downloadResponse.status).toBe(200)
+    expect(downloadResponse.headers.get('content-type')).toBe('image/png')
+    expect(downloadResponse.headers.get('content-disposition')).toContain('filename*=UTF-8\'\'public-gallery-photo.png')
+    expect(downloadResponse.headers.get('cache-control')).toBe('private, no-store')
+    expect(downloadResponse.headers.get('cloudflare-cdn-cache-control')).toBe('private, no-store')
+    expect(new Uint8Array(await downloadResponse.arrayBuffer())).toEqual(pngSignatureBytes)
+    expect(transformCalls).toHaveLength(2)
+    expect((await harness.request(downloadUrl.replace('v=1', 'v=2'))).status).toBe(404)
+    expect((await harness.request(downloadUrl.replace('photo_public/', 'photo_private/'))).status).toBe(404)
+    await harness.database.update(events).set({ hiddenAt: '2026-04-02T00:00:00.000Z' }).where(eq(events.id, 'event_public_gallery'))
+    expect((await harness.request(downloadUrl)).status).toBe(404)
+    await harness.database.update(events).set({ hiddenAt: null }).where(eq(events.id, 'event_public_gallery'))
+    stubAuth0Session({ sub: 'auth0|gallery_admin', email: 'gallery-admin@example.com' })
+
     const hideResponse = await harness.request('/api/events/event_public_gallery/photos/photo_public/public-visibility', {
       method: 'PATCH',
       body: JSON.stringify({
@@ -5943,6 +5977,7 @@ describe('TASK-3.5 event CRUD routes', () => {
     const staleVisibilityResponse = await harness.request('/api/public/events/public-gallery-event/photos/photo_public/image?variant=preview&v=1')
 
     expect(staleVisibilityResponse.status).toBe(404)
+    expect((await harness.request(downloadUrl)).status).toBe(404)
 
     const restoreResponse = await harness.request('/api/events/event_public_gallery/photos/photo_public/public-visibility', {
       method: 'PATCH',
@@ -5964,6 +5999,9 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect((await harness.request(staleRestoredUrl)).status).toBe(404)
     const currentRestoredUrl = '/api/public/events/public-gallery-event/photos/photo_public/image?variant=preview&v=3'
     expect((await harness.request(currentRestoredUrl)).status).toBe(200)
+    expect((await harness.request(downloadUrl)).status).toBe(404)
+    const restoredDownloadUrl = downloadUrl.replace('v=1', 'v=3')
+    expect((await harness.request(restoredDownloadUrl)).status).toBe(200)
 
     const deleteResponse = await harness.request('/api/events/event_public_gallery/photos/photo_public', {
       method: 'DELETE'
@@ -5971,6 +6009,7 @@ describe('TASK-3.5 event CRUD routes', () => {
 
     expect(deleteResponse.status).toBe(200)
     expect((await harness.request(currentRestoredUrl)).status).toBe(404)
+    expect((await harness.request(restoredDownloadUrl)).status).toBe(404)
 
     const hiddenPhotoResponse = await harness.request('/api/public/events/public-gallery-event/photos/photo_private/image?variant=original&v=1')
 

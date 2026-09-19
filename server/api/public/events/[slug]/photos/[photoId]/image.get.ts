@@ -5,6 +5,7 @@ import { defineApiHandler } from '#server/http/api-handler'
 import { ApiError } from '#server/http/api-error'
 import {
   createPublicEventPhotoResponse,
+  createEventPhotoDownloadResponse,
   getEventPhotoObject,
   getPublicEventPhotoRecordOrThrow,
   publicEventPhotoImageQuerySchema
@@ -54,6 +55,10 @@ export default defineApiHandler(async (h3Event) => {
         photoId
       }
     })
+  }
+
+  if (query.download) {
+    return createEventPhotoDownloadResponse(photoObject, photo)
   }
 
   return await createPublicEventPhotoResponse(h3Event, photoObject, query.variant)

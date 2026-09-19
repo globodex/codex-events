@@ -316,7 +316,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `created_at` stores the image creation time when the upload can read it from image metadata, otherwise the upload time.
 - `is_publicly_visible` controls whether a gallery photo appears in the public event Gallery tab.
 - `is_highlighted` controls whether a gallery photo appears in the highlighted account-scoped gallery view.
-- Preview variants are derived at read time from the stored private object and are not stored as separate canonical rows. Public `preview` is capped at 720px and public `original` is a bounded 2400px full-display transform; neither exposes the stored original.
+- Preview variants are derived at read time from the stored private object and are not stored as separate canonical rows. Public `preview` is capped at 720px and public `original` is a bounded 2400px full-display transform; neither exposes the stored original for display. An explicit `download=1` request returns the uploaded original as a non-cacheable attachment under the same gallery access and revision rules.
 - Approved participants can read gallery rows for their events, while judges, staff, event admins, and platform admins can also create, delete, highlight, and mark them public.
 
 ## EventRoleAssignment

@@ -223,8 +223,8 @@ Rules:
 - Newly uploaded photos start unhighlighted and hidden from the public event page.
 - The public event detail page exposes only the subset of gallery photos marked public for that event.
 - Public event gallery behavior does not depend on whether a photo is highlighted.
-- Photo delivery uses protected account-scoped routes for the private gallery and separate public routes for the public gallery subset.
-- Photo delivery uses an immutable private R2 object pointer and an independent image revision. Preview images are derived at read time through Cloudflare Images: public `preview` is capped at 720px and public `original` is a bounded 2400px full-display transform. The stored original is never a public response.
+- Photo delivery uses protected account-scoped routes for the private gallery and separate public routes for the public gallery subset. Each photo offers a download of the uploaded original, including its full resolution and embedded metadata, to anyone allowed to view it in that gallery.
+- Photo delivery uses an immutable private R2 object pointer and an independent image revision. Preview images are derived at read time through Cloudflare Images: public `preview` is capped at 720px and public `original` is a bounded 2400px full-display transform. The stored original is returned only for an explicit download, with the same photo access checks and no browser or CDN caching.
 
 ### EventFeedback
 

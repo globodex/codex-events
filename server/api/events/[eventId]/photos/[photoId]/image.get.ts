@@ -1,6 +1,7 @@
 import { defineApiHandler } from '#server/http/api-handler'
 import { ApiError } from '#server/http/api-error'
 import {
+  createEventPhotoDownloadResponse,
   createEventPhotoFullDisplayResponse,
   createEventPhotoPreviewResponse,
   getEventPhotoObject,
@@ -56,6 +57,10 @@ export default defineApiHandler(async (h3Event) => {
         photoId
       }
     })
+  }
+
+  if (query.download) {
+    return createEventPhotoDownloadResponse(photoObject, photo)
   }
 
   if (query.variant === 'preview') {

@@ -69,11 +69,13 @@ export const eventPhotoParamsSchema = routeIdParamsSchema.extend({
 
 export const eventPhotoImageQuerySchema = z.object({
   variant: z.enum(['preview', 'original']).default('original'),
+  download: z.literal('1').optional(),
   v: z.string().trim().min(1).optional()
 })
 
 export const publicEventPhotoImageQuerySchema = z.object({
   variant: z.enum(['preview', 'original']),
+  download: z.literal('1').optional(),
   v: z.string().trim().min(1).optional()
 }).strict()
 
@@ -938,6 +940,25 @@ type EventPhotoResponseOptions = {
 }
 
 type EventPhotoObject = NonNullable<Awaited<ReturnType<typeof getEventPhotoObject>>>
+
+export function createEventPhotoDownloadResponse(
+  photoObject: EventPhotoObject,
+  photo: Pick<EventPhotoRecord, 'fileName' | 'contentType'>
+) {
+  const defaultFileName = `gallery-photo.${photo.contentType === 'image/png' ? 'png' : 'jpg'}`
+  const encodedFileName = encodeURIComponent(photo.fileName ?? defaultFileName)
+    .replace(/['()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
+
+  return new Response(photoObject.body, {
+    headers: {
+      'content-type': photo.contentType,
+      'content-disposition': `attachment; filename="${defaultFileName}"; filename*=UTF-8''${encodedFileName}`,
+      'cache-control': privateEventPhotoCacheControl,
+      'cloudflare-cdn-cache-control': privateEventPhotoCacheControl,
+      'x-content-type-options': 'nosniff'
+    }
+  })
+}
 
 async function createTransformedEventPhotoResponse(
   event: H3Event,

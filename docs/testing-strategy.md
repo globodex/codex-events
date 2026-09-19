@@ -28,7 +28,7 @@ variant. Public gallery route tests require an explicit `preview` or `original`
 variant. Event public-content revision tests cover submission visibility,
 completion, and hide/unhide. Profile-icon and certificate tests verify private
 streamed responses. Public gallery `original` tests verify the bounded
-full-display transform and never expect raw R2 bytes.
+full-display transform and never expect raw R2 bytes. Explicit gallery download tests verify exact uploaded bytes, attachment filenames and content types, no browser/CDN caching, cache-entrypoint bypass, and rejection of unauthorized, hidden, stale, or deleted photos.
 
 Managed-media cleanup tests verify that replacement, removal, and account
 deletion record the fixed cleanup kind in the D1 outbox atomically with the

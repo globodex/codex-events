@@ -44,6 +44,15 @@ describe('public Cloudflare cache topology', () => {
     expect(isPublicCacheableRequest(new Request('https://events.example/account'))).toBe(false)
   })
 
+  test('keeps uploaded gallery originals out of the public cache entrypoint', () => {
+    const url = 'https://events.example/api/public/events/codex-spring/photos/photo-1/image'
+    expect(isPublicCacheableRequest(new Request(`${url}?variant=original&v=1`))).toBe(true)
+    for (const method of ['GET', 'HEAD']) {
+      expect(isPublicCacheableRequest(new Request(`${url}?variant=original&v=1&download=1`, { method }))).toBe(false)
+      expect(isPublicCacheableRequest(new Request(`${url}/?variant=original&v=1&download=1`, { method }))).toBe(false)
+    }
+  })
+
   test('builds a canonical cache request without actor or request state', () => {
     const request = new Request('https://events.example/api/public/events/codex-spring/images/background?variant=background&v=7', {
       headers: {

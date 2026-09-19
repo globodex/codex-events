@@ -8,6 +8,7 @@ import {
   buildEventPhotoImageUrl,
   buildPublicEventPhotoImageUrl,
   chunkEventPhotoRowsForInsert,
+  createEventPhotoDownloadResponse,
   createEventPhotoFullDisplayResponse,
   createEventPhotoPreviewResponse,
   createPublicEventPhotoResponse,
@@ -58,6 +59,23 @@ describe('event photo utilities', () => {
     )).toBe(
       '/api/public/events/codex-vienna/photos/photo_1/image?variant=original&v=2026-04-19T10%3A00%3A00.000Z'
     )
+  })
+
+  test.each([
+    ['Café "team" (1).png', 'image/png', 'Caf%C3%A9%20%22team%22%20%281%29.png'],
+    ['photo\r\nX-Injected: yes.jpg', 'image/jpeg', 'photo%0D%0AX-Injected%3A%20yes.jpg'],
+    [null, 'image/jpeg', 'gallery-photo.jpg']
+  ])('streams an original download with a safe filename: %s', async (fileName, contentType, encodedName) => {
+    const body = new Response(pngSignatureBytes).body!
+    const response = createEventPhotoDownloadResponse({ body }, { fileName, contentType: contentType! })
+
+    expect(response.body).toBe(body)
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(pngSignatureBytes)
+    expect(response.headers.get('content-type')).toBe(contentType)
+    expect(response.headers.get('content-disposition')).toContain(`filename*=UTF-8''${encodedName}`)
+    expect(response.headers.get('x-injected')).toBeNull()
+    expect(response.headers.get('cache-control')).toBe('private, no-store')
+    expect(response.headers.get('cloudflare-cdn-cache-control')).toBe('private, no-store')
   })
 
   test('requires an explicit public gallery variant', () => {

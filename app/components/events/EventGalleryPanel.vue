@@ -517,6 +517,19 @@ onBeforeUnmount(() => {
                   </div>
                 </div>
 
+                <AppButton
+                  v-if="photo.originalUrl"
+                  :to="`${photo.originalUrl}&download=1`"
+                  external
+                  icon="i-lucide-download"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  :aria-label="`Download original ${photo.fileName ?? 'gallery photo'}`"
+                >
+                  Download original
+                </AppButton>
+
                 <div
                   v-if="canToggleHighlight || canTogglePublicVisibility || canManage"
                   class="flex flex-col gap-4 border-t border-black/8 pt-4 dark:border-white/[0.08]"
