@@ -143,6 +143,9 @@ export default defineNuxtConfig({
         'vue-sonner',
         'reka-ui',
         '@vueuse/core',
+        'vee-validate',
+        '@vee-validate/zod',
+        'zod',
         'markdown-it'
       ]
     }
