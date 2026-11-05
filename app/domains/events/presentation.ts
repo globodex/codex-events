@@ -184,7 +184,7 @@ export function buildVersionedEventImageUrl(
   const query = queryIndex === -1 ? '' : urlWithoutHash.slice(queryIndex + 1)
   const params = new URLSearchParams(query)
 
-  let pathname = ''
+  let pathname: string
   try {
     pathname = new URL(base, 'https://codex-events.invalid').pathname
   } catch {

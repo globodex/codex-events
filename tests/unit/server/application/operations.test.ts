@@ -8,10 +8,19 @@ import { getApplicationOperation, listApplicationOperations, listApplicationOper
 import { mcpEligibilityManifest } from '../../../../server/application/operations/eligibility-manifest'
 import { structuredOperationOutputSchemaFactories } from '../../../../server/application/operations/generated-output-schemas'
 import { operationDomains } from '../../../../server/application/operations/types'
-import { assertConstrainedOutputSchema, generateOutputSchemaSource } from '../../../../tools/mcp/generate-output-schemas'
+import { assertConstrainedOutputSchema, generateOutputSchemaSource, serializeSourceLiteral } from '../../../../tools/mcp/generate-output-schemas'
 import { assertCatalogMatchesEligibilityManifest, generateOperationCatalogSource } from '../../../../tools/mcp/generate-operation-catalog'
 
 describe('MCP application operation registry', () => {
+  test('escapes generated source literals without changing schema values', () => {
+    const value = { const: '</script><script>alert("injected")</script>\u2028\u2029\\\n' }
+    for (const input of [value, value.const]) {
+      const serialized = serializeSourceLiteral(input)
+      expect(serialized).not.toMatch(/[<>\u2028\u2029]/u)
+      expect(JSON.parse(serialized)).toEqual(input)
+    }
+  })
+
   async function routeFiles(directory: string): Promise<string[]> {
     const entries = await readdir(directory, { withFileTypes: true })
     const nested = await Promise.all(entries.map(entry => entry.isDirectory()

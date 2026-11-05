@@ -304,7 +304,8 @@ describe('public event agenda presentation helpers', () => {
     const now = new Date(end)
 
     expect(describeEventWindowStatus('2026-02-26T00:00:00Z', end, now)).toBe('Closed')
-    expect(describeEventWindowNote('2026-02-26T00:00:00Z', end, now)).toBe('Closed Mar 28')
+    const expectedCloseDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(now)
+    expect(describeEventWindowNote('2026-02-26T00:00:00Z', end, now)).toBe(`Closed ${expectedCloseDate}`)
     expect(getEventWindowProgress('2026-02-26T00:00:00Z', end, now)).toBe(100)
   })
 

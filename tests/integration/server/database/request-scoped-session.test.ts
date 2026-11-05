@@ -10,7 +10,7 @@ import {
 import { ApiError } from '../../../../server/http/api-error'
 import { defineApiHandler } from '../../../../server/http/api-handler'
 import { apiData } from '../../../../server/http/api-response'
-import { users } from '../../../../server/database/schema'
+import { userAuthIdentities, users } from '../../../../server/database/schema'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
 describe('request-scoped D1 sessions', () => {
@@ -167,6 +167,7 @@ describe('request-scoped D1 sessions', () => {
               displayName: 'Session Operation User'
             })
             await database.update(users).set({ displayName: 'Updated Session Operation User' }).where(eq(users.id, 'session_operation_user'))
+            await database.delete(userAuthIdentities).where(eq(userAuthIdentities.userId, 'session_operation_user'))
             await database.delete(users).where(eq(users.id, 'session_operation_user'))
             await database.batch([database.select().from(users)])
             const session = getDatabaseSession(event)

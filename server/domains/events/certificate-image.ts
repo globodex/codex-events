@@ -1,11 +1,10 @@
 import { Resvg, initWasm as initResvgWasm } from '@resvg/resvg-wasm'
 import qrcode from 'qrcode-generator'
-import satori, { init as initSatori } from 'satori/wasm'
-import initYoga from 'yoga-wasm-web'
+import satori, { init as initSatori } from 'satori/standalone'
 
 import { loadCertificateBadge } from '#server/domains/events/certificate-badge'
 import { loadCertificateFonts } from '#server/domains/events/certificate-fonts'
-import { resvgWasmModule, yogaWasmModule } from '#server/domains/events/certificate-wasm.mjs'
+import { resvgWasmModule, layoutWasmModule } from '#server/domains/events/certificate-wasm.mjs'
 import type {
   EventCertificate,
   EventCertificateEventType
@@ -78,7 +77,7 @@ function box(style: Record<string, string | number>, children?: CertificateImage
   return {
     type: 'div',
     props: {
-      style: { display: 'flex', ...style },
+      style: { display: 'flex', boxSizing: 'border-box', ...style },
       children
     }
   }
@@ -134,6 +133,7 @@ function verificationQrCodeTile(verifyUrl: string, size: number): CertificateIma
 
   return box({
     marginLeft: 'auto',
+    flexShrink: 0,
     padding: quietZone,
     backgroundColor: '#ffffff',
     borderRadius: 14
@@ -154,8 +154,7 @@ let rendererReadyPromise: Promise<void> | null = null
 
 function ensureCertificateRendererReady() {
   rendererReadyPromise ??= (async () => {
-    const yoga = await initYoga(yogaWasmModule as never)
-    initSatori(yoga)
+    await initSatori(layoutWasmModule)
     await initResvgWasm(resvgWasmModule)
   })()
 
@@ -194,6 +193,8 @@ function dotsLayer(style: Record<string, string | number>, dotColor: string) {
 function footerCell(label: string, value: string, accent: string, withDivider: boolean) {
   return box({
     flexDirection: 'column',
+    flex: 1,
+    minWidth: 0,
     gap: 7,
     paddingRight: 44,
     marginRight: 44,

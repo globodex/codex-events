@@ -68,7 +68,7 @@ export async function runWranglerCommand(
       ].filter(Boolean).join('\n')
 
       if (output) {
-        throw new Error(output)
+        throw new Error(output, { cause: error })
       }
     }
 

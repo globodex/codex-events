@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from 'vue'
 
-import { useNow } from '@vueuse/core'
+import { useIntervalFn, useNow } from '@vueuse/core'
 
 import type { CountdownPostTargetState } from '~/utils/countdown'
 
@@ -47,7 +47,7 @@ const props = withDefaults(defineProps<{
 })
 
 const now = useNow({
-  interval: props.showSeconds ? 1_000 : 60_000
+  scheduler: callback => useIntervalFn(callback, props.showSeconds ? 1_000 : 60_000)
 })
 
 const countdownState = computed(() =>

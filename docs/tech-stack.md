@@ -20,7 +20,7 @@ This document defines the canonical technology stack for the Codex event platfor
 - `Cloudflare Email Service` for outbound transactional email delivery
 - `Auth0` for browser authentication, identity, and OAuth authorization of MCP clients
 - `jose` for Auth0 JWT and JWKS validation on Cloudflare Workers
-- `agents@0.20.1` with `@modelcontextprotocol/server@2.0.0` for stateless
+- `agents@0.33.0` with `@modelcontextprotocol/server@2.4.0` for stateless
   Streamable HTTP MCP 2026-07-28 handling on Cloudflare Workers.
 
 ## Delivery and Request Topology

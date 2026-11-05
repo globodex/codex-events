@@ -300,7 +300,7 @@ class TestD1PreparedStatement {
     private readonly runMutation: TestD1Mutation,
     private readonly sql: string,
     private readonly parameters: unknown[] = [],
-    private readonly onQuery?: (query: Omit<TestD1QueryRecord, 'sessionId'>, servedVersion: number) => void,
+    private readonly onQuery: ((query: Omit<TestD1QueryRecord, 'sessionId'>, servedVersion: number) => void) | undefined,
     private readonly databaseIdentity: TestD1DatabaseIdentity,
     private readonly ownerId = infrastructureOwnerId
   ) {}

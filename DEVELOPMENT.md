@@ -7,8 +7,12 @@ This file is contributor-facing documentation for working on the `codex-events` 
 Required local tools:
 
 - Bun, matching the version pinned in `package.json`.
+- Node.js 24.11+ or 26+ for the lint and test tools.
 - Backlog.md CLI, with the `backlog` command available on `PATH`.
 - Codex CLI for the default local sign-in flow.
+
+TypeScript is pinned to 6.0.3 because Vue's typechecker, TypeScript ESLint,
+and the schema generator require its JavaScript compiler API.
 
 Install dependencies:
 
@@ -224,8 +228,8 @@ at-least-once crash-recovery boundary.
 
 ### Local MCP client testing
 
-The local endpoint uses the stateless `agents@0.20.1` handler with
-`@modelcontextprotocol/server@2.0.0` and MCP 2026-07-28.
+The local endpoint uses the stateless `agents@0.33.0` handler with
+`@modelcontextprotocol/server@2.4.0` and MCP 2026-07-28.
 
 Auth0 OAuth is the recommended remote-client flow. The local deterministic
 environment does not run an authorization server, so use the deployed test

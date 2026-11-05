@@ -182,7 +182,7 @@ describe('managed media cleanup outbox', () => {
     )
 
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    let quarantineLogCalls: unknown[][] = []
+    let quarantineLogCalls: unknown[][]
 
     try {
       const firstResults = await dispatchManagedMediaCleanupOutbox({
