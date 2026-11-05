@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import tailwindcss from '@tailwindcss/vite'
+import { certificateHarfBuzzPlugin } from './tools/build/certificate-harfbuzz'
 import { shouldUseLocalCodexAuth } from './tools/local-auth/mode'
 
 const nuxtTemporaryDirectory = process.platform === 'win32'
@@ -125,6 +126,9 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-01-15',
 
   nitro: {
+    rollupConfig: {
+      plugins: [certificateHarfBuzzPlugin()]
+    },
     experimental: {
       wasm: true
     }

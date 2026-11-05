@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-11-05T11:31:00Z'
-updated_date: '2026-11-05T12:10:00Z'
+updated_date: '2026-11-05T12:38:00Z'
 labels: []
 dependencies: []
 priority: high
@@ -63,4 +63,10 @@ Pushed implementation commit 007704dc78bffd12f62091b0a252b470eb9a1d14 to origin/
 First GitHub browser gate failed only on the initial Operations navigation (24/25 passed): it observed a second bootstrap after 3.7 seconds while the first Operations request was still open. A fresh local Vite-cache run passed 25/25 and optimizer diagnostics showed vee-validate, @vee-validate/zod, and zod discovered after startup. Added these exact shared form dependencies to the existing optimizeDeps include list to avoid a late dev pre-bundle reload; request counts and the browser gate remain unchanged. Revalidating from a fresh cache before a follow-up push.
 
 Follow-up validation passes: lint, typecheck, all 1174 unit tests, production Cloudflare build, and all 25 focused browser scenarios with an empty Vite cache. Optimizer debug logs confirm the three form-validation dependencies are present at startup and are no longer discovered during browser measurement. No request-topology assertions or timing budgets were relaxed.
+
+CI and test deployment for 97de770f passed, with all GitHub security alert categories at zero. A live Cloudflare certificate PNG smoke test returned 500. Reproduced the same error under local workerd: Satori 0.63.2 inlines HarfBuzz 0.10, whose eager browser loader reads self.location.href and whose callback setup compiles WASM dynamically. The last Satori without HarfBuzz is 0.32.0, below the security fix at 0.33.5, so reverting would reintroduce the advisory. Adding a narrowly scoped, build-time static HarfBuzz loader and precompiled free callback, following Cloudflare’s published static-WASM approach; no runtime fallback or package downgrade.
+
+Static HarfBuzz loading now renders a valid 1200x630 certificate PNG under local workerd using the production build and the real isolated D1 fixtures. The build-time transform targets Satori 0.63.2’s bundled loader, rejects missing patch sites, imports hb.wasm statically, and replaces dynamic callback compilation with the precompiled vi free callback used by this renderer. Added three unit checks covering callback pointer forwarding, transformation of the installed bundle, and rejection of unsupported loader changes.
+
+Final static-HarfBuzz validation passes: lint, typecheck, all 1177 unit tests (179 files), all 508 integration tests, all 102 browser scenarios, the Cloudflare production build, and git diff --check. Production local workerd returns a valid 1200x630 certificate PNG. Ready to push the runtime fix and verify the deployed certificate plus GitHub scans.
 <!-- SECTION:NOTES:END -->
