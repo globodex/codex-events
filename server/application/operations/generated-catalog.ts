@@ -92,7 +92,6 @@ export const applicationOperationLoaders = [
   () => import('../../api/events/[eventId]/prizes/[prizeId].patch'),
   () => import('../../api/events/[eventId]/prizes/index.get'),
   () => import('../../api/events/[eventId]/prizes/index.post'),
-  () => import('../../api/events/[eventId]/program/favorites/[sessionId].put'),
   () => import('../../api/events/[eventId]/program/index.delete'),
   () => import('../../api/events/[eventId]/program/index.get'),
   () => import('../../api/events/[eventId]/program/index.put'),

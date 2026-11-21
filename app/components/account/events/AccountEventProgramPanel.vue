@@ -6,11 +6,6 @@ import { formatEventDateWithWeekday, getAgendaItemPresentation } from '~/domains
 
 const props = defineProps<{
   program: ParticipantEventProgram
-  pendingSessions: ReadonlySet<string>
-}>()
-
-defineEmits<{
-  toggleFavorite: [sessionId: string]
 }>()
 
 const programDate = computed(() => formatEventDateWithWeekday(props.program.agendaItem.startsAt))
@@ -18,7 +13,7 @@ const programTime = computed(() => getAgendaItemPresentation(props.program.agend
 </script>
 
 <template>
-  <section class="space-y-6">
+  <section class="space-y-4">
     <header>
       <h2 class="text-2xl font-semibold tracking-tight text-highlighted">
         {{ program.agendaItem.title }}
@@ -27,10 +22,6 @@ const programTime = computed(() => getAgendaItemPresentation(props.program.agend
         {{ programDate }} · {{ programTime }}
       </p>
     </header>
-    <AccountEventProgramAgenda
-      :program="program"
-      :pending-sessions="pendingSessions"
-      @toggle-favorite="$emit('toggleFavorite', $event)"
-    />
+    <AccountEventProgramAgenda :program="program" />
   </section>
 </template>

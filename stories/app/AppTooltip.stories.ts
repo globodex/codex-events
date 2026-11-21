@@ -6,7 +6,7 @@ import AppTooltip from '~/components/AppTooltip.vue'
 const meta = {
   title: 'Shared/AppTooltip',
   component: AppTooltip,
-  args: { text: 'Save to My agenda' },
+  args: { text: 'Copy link' },
   parameters: { layout: 'centered' }
 } satisfies Meta<typeof AppTooltip>
 
@@ -25,8 +25,8 @@ export const OnHoverOrFocus: Story = {
           variant="ghost"
           size="sm"
           class="w-8 p-0"
-          aria-label="Save to My agenda"
-          icon="i-lucide-bookmark"
+          aria-label="Copy link"
+          icon="i-lucide-copy"
         />
       </AppTooltip>
     `

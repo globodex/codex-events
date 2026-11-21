@@ -9,19 +9,15 @@ const props = defineProps<{
   floorPlans: EventFloorPlan[]
   startsAt: string
   endsAt: string
-  savedOnly: boolean
-  canSave: boolean
   selectedSessionId: string | null
-  savedSessionIds: readonly string[]
-  pendingSessions: ReadonlySet<string>
 }>()
 
 defineEmits<{
   select: [session: ProgramSession]
-  toggleFavorite: [sessionId: string]
 }>()
 
 const baseTime = computed(() => Date.parse(props.startsAt))
+const hasParallelTracks = computed(() => props.tracks.length > 1)
 
 function atOffset(minutes: number) {
   return new Date(baseTime.value + minutes * 60_000).toISOString()
@@ -32,15 +28,15 @@ const trackSessions = computed(() => props.tracks.flatMap((track, column) =>
 ).sort((left, right) => left.session.startsAfterMinutes - right.session.startsAfterMinutes || left.column - right.column))
 
 const boundaries = computed(() => {
+  if (!hasParallelTracks.value) return []
+
   const starts = new Set(trackSessions.value.map(({ session }) => session.startsAfterMinutes))
   const offsets = new Set(starts)
   for (const { session } of trackSessions.value) {
     offsets.add(session.startsAfterMinutes + session.durationMinutes)
   }
-  if (!props.savedOnly) {
-    offsets.add(0)
-    offsets.add((Date.parse(props.endsAt) - baseTime.value) / 60_000)
-  }
+  offsets.add(0)
+  offsets.add((Date.parse(props.endsAt) - baseTime.value) / 60_000)
 
   const sortedOffsets = [...offsets].sort((left, right) => left - right)
   return sortedOffsets.map(offset => ({
@@ -55,17 +51,19 @@ const boundaries = computed(() => {
 const gridStyle = computed(() => {
   const rowSizes = boundaries.value.slice(0, -1).map(({ offset, hasSession }, index) => {
     const duration = boundaries.value[index + 1]!.offset - offset
-    return `${Math.max(hasSession ? 106 : 22, Math.min(duration * 1.5, 152))}px`
+    return `${Math.max(hasSession ? 78 : 14, Math.min(duration, 100))}px`
   })
 
   return {
-    gridTemplateColumns: `3.5rem repeat(${props.tracks.length}, minmax(8.75rem, 1fr))`,
+    gridTemplateColumns: `3.125rem repeat(${props.tracks.length}, minmax(8.75rem, 1fr))`,
     gridTemplateRows: `auto ${rowSizes.join(' ')} auto`
   }
 })
 
 const placements = computed(() => {
-  const rows = new Map(boundaries.value.map(({ offset }, index) => [offset, index + 2]))
+  const rows = hasParallelTracks.value
+    ? new Map(boundaries.value.map(({ offset }, index) => [offset, index + 2]))
+    : null
   const rooms = new Map(props.floorPlans.flatMap(plan =>
     plan.rooms.map(room => [`${plan.id}/${room.id}`, room.name] as const)
   ))
@@ -79,7 +77,9 @@ const placements = computed(() => {
       session,
       timeLabel: getAgendaItemPresentation({ startsAt, endsAt }, false).timeLabel,
       roomName: session.room ? rooms.get(`${session.room.floorPlanId}/${session.room.roomId}`) : undefined,
-      style: { gridColumn: column, gridRow: `${rows.get(session.startsAfterMinutes)} / ${rows.get(end)}` }
+      style: rows
+        ? { gridColumn: column, gridRow: `${rows.get(session.startsAfterMinutes)} / ${rows.get(end)}` }
+        : undefined
     }
   })
 })
@@ -95,16 +95,18 @@ const placements = computed(() => {
   >
     <div
       class="isolate grid"
-      :style="gridStyle"
+      :style="hasParallelTracks ? gridStyle : undefined"
     >
-      <div class="sticky left-0 z-20 border-b border-default bg-elevated" />
-      <h2
-        v-for="track in tracks"
-        :key="track.id"
-        class="border-b border-l border-default bg-elevated px-2.5 py-2.5 text-sm font-semibold text-highlighted"
-      >
-        {{ track.name }}
-      </h2>
+      <template v-if="hasParallelTracks">
+        <div class="sticky left-0 z-20 border-b border-default bg-elevated" />
+        <h2
+          v-for="track in tracks"
+          :key="track.id"
+          class="border-b border-l border-default bg-elevated p-2 text-sm font-semibold text-highlighted"
+        >
+          {{ track.name }}
+        </h2>
+      </template>
 
       <template
         v-for="(boundary, index) in boundaries"
@@ -131,13 +133,9 @@ const placements = computed(() => {
         :session="entry.session"
         :time-label="entry.timeLabel"
         :room-name="entry.roomName"
-        :can-save="canSave"
         :selected="entry.session.id === selectedSessionId"
-        :saved="savedSessionIds.includes(entry.session.id)"
-        :pending="pendingSessions.has(entry.session.id)"
         :style="entry.style"
         @select="$emit('select', $event)"
-        @toggle-favorite="$emit('toggleFavorite', $event)"
       />
     </div>
   </div>

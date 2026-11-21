@@ -8,12 +8,11 @@ import readFloorPlanImage from '../../../../server/api/events/[eventId]/floor-pl
 import replaceFloorPlanImage from '../../../../server/api/events/[eventId]/floor-plans/[floorPlanId]/image.post'
 import updateFloorPlan from '../../../../server/api/events/[eventId]/floor-plans/[floorPlanId]/index.put'
 import updateEvent from '../../../../server/api/events/[eventId]/index.patch'
-import favoriteSession from '../../../../server/api/events/[eventId]/program/favorites/[sessionId].put'
 import deleteProgram from '../../../../server/api/events/[eventId]/program/index.delete'
 import adminProgram from '../../../../server/api/events/[eventId]/program/index.get'
 import updateProgram from '../../../../server/api/events/[eventId]/program/index.put'
 import publicEvent from '../../../../server/api/public/events/[slug]/index.get'
-import { eventAgendaFavorites, eventRoleAssignments, events, userApplications, users } from '../../../../server/database/schema'
+import { eventRoleAssignments, events, userApplications, users } from '../../../../server/database/schema'
 import type { AccountEventEntryPage } from '../../../../shared/domains/events/account-event-entry-page'
 import type { AccountEventPageShell } from '../../../../shared/domains/events/account-event-page-shell'
 import type { AdminEventProgram, EventFloorPlan, EventProgram, ParticipantEventProgram } from '../../../../shared/domains/events/program'
@@ -111,7 +110,6 @@ describe('event program routes', () => {
         { method: 'get', path: '/api/events/:eventId/program', handler: adminProgram },
         { method: 'put', path: '/api/events/:eventId/program', handler: updateProgram },
         { method: 'delete', path: '/api/events/:eventId/program', handler: deleteProgram },
-        { method: 'put', path: '/api/events/:eventId/program/favorites/:sessionId', handler: favoriteSession },
         { method: 'patch', path: '/api/events/:eventId', handler: updateEvent },
         { method: 'post', path: '/api/events/:eventId/floor-plans', handler: createFloorPlan },
         { method: 'put', path: '/api/events/:eventId/floor-plans/:floorPlanId', handler: updateFloorPlan },
@@ -123,7 +121,7 @@ describe('event program routes', () => {
         AUTHENTICATED_UPLOAD_RATE_LIMITER: { limit: async () => ({ success: true }) }
       }
     })
-    const userIds = ['organizer', 'participant', 'second_participant', 'pending', 'staff']
+    const userIds = ['organizer', 'participant', 'pending', 'staff']
     await harness.database.insert(users).values(userIds.map(userId => ({
       id: userId,
       auth0Subject: `auth0|${userId}`,
@@ -152,7 +150,6 @@ describe('event program routes', () => {
     ])
     await harness.database.insert(userApplications).values([
       { eventId, userId: 'participant', status: 'approved' },
-      { eventId, userId: 'second_participant', status: 'approved' },
       { eventId, userId: 'pending', status: 'submitted' }
     ])
 
@@ -185,12 +182,10 @@ describe('event program routes', () => {
     return { floor: updated, floorPath, program }
   }
 
-  test('shows the parallel agenda and maps to confirmed participants before check-in and keeps favorites personal', async () => {
+  test('shows the parallel agenda and maps to confirmed participants before check-in', async () => {
     const { floor, floorPath, program } = await setup()
-    const favoritePath = `${programPath}/favorites/${firstSession.id}`
     const admin = await readData<AdminEventProgram>(await harness.request(programPath))
     expect(admin).toEqual({ program, floorPlans: [floor] })
-    expect((await harness.request(favoritePath, json('PUT', { saved: true }))).status).toBe(403)
 
     const replacement = await readData<EventFloorPlan>(await harness.request(`${floorPath}/image`, {
       method: 'POST',
@@ -210,7 +205,6 @@ describe('event program routes', () => {
       signIn(viewer)
       expect((await harness.request(`${accountPath}/program`)).status).toBe(403)
       expect((await harness.request(replacement.imageUrl)).status).toBe(403)
-      expect((await harness.request(favoritePath, json('PUT', { saved: true }))).status).toBe(403)
     }
     signIn('pending')
     const pendingEntry = await readData<{ page: AccountEventEntryPage }>(await harness.request(`${accountPath}/entry`))
@@ -229,31 +223,22 @@ describe('event program routes', () => {
     )
     expect(participantRosters.shell.event.programItemId).toBe(publicBlock.id)
     expect(participantRosters.shell.tabVisibility.availableTabs).toContain('program')
-    expect(await readAgenda()).toMatchObject({
+    const { id, title, startsAt, endsAt } = publicBlock
+    expect(await readAgenda()).toEqual({
       eventId,
-      agendaItem: { id: publicBlock.id, startsAt: publicBlock.startsAt },
+      eventName: 'Build Day',
+      agendaItem: { id, title, startsAt, endsAt },
       tracks: program.tracks,
-      floorPlans: [replacement],
-      canSave: true
+      floorPlans: [replacement]
     })
     const image = await harness.request(replacement.imageUrl)
     expect(image.status).toBe(200)
     expect(image.headers.get('content-type')).toBe('image/jpeg')
     expect(image.headers.get('cache-control')).toBe('private, no-store')
     expect(new Uint8Array(await image.arrayBuffer())).toEqual(jpeg)
-
-    for (const saved of [true, true]) {
-      expect(await readData(await harness.request(favoritePath, json('PUT', { saved })))).toEqual({ saved })
-    }
-    signIn('second_participant')
-    expect((await readAgenda()).savedSessionIds).toEqual([])
-    signIn('participant')
-    expect((await readAgenda()).savedSessionIds).toEqual([firstSession.id])
-    expect(await readData(await harness.request(favoritePath, json('PUT', { saved: false })))).toEqual({ saved: false })
-    expect((await readAgenda()).savedSessionIds).toEqual([])
   })
 
-  test('keeps the saved schedule consistent when the parent block, sessions, or rooms change', async () => {
+  test('keeps the published program consistent when the parent block, sessions, or rooms change', async () => {
     const { floor, floorPath, program } = await setup()
     const conflictingProgram = structuredClone(program)
     conflictingProgram.tracks[0]!.sessions[1]!.startsAfterMinutes = 15
@@ -282,24 +267,18 @@ describe('event program routes', () => {
     const movedAgenda = await readAgenda()
     expect(movedAgenda.agendaItem.startsAt).toBe(movedBlock.startsAt)
     expect(movedAgenda.tracks).toEqual(program.tracks)
-    const favoritePath = `${programPath}/favorites/${firstSession.id}`
-    await readData(await harness.request(favoritePath, json('PUT', { saved: true })))
 
     signIn('organizer')
     const newerProgram = structuredClone(program)
     newerProgram.tracks[0]!.sessions.shift()
     await publishProgram(newerProgram)
-    expect(await harness.database.select().from(eventAgendaFavorites)).toEqual([])
     await readData(await harness.request(floorPath, json('PUT', { name: floor.name, rooms: [] })))
 
     signIn('participant')
-    const retainedFavoritePath = `${programPath}/favorites/later_session`
-    await readData(await harness.request(retainedFavoritePath, json('PUT', { saved: true })))
-    expect((await harness.request(favoritePath, json('PUT', { saved: true }))).status).toBe(404)
+    expect((await readAgenda()).tracks).toEqual(newerProgram.tracks)
     signIn('organizer')
     const deleted = await readData<AdminEventProgram>(await harness.request(programPath, { method: 'DELETE' }))
     expect(deleted.program).toBeNull()
-    expect(await harness.database.select().from(eventAgendaFavorites)).toEqual([])
     await readData(await harness.request(eventPath, json('PATCH', { agendaItems: [] })))
     signIn('participant')
     expect((await harness.request(`${accountPath}/program`)).status).toBe(404)

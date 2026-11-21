@@ -520,7 +520,6 @@ const programPageRequest = useAccountEventPageRequest<ParticipantEventProgram>(s
   query: pageState.queryForPage('program')
 })
 const programPage = computed(() => programPageRequest.data.value?.page)
-const { pendingSessions, toggleFavorite } = useEventProgramFavorites(programPageRequest)
 const galleryPageRequest = useAccountEventPageRequest<AccountEventGalleryPage>(slug, 'gallery', {
   enabled: () => activeSection.value === 'gallery',
   query: pageState.queryForPage('gallery')
@@ -1785,8 +1784,6 @@ useSeoMeta({
           v-else-if="programPage"
           :key="programPage.eventId"
           :program="programPage"
-          :pending-sessions="pendingSessions"
-          @toggle-favorite="toggleFavorite"
         />
         <p
           v-else

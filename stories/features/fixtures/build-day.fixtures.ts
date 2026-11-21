@@ -74,7 +74,5 @@ export const buildDayProgram: ParticipantEventProgram = {
       room: null
     }]
   }],
-  floorPlans: [buildDayGroundFloor, buildDayUpperFloor],
-  savedSessionIds: ['prototype'],
-  canSave: true
+  floorPlans: [buildDayGroundFloor, buildDayUpperFloor]
 }

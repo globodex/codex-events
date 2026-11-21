@@ -133,7 +133,6 @@ export const mcpEligibilityManifest = [
   { route: 'events/[eventId]/prizes/[prizeId].patch.ts', disposition: 'include' },
   { route: 'events/[eventId]/prizes/index.get.ts', disposition: 'include' },
   { route: 'events/[eventId]/prizes/index.post.ts', disposition: 'include' },
-  { route: 'events/[eventId]/program/favorites/[sessionId].put.ts', disposition: 'include' },
   { route: 'events/[eventId]/program/index.delete.ts', disposition: 'include' },
   { route: 'events/[eventId]/program/index.get.ts', disposition: 'include' },
   { route: 'events/[eventId]/program/index.put.ts', disposition: 'include' },

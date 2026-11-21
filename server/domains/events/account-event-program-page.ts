@@ -12,13 +12,5 @@ export const accountEventProgramPageRoute = defineAccountEventPageRoute({
       assertProgramViewAccess(false, application?.status === 'approved')
     }
   },
-  load: async (context) => {
-    const { application } = await getAccountEventPageAccess(context)
-    return await loadParticipantEventProgram({
-      database: context.database,
-      event: context.event,
-      userId: context.actor.platformUser.id,
-      canSave: application?.status === 'approved'
-    })
-  }
+  load: context => loadParticipantEventProgram(context.database, context.event)
 })

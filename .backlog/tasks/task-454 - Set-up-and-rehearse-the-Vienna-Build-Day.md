@@ -14,7 +14,6 @@ dependencies:
   - TASK-444
   - TASK-445
   - TASK-446
-  - TASK-447
   - TASK-448
   - TASK-449
   - TASK-450
@@ -38,11 +37,11 @@ Vienna Build Day uses one participant timeline. The Main room hosts two optional
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 An organizer can configure the venue, workshop rooms, agenda, Luma sync, questionnaire, challenge list, credits and gallery from the event editor.
-- [ ] #2 The Vienna schematic uses the booked corridor and clear room names, with final room assignments confirmed before publishing.
-- [ ] #3 A phone rehearsal covers pending registration, confirmation, saved sessions, room highlighting, Luma and manual check-in, and the questionnaire.
+- [ ] #2 The Vienna schematic is an original, sketch-style drawing of the booked corridor with clear room names and confirmed room assignments before publishing.
+- [ ] #3 A phone rehearsal covers pending registration, confirmation, room highlighting, Luma and manual check-in, and the questionnaire.
 - [ ] #4 A failed or stale Luma update can be recovered with manual sync. Unavailable credit inventory does not block a challenge.
 - [ ] #5 The workflow is verified with event staff and participant accounts before the event.
-- [ ] #6 The participant timeline contains the two Main room workshops, build blocks, lunch, optional demo submission, showcases, awards, and networking. The map marks the seven program rooms. Challenge room activities are optional.
+- [ ] #6 The participant timeline contains the two Main room workshops, build blocks, lunch, optional demo submission, showcases, awards, and networking. The map has eight selectable areas for the Main room, six breakouts and catering, with AE U1-4 and AE U1-5 shown as one breakout. Challenge room activities are optional.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -82,7 +81,7 @@ Attending both workshops leaves 3 hours and 35 minutes of build time across the 
 
 ### Breakout rooms
 
-Mark all seven program rooms on the static map. Use Main room for the lecture hall and link both workshop sessions to it. Use the Main room for overflow building with extra mentors whenever it is free. All six breakout rooms are open throughout the day. Participants can work on any idea in any room, move between rooms, work quietly, pair up, or ask someone to test their project.
+The venue has seven seminar rooms. Join AE U1-4 and AE U1-5 into one breakout space, giving six breakout spaces. Mark eight selectable spaces on the map: the six breakouts, the Main room, and the separate Catering room shown on the TU Wien plan beside Seminar AE U1-3. Link both workshop sessions to the Main room. Use the Main room for overflow building with extra mentors whenever it is free. All six breakout rooms are open throughout the day. Participants can work on any idea in any room, move between rooms, work quietly, pair up, or ask someone to test their project.
 
 Assign four breakout rooms to the four challenges, one per challenge. Dedicated challenge mentors are available in the assigned room. The other two breakout rooms have general mentors. The planning capacities are 60 for the medium room and about 30 for each of the five small rooms. Confirm which physical rooms get each role and verify the seating layout with the venue before publishing.
 

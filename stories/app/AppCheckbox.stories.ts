@@ -5,7 +5,7 @@ import AppCheckbox from '~/components/AppCheckbox.vue'
 const meta = {
   title: 'Shared/AppCheckbox',
   component: AppCheckbox,
-  args: { label: 'Show saved sessions' }
+  args: { label: 'Include event updates' }
 } satisfies Meta<typeof AppCheckbox>
 
 export default meta

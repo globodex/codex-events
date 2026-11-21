@@ -1,4 +1,4 @@
-import { expect, type Request } from '@playwright/test'
+import { expect, type APIRequestContext, type Request } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import type { EventFloorPlan, EventProgram, ProgramRoom } from '../../../shared/domains/events/program'
@@ -24,12 +24,26 @@ const rooms: ProgramRoom[] = [
   { id: 'bdd-makers-room', name: 'Makers Room', area: { x: 0.125, y: 0.125, width: 0.25, height: 0.25 } },
   { id: 'bdd-studio-room', name: 'Studio Room', area: { x: 0.5, y: 0.25, width: 0.375, height: 0.375 } }
 ]
+const openRooms: ProgramRoom[] = [
+  { id: 'bdd-quiet-room', name: 'Quiet Room', area: { x: 0.125, y: 0.25, width: 0.25, height: 0.25 } },
+  { id: 'bdd-team-room', name: 'Team Room', area: { x: 0.5, y: 0.25, width: 0.25, height: 0.25 } }
+]
 const buildSessionId = 'bdd-build-session'
 const designSessionId = 'bdd-design-session'
 const png = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADUlEQVQImWNgYGBgAAAABQABh6FO1AAAAABJRU5ErkJggg==',
   'base64'
 )
+
+async function uploadFloorPlan(api: APIRequestContext, name: string, rooms: ProgramRoom[]) {
+  const upload = await api.post(`${eventPath}/floor-plans`, {
+    multipart: { name, file: { name: 'floor-plan.png', mimeType: 'image/png', buffer: png } }
+  })
+  await expect(upload).toBeOK()
+  const { data: floorPlan }: { data: EventFloorPlan } = await upload.json()
+  await expect(await api.put(`${eventPath}/floor-plans/${floorPlan.id}`, { data: { name, rooms } })).toBeOK()
+  return floorPlan
+}
 
 Given('the event has two parallel sessions with rooms on {string}', async ({ request }, floorName: string) => {
   void request
@@ -43,18 +57,7 @@ Given('the event has two parallel sessions with rooms on {string}', async ({ req
       data: { agendaItems: [...agenda, { ...agendaItem, displayOrder: agenda.length }] }
     })).toBeOK()
 
-    const upload = await api.post(`${eventPath}/floor-plans`, {
-      multipart: {
-        name: floorName,
-        file: { name: 'floor-plan.png', mimeType: 'image/png', buffer: png }
-      }
-    })
-    await expect(upload).toBeOK()
-    const { data: floorPlan }: { data: EventFloorPlan } = await upload.json()
-    await expect(await api.put(`${eventPath}/floor-plans/${floorPlan.id}`, {
-      data: { name: floorPlan.name, rooms }
-    })).toBeOK()
-
+    const floorPlan = await uploadFloorPlan(api, floorName, rooms)
     const program: EventProgram = {
       agendaItemId: agendaItem.id,
       tracks: [
@@ -85,6 +88,16 @@ Given('the event has two parallel sessions with rooms on {string}', async ({ req
       ]
     }
     await expect(await api.put(`${eventPath}/program`, { data: program })).toBeOK()
+  } finally {
+    await api.dispose()
+  }
+})
+
+Given('the event has open rooms on {string}', async ({ request }, floorName: string) => {
+  void request
+  const api = await createAuthenticatedApiClient('platform_admin')
+  try {
+    await uploadFloorPlan(api, floorName, openRooms)
   } finally {
     await api.dispose()
   }
@@ -138,14 +151,42 @@ Then('the floor plan should highlight the selected room', async ({ page }) => {
   await expect(plan.getByTestId('program-room-highlight')).toHaveAttribute('style', /left: 50%/u)
 })
 
-When('I save the second session and open My agenda', async ({ page }) => {
-  const favorite = page.getByTestId(`program-favorite-${designSessionId}`)
-  await favorite.click()
-  await expect(favorite).toHaveAttribute('aria-pressed', 'true')
-  await page.getByRole('button', { name: 'My agenda', exact: true }).click()
+When('I explore the {string} using the map', async ({ page }, floorName: string) => {
+  const plan = page.getByTestId('program-floor-plan')
+  const floor = page.getByRole('combobox', { name: 'Floor', exact: true })
+  await floor.selectOption({ label: floorName })
+
+  await expect(plan.getByRole('img', { name: `Floor plan for ${floorName}`, exact: true })).toBeVisible()
+  await expect(plan.getByTestId('program-room-highlight')).toHaveCount(0)
+
+  const quietRoom = plan.getByRole('button', { name: 'Quiet Room', exact: true })
+  await quietRoom.click()
+  await expect(quietRoom).toHaveAttribute('aria-pressed', 'true')
+  await expect(plan.getByText('Quiet Room', { exact: true })).toBeVisible()
+
+  const teamRoom = plan.getByRole('button', { name: 'Team Room', exact: true })
+  await teamRoom.focus()
+  await page.keyboard.press('Enter')
+  await expect(teamRoom).toBeFocused()
+  await expect(teamRoom).toHaveAttribute('aria-pressed', 'true')
+  await expect(quietRoom).toHaveAttribute('aria-pressed', 'false')
+  await expect(plan.getByText('Team Room', { exact: true })).toBeVisible()
 })
 
-When('I reload the Agenda tab and open My agenda', async ({ page }) => {
+When('I select the build session in the agenda', async ({ page }) => {
+  await page.getByTestId(`program-session-${buildSessionId}`).click()
+})
+
+Then('the map should return to the build session\'s room on {string}', async ({ page }, floorName: string) => {
+  const plan = page.getByTestId('program-floor-plan')
+  await expect(plan.getByRole('img', { name: `Floor plan for ${floorName}`, exact: true })).toBeVisible()
+  const room = plan.getByRole('button', { name: 'Makers Room', exact: true })
+  await expect(room).toHaveAttribute('aria-pressed', 'true')
+  await expect(plan.getByText('Makers Room', { exact: true })).toBeVisible()
+})
+
+When('I reload the Agenda tab', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 })
   const workspaceReads: string[] = []
   const trackWorkspaceRead = (request: Request) => {
     const url = new URL(request.url())
@@ -159,17 +200,11 @@ When('I reload the Agenda tab and open My agenda', async ({ page }) => {
     await page.reload()
     await expect(page).toHaveURL(url => url.pathname + url.search === agendaTabPath)
     await expect(page.getByRole('tab', { name: 'Agenda', exact: true })).toHaveAttribute('aria-selected', 'true')
-    await page.getByRole('button', { name: 'My agenda', exact: true }).click()
+    await expect(page.getByTestId(`program-session-${designSessionId}`)).toBeVisible()
     expect(workspaceReads).toEqual([`${workspaceApiPath}/program?includeEventShell=true`])
   } finally {
     page.off('request', trackWorkspaceRead)
   }
-})
-
-Then('only the saved session should appear', async ({ page }) => {
-  await expect(page.getByTestId(`program-session-${designSessionId}`)).toBeVisible()
-  await expect(page.getByTestId(`program-favorite-${designSessionId}`)).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByTestId(`program-session-${buildSessionId}`)).toHaveCount(0)
 })
 
 When('I replace the {string} image while editing a track', async ({ page }, floorName: string) => {

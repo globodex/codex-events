@@ -78,7 +78,7 @@ function save() {
 }
 
 function remove() {
-  if (window.confirm('Remove the parallel agenda and its saved sessions?')) {
+  if (window.confirm('Remove the parallel agenda?')) {
     emit('remove')
   }
 }

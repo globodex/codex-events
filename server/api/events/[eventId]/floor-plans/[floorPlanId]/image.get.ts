@@ -5,6 +5,6 @@ import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
   const { eventId, floorPlanId } = parseValidatedParams(event, eventFloorPlanParamsSchema)
-  const { database } = await requireEventProgramAccess(event, eventId)
+  const database = await requireEventProgramAccess(event, eventId)
   return await readEventFloorPlanImage(event, database, eventId, floorPlanId)
 })

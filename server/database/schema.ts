@@ -3,7 +3,6 @@ import {
   check,
   index,
   integer,
-  primaryKey,
   sqliteTable,
   text,
   uniqueIndex
@@ -313,15 +312,6 @@ export const eventAgendaPrograms = sqliteTable('event_agenda_programs', {
   agendaItemId: text('agenda_item_id').notNull(),
   tracksJson: text('tracks_json').notNull()
 })
-
-export const eventAgendaFavorites = sqliteTable('event_agenda_favorites', {
-  eventId: text('event_id').notNull().references(() => eventAgendaPrograms.eventId, { onDelete: 'cascade' }),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  sessionId: text('session_id').notNull()
-}, table => [
-  primaryKey({ columns: [table.eventId, table.userId, table.sessionId] }),
-  index('event_agenda_favorites_user_idx').on(table.userId)
-])
 
 export const eventFloorPlans = sqliteTable('event_floor_plans', {
   id: idColumn(),

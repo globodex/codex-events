@@ -1,33 +1,18 @@
 import type { H3Event } from 'h3'
 
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 
 import type { AdminEventProgram, EventProgram, ParticipantEventProgram } from '#shared/domains/events/program'
 import { requirePlatformActor } from '#server/auth/actor'
 import { resolveEventAuthorization } from '#server/auth/authorization'
 import { getDatabase, type AppDatabase } from '#server/database/client'
-import {
-  eventAgendaFavorites,
-  eventAgendaPrograms,
-  eventFloorPlans,
-  events,
-  userApplications,
-  users
-} from '#server/database/schema'
+import { eventAgendaPrograms, eventFloorPlans, events, userApplications } from '#server/database/schema'
 import { getEventOrThrow, parseEventAgendaItems, requireEventAdmin } from '#server/domains/events'
 import { listEventFloorPlans } from '#server/domains/events/floor-plans'
 import { ApiError } from '#server/http/api-error'
 import { measureRequestPhase } from '#server/http/request-timing'
 
 type EventRecord = typeof events.$inferSelect
-
-function approvedApplication(eventId: string, userId: string) {
-  return and(
-    eq(userApplications.eventId, eventId),
-    eq(userApplications.userId, userId),
-    eq(userApplications.status, 'approved')
-  )
-}
 
 export function assertProgramViewAccess(isEventAdmin: boolean, approved: boolean) {
   if (!isEventAdmin && !approved) {
@@ -47,10 +32,14 @@ export async function requireEventProgramAccess(h3Event: H3Event, eventId: strin
 
   const approval = await measureRequestPhase(h3Event, 'd1', () => database.query.userApplications.findFirst({
     columns: { id: true },
-    where: approvedApplication(event.id, actor.platformUser.id)
+    where: and(
+      eq(userApplications.eventId, event.id),
+      eq(userApplications.userId, actor.platformUser.id),
+      eq(userApplications.status, 'approved')
+    )
   }))
   assertProgramViewAccess(authorization.isEventAdmin, Boolean(approval))
-  return { actor, database, event, canSave: Boolean(approval) }
+  return database
 }
 
 function findEventProgramRow(database: AppDatabase, eventId: string) {
@@ -75,17 +64,6 @@ function getProgramAgendaItem(event: EventRecord, agendaItemId: string) {
 
 function readProgramTracks(tracksJson: string): EventProgram['tracks'] {
   return JSON.parse(tracksJson) as EventProgram['tracks']
-}
-
-async function readActiveProgram(database: AppDatabase, event: EventRecord) {
-  const row = await findEventProgramRow(database, event.id)
-  const agendaItem = row && getProgramAgendaItem(event, row.agendaItemId)
-
-  if (!row || !agendaItem) {
-    throw new ApiError({ statusCode: 404, code: 'event_program_not_found', message: 'This agenda is unavailable.' })
-  }
-
-  return { agendaItem, row, tracks: readProgramTracks(row.tracksJson) }
 }
 
 export async function readAdminEventProgram(h3Event: H3Event, eventId: string): Promise<AdminEventProgram> {
@@ -133,20 +111,6 @@ function availableProgramRooms(eventId: string, tracksJson: string) {
   )`
 }
 
-function removeDeletedSessionFavorites(database: AppDatabase, eventId: string) {
-  return database.delete(eventAgendaFavorites).where(and(
-    eq(eventAgendaFavorites.eventId, eventId),
-    sql`not exists (
-      select 1
-      from ${eventAgendaPrograms} as program
-      join json_each(program.tracks_json) as track
-      join json_each(track.value, '$.sessions') as session
-      where program.event_id = ${eventAgendaFavorites.eventId}
-        and json_extract(session.value, '$.id') = ${eventAgendaFavorites.sessionId}
-    )`
-  ))
-}
-
 export async function saveAdminEventProgram(h3Event: H3Event, eventId: string, program: EventProgram): Promise<AdminEventProgram> {
   const { event } = await requireEventAdmin(h3Event, eventId)
   const database = getDatabase(h3Event)
@@ -154,7 +118,7 @@ export async function saveAdminEventProgram(h3Event: H3Event, eventId: string, p
 
   // Compare the agenda read above and the live rooms in the write itself.
   const tracksJson = JSON.stringify(program.tracks)
-  const save = database.insert(eventAgendaPrograms).select(database.select({
+  const result = await database.insert(eventAgendaPrograms).select(database.select({
     eventId: events.id,
     agendaItemId: sql<string>`${program.agendaItemId}`.as('agendaItemId'),
     tracksJson: sql<string>`${tracksJson}`.as('tracksJson')
@@ -166,7 +130,6 @@ export async function saveAdminEventProgram(h3Event: H3Event, eventId: string, p
     target: eventAgendaPrograms.eventId,
     set: { agendaItemId: program.agendaItemId, tracksJson }
   })
-  const [result] = await database.batch([save, removeDeletedSessionFavorites(database, eventId)])
 
   if (!result.meta.changes) {
     throw new ApiError({ statusCode: 409, code: 'event_program_changed', message: 'The agenda or a selected room changed. Refresh and try again.' })
@@ -182,75 +145,18 @@ export async function deleteAdminEventProgram(h3Event: H3Event, eventId: string)
   return { program: null, floorPlans: await listEventFloorPlans(database, eventId) }
 }
 
-export async function loadParticipantEventProgram({ database, event, userId, canSave }: {
-  database: AppDatabase
-  event: EventRecord
-  userId: string
-  canSave: boolean
-}): Promise<ParticipantEventProgram> {
-  const { agendaItem, tracks } = await readActiveProgram(database, event)
-  const [floorPlans, favorites] = await Promise.all([
-    listEventFloorPlans(database, event.id),
-    canSave
-      ? database.select({ sessionId: eventAgendaFavorites.sessionId }).from(eventAgendaFavorites).where(and(
-          eq(eventAgendaFavorites.eventId, event.id),
-          eq(eventAgendaFavorites.userId, userId)
-        ))
-      : []
-  ])
+export async function loadParticipantEventProgram(database: AppDatabase, event: EventRecord): Promise<ParticipantEventProgram> {
+  const row = await findEventProgramRow(database, event.id)
+  const agendaItem = row && getProgramAgendaItem(event, row.agendaItemId)
+  if (!row || !agendaItem) {
+    throw new ApiError({ statusCode: 404, code: 'event_program_not_found', message: 'This agenda is unavailable.' })
+  }
 
   return {
     eventId: event.id,
     eventName: event.name,
     agendaItem,
-    tracks,
-    floorPlans,
-    savedSessionIds: favorites.map(favorite => favorite.sessionId),
-    canSave
+    tracks: readProgramTracks(row.tracksJson),
+    floorPlans: await listEventFloorPlans(database, event.id)
   }
-}
-
-export async function writeEventProgramFavorite(h3Event: H3Event, eventId: string, sessionId: string, saved: boolean) {
-  const { actor, database, event, canSave } = await requireEventProgramAccess(h3Event, eventId)
-  const userId = actor.platformUser.id
-  if (!canSave) {
-    throw new ApiError({ statusCode: 403, code: 'event_program_access_required', message: 'Only confirmed participants can save sessions.' })
-  }
-
-  const { row, tracks } = await readActiveProgram(database, event)
-  if (!tracks.some(track => track.sessions.some(session => session.id === sessionId))) {
-    throw new ApiError({ statusCode: 404, code: 'event_program_session_not_found', message: 'This session is unavailable.' })
-  }
-
-  if (!saved) {
-    await database.delete(eventAgendaFavorites).where(and(
-      eq(eventAgendaFavorites.eventId, eventId),
-      eq(eventAgendaFavorites.userId, userId),
-      eq(eventAgendaFavorites.sessionId, sessionId)
-    ))
-    return { saved }
-  }
-
-  const candidate = database.select({
-    eventId: eventAgendaPrograms.eventId,
-    userId: sql<string>`${userId}`.as('userId'),
-    sessionId: sql<string>`${sessionId}`.as('sessionId')
-  }).from(eventAgendaPrograms)
-    .innerJoin(userApplications, approvedApplication(eventId, userId))
-    .innerJoin(users, and(eq(users.id, userId), isNull(users.deletedAt)))
-    .where(and(
-      eq(eventAgendaPrograms.eventId, eventId),
-      eq(eventAgendaPrograms.agendaItemId, row.agendaItemId),
-      eq(eventAgendaPrograms.tracksJson, row.tracksJson)
-    ))
-  const result = await database.insert(eventAgendaFavorites).select(candidate.getSQL()).onConflictDoUpdate({
-    target: [eventAgendaFavorites.eventId, eventAgendaFavorites.userId, eventAgendaFavorites.sessionId],
-    set: { sessionId }
-  })
-
-  if (!result.meta.changes) {
-    throw new ApiError({ statusCode: 409, code: 'event_program_changed', message: 'This agenda changed. Refresh and try again.' })
-  }
-
-  return { saved }
 }

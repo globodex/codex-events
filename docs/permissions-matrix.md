@@ -161,7 +161,6 @@ Team permissions apply only to Hackathon events.
 
 - Public visitors and pending participants see the public agenda block. Confirmed participants can open the Agenda tab and its floor plans before check-in.
 - Event admins and platform admins manage programs, floor plans and room areas. They can open the participant view while preparing the event.
-- Favorites are private to the confirmed participant who saved them.
 
 ## Event Image Permissions
 

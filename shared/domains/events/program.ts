@@ -84,9 +84,7 @@ export const participantEventProgramSchema = z.object({
   eventName: z.string(),
   agendaItem: z.object({ id, title: z.string(), startsAt: z.string(), endsAt: z.string() }),
   tracks: z.array(programTrackSchema),
-  floorPlans: z.array(eventFloorPlanSchema),
-  savedSessionIds: z.array(id),
-  canSave: z.boolean()
+  floorPlans: z.array(eventFloorPlanSchema)
 })
 
 export type ParticipantEventProgram = z.infer<typeof participantEventProgramSchema>

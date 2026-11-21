@@ -4,10 +4,9 @@ title: Let confirmed participants save sessions to My agenda
 status: Done
 assignee: []
 created_date: '2026-11-21T15:22:00Z'
-updated_date: '2026-11-21T16:54:00Z'
+updated_date: '2026-11-21T21:21:00Z'
 labels:
   - build-day
-milestone: m-3
 dependencies:
   - TASK-445
 references:
@@ -46,4 +45,6 @@ Participants need a short personal schedule so they can see where to be and when
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
 Confirmed participants can save and unsave sessions before check-in. My agenda shows only their saved sessions with timing and room links. Favorites persist across reloads and are cleared when their session, program or account is removed.
+
+Removed from the Build Day scope. The agenda and room links are available to confirmed participants without a saved view.
 <!-- SECTION:FINAL_SUMMARY:END -->
