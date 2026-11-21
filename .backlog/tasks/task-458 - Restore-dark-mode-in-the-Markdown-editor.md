@@ -1,11 +1,11 @@
 ---
 id: TASK-458
 title: Restore dark mode in the Markdown editor
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-11-21T17:36:00Z'
-updated_date: '2026-11-21T17:48:00Z'
+updated_date: '2026-11-21T18:09:00Z'
 labels: []
 dependencies: []
 references:
@@ -34,14 +34,14 @@ Event organizers see light editor text and controls against a white background i
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
+- [x] #3 Relevant validation commands pass
+- [x] #4 Tests were added or updated when behavior changed
+- [x] #5 Test gaps are documented when automation is not practical
+- [x] #6 Config and developer workflow docs were updated when setup changed
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -56,4 +56,12 @@ Event organizers see light editor text and controls against a white background i
 
 <!-- SECTION:NOTES:BEGIN -->
 The editor uses a data-theme attribute to mark dark mode. Chromium reproduced the white surface before the selector change and passed the light-to-dark-to-light check afterward, with the rendered Markdown preview visible. The Cloudflare build contains the corrected scoped selector.
+
+Three local API tests hit time limits under heavy machine load and passed on a targeted retry. The standard backend checks passed on GitHub. A separate account overview navigation test failed in the first full browser run, passed in the focused workflow, and passed in the full-suite retry.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+The shared Markdown editor follows the current library dark theme selector. The event builder browser scenario verifies the background in light and dark modes and checks that the preview remains visible. Lint, type checking, unit and integration checks, the Cloudflare build, CodeQL, and all 102 browser scenarios passed. The test site serves the corrected stylesheet from c022fe76. [Full browser suite](https://github.com/globodex/codex-events/actions/runs/44932135688) · [Test deployment](https://github.com/globodex/codex-events/actions/runs/44932117739)
+<!-- SECTION:FINAL_SUMMARY:END -->
