@@ -24,6 +24,8 @@ import {
 import { isAbortError, throwIfAborted } from '~/lib/request-cancellation'
 import { useAbortableRequest } from '~/composables/useAbortableRequest'
 import { useApiClient } from '~/composables/useApiClient'
+import { useAuthorizationCache } from '~/composables/useAuthorizationCache'
+import { buildProtectedRequestKey, useProtectedRequestOwner } from '~/composables/useProtectedRequestOwner'
 
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 type VisibleTeamsFilter = {
@@ -81,6 +83,8 @@ export function useTeamFormationWorkspace(
 ) {
   const apiFetch = useApiClient()
   const requests = useAbortableRequest()
+  const { protectedKey } = useAuthorizationCache()
+  const requestOwner = useProtectedRequestOwner()
   let workspaceGeneration = 0
   const { actor, status: actorStatus } = useAccountLifecycleActor()
   const resolvedEvent = computed(() => toValue(event))
@@ -249,101 +253,25 @@ export function useTeamFormationWorkspace(
   }
 
   async function fetchTeamPage(
+    eventId: string,
     page: number,
-    pageSize: number = visibleTeamsPageSize,
-    options: VisibleTeamsFilter | undefined,
+    options: VisibleTeamsFilter,
     signal: AbortSignal
   ) {
-    if (!visibleEventId.value) {
-      throw new Error('The current event team route could not be resolved.')
-    }
-
     return await apiFetch<TeamSummaryListResponse>(
-      `/api/events/${visibleEventId.value}/teams`,
-      {
-        query: {
-          page,
-          page_size: pageSize,
-          ...(typeof options?.openToJoin === 'boolean'
-            ? {
-                open_to_join: options.openToJoin
-              }
-            : {}),
-          ...(typeof options?.hasCapacity === 'boolean'
-            ? {
-                has_capacity: options.hasCapacity
-              }
-            : {}),
-          ...(options?.workspaceMode
-            ? {
-                workspace_mode: options.workspaceMode
-              }
-            : {}),
-          ...(options?.memberCount
-            ? {
-                member_count: options.memberCount
-              }
-            : {})
-        },
-        signal
-      }
-    )
-  }
-
-  async function findVisibleTeamBySlug(teamSlug: string) {
-    if (!visibleEventId.value || typedActor.value?.kind !== 'platform_user') {
-      return null
-    }
-
-    const normalizedTeamSlug = teamSlug.trim().toLowerCase()
-
-    if (!normalizedTeamSlug) {
-      return null
-    }
-
-    const eventId = visibleEventId.value
-    const userId = actorUserId.value
-    if (!userId) {
-      return null
-    }
-
-    const generation = workspaceGeneration
-    const signal = requests.createSignal('team-slug')
-
-    const response = await apiFetch<TeamSummaryListResponse>(
       `/api/events/${eventId}/teams`,
       {
         query: {
-          page: 1,
-          page_size: 1,
-          slug: normalizedTeamSlug
+          page,
+          page_size: visibleTeamsPageSize,
+          open_to_join: options.openToJoin,
+          has_capacity: options.hasCapacity,
+          workspace_mode: options.workspaceMode,
+          member_count: options.memberCount
         },
         signal
       }
     )
-
-    throwIfAborted(signal)
-
-    if (!isCurrentWorkspaceRequest(generation, eventId, userId, signal)) {
-      return null
-    }
-
-    return response.data.find(team => team.slug === normalizedTeamSlug) ?? null
-  }
-
-  async function fetchTeamDetail(teamId: string, signal: AbortSignal) {
-    if (!visibleEventId.value) {
-      throw new Error('The current event team route could not be resolved.')
-    }
-
-    const response = await apiFetch<TeamWorkspaceApiDataResponse<TeamDetailRecord>>(
-      `/api/events/${visibleEventId.value}/teams/${teamId}`,
-      { signal }
-    )
-
-    throwIfAborted(signal)
-
-    return response.data
   }
 
   async function loadVisibleTeams(pageCount: number = 1, options?: {
@@ -377,13 +305,17 @@ export function useTeamFormationWorkspace(
     }
 
     const signal = requests.createSignal('visible-teams')
+    const key = buildProtectedRequestKey('visible-teams', eventId, pageCount, nextFilter)
 
     try {
-      const responses = await Promise.all(
-        Array.from(
+      const responses = await requestOwner.execute(
+        protectedKey(key).value,
+        signal,
+        ownerSignal => Promise.all(Array.from(
           { length: pageCount },
-          async (_, index) => await fetchTeamPage(index + 1, visibleTeamsPageSize, nextFilter, signal)
-        )
+          (_, index) => fetchTeamPage(eventId, index + 1, nextFilter, ownerSignal)
+        )),
+        { force: true }
       )
       throwIfAborted(signal)
       const nextTeams = responses.flatMap(response => response.data)
@@ -456,9 +388,17 @@ export function useTeamFormationWorkspace(
     currentTeamErrorMessage.value = ''
     const generation = workspaceGeneration
     const signal = requests.createSignal('current-team')
+    const key = buildProtectedRequestKey('current-team', eventId, teamId)
 
     try {
-      const detail = await fetchTeamDetail(teamId, signal)
+      const { data: detail } = await requestOwner.execute(
+        protectedKey(key).value,
+        signal,
+        ownerSignal => apiFetch<TeamWorkspaceApiDataResponse<TeamDetailRecord>>(
+          `/api/events/${eventId}/teams/${teamId}`,
+          { signal: ownerSignal }
+        )
+      )
       throwIfAborted(signal)
       if (!isCurrentWorkspaceRequest(generation, eventId, userId, signal, teamId)) {
         return
@@ -489,63 +429,25 @@ export function useTeamFormationWorkspace(
     }
   }
 
-  async function loadCurrentTeamJoinRequests() {
-    const eventId = visibleEventId.value
-    const teamId = currentTeam.value?.id ?? null
-    const userId = actorUserId.value
-    if (!eventId || !teamId || !userId || !isCurrentTeamAdmin.value) {
-      teamJoinRequests.value = []
-      teamJoinRequestsStatus.value = 'idle'
-      teamJoinRequestsErrorMessage.value = ''
-      return
-    }
-
-    teamJoinRequestsStatus.value = 'pending'
-    teamJoinRequestsErrorMessage.value = ''
-    const generation = workspaceGeneration
-    const signal = requests.createSignal('team-join-requests')
-
-    try {
-      const response = await apiFetch<TeamWorkspaceApiListResponse<TeamJoinRequestRecord>>(
-        `/api/events/${eventId}/teams/${teamId}/join-requests`,
-        { signal }
-      )
-
-      throwIfAborted(signal)
-
-      if (!isCurrentWorkspaceRequest(generation, eventId, userId, signal, teamId)) {
-        return
-      }
-
-      teamJoinRequests.value = response.data.filter(request => request.status === 'pending')
-      teamJoinRequestsStatus.value = 'success'
-    } catch (error) {
-      if (isAbortError(error, signal)) {
-        return
-      }
-
-      if (!isCurrentWorkspaceRequest(generation, eventId, userId, signal, teamId)) {
-        return
-      }
-
-      teamJoinRequests.value = []
-      teamJoinRequestsStatus.value = 'error'
-      teamJoinRequestsErrorMessage.value = toSectionErrorMessage(
-        error,
-        'Team join requests could not be loaded right now.'
-      )
-    }
-  }
-
   async function runMutation<T>(
     actionKey: string,
     action: () => Promise<T>
   ) {
+    const teamId = currentTeam.value?.id
+    const detailKey = teamId
+      ? protectedKey(buildProtectedRequestKey('current-team', visibleEventId.value, teamId)).value
+      : null
     pendingActionKey.value = actionKey
     mutationError.value = ''
 
     try {
-      return await action()
+      const result = await action()
+
+      if (detailKey) {
+        requestOwner.invalidate(detailKey)
+      }
+
+      return result
     } catch (error) {
       mutationError.value = normalizeTeamWorkspaceApiError(error).message
       return null
@@ -846,10 +748,8 @@ export function useTeamFormationWorkspace(
       && (previous[0] !== eventId || previous[1] !== teamId || previous[2] !== userId)
 
     workspaceGeneration += 1
-    requests.abort('team-slug')
     requests.abort('visible-teams')
     requests.abort('current-team')
-    requests.abort('team-join-requests')
 
     if (contextChanged) {
       resetVisibleTeamsState()
@@ -884,15 +784,12 @@ export function useTeamFormationWorkspace(
     currentTeamErrorMessage,
     currentTeamMembership,
     currentTeamStatus,
-    findVisibleTeamBySlug,
     forgetPendingJoinRequest,
     getRememberedPendingJoinRequestId,
     hasMoreVisibleTeams,
     isCurrentTeamAdmin,
     isLoadingMoreVisibleTeams,
     leaveCurrentTeam,
-    loadCurrentTeam,
-    loadCurrentTeamJoinRequests,
     loadMoreVisibleTeams,
     loadVisibleTeams,
     loadMoreVisibleTeamsErrorMessage,

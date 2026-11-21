@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { computed, nextTick, ref, toValue, watch } from 'vue'
+import { computed, nextTick, ref, shallowRef, toValue, watch } from 'vue'
 
 import type { TeamSubmissionRecord } from '../../../../../app/domains/submissions/team-submission'
 
@@ -34,24 +34,6 @@ function buildSubmission(
   }
 }
 
-async function flushWorkspace() {
-  await Promise.resolve()
-  await Promise.resolve()
-  await nextTick()
-}
-
-async function waitFor(predicate: () => boolean) {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    await flushWorkspace()
-
-    if (predicate()) {
-      return
-    }
-  }
-
-  throw new Error('Timed out waiting for submission workspace state.')
-}
-
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((promiseResolve) => {
@@ -66,7 +48,7 @@ describe('useTeamSubmissionWorkspace', () => {
     vi.resetModules()
     apiFetch.mockReset()
 
-    vi.stubGlobal('ref', ref)
+    vi.stubGlobal('shallowRef', shallowRef)
     vi.stubGlobal('computed', computed)
     vi.stubGlobal('watch', watch)
     vi.stubGlobal('toValue', toValue)
@@ -77,31 +59,24 @@ describe('useTeamSubmissionWorkspace', () => {
     vi.unstubAllGlobals()
   })
 
-  test('uses the provided SSR submission state without an initial fetch', async () => {
+  test('uses the workspace page submission without an extra fetch', async () => {
     const { useTeamSubmissionWorkspace } = await import('../../../../app/composables/useTeamSubmissionWorkspace')
 
     const workspace = useTeamSubmissionWorkspace({
-      state: 'submission_open'
-    } as never, {
       visibleEventId: 'event_1',
       team: {
         id: 'team_1',
         isPersisted: true
       },
       canViewSubmission: true,
-      canManageSubmission: true,
-      initialSubmission: buildSubmission(),
-      hasInitialSubmissionState: true
+      submission: buildSubmission()
     })
 
-    await flushWorkspace()
-
     expect(workspace.currentSubmission.value).toEqual(buildSubmission())
-    expect(workspace.currentSubmissionStatus.value).toBe('success')
     expect(apiFetch).not.toHaveBeenCalled()
   })
 
-  test('fetches the submission once the team changes beyond the initial SSR state', async () => {
+  test('drops the previous team submission until the workspace page supplies the new one', async () => {
     const { useTeamSubmissionWorkspace } = await import('../../../../app/composables/useTeamSubmissionWorkspace')
 
     const team = ref<{
@@ -111,98 +86,53 @@ describe('useTeamSubmissionWorkspace', () => {
       id: 'team_1',
       isPersisted: true
     })
-    const initialSubmission = ref<TeamSubmissionRecord | null>(buildSubmission())
-    const hasInitialSubmissionState = ref(true)
-
-    apiFetch.mockResolvedValue({
-      data: buildSubmission({
-        id: 'submission_2',
-        teamId: 'team_2',
-        projectName: 'Refetched Project'
-      })
-    })
+    const submission = ref<TeamSubmissionRecord | null>(buildSubmission())
 
     const workspace = useTeamSubmissionWorkspace({
-      state: 'submission_open'
-    } as never, {
       visibleEventId: 'event_1',
       team,
       canViewSubmission: true,
-      canManageSubmission: true,
-      initialSubmission,
-      hasInitialSubmissionState
+      submission
     })
 
-    await flushWorkspace()
-
-    hasInitialSubmissionState.value = false
-    initialSubmission.value = null
     team.value = {
       id: 'team_2',
       isPersisted: true
     }
+    await nextTick()
+    expect(workspace.currentSubmission.value).toBeNull()
 
-    await waitFor(() => workspace.currentSubmission.value?.teamId === 'team_2')
-
-    expect(workspace.currentSubmissionStatus.value).toBe('success')
-    expect(apiFetch).toHaveBeenCalledWith(
-      '/api/events/event_1/teams/team_2/submission',
-      { signal: expect.any(AbortSignal) }
-    )
+    submission.value = buildSubmission({ id: 'submission_2', teamId: 'team_2' })
+    await nextTick()
+    expect(workspace.currentSubmission.value).toEqual(submission.value)
+    expect(apiFetch).not.toHaveBeenCalled()
   })
 
-  test('does not commit a late submission response after the team changes', async () => {
+  test('does not commit a late submission mutation after the team changes', async () => {
     const { useTeamSubmissionWorkspace } = await import('../../../../app/composables/useTeamSubmissionWorkspace')
     const team = ref<{ id: string, isPersisted?: boolean }>({
       id: 'team_1',
       isPersisted: true
     })
-    const first = deferred<{ data: TeamSubmissionRecord | null }>()
-    const second = deferred<{ data: TeamSubmissionRecord | null }>()
-
-    apiFetch.mockImplementation((url: string) => {
-      if (url.includes('/team_1/')) {
-        return first.promise
-      }
-
-      if (url.includes('/team_2/')) {
-        return second.promise
-      }
-
-      throw new Error(`Unhandled request in test: ${url}`)
-    })
+    const response = deferred<{ data: TeamSubmissionRecord }>()
+    apiFetch.mockReturnValue(response.promise)
+    const submission = ref<TeamSubmissionRecord | null>(buildSubmission())
 
     const workspace = useTeamSubmissionWorkspace({
-      state: 'submission_open'
-    } as never, {
       visibleEventId: 'event_1',
       team,
       canViewSubmission: true,
-      canManageSubmission: true,
-      initialSubmission: null,
-      hasInitialSubmissionState: false
+      submission
     })
 
-    await flushWorkspace()
+    const pending = workspace.submitCurrentSubmission()
     team.value = { id: 'team_2', isPersisted: true }
-    await flushWorkspace()
+    submission.value = buildSubmission({ id: 'submission_2', teamId: 'team_2' })
+    await nextTick()
 
-    first.resolve({
-      data: buildSubmission({
-        id: 'submission_old',
-        teamId: 'team_1'
-      })
-    })
-    await flushWorkspace()
+    response.resolve({ data: buildSubmission({ status: 'submitted' }) })
 
-    expect(workspace.currentSubmission.value?.teamId).not.toBe('team_1')
-
-    second.resolve({
-      data: buildSubmission({
-        id: 'submission_new',
-        teamId: 'team_2'
-      })
-    })
-    await waitFor(() => workspace.currentSubmission.value?.teamId === 'team_2')
+    expect(await pending).toBeNull()
+    expect(workspace.currentSubmission.value).toEqual(submission.value)
   })
 })
