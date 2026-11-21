@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook-vue/nuxt'
 import type { ApiClient } from '~/composables/useApiClient'
 import type { EventRoleUserSummary } from '~/domains/events/access'
 
-import AccountPlatformRoleRosterPanel from '~/components/account/AccountPlatformRoleRosterPanel.vue'
+import AccountPlatformRoleRosterPanel from '~/components/account/organisms/AccountPlatformRoleRosterPanel.vue'
 import { provideStorybookApiFixture } from '../../.storybook/api-client'
 import { provideStorybookSession } from '../../.storybook/session'
 import { administrator } from '../app/shell-session'

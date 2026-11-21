@@ -63,7 +63,7 @@ import {
   LazyAccountEventsAccountEventRoleRosterPanel as LazyAccountEventRoleRosterPanel,
   LazyAccountEventsAccountEventTalkProposalPanel as LazyAccountEventTalkProposalPanel,
   LazyAccountEventsAccountEventTalkProposalReviewPanel as LazyAccountEventTalkProposalReviewPanel,
-  LazyAccountEventsAccountEventTracksPanel as LazyAccountEventTracksPanel,
+  LazyAccountEventsOrganismsAccountEventTracksPanel as LazyAccountEventTracksPanel,
   LazyPublicEventsEventAgendaPanel as LazyEventAgendaPanel,
   LazyPublicEventsEventPrizeList as LazyEventPrizeList,
   LazyPublicEventsEventPublishedProjectsShowcase as LazyEventPublishedProjectsShowcase,

@@ -2,7 +2,7 @@
 import type { AccountEventEntryTrack } from '#shared/domains/events/account-event-entry-page'
 import type { PublicEventType } from '~/domains/events/presentation'
 
-import EventTrackDetails from '~/components/events/EventTrackDetails.vue'
+import EventTrackDetails from '~/components/events/molecules/EventTrackDetails.vue'
 
 type ViewerMode = 'participant' | 'all-staff' | 'track-staff'
 

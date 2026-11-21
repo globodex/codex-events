@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook-vue/nuxt'
 import type { BlindJudgeAssignmentDetail, PitchJudgeAssignmentDetail } from '~/domains/judging/workspace'
 
-import JudgeSubmissionPanel from '~/components/judging/JudgeSubmissionPanel.vue'
+import JudgeSubmissionPanel from '~/components/judging/molecules/JudgeSubmissionPanel.vue'
 
 const assignedAt = '2026-11-21T10:00:00.000Z'
 const assignment = {

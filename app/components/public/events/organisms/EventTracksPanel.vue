@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PublicEventTrack, PublicEventType } from '~/domains/events/presentation'
 
-import EventTrackDetails from '~/components/events/EventTrackDetails.vue'
+import EventTrackDetails from '~/components/events/molecules/EventTrackDetails.vue'
 
 const props = defineProps<{
   eventType: PublicEventType

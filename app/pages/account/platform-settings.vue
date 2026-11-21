@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AccountPlatformRoleRosterPanel from '~/components/account/organisms/AccountPlatformRoleRosterPanel.vue'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
 
 definePageMeta({

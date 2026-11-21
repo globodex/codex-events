@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook-vue/nuxt'
 import type { PublishedProjectShowcaseEntry } from '~/domains/outcomes/published-outcomes'
 import type { PrizeRedemptionRecord } from '~/domains/prize-redemptions'
-import AdminCompetitionPrizeRedemptionsPanel from '~/components/admin/AdminCompetitionPrizeRedemptionsPanel.vue'
+import AdminCompetitionPrizeRedemptionsPanel from '~/components/admin/organisms/AdminCompetitionPrizeRedemptionsPanel.vue'
 import { winningProject } from '../public-events/fixtures/build-day'
 
 const shortlistedProject: PublishedProjectShowcaseEntry = {

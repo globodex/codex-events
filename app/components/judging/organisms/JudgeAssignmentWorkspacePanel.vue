@@ -11,7 +11,7 @@ import type { AccountJudgeAssignmentWorkspacePage } from '#shared/domains/events
 
 import JudgeReviewActionFooter from '~/components/judging/JudgeReviewActionFooter.vue'
 import JudgeReviewRubric from '~/components/judging/JudgeReviewRubric.vue'
-import JudgeSubmissionPanel from '~/components/judging/JudgeSubmissionPanel.vue'
+import JudgeSubmissionPanel from '~/components/judging/molecules/JudgeSubmissionPanel.vue'
 import { buildAccountEventJudgingTabHref } from '~/domains/judging/query'
 import { useApiClient } from '~/composables/useApiClient'
 import {

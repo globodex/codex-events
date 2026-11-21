@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook-vue/nuxt'
 
 import { shallowRef } from 'vue'
 
-import AccountEventTracksPanel from '~/components/account/events/AccountEventTracksPanel.vue'
+import AccountEventTracksPanel from '~/components/account/events/organisms/AccountEventTracksPanel.vue'
 
 const tracks = [
   {

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook-vue/nuxt'
 
-import EventTracksPanel from '~/components/public/events/EventTracksPanel.vue'
+import EventTracksPanel from '~/components/public/events/organisms/EventTracksPanel.vue'
 import { publicTracks } from './fixtures/build-day'
 
 const meta = {
