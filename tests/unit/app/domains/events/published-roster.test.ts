@@ -6,62 +6,11 @@ import type {
 } from '../../../../../app/domains/events/published-roster'
 import {
   buildPublishedStaffRosterSections,
-  createEmptyPublishedEventRosterLoadState,
-  formatPublishedStaffRosterSectionCount,
-  getPublishedEventRosterEndpoint,
-  getPublishedEventRosterLinks,
   loadPublishedEventRoster
 } from '../../../../../app/domains/events/published-roster'
 
 describe('published event roster helpers', () => {
   const signal = new AbortController().signal
-
-  test('returns public social links in the published card order', () => {
-    expect(getPublishedEventRosterLinks({
-      id: 'user_1',
-      fullName: 'Judge User',
-      company: 'Codex Labs',
-      bio: 'Reviews submissions.',
-      xProfileUrl: ' https://x.com/judge-user ',
-      linkedinProfileUrl: 'https://linkedin.com/in/judge-user',
-      githubProfileUrl: 'https://github.com/judge-user',
-      profileIconRevision: null
-    })).toEqual([
-      {
-        key: 'x',
-        label: 'X',
-        href: 'https://x.com/judge-user'
-      },
-      {
-        key: 'linkedin',
-        label: 'LinkedIn',
-        href: 'https://linkedin.com/in/judge-user'
-      },
-      {
-        key: 'github',
-        label: 'GitHub',
-        href: 'https://github.com/judge-user'
-      }
-    ])
-  })
-
-  test('omits empty public social links from published cards', () => {
-    expect(getPublishedEventRosterLinks({
-      id: 'user_1',
-      fullName: 'Staff User',
-      company: null,
-      bio: null,
-      xProfileUrl: '   ',
-      linkedinProfileUrl: null,
-      githubProfileUrl: null,
-      profileIconRevision: null
-    })).toEqual([])
-  })
-
-  test('derives the published roster endpoint from the requested role', () => {
-    expect(getPublishedEventRosterEndpoint('judge')).toBe('judges')
-    expect(getPublishedEventRosterEndpoint('staff')).toBe('staff')
-  })
 
   test('groups staff roster members by whole-event staff and populated tracks', () => {
     const tracks: PublishedEventStaffTrack[] = [{
@@ -123,11 +72,6 @@ describe('published event roster helpers', () => {
     }])
   })
 
-  test('formats staff roster section counts for compact row headers', () => {
-    expect(formatPublishedStaffRosterSectionCount(1)).toBe('1 person')
-    expect(formatPublishedStaffRosterSectionCount(2)).toBe('2 people')
-  })
-
   test('loads the published roster members through the provided request function', async () => {
     const request = async (path: string, requestSignal: AbortSignal) => {
       expect(path).toBe('/api/events/event_1/judges')
@@ -187,13 +131,6 @@ describe('published event roster helpers', () => {
     }, signal)).resolves.toEqual({
       members: [],
       errorMessage: 'Judge roster unavailable right now.'
-    })
-  })
-
-  test('creates an empty roster state for tabs that do not need a published roster fetch', () => {
-    expect(createEmptyPublishedEventRosterLoadState()).toEqual({
-      members: [],
-      errorMessage: null
     })
   })
 })

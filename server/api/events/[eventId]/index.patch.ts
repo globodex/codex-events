@@ -20,6 +20,7 @@ import {
   updateEventBodySchema
 } from '#server/domains/events'
 import { reconcileEventLumaWebhook } from '#server/domains/events/luma-webhook-registration'
+import { preservesEventProgramParent } from '#server/domains/events/program-parent'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
@@ -98,6 +99,11 @@ export const applicationOperation = defineStructuredRouteOperation({
   Object.assign(patch, computeEventBalanceColumns({ ...event, ...patch }))
 
   const eventWritePredicates = [eq(events.id, eventId)]
+  const preservesProgram = patch.agendaItemsJson ? preservesEventProgramParent(patch.agendaItemsJson) : null
+
+  if (preservesProgram) {
+    eventWritePredicates.push(preservesProgram)
+  }
 
   if (locksAgainstExistingProposals) {
     eventWritePredicates.push(
@@ -112,6 +118,17 @@ export const applicationOperation = defineStructuredRouteOperation({
     .returning({ id: events.id })
 
   if (!updatedEventWrite) {
+    if (preservesProgram) {
+      const [validProgramParent] = await database.select({ id: events.id })
+        .from(events)
+        .where(and(eq(events.id, eventId), preservesProgram))
+        .limit(1)
+      assertGuard(Boolean(validProgramParent), {
+        statusCode: 409,
+        code: 'event_program_parent_conflict',
+        message: 'Keep the agenda block long enough for its sessions, or remove the parallel agenda first.'
+      })
+    }
     assertTalkProposalConfigurationChangeAllowed(event, body, true)
   }
 

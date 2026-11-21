@@ -54,19 +54,17 @@ watch(isSidebarCollapsed, (nextValue) => {
         />
       </div>
 
-      <button
-        type="button"
-        class="mt-3 inline-flex size-8 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-black/6 hover:text-highlighted focus-visible:ring-2 focus-visible:ring-black/12 focus-visible:outline-none dark:text-[#8C8C8C] dark:hover:bg-[#1A1A1A] dark:hover:text-white dark:focus-visible:ring-white/[0.24]"
+      <AppButton
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        class="mt-3 size-8 rounded-md p-0 text-neutral-500 hover:bg-black/6 dark:text-[#8C8C8C] dark:hover:bg-[#1A1A1A] dark:hover:text-white"
         :class="isSidebarCollapsed ? 'self-center' : 'self-start'"
+        :icon="isSidebarCollapsed ? 'i-lucide-panel-left-open' : 'i-lucide-panel-left-close'"
         :aria-label="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
         :title="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
         @click="toggleSidebarCollapse"
-      >
-        <AppIcon
-          :name="isSidebarCollapsed ? 'i-lucide-panel-left-open' : 'i-lucide-panel-left-close'"
-          class="size-4"
-        />
-      </button>
+      />
     </div>
   </aside>
 </template>

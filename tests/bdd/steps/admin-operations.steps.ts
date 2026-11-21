@@ -1,40 +1,11 @@
-import { existsSync, readFileSync } from 'node:fs'
-
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import { createAuthenticatedApiClient } from '../support/api-client'
-import { stablePersonaKeys, storageStatePathForPersona, type StablePersonaKey } from '../support/personas.ts'
+import { parsePersonaKey } from '../support/personas.ts'
+import { signInAs } from '../support/session-state.ts'
 
 const { When, Then } = createBdd()
-
-type StoredState = {
-  cookies?: Array<{
-    name: string
-    value: string
-    domain: string
-    path: string
-    expires: number
-    httpOnly: boolean
-    secure: boolean
-    sameSite: 'Strict' | 'Lax' | 'None'
-  }>
-  origins?: Array<{
-    origin: string
-    localStorage: Array<{
-      name: string
-      value: string
-    }>
-  }>
-}
-
-export function parsePersonaKey(personaKey: string): StablePersonaKey {
-  if (stablePersonaKeys.includes(personaKey as StablePersonaKey)) {
-    return personaKey as StablePersonaKey
-  }
-
-  throw new Error(`Unknown stable persona key: ${personaKey}`)
-}
 
 function formatParticipantViewLabel(status: string) {
   switch (status) {
@@ -49,15 +20,6 @@ function formatParticipantViewLabel(status: string) {
     default:
       return null
   }
-}
-
-function decisionButtonActiveClass(decision: 'approve' | 'reject') {
-  return decision === 'approve' ? 'bg-success/12' : 'bg-error/12'
-}
-
-async function isDecisionButtonActive(button: ReturnType<Page['getByTestId']>, decision: 'approve' | 'reject') {
-  const className = await button.getAttribute('class')
-  return className?.includes(decisionButtonActiveClass(decision)) ?? false
 }
 
 function getCurrentEventSlug(page: Page) {
@@ -163,42 +125,8 @@ async function waitForAdminApplication(page: Page, applicationId: string) {
   return application
 }
 
-export async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) {
-  const storageStatePath = storageStatePathForPersona(personaKey)
-
-  if (!existsSync(storageStatePath)) {
-    throw new Error(`Missing storage state for persona "${personaKey}" at ${storageStatePath}.`)
-  }
-
-  const storageState = JSON.parse(readFileSync(storageStatePath, 'utf8')) as StoredState
-
-  if (storageState.cookies?.length) {
-    await page.context().addCookies(storageState.cookies)
-  }
-
-  const origins = storageState.origins ?? []
-
-  if (origins.length) {
-    await page.addInitScript((entries: StoredState['origins']) => {
-      if (!entries) {
-        return
-      }
-
-      for (const entry of entries) {
-        if (entry.origin !== window.location.origin) {
-          continue
-        }
-
-        for (const item of entry.localStorage) {
-          window.localStorage.setItem(item.name, item.value)
-        }
-      }
-    }, origins)
-  }
-}
-
 When('I open the admin operations page for event {string} with the saved {string} session', async ({ page }, eventId: string, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await signInAs(parsePersonaKey(personaKey), page)
   const eventSlug = resolveEventSlug(eventId)
 
   await Promise.all([
@@ -222,6 +150,19 @@ Then('I should see the admin application {string} with status {string}', async (
   await waitForAdminApplication(page, applicationId)
 })
 
+async function saveStagedAdminApplicationDecisions(page: Page) {
+  const saveButton = page.getByTestId('admin-application-save-decisions')
+  await expect(saveButton).toBeEnabled()
+  const [response] = await Promise.all([
+    page.waitForResponse(response =>
+      response.request().method() === 'POST'
+      && new URL(response.url()).pathname.endsWith('/applications/actions/apply-staged-decisions')
+    ),
+    saveButton.click()
+  ])
+  expect(response.ok(), `Apply staged decisions returned HTTP ${response.status()}`).toBe(true)
+}
+
 When('I approve the admin application {string}', async ({ page }, applicationId: string) => {
   const application = await waitForAdminApplication(page, applicationId)
   const approveButton = application.getByTestId(`admin-application-approve-${applicationId}`)
@@ -230,22 +171,13 @@ When('I approve the admin application {string}', async ({ page }, applicationId:
   await expect(approveButton).toBeInViewport()
   await expect(approveButton).toBeEnabled()
 
-  if (!(await isDecisionButtonActive(approveButton, 'approve'))) {
+  if ((await approveButton.getAttribute('aria-pressed')) !== 'true') {
     await approveButton.click()
   }
 
-  await expect.poll(async () => await isDecisionButtonActive(approveButton, 'approve')).toBe(true)
+  await expect(approveButton).toHaveAttribute('aria-pressed', 'true')
   await waitForStagedApplicationDecision(page, applicationId, 'approved')
-  await expect(page.getByTestId('admin-application-save-decisions')).toBeEnabled()
-
-  await Promise.all([
-    page.waitForResponse(response =>
-      response.url().includes(`/api/events/`)
-      && response.url().includes('/applications/actions/apply-staged-decisions')
-      && response.ok()
-    ),
-    page.getByTestId('admin-application-save-decisions').click()
-  ])
+  await saveStagedAdminApplicationDecisions(page)
 })
 
 When('I reject the admin application {string}', async ({ page }, applicationId: string) => {
@@ -254,23 +186,14 @@ When('I reject the admin application {string}', async ({ page }, applicationId: 
 
   await expect(rejectButton).toBeEnabled()
 
-  if (!(await isDecisionButtonActive(rejectButton, 'reject'))) {
+  if ((await rejectButton.getAttribute('aria-pressed')) !== 'true') {
     await rejectButton.focus()
     await rejectButton.press('Enter')
   }
 
-  await expect.poll(async () => await isDecisionButtonActive(rejectButton, 'reject')).toBe(true)
+  await expect(rejectButton).toHaveAttribute('aria-pressed', 'true')
   await waitForStagedApplicationDecision(page, applicationId, 'rejected')
-  await expect(page.getByTestId('admin-application-save-decisions')).toBeEnabled()
-
-  await Promise.all([
-    page.waitForResponse(response =>
-      response.url().includes(`/api/events/`)
-      && response.url().includes('/applications/actions/apply-staged-decisions')
-      && response.ok()
-    ),
-    page.getByTestId('admin-application-save-decisions').click()
-  ])
+  await saveStagedAdminApplicationDecisions(page)
 })
 
 Then('I should see the admin team {string} with submission status {string}', async ({ page }, teamId: string, status: string) => {

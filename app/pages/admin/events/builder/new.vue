@@ -16,14 +16,13 @@ definePageMeta({
   middleware: ['require-event-creator']
 })
 
-const workspace = useAdminWorkspace({ loadEvents: false })
+const session = useSessionActor()
 const apiFetch = useApiClient()
 const toast = useToast()
 const builder = useEventBuilder({ mode: 'create' })
 
 const createEventWebMcpTool = computed<WebMcpTool | null>(() => {
-  if (!workspace.session.isReady.value
-    || !workspace.session.capabilities.value.canCreateEvent) {
+  if (!session.isReady.value || !session.capabilities.value.canCreateEvent) {
     return null
   }
 
@@ -34,8 +33,7 @@ const createEventWebMcpTool = computed<WebMcpTool | null>(() => {
     inputSchema: createEventWebMcpJsonSchema,
     annotations: { readOnlyHint: false },
     execute: async (input, { signal }) => {
-      if (!workspace.session.isReady.value
-        || !workspace.session.capabilities.value.canCreateEvent) {
+      if (!session.isReady.value || !session.capabilities.value.canCreateEvent) {
         throw new Error('Event creator access is no longer available.')
       }
 
@@ -78,7 +76,7 @@ async function createEvent() {
       color: 'success'
     })
 
-    await workspace.refreshRoot()
+    await session.refresh()
     await navigateTo(`/account/events/${response.data.slug}?tab=settings`)
   } catch (error) {
     submitError.value = normalizeApiError(error).message
@@ -119,11 +117,11 @@ useSeoMeta({
     <AdminWorkspaceHeader title="Build your event" />
 
     <AppAlert
-      v-if="workspace.session.error.value"
+      v-if="session.error.value"
       color="error"
       variant="soft"
       title="Unable to load session"
-      :description="workspace.session.error.value.message"
+      :description="session.error.value.message"
     />
 
     <AdminBuilderWorkspace

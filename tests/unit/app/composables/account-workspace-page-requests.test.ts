@@ -18,7 +18,7 @@ const prizeWorkspaceSource = readFileSync(
 describe('account workspace page request topology', () => {
   test('account overview uses one signal-aware page read after the shared bootstrap', () => {
     expect(accountOverviewSource).toContain('accountOverviewPagePath')
-    expect(accountOverviewSource).toContain('await session.ensureLoaded()')
+    expect(accountOverviewSource).not.toContain('session.ensureLoaded()')
     expect(accountOverviewSource).toContain('signal')
     expect(accountOverviewSource).not.toContain('/api/events/participation')
     expect(accountOverviewSource).not.toContain('watch:')
@@ -26,7 +26,7 @@ describe('account workspace page request topology', () => {
 
   test('staff workspace receives server-filtered staff summaries without the broad account list', () => {
     expect(staffWorkspaceSource).toContain('accountStaffPagePath')
-    expect(staffWorkspaceSource).toContain('await session.ensureLoaded()')
+    expect(staffWorkspaceSource).not.toContain('session.ensureLoaded()')
     expect(staffWorkspaceSource).toContain('signal')
     expect(staffWorkspaceSource).not.toContain('/api/account/events')
     expect(staffWorkspaceSource).not.toContain('filterStaffAccessibleEvents')
@@ -34,7 +34,7 @@ describe('account workspace page request topology', () => {
 
   test('prize workspace composes current terms into one page read and keeps mutation refresh local', () => {
     expect(prizeWorkspaceSource).toContain('accountPrizeRedemptionsPagePath')
-    expect(prizeWorkspaceSource).toContain('await session.ensureLoaded()')
+    expect(prizeWorkspaceSource).not.toContain('session.ensureLoaded()')
     expect(prizeWorkspaceSource).toContain('signal')
     expect(prizeWorkspaceSource).toContain('await workspaceRequest.refresh()')
     expect(prizeWorkspaceSource).toContain('authorizationCache.authorizationGeneration')

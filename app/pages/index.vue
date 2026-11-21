@@ -57,21 +57,26 @@ async function selectHomepageTab(nextTab: PublicHomepageTab) {
   })
 }
 
-const { data: initialResponse, error } = await useFetch<PublicApiListResponse<PublicEvent>>('/api/public/events', {
-  key: 'public-events-homepage:page-1',
-  query: {
-    page: 1,
-    page_size: publicEventsPageSize
-  }
-})
-const { data: pastCountResponse } = await useFetch<PublicApiListResponse<PublicEvent>>('/api/public/events', {
-  key: 'public-events-homepage:past-count',
-  query: {
-    page: 1,
-    page_size: 1,
-    state: 'completed'
-  }
-})
+const [
+  { data: initialResponse, error },
+  { data: pastCountResponse }
+] = await Promise.all([
+  useFetch<PublicApiListResponse<PublicEvent>>('/api/public/events', {
+    key: 'public-events-homepage:page-1',
+    query: {
+      page: 1,
+      page_size: publicEventsPageSize
+    }
+  }),
+  useFetch<PublicApiListResponse<PublicEvent>>('/api/public/events', {
+    key: 'public-events-homepage:past-count',
+    query: {
+      page: 1,
+      page_size: 1,
+      state: 'completed'
+    }
+  })
+])
 
 events.value = initialResponse.value?.data ?? []
 total.value = initialResponse.value?.meta?.total ?? events.value.length
@@ -101,10 +106,10 @@ const currentFilterTotal = computed(() => {
 
   return homepageEventView.value.activeEventCount
 })
-const homepageFilterCounts = computed(() => ({
-  active: homepageEventView.value.activeEventCount,
-  past: pastTotal.value
-}))
+const homepageFilters = computed(() => [
+  { value: 'active', label: 'Active', count: homepageEventView.value.activeEventCount },
+  { value: 'past', label: 'Past', count: pastTotal.value }
+] as const)
 const canLoadMoreForCurrentFilter = computed(() => {
   if (!hasMoreEvents.value) {
     return false
@@ -185,32 +190,15 @@ useSeoMeta({
         class="!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 flex flex-col gap-4 rounded-xl p-2"
       >
         <div class="flex min-w-0 flex-wrap items-center gap-2">
-          <button
-            class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
-            :class="selectedTab === 'active' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
-            @click="void selectHomepageTab('active')"
+          <AppFilterButton
+            v-for="filter in homepageFilters"
+            :key="filter.value"
+            :pressed="selectedTab === filter.value"
+            :count="filter.count"
+            @click="void selectHomepageTab(filter.value)"
           >
-            <span>Active</span>
-            <span
-              class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-              :class="selectedTab === 'active' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
-            >
-              {{ homepageFilterCounts.active }}
-            </span>
-          </button>
-          <button
-            class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
-            :class="selectedTab === 'past' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
-            @click="void selectHomepageTab('past')"
-          >
-            <span>Past</span>
-            <span
-              class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-              :class="selectedTab === 'past' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
-            >
-              {{ homepageFilterCounts.past }}
-            </span>
-          </button>
+            {{ filter.label }}
+          </AppFilterButton>
         </div>
       </div>
 

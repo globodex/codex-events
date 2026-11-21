@@ -136,20 +136,21 @@ watch(selectedId, () => {
       class="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]"
     >
       <div class="divide-y divide-black/8 border-y border-black/8 dark:divide-white/[0.08] dark:border-white/[0.08]">
-        <button
+        <AppButton
           v-for="entry in visibleEntries"
           :key="entry.proposal.id"
-          type="button"
-          class="grid w-full gap-1 px-3 py-3 text-left transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
+          color="neutral"
+          variant="ghost"
+          class="grid h-auto w-full grid-cols-1 justify-start gap-1 rounded-none px-3 py-3 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
           :class="selectedId === entry.proposal.id ? 'bg-black/[0.04] dark:bg-white/[0.06]' : ''"
           @click="selectedId = entry.proposal.id"
         >
           <span class="truncate text-sm font-medium text-highlighted">{{ entry.proposal.title }}</span>
-          <span class="flex items-center justify-between gap-2 text-xs text-muted">
+          <span class="flex items-center justify-between gap-2 text-xs font-normal text-muted">
             <span class="truncate">{{ ownerName(entry) }}</span>
             <span>{{ talkProposalStatusLabels[entry.proposal.status] }}</span>
           </span>
-        </button>
+        </AppButton>
       </div>
 
       <article

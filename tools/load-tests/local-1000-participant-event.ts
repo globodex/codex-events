@@ -6,12 +6,10 @@ import { chromium, expect, request, type APIRequestContext, type Browser, type P
 
 import {
   getStablePersonas,
-  resetAuthArtifactDirectory,
-  storageStatePathForPersona,
   type StablePersona,
   type StablePersonaKey
 } from '../../tests/bdd/support/personas.ts'
-import { writePersonaStorageState } from '../../tests/bdd/support/session-state.ts'
+import { personaStorageState } from '../../tests/bdd/support/session-state.ts'
 
 type LoadRunOptions = {
   participantCount: number
@@ -2321,25 +2319,19 @@ async function run() {
     applyLocalD1Migrations(options)
     executeLocalD1Sql(options, buildBaseSeedSql(personas, options), 'base-seed')
 
-    resetAuthArtifactDirectory()
-    for (const persona of personas) {
-      writePersonaStorageState(persona, {
-        BDD_BASE_URL: options.baseUrl
-      })
-    }
-
     server = await startLocalServer(options)
     recordServerSnapshot(server, 'server started')
 
     browser = await chromium.launch()
 
+    const storageState = personaStorageState('event_admin', options.baseUrl)
     const adminApi = await request.newContext({
       baseURL: options.baseUrl,
-      storageState: storageStatePathForPersona('event_admin')
+      storageState
     })
     const adminContext = await browser.newContext({
       baseURL: options.baseUrl,
-      storageState: storageStatePathForPersona('event_admin')
+      storageState
     })
     const adminPage = await adminContext.newPage()
     adminPage.on('dialog', async dialog => await dialog.accept())

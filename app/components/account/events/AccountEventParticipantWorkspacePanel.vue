@@ -147,17 +147,12 @@ const submissionOpensAt = computed(() => props.event.submissionOpensAt!)
 const canViewSubmission = computed(() =>
   shouldShowParticipantSubmissionWorkspace(props.event, Boolean(displayedTeam.value))
 )
-const submissionWorkspace = useTeamSubmissionWorkspace(
-  computed(() => props.event),
-  {
-    visibleEventId: workspace.visibleEventId,
-    team: displayedTeam,
-    canViewSubmission,
-    canManageSubmission: canManageTeam,
-    initialSubmission: computed(() => props.page?.submission ?? null),
-    hasInitialSubmissionState: computed(() => Boolean(props.page))
-  }
-)
+const submissionWorkspace = useTeamSubmissionWorkspace({
+  visibleEventId: workspace.visibleEventId,
+  team: displayedTeam,
+  canViewSubmission,
+  submission: computed(() => props.page?.submission ?? null)
+})
 const hasActiveTeamSubmission = computed(() => {
   const status = submissionWorkspace.currentSubmission.value?.status
   return status === 'draft' || status === 'submitted'
@@ -882,8 +877,7 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
               requireSubmissionDemoUrl: props.event.requireSubmissionDemoUrl
             }"
             :submission="submissionWorkspace.currentSubmission.value"
-            :status="submissionWorkspace.currentSubmissionStatus.value"
-            :error-message="submissionWorkspace.currentSubmissionErrorMessage.value"
+            status="success"
             :mutation-error="submissionWorkspace.mutationError.value"
             :can-manage-submission="canManageTeam"
             :create-availability="createSubmissionAvailability"

@@ -215,21 +215,15 @@ useSeoMeta({
       <template v-else>
         <section class="!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 flex flex-col gap-4 rounded-xl p-2">
           <div class="flex min-w-0 flex-wrap items-center gap-2">
-            <button
+            <AppFilterButton
               v-for="tab in filterTabs"
               :key="tab.id"
-              class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
-              :class="activeTab === tab.id ? 'bg-black font-medium text-white dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
+              :pressed="activeTab === tab.id"
+              :count="tab.count"
               @click="void selectAdminOverviewTab(tab.id)"
             >
-              <span>{{ tab.label }}</span>
-              <span
-                class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-                :class="activeTab === tab.id ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
-              >
-                {{ tab.count }}
-              </span>
-            </button>
+              {{ tab.label }}
+            </AppFilterButton>
           </div>
         </section>
 

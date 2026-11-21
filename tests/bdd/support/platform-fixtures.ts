@@ -1,16 +1,12 @@
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { StablePersona } from './personas.ts'
 
 import { resolveLocalBddD1StateRoot } from './local-d1-state.ts'
 
-const localWranglerConfigPath = resolve(process.cwd(), 'wrangler.jsonc')
-
-function resolveLocalPlatformPersistPath(environment: NodeJS.ProcessEnv) {
-  return resolve(resolveLocalBddD1StateRoot(environment), 'v3')
-}
+const localWranglerConfigPath = fileURLToPath(new URL('../../../wrangler.jsonc', import.meta.url))
 
 const fixtureAnchorTimestamp = '2026-03-22T12:00:00.000Z'
 const fixtureTimeShiftMs = Date.now() - Date.parse(fixtureAnchorTimestamp)
@@ -25,6 +21,8 @@ function shiftFixtureIsoLiterals(sql: string) {
   return sql.replace(shiftableFixtureIsoPattern, isoTimestamp => shiftFixtureTimestamp(isoTimestamp))
 }
 export const fixtureEventId = 'event_e2e_fixture'
+const fixtureEventVisibilityId = 'event_e2e_visibility_fixture'
+export const fixtureEventVisibilitySlug = 'event-visibility-fixture'
 export const fixtureDraftEventId = 'event_e2e_draft_fixture'
 const fixtureDraftLumaEventUrl = 'https://luma.com/a4i7qtbo'
 const fixtureParticipantApplicationEventId = 'event_e2e_participant_application_fixture'
@@ -107,6 +105,7 @@ const fixtureCompetitionCompleteCriterionTwoId = 'evaluation_criterion_competiti
 
 export const platformFixtureIds = {
   eventId: fixtureEventId,
+  eventVisibilityId: fixtureEventVisibilityId,
   apiTeamFormationEventId: fixtureApiTeamFormationEventId,
   apiSoloTeamEventId: fixtureApiSoloTeamEventId,
   participantApplicationEventId: fixtureParticipantApplicationEventId,
@@ -273,6 +272,14 @@ function buildFixtureSql(personas: StablePersona[]) {
       x_profile_url, linkedin_profile_url, github_profile_url, chatgpt_email, openai_org_id,
       created_at, updated_at, deleted_at
     ) values ${[...personas.map(userTuple), ...extraUserTuples].join(', ')}`,
+    `insert into users (
+      id, auth0_subject, email, display_name
+    ) values (
+      'user_platform_admin_grant_target',
+      'auth0|platform_admin_grant_target',
+      'platform-admin-grant-target@example.com',
+      'Platform Admin Grant Target'
+    )`,
     `insert into platform_documents (
       id, document_type, version, title, content, published_at, created_at
     ) values
@@ -293,6 +300,27 @@ function buildFixtureSql(personas: StablePersona[]) {
       ('acceptance_backup_judge_terms_fixture', ${sqlLiteral(backupJudgeId)}, ${sqlLiteral(fixtureTermsDocumentId)}, ${sqlLiteral(fixtureTimestamp)}),
       ('acceptance_judging_participant_two_privacy_fixture', ${sqlLiteral(judgingParticipantTwoId)}, ${sqlLiteral(fixturePrivacyDocumentId)}, ${sqlLiteral(fixtureTimestamp)}),
       ('acceptance_judging_participant_two_terms_fixture', ${sqlLiteral(judgingParticipantTwoId)}, ${sqlLiteral(fixtureTermsDocumentId)}, ${sqlLiteral(fixtureTimestamp)})`,
+    `insert into events (
+      id, event_type, name, slug, description, city, country, address,
+      registration_opens_at, registration_closes_at, state, max_team_members,
+      created_by_user_id, created_at, updated_at
+    ) values (
+      ${sqlLiteral(fixtureEventVisibilityId)},
+      'meetup',
+      'Event Visibility Fixture',
+      ${sqlLiteral(fixtureEventVisibilitySlug)},
+      'Meetup for the event visibility scenario.',
+      'Vienna',
+      'Austria',
+      'Fixture Venue',
+      '2020-01-01T00:00:00.000Z',
+      '2030-01-01T00:00:00.000Z',
+      'registration_open',
+      1,
+      ${sqlLiteral(eventAdminId)},
+      '2020-01-01T00:00:00.000Z',
+      '2020-01-01T00:00:00.000Z'
+    )`,
     `insert into events (
       id, name, slug, description, background_image_url, banner_image_url, city, country, address,
       registration_opens_at, registration_closes_at, submission_opens_at, submission_closes_at,
@@ -1127,6 +1155,7 @@ function buildFixtureSql(personas: StablePersona[]) {
       id, event_id, user_id, role, is_in_judge_pool, created_at
     ) values
       ('role_event_admin_fixture', ${sqlLiteral(fixtureEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)}),
+      ('role_event_admin_visibility_fixture', ${sqlLiteral(fixtureEventVisibilityId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)}),
       ('role_judge_fixture', ${sqlLiteral(fixtureEventId)}, ${sqlLiteral(judgeId)}, 'judge', 1, ${sqlLiteral(fixtureTimestamp)}),
       ('role_event_admin_participant_application_fixture', ${sqlLiteral(fixtureParticipantApplicationEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)}),
       ('role_event_admin_api_team_formation_fixture', ${sqlLiteral(fixtureApiTeamFormationEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)}),
@@ -1415,112 +1444,51 @@ export function buildPlatformFixtureResetSql(personas: StablePersona[]) {
   return buildFixtureSql(personas)
 }
 
-function applyLocalD1Migrations(environment: NodeJS.ProcessEnv) {
-  const localPlatformPersistPath = resolveLocalPlatformPersistPath(environment)
-
+function runLocalD1(command: string[], stateRoot: string, environment: NodeJS.ProcessEnv) {
   execFileSync(
-    'bun',
+    join(dirname(localWranglerConfigPath), 'node_modules/.bin/wrangler'),
     [
-      'x',
-      'wrangler',
       'd1',
-      'migrations',
-      'apply',
-      'DB',
+      ...command,
       '--local',
       '--persist-to',
-      dirname(localPlatformPersistPath),
+      stateRoot,
       '--config',
       localWranglerConfigPath
     ],
     {
-      cwd: process.cwd(),
+      cwd: dirname(localWranglerConfigPath),
+      stdio: ['ignore', 'ignore', 'inherit'],
       env: {
         ...environment,
-        CI: '1'
-      },
-      stdio: 'ignore'
+        CI: '1',
+        CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: 'false'
+      }
     }
   )
 }
 
-function applyFixtureSql(environment: NodeJS.ProcessEnv, fixtureSql: string) {
-  const localPlatformPersistPath = resolveLocalPlatformPersistPath(environment)
-  const tempDirectory = mkdtempSync(join(tmpdir(), 'codex-events-bdd-fixtures-'))
-  const fixtureSqlPath = join(tempDirectory, 'platform-fixtures.sql')
+function applyFixtureSql(fixtureSql: string, environment = process.env) {
+  const stateRoot = resolveLocalBddD1StateRoot(environment)
+  const fixtureDirectory = mkdtempSync(join(dirname(stateRoot), 'fixtures-'))
+  const fixtureSqlPath = join(fixtureDirectory, 'platform-fixtures.sql')
+  writeFileSync(fixtureSqlPath, fixtureSql, 'utf8')
 
-  try {
-    writeFileSync(fixtureSqlPath, fixtureSql, 'utf8')
-    execFileSync(
-      'bun',
-      [
-        'x',
-        'wrangler',
-        'd1',
-        'execute',
-        'DB',
-        '--local',
-        '--persist-to',
-        dirname(localPlatformPersistPath),
-        '--config',
-        localWranglerConfigPath,
-        '--file',
-        fixtureSqlPath
-      ],
-      {
-        cwd: process.cwd(),
-        env: {
-          ...environment,
-          CI: '1'
-        },
-        stdio: 'pipe'
-      }
-    )
-  } finally {
-    rmSync(tempDirectory, { recursive: true, force: true })
-  }
+  runLocalD1(['execute', 'DB', '--file', fixtureSqlPath], stateRoot, environment)
 }
 
-export async function resetPlatformFixtures(
-  personas: StablePersona[],
-  environment: NodeJS.ProcessEnv = process.env
-) {
-  const localPlatformPersistPath = resolveLocalPlatformPersistPath(environment)
-  const fixtureSql = buildFixtureSql(personas)
-  mkdirSync(dirname(localPlatformPersistPath), { recursive: true })
-  rmSync(localPlatformPersistPath, { recursive: true, force: true })
-  applyLocalD1Migrations(environment)
-  applyFixtureSql(environment, fixtureSql)
-
-  return {
-    eventId: fixtureEventId,
-    userIds: personaUserIds
+export function seedPlatformFixtures(personas: StablePersona[], environment: NodeJS.ProcessEnv) {
+  const stateRoot = resolveLocalBddD1StateRoot(environment)
+  mkdirSync(stateRoot, { recursive: true })
+  if (readdirSync(stateRoot).length > 0) {
+    throw new Error('BDD fixtures require an empty state directory.')
   }
+
+  runLocalD1(['migrations', 'apply', 'DB'], stateRoot, environment)
+  applyFixtureSql(buildFixtureSql(personas), environment)
 }
 
-export async function resetRegularUserParticipantAccessScenarioState(
-  environment: NodeJS.ProcessEnv = process.env
-) {
-  const fixtureSql = [
-    `update users
-      set is_platform_admin = 0,
-          updated_at = ${sqlLiteral(fixtureTimestamp)}
-      where id = ${sqlLiteral(personaUserIds.regular_user)}`,
-    `delete from event_role_assignments
-      where user_id = ${sqlLiteral(personaUserIds.regular_user)}`
-  ].join(';\n')
-
-  applyFixtureSql(environment, fixtureSql)
-
-  return {
-    eventId: fixtureParticipantTeamCreateEventId,
-    userIds: personaUserIds
-  }
-}
-
-export async function resetOperationsTeamSelectionFixtureScenarioState(
-  environment: NodeJS.ProcessEnv = process.env
-) {
+export async function resetOperationsTeamSelectionFixtureScenarioState() {
   const fixtureSql = [
     `update teams
       set is_open_to_join_requests = 1,
@@ -1528,7 +1496,7 @@ export async function resetOperationsTeamSelectionFixtureScenarioState(
       where id = 'team_operations_fixture_beta'`
   ].join(';\n')
 
-  applyFixtureSql(environment, fixtureSql)
+  applyFixtureSql(fixtureSql)
 
   return {
     eventId: fixtureOperationsEventId,
@@ -1536,9 +1504,7 @@ export async function resetOperationsTeamSelectionFixtureScenarioState(
   }
 }
 
-export async function resetParticipantTeamCreateFixtureScenarioState(
-  environment: NodeJS.ProcessEnv = process.env
-) {
+export async function resetParticipantTeamCreateFixtureScenarioState() {
   const fixtureSql = [
     `delete from audit_logs
       where entity_id in (
@@ -1561,7 +1527,7 @@ export async function resetParticipantTeamCreateFixtureScenarioState(
     `delete from teams where event_id = ${sqlLiteral(fixtureParticipantTeamCreateEventId)}`
   ].join(';\n')
 
-  applyFixtureSql(environment, fixtureSql)
+  applyFixtureSql(fixtureSql)
 
   return {
     eventId: fixtureParticipantTeamCreateEventId,
@@ -1569,9 +1535,7 @@ export async function resetParticipantTeamCreateFixtureScenarioState(
   }
 }
 
-export async function resetParticipantTeamJoinFixtureScenarioState(
-  environment: NodeJS.ProcessEnv = process.env
-) {
+export async function resetParticipantTeamJoinFixtureScenarioState() {
   const fixtureSql = [
     `delete from audit_logs
       where entity_id in (
@@ -1610,7 +1574,7 @@ export async function resetParticipantTeamJoinFixtureScenarioState(
       where id = 'membership_participant_join_fixture_admin'`
   ].join(';\n')
 
-  applyFixtureSql(environment, fixtureSql)
+  applyFixtureSql(fixtureSql)
 
   return {
     eventId: fixtureParticipantTeamJoinEventId,
@@ -1618,9 +1582,7 @@ export async function resetParticipantTeamJoinFixtureScenarioState(
   }
 }
 
-export async function resetParticipantSubmissionCreateFixtureScenarioState(
-  environment: NodeJS.ProcessEnv = process.env
-) {
+export async function resetParticipantSubmissionCreateFixtureScenarioState() {
   const fixtureSql = [
     `delete from audit_logs
       where entity_id in (
@@ -1640,7 +1602,7 @@ export async function resetParticipantSubmissionCreateFixtureScenarioState(
     `delete from submissions where team_id = 'team_participant_submission_create_fixture'`
   ].join(';\n')
 
-  applyFixtureSql(environment, fixtureSql)
+  applyFixtureSql(fixtureSql)
 
   return {
     eventId: fixtureParticipantSubmissionCreateEventId,
@@ -1648,9 +1610,7 @@ export async function resetParticipantSubmissionCreateFixtureScenarioState(
   }
 }
 
-export async function resetJudgeWorkspaceFixtureScenarioState(
-  environment: NodeJS.ProcessEnv = process.env
-) {
+export async function resetJudgeWorkspaceFixtureScenarioState() {
   const fixtureSql = [
     `delete from judge_criterion_scores where judge_assignment_id = ${sqlLiteral(fixtureJudgeWorkspaceAssignmentId)}`,
     `delete from audit_logs where entity_id in (
@@ -1701,7 +1661,7 @@ export async function resetJudgeWorkspaceFixtureScenarioState(
       where id = ${sqlLiteral(fixtureJudgeWorkspaceStartedAssignmentId)}`
   ].join(';\n')
 
-  applyFixtureSql(environment, fixtureSql)
+  applyFixtureSql(fixtureSql)
 
   return {
     eventId: fixtureJudgeWorkspaceEventId,
@@ -1709,9 +1669,7 @@ export async function resetJudgeWorkspaceFixtureScenarioState(
   }
 }
 
-export async function resetOutcomesFixtureScenarioState(
-  environment: NodeJS.ProcessEnv = process.env
-) {
+export async function resetOutcomesFixtureScenarioState() {
   const fixtureSql = [
     `delete from judge_assignments
       where event_id = ${sqlLiteral(fixtureOutcomesEventId)}
@@ -1742,7 +1700,7 @@ export async function resetOutcomesFixtureScenarioState(
         and entity_type = 'prize_redemption'`
   ].join(';\n')
 
-  applyFixtureSql(environment, fixtureSql)
+  applyFixtureSql(fixtureSql)
 
   return {
     eventId: fixtureOutcomesEventId,

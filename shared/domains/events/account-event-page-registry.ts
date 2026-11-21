@@ -9,6 +9,7 @@ export const accountEventPageNames = [
   'workspace',
   'teams',
   'rosters',
+  'program',
   'gallery',
   'feedback',
   'certificates'
@@ -36,6 +37,7 @@ export const accountEventPagePaths = {
   workspace: '/api/account/events/:slug/workspace',
   teams: '/api/account/events/:slug/teams',
   rosters: '/api/account/events/:slug/rosters',
+  program: '/api/account/events/:slug/program',
   gallery: '/api/account/events/:slug/gallery',
   feedback: '/api/account/events/:slug/feedback',
   certificates: '/api/account/events/:slug/certificates'

@@ -8,7 +8,6 @@ import AdminBuilderTrackRow from '~/components/admin/builder/molecules/AdminBuil
 const props = defineProps<{
   blocks: EventBuilderBlockInstance[]
   schedule: EventBuilderScheduleEntry[]
-  nonSequentialWarning?: boolean
   /** A palette tile is being dragged — the track presents itself as a drop zone. */
   receiving?: boolean
 }>()
@@ -151,10 +150,6 @@ useAdminSortableLists({
     dropTargetId.value = null
   }
 })
-
-function scheduleFor(id: string) {
-  return props.schedule.find(entry => entry.id === id)
-}
 </script>
 
 <template>
@@ -164,18 +159,9 @@ function scheduleFor(id: string) {
         Agenda track
       </h3>
       <p class="text-xs text-muted">
-        Drag to reorder. Times flow from the event start.
+        Drag to reschedule.
       </p>
     </div>
-
-    <AppAlert
-      v-if="nonSequentialWarning"
-      color="warning"
-      variant="soft"
-      icon="i-lucide-triangle-alert"
-      title="Custom timing detected"
-      description="This agenda has fine-tuned times from the classic editor. Saving from the builder recomputes sequential times from the event start."
-    />
 
     <div
       ref="listElement"
@@ -222,7 +208,7 @@ function scheduleFor(id: string) {
         >
           <AdminBuilderBlockCard
             :block="block"
-            :schedule="scheduleFor(block.id)"
+            :schedule="schedule[index]"
             :index="index"
             @update-title="(id, title) => emit('updateTitle', id, title)"
             @update-details="(id, details) => emit('updateDetails', id, details)"

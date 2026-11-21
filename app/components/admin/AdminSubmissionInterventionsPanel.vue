@@ -104,20 +104,17 @@ function toggleExpanded() {
             </p>
           </div>
 
-          <button
-            type="button"
+          <AppButton
+            color="neutral"
+            variant="outline"
+            :label="isExpanded ? 'Collapse' : 'Expand'"
+            :trailing-icon="isExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
             data-testid="admin-submission-interventions-toggle"
             :aria-expanded="isExpanded"
             aria-controls="admin-submission-interventions-panel"
-            class="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 self-center rounded-full border border-current/15 px-3.5 text-sm font-medium text-current transition hover:border-current/30 hover:text-current/80"
+            class="self-center rounded-full border-current/15 text-current hover:border-current/30 hover:text-current/80"
             @click="toggleExpanded"
-          >
-            <span>{{ isExpanded ? 'Collapse' : 'Expand' }}</span>
-            <AppIcon
-              :name="isExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-              class="size-4"
-            />
-          </button>
+          />
         </div>
       </div>
 

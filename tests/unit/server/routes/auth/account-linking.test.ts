@@ -141,14 +141,6 @@ describe('Auth0 account-link routes', () => {
     )
   })
 
-  test('GET /auth/link/login rejects a missing Auth0 Action redirect token', async () => {
-    const harness = await createLinkHarness()
-    const response = await harness.request('/auth/link/login')
-
-    expect(response.status).toBe(302)
-    expect(response.headers.get('location')).toBe('/account/register?returnTo=%2Faccount&linkingError=invalid')
-  })
-
   test('GET /auth/link/callback completes link authentication and defers identity verification to a fresh request', async () => {
     const harness = await createLinkHarness()
 

@@ -14,8 +14,6 @@ export function useUserEvents() {
   return useApiData<AccountStaffPage>(
     buildAccountStaffPageCacheKey(),
     async ({ apiFetch, signal }) => {
-      await session.ensureLoaded()
-
       if (actor.value.kind !== 'platform_user') {
         return {
           current: [],

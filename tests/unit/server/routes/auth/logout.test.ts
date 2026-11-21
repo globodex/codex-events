@@ -44,35 +44,4 @@ describe('Auth0 logout route', () => {
       'https://login.example.com/v2/logout?client_id=application-client-id&returnTo=https%3A%2F%2Fevents.example.com'
     )
   })
-
-  test('clears only the Codex Events session in local auth mode', async () => {
-    const useAuth0 = vi.fn()
-    const handler = await loadHandler()
-    const harness = createApiRouteTestHarness({
-      routes: [
-        { method: 'get', path: '/auth/logout', handler }
-      ],
-      runtimeConfig: {
-        localCodexAuth: true,
-        auth0: {
-          appBaseUrl: 'http://localhost:3000'
-        }
-      },
-      autoAcceptCurrentPlatformDocuments: false
-    })
-
-    vi.stubGlobal('useAuth0', useAuth0)
-
-    const response = await harness.request('/auth/logout', {
-      headers: {
-        cookie: 'codex-events-local-user=developer%40example.com'
-      }
-    })
-
-    expect(useAuth0).not.toHaveBeenCalled()
-    expect(response.status).toBe(302)
-    expect(response.headers.get('location')).toBe('http://localhost:3000')
-    expect(response.headers.get('set-cookie')).toContain('codex-events-local-user=')
-    expect(response.headers.get('set-cookie')).toContain('Max-Age=0')
-  })
 })

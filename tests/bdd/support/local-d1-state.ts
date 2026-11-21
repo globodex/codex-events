@@ -1,38 +1,25 @@
-import { resolve } from 'node:path'
-
-export const defaultLocalBddD1StateRoot = '.wrangler/state-bdd'
-export const defaultLocalDevD1StateRoot = '.wrangler/state'
-
-function resolvePersistRoot(root: string) {
-  return resolve(process.cwd(), root.trim())
-}
+import { lstatSync } from 'node:fs'
+import { isAbsolute, join, resolve } from 'node:path'
 
 export function resolveLocalBddD1StateRoot(environment: NodeJS.ProcessEnv = process.env) {
-  const bddRoot = environment.LOCAL_BDD_D1_STATE_ROOT?.trim() || defaultLocalBddD1StateRoot
-  const explicitRoot = environment.LOCAL_D1_STATE_ROOT?.trim()
-  const localDevRoot = environment.LOCAL_DEV_D1_STATE_ROOT?.trim() || defaultLocalDevD1StateRoot
-
-  if (resolvePersistRoot(bddRoot) === resolvePersistRoot(localDevRoot)) {
-    throw new Error(
-      `BDD D1 state root must not match the normal local app state root (${bddRoot}). `
-      + 'Use a dedicated LOCAL_BDD_D1_STATE_ROOT.'
-    )
+  const runDirectory = environment.CODEX_EVENTS_BDD_RUN_DIR
+  if (!runDirectory || !isAbsolute(runDirectory) || runDirectory !== resolve(runDirectory)) {
+    throw new Error('BDD requires an absolute run directory from the BDD launcher.')
   }
 
-  if (explicitRoot && resolvePersistRoot(explicitRoot) !== resolvePersistRoot(bddRoot)) {
-    throw new Error(
-      `BDD D1 state root mismatch: LOCAL_D1_STATE_ROOT points to "${explicitRoot}" but BDD requires "${bddRoot}". `
-      + 'Use LOCAL_BDD_D1_STATE_ROOT for BDD overrides.'
-    )
+  const stateRoot = join(runDirectory, 'state')
+  if (environment.LOCAL_D1_STATE_ROOT !== stateRoot) {
+    throw new Error('LOCAL_D1_STATE_ROOT must equal the state directory of the current BDD run.')
   }
 
-  return bddRoot
-}
+  if (!lstatSync(runDirectory, { throwIfNoEntry: false })?.isDirectory()) {
+    throw new Error('BDD run directory must be an existing directory.')
+  }
 
-export function applyLocalBddD1StateRoot(environment: NodeJS.ProcessEnv = process.env) {
-  const localBddD1StateRoot = resolveLocalBddD1StateRoot(environment)
+  const stateDirectory = lstatSync(stateRoot, { throwIfNoEntry: false })
+  if (stateDirectory && !stateDirectory.isDirectory()) {
+    throw new Error('BDD state directory must be a directory.')
+  }
 
-  environment.LOCAL_D1_STATE_ROOT = localBddD1StateRoot
-
-  return localBddD1StateRoot
+  return stateRoot
 }

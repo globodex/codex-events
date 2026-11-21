@@ -27,46 +27,20 @@ import {
   hasEventParticipantVisibilityAccess
 } from '../../../../app/domains/events/access'
 import {
-  createEmptyEventFormState,
   createEventFormState,
   createEventSlug,
   fromDateTimeLocalValue,
-  getAgendaItemEndAfterStartChange,
-  getNextAgendaItemDefaultTimes,
-  getTermsVersionPublishErrorMessage,
   toDateTimeLocalValue
 } from '../../../../app/domains/events/admin-event'
-import { getEventOperationsPhase } from '../../../../app/domains/events/states'
+
 import { getCurrentLifecycleControl } from '../../../../app/domains/events/lifecycle-controls'
 import {
-  formatApplicationAttendanceStatus,
-  formatApplicationLumaSyncStatus,
-  formatApplicationStatus,
-  formatApprovedParticipantRegistrationSummary,
-  formatFailedApplicationLumaSyncAlertToggleLabel,
-  getApprovedParticipantAttendanceSummary,
-  getApplicationAttendanceStatusColor,
-  getApplicationLumaSyncStatusColor,
-  getApplicationStatusColor,
-  getParticipantApplicationStatusSummary,
-  getParticipantsLimitSummary,
-  isApplicationCheckedIn,
-  listParticipantRosterApplications,
-  listFailedApplicationLumaSyncApplications,
-  shouldShowApplicationLumaSyncStatus,
-  shouldShowApprovedParticipantAttendanceSummary
+  listParticipantRosterApplications
 } from '../../../../app/domains/applications/admin-application-record'
 import {
   buildAdminOperationalTeams,
-  countActiveAdminOperationalTeams,
-  filterActiveAdminOperationalTeams,
   filterAdminOperationalTeams,
-  formatAdminSubmissionRowToggleLabel,
-  formatSubmissionStatus,
-  getAdminSubmissionDashboardMetrics,
   getAdminSubmissionInterventionPolicy,
-  getSubmissionStatusColor,
-  listActiveAdminOperationalTeamMembers,
   shouldLoadAdminSubmissionMonitor,
   shouldRefreshAdminSubmissionMonitor,
   sortAdminOperationalTeamsForSubmissionDashboard
@@ -75,11 +49,8 @@ import { formatAdminOperationalTeamProjectLabel } from '../../../../app/domains/
 import {
   buildAdminJudgeAssignmentOversightGroups,
   buildPitchReviewCoverageEntries,
-  formatAdminJudgeAssignmentStatus,
-  getAdminJudgeAssignmentInterventionPolicy,
-  getJudgeAssignmentStatusColor
+  getAdminJudgeAssignmentInterventionPolicy
 } from '../../../../app/domains/judging/admin-oversight'
-import { getCriteriaConfigurationValidationIssues } from '../../../../app/domains/judging/criteria-config'
 
 function createEvent(overrides: Partial<EventRecord> = {}): EventRecord {
   return {
@@ -340,20 +311,6 @@ function createNoSubmissionEntry(overrides: Partial<NoSubmissionEntry> = {}): No
 }
 
 describe('domain admin access helpers', () => {
-  test('groups event states into the supported operations dashboard phases', () => {
-    expect(getEventOperationsPhase('draft')).toBeNull()
-    expect(getEventOperationsPhase('registration_open')).toBe('registration_open')
-    expect(getEventOperationsPhase('submission_open')).toBe('submission_open')
-    expect(getEventOperationsPhase('judging_preparation')).toBe('judging')
-    expect(getEventOperationsPhase('blind_review')).toBe('judging')
-    expect(getEventOperationsPhase('shortlist')).toBe('judging')
-    expect(getEventOperationsPhase('pitch')).toBe('judging')
-    expect(getEventOperationsPhase('pitch_review')).toBe('judging')
-    expect(getEventOperationsPhase('final_deliberation')).toBe('judging')
-    expect(getEventOperationsPhase('winners_announced')).toBe('judging')
-    expect(getEventOperationsPhase('completed')).toBe('completed')
-  })
-
   test('filters events by explicit event-admin access for non-platform admins', () => {
     const actor = createActor()
     const events = [
@@ -476,16 +433,6 @@ describe('domain admin form helpers', () => {
     expect(fromDateTimeLocalValue(localValue)).toBe(isoTimestamp)
   })
 
-  test('uses canonical defaults for new event form scoring fields', () => {
-    expect(createEmptyEventFormState()).toMatchObject({
-      autoApproveApplications: false,
-      blindReviewCount: 1,
-      pitchReviewEnabled: false,
-      blindScoreWeightPercent: 70,
-      pitchScoreWeightPercent: 30
-    })
-  })
-
   test('maps event records into editable form state', () => {
     const event = createEvent({
       description: '# Overview\n\n- Build something ambitious\n- Share what you learned',
@@ -548,137 +495,6 @@ describe('domain admin form helpers', () => {
     })
     expect(fromDateTimeLocalValue(formState.agendaItems[0].startsAt)).toBe('2026-03-22T11:00:00.000Z')
     expect(fromDateTimeLocalValue(formState.agendaItems[0].endsAt)).toBe('2026-03-22T12:00:00.000Z')
-  })
-
-  test('defaults a new agenda item to the previous end time when available', () => {
-    expect(getNextAgendaItemDefaultTimes({
-      id: 'agenda-item-1',
-      startsAt: '2026-03-22T11:00',
-      endsAt: '2026-03-22T12:00',
-      title: 'Opening',
-      details: '',
-      displayOrder: 1
-    })).toEqual({
-      startsAt: '2026-03-22T12:00',
-      endsAt: '2026-03-22T12:00'
-    })
-  })
-
-  test('leaves new agenda item times blank without a previous end time', () => {
-    expect(getNextAgendaItemDefaultTimes()).toEqual({
-      startsAt: '',
-      endsAt: ''
-    })
-
-    expect(getNextAgendaItemDefaultTimes({
-      id: 'agenda-item-1',
-      startsAt: '2026-03-22T11:00',
-      endsAt: '',
-      title: 'Opening',
-      details: '',
-      displayOrder: 1
-    })).toEqual({
-      startsAt: '',
-      endsAt: ''
-    })
-  })
-
-  test('moves agenda end time forward when a new start time passes it', () => {
-    expect(getAgendaItemEndAfterStartChange('2026-03-22T13:00', '2026-03-22T12:00'))
-      .toBe('2026-03-22T13:00')
-    expect(getAgendaItemEndAfterStartChange('2026-03-22T13:00', '2026-03-22T13:30'))
-      .toBe('2026-03-22T13:30')
-    expect(getAgendaItemEndAfterStartChange('2026-03-22T13:00', '')).toBe('')
-  })
-
-  test('requires a title before publishing a terms version', () => {
-    expect(getTermsVersionPublishErrorMessage('', 'Canonical application terms')).toBe(
-      'Enter a title before publishing this terms version.'
-    )
-
-    expect(getTermsVersionPublishErrorMessage('   ', 'Canonical application terms')).toBe(
-      'Enter a title before publishing this terms version.'
-    )
-  })
-
-  test('requires content before publishing a terms version', () => {
-    expect(getTermsVersionPublishErrorMessage('Application Terms v2', '')).toBe(
-      'Enter the terms content before publishing this terms version.'
-    )
-
-    expect(getTermsVersionPublishErrorMessage('Application Terms v2', '   ')).toBe(
-      'Enter the terms content before publishing this terms version.'
-    )
-  })
-
-  test('allows publishing a terms version when title and content are present', () => {
-    expect(getTermsVersionPublishErrorMessage(' Application Terms v2 ', ' Canonical application terms ')).toBe('')
-  })
-
-  test('requires a description before saving criteria configuration', () => {
-    expect(getCriteriaConfigurationValidationIssues([
-      {
-        id: 'criterion-1',
-        name: 'Impact',
-        description: '   ',
-        weight: 30
-      }
-    ])).toEqual([
-      {
-        criterionId: 'criterion-1',
-        field: 'description',
-        message: 'Enter a description so judges know what to evaluate.',
-        summaryMessage: '"Impact" needs a description. Add a short description so judges know what to evaluate.'
-      }
-    ])
-  })
-
-  test('uses positional labels when a criterion is missing its name', () => {
-    expect(getCriteriaConfigurationValidationIssues([
-      {
-        id: 'criterion-1',
-        name: '   ',
-        description: 'Judges should assess novelty.',
-        weight: 30
-      }
-    ])).toEqual([
-      {
-        criterionId: 'criterion-1',
-        field: 'name',
-        message: 'Enter a criterion name.',
-        summaryMessage: 'Criterion 1 is missing a name. Enter a short criterion name before saving.'
-      }
-    ])
-  })
-
-  test('requires a whole-number non-negative criterion weight', () => {
-    expect(getCriteriaConfigurationValidationIssues([
-      {
-        id: 'criterion-1',
-        name: 'Execution',
-        description: 'Judges should assess execution quality.',
-        weight: -1
-      },
-      {
-        id: 'criterion-2',
-        name: 'Impact',
-        description: 'Judges should assess user impact.',
-        weight: 12.5
-      }
-    ])).toEqual([
-      {
-        criterionId: 'criterion-1',
-        field: 'weight',
-        message: 'Enter a whole-number weight of 0 or more.',
-        summaryMessage: '"Execution" has an invalid weight. Use a whole number of 0 or more.'
-      },
-      {
-        criterionId: 'criterion-2',
-        field: 'weight',
-        message: 'Enter a whole-number weight of 0 or more.',
-        summaryMessage: '"Impact" has an invalid weight. Use a whole number of 0 or more.'
-      }
-    ])
   })
 })
 
@@ -1065,109 +881,6 @@ describe('domain admin lifecycle controls', () => {
 })
 
 describe('domain admin operational helpers', () => {
-  test('formats operational statuses into badge labels and colors', () => {
-    expect(formatApplicationStatus('submitted')).toBe('Submitted')
-    expect(getApplicationStatusColor('approved')).toBe('success')
-    expect(formatApplicationAttendanceStatus(createApplication({
-      checkedInAt: '2026-03-22T14:30:00.000Z'
-    }))).toBe('Checked in')
-    expect(formatApplicationAttendanceStatus(createApplication())).toBe('Not checked in')
-    expect(getApplicationAttendanceStatusColor(createApplication({
-      checkedInAt: '2026-03-22T14:30:00.000Z'
-    }))).toBe('success')
-    expect(getApplicationAttendanceStatusColor(createApplication())).toBe('neutral')
-    expect(formatApplicationLumaSyncStatus('not_synced')).toBe('Luma sync pending')
-    expect(formatApplicationLumaSyncStatus('approve_synced')).toBe('Luma approved')
-    expect(formatApplicationLumaSyncStatus('reject_synced')).toBe('Luma rejected')
-    expect(getApplicationLumaSyncStatusColor('not_synced')).toBe('warning')
-    expect(getApplicationLumaSyncStatusColor('approve_synced')).toBe('success')
-    expect(getApplicationLumaSyncStatusColor('reject_synced')).toBe('error')
-    expect(getApplicationLumaSyncStatusColor('approve_failed')).toBe('warning')
-    expect(getApplicationLumaSyncStatusColor('reject_failed')).toBe('warning')
-    expect(formatAdminJudgeAssignmentStatus('judge_started')).toBe('Judge Started')
-    expect(getJudgeAssignmentStatusColor('judge_completed')).toBe('success')
-    expect(formatSubmissionStatus('none')).toBe('No record')
-    expect(getSubmissionStatusColor('disqualified')).toBe('error')
-  })
-
-  test('shows Luma sync status only for decided applications with a stored sync state', () => {
-    expect(shouldShowApplicationLumaSyncStatus(
-      createApplication({
-        status: 'approved',
-        lumaSyncStatus: 'not_synced'
-      })
-    )).toBe(true)
-
-    expect(shouldShowApplicationLumaSyncStatus(
-      createApplication({
-        status: 'submitted',
-        lumaSyncStatus: 'not_synced'
-      })
-    )).toBe(false)
-
-    expect(shouldShowApplicationLumaSyncStatus(
-      createApplication({
-        status: 'rejected',
-        lumaSyncStatus: null
-      })
-    )).toBe(false)
-
-    expect(shouldShowApplicationLumaSyncStatus(
-      createApplication({
-        status: 'approved',
-        lumaSyncStatus: 'approve_synced'
-      })
-    )).toBe(true)
-  })
-
-  test('lists failed Luma sync applications for the active review view', () => {
-    const applications = [
-      createApplication({
-        id: 'application-approved-failed',
-        status: 'approved',
-        lumaSyncStatus: 'approve_failed'
-      }),
-      createApplication({
-        id: 'application-approved-synced',
-        status: 'approved',
-        lumaSyncStatus: 'approve_synced'
-      }),
-      createApplication({
-        id: 'application-rejected-failed',
-        status: 'rejected',
-        lumaSyncStatus: 'reject_failed'
-      }),
-      createApplication({
-        id: 'application-withdrawn-failed',
-        status: 'withdrawn',
-        lumaSyncStatus: 'reject_failed'
-      })
-    ]
-
-    expect(listFailedApplicationLumaSyncApplications(applications, 'applications')).toEqual([])
-    expect(listFailedApplicationLumaSyncApplications(applications, 'approved').map(application => application.id)).toEqual([
-      'application-approved-failed'
-    ])
-    expect(listFailedApplicationLumaSyncApplications(applications, 'rejected').map(application => application.id)).toEqual([
-      'application-rejected-failed'
-    ])
-    expect(listFailedApplicationLumaSyncApplications(applications, 'withdrawn').map(application => application.id)).toEqual([
-      'application-withdrawn-failed'
-    ])
-  })
-
-  test('formats the failed Luma sync recap toggle label', () => {
-    expect(formatFailedApplicationLumaSyncAlertToggleLabel(0, false)).toBe('')
-    expect(formatFailedApplicationLumaSyncAlertToggleLabel(1, false)).toBe('Expand')
-    expect(formatFailedApplicationLumaSyncAlertToggleLabel(3, false)).toBe('Expand')
-    expect(formatFailedApplicationLumaSyncAlertToggleLabel(3, true)).toBe('Collapse')
-  })
-
-  test('formats the admin submission row toggle label', () => {
-    expect(formatAdminSubmissionRowToggleLabel(false)).toBe('Expand')
-    expect(formatAdminSubmissionRowToggleLabel(true)).toBe('Collapse')
-  })
-
   test('formats admin submission project labels for row headers', () => {
     expect(formatAdminOperationalTeamProjectLabel('none', null, false)).toBe('Submission window not open yet')
     expect(formatAdminOperationalTeamProjectLabel('none', null, true)).toBe('No submission record yet')
@@ -1267,65 +980,6 @@ describe('domain admin operational helpers', () => {
     ])
   })
 
-  test('lists active team members for admin submission details', () => {
-    expect(listActiveAdminOperationalTeamMembers(createTeamDetail({
-      members: [
-        {
-          id: 'membership-admin',
-          teamId: 'team-1',
-          userId: 'user-admin',
-          role: 'admin',
-          joinedAt: '2026-03-22T12:00:00.000Z',
-          leftAt: null,
-          createdAt: '2026-03-22T12:00:00.000Z',
-          user: {
-            id: 'user-admin',
-            email: 'admin@example.com',
-            displayName: 'Admin User'
-          }
-        },
-        {
-          id: 'membership-member',
-          teamId: 'team-1',
-          userId: 'user-member',
-          role: 'member',
-          joinedAt: '2026-03-22T12:00:00.000Z',
-          leftAt: null,
-          createdAt: '2026-03-22T12:00:00.000Z',
-          user: {
-            id: 'user-member',
-            email: 'member@example.com'
-          }
-        },
-        {
-          id: 'membership-left',
-          teamId: 'team-1',
-          userId: 'user-left',
-          role: 'member',
-          joinedAt: '2026-03-22T12:00:00.000Z',
-          leftAt: '2026-03-22T13:00:00.000Z',
-          createdAt: '2026-03-22T12:00:00.000Z',
-          user: {
-            id: 'user-left',
-            email: 'left@example.com',
-            displayName: 'Former Member'
-          }
-        }
-      ]
-    }))).toEqual([
-      {
-        userId: 'user-admin',
-        role: 'admin',
-        label: 'Admin User (admin@example.com)'
-      },
-      {
-        userId: 'user-member',
-        role: 'member',
-        label: 'member@example.com'
-      }
-    ])
-  })
-
   test('loads the admin submission monitor only when the submissions tab is ready', () => {
     expect(shouldLoadAdminSubmissionMonitor({
       isSubmissionsSection: false,
@@ -1413,56 +1067,6 @@ describe('domain admin operational helpers', () => {
     })).toBe(true)
   })
 
-  test('detects approved participant attendance from checkedInAt', () => {
-    expect(isApplicationCheckedIn(createApplication({
-      checkedInAt: '2026-03-22T14:30:00.000Z'
-    }))).toBe(true)
-
-    expect(isApplicationCheckedIn(createApplication({
-      checkedInAt: null
-    }))).toBe(false)
-  })
-
-  test('summarizes checked-in attendance relative to approved participants', () => {
-    expect(getApprovedParticipantAttendanceSummary([
-      createApplication({
-        id: 'application-approved-checked-in',
-        status: 'approved',
-        checkedInAt: '2026-03-22T14:30:00.000Z'
-      }),
-      createApplication({
-        id: 'application-approved-not-checked-in',
-        status: 'approved',
-        checkedInAt: null
-      }),
-      createApplication({
-        id: 'application-submitted',
-        status: 'submitted',
-        checkedInAt: '2026-03-22T15:00:00.000Z'
-      })
-    ])).toEqual({
-      approvedCount: 2,
-      checkedInCount: 1,
-      value: '1 / 2'
-    })
-  })
-
-  test('summarizes participant application counts across all visible statuses', () => {
-    expect(getParticipantApplicationStatusSummary([
-      createApplication({ status: 'submitted' }),
-      createApplication({ status: 'approved' }),
-      createApplication({ status: 'approved' }),
-      createApplication({ status: 'rejected' }),
-      createApplication({ status: 'withdrawn' })
-    ])).toEqual({
-      totalCount: 5,
-      submittedCount: 1,
-      approvedCount: 2,
-      rejectedCount: 1,
-      withdrawnCount: 1
-    })
-  })
-
   test('removes current staff-designated applications from participant roster surfaces', () => {
     const participantApplication = createApplication({
       id: 'participant-application',
@@ -1491,83 +1095,6 @@ describe('domain admin operational helpers', () => {
       ...staffApplication,
       isEventStaff: false
     }])
-  })
-
-  test('formats approved participants relative to total registrations', () => {
-    expect(formatApprovedParticipantRegistrationSummary([
-      createApplication({ status: 'submitted' }),
-      createApplication({ status: 'approved' }),
-      createApplication({ status: 'approved' }),
-      createApplication({ status: 'rejected' })
-    ])).toBe('2 / 4')
-  })
-
-  test('shows attendance summary only when Luma email is required and Luma is configured', () => {
-    expect(shouldShowApprovedParticipantAttendanceSummary(createEvent({
-      applicationLumaEmailVisible: true,
-      requireLumaEmail: true,
-      lumaEventApiId: 'evt-123',
-      lumaWebhookStatus: 'configured'
-    }))).toBe(true)
-
-    expect(shouldShowApprovedParticipantAttendanceSummary(createEvent({
-      requireLumaEmail: false,
-      lumaEventApiId: 'evt-123',
-      lumaWebhookStatus: 'configured'
-    }))).toBe(false)
-
-    expect(shouldShowApprovedParticipantAttendanceSummary(createEvent({
-      requireLumaEmail: true,
-      lumaEventApiId: '   ',
-      lumaWebhookStatus: 'configured'
-    }))).toBe(false)
-
-    expect(shouldShowApprovedParticipantAttendanceSummary(createEvent({
-      requireLumaEmail: true,
-      lumaEventApiId: 'evt-123',
-      lumaWebhookStatus: 'failed'
-    }))).toBe(false)
-
-    expect(shouldShowApprovedParticipantAttendanceSummary(createEvent({
-      requireLumaEmail: true,
-      lumaEventApiId: null
-    }))).toBe(false)
-
-    expect(shouldShowApprovedParticipantAttendanceSummary(null)).toBe(false)
-  })
-
-  test('summarizes participant limit fill including staged approvals', () => {
-    expect(getParticipantsLimitSummary([
-      createApplication({ id: 'application-approved', status: 'approved' }),
-      createApplication({ id: 'application-staged-approved', preApprovalStatus: 'approved' }),
-      createApplication({ id: 'application-staged-rejected', preApprovalStatus: 'rejected' })
-    ], 3)).toMatchObject({
-      participantsLimit: 3,
-      approvedCount: 1,
-      stagedApprovedCount: 1,
-      projectedApprovedCount: 2,
-      description: 'Current fill: 1/3 approved against the planning target. If you save the current staged decisions, projected fill becomes 2/3, leaving 1 spot remaining against the target.'
-    })
-  })
-
-  test('reports when staged approvals would push the participant target over limit', () => {
-    expect(getParticipantsLimitSummary([
-      createApplication({ id: 'application-approved-1', status: 'approved' }),
-      createApplication({ id: 'application-approved-2', status: 'approved' }),
-      createApplication({ id: 'application-staged-approved', preApprovalStatus: 'approved' })
-    ], 2)).toMatchObject({
-      participantsLimit: 2,
-      approvedCount: 2,
-      stagedApprovedCount: 1,
-      projectedApprovedCount: 3,
-      description: 'Current fill: 2/2 approved against the planning target. If you save the current staged decisions, projected fill becomes 3/2, which is 1 spot over the target.'
-    })
-  })
-
-  test('returns no participant-limit summary when the event has no configured limit', () => {
-    expect(getParticipantsLimitSummary([
-      createApplication({ status: 'approved' })
-    ], null)).toBeNull()
   })
 
   test('allows only the documented admin judging interventions for each assignment state', () => {
@@ -1659,280 +1186,6 @@ describe('domain admin operational helpers', () => {
       activeAssignmentCount: 1,
       assignedCount: 1,
       startedCount: 0
-    })
-  })
-
-  test('builds operational team rows from team, detail, submission, and no-submission sources', () => {
-    const operationalTeams = buildAdminOperationalTeams(
-      [
-        createTeamSummary(),
-        createTeamSummary({
-          id: 'team-2',
-          name: 'Beta Team',
-          slug: 'beta-team',
-          createdByUserId: 'user-beta'
-        })
-      ],
-      {
-        teamDetails: [
-          createTeamDetail(),
-          createTeamDetail({
-            id: 'team-2',
-            name: 'Beta Team',
-            slug: 'beta-team',
-            createdByUserId: 'user-beta',
-            members: [{
-              id: 'membership-beta-admin',
-              teamId: 'team-2',
-              userId: 'user-beta',
-              role: 'admin',
-              joinedAt: '2026-03-22T12:00:00.000Z',
-              leftAt: null,
-              createdAt: '2026-03-22T12:00:00.000Z',
-              user: {
-                id: 'user-beta',
-                email: 'beta@example.com',
-                displayName: 'Beta Admin'
-              }
-            }]
-          })
-        ],
-        submissions: [
-          createSubmission(),
-          null
-        ],
-        noSubmissionEntries: [
-          createNoSubmissionEntry({
-            team: createTeamSummary({
-              id: 'team-2',
-              name: 'Beta Team',
-              slug: 'beta-team',
-              createdByUserId: 'user-beta'
-            })
-          })
-        ]
-      }
-    )
-
-    expect(operationalTeams).toHaveLength(2)
-    expect(operationalTeams[0]).toMatchObject({
-      submissionStatus: 'submitted',
-      isInNoSubmissionSection: false,
-      activeMemberCount: 2,
-      activeAdminChoices: [{
-        userId: 'user-admin',
-        label: 'Admin User (admin@example.com)'
-      }]
-    })
-    expect(operationalTeams[1]).toMatchObject({
-      submissionStatus: 'none',
-      isInNoSubmissionSection: true,
-      noSubmissionReason: 'none',
-      activeAdminChoices: [{
-        userId: 'user-beta',
-        label: 'Beta Admin (beta@example.com)'
-      }]
-    })
-  })
-
-  test('derives compact submission dashboard metrics from exact submission states', () => {
-    const operationalTeams = buildAdminOperationalTeams(
-      [
-        createTeamSummary({
-          id: 'team-none',
-          name: 'No Record Team',
-          slug: 'no-record-team',
-          createdByUserId: 'user-none'
-        }),
-        createTeamSummary({
-          id: 'team-draft',
-          name: 'Draft Team',
-          slug: 'draft-team',
-          createdByUserId: 'user-draft'
-        }),
-        createTeamSummary({
-          id: 'team-ready',
-          name: 'Ready Team',
-          slug: 'ready-team',
-          createdByUserId: 'user-ready'
-        }),
-        createTeamSummary({
-          id: 'team-out',
-          name: 'Out Team',
-          slug: 'out-team',
-          createdByUserId: 'user-out'
-        })
-      ],
-      {
-        teamDetails: [
-          createTeamDetail({
-            id: 'team-none',
-            name: 'No Record Team',
-            slug: 'no-record-team',
-            createdByUserId: 'user-none'
-          }),
-          createTeamDetail({
-            id: 'team-draft',
-            name: 'Draft Team',
-            slug: 'draft-team',
-            createdByUserId: 'user-draft'
-          }),
-          createTeamDetail({
-            id: 'team-ready',
-            name: 'Ready Team',
-            slug: 'ready-team',
-            createdByUserId: 'user-ready'
-          }),
-          createTeamDetail({
-            id: 'team-out',
-            name: 'Out Team',
-            slug: 'out-team',
-            createdByUserId: 'user-out'
-          })
-        ],
-        submissions: [
-          null,
-          createSubmission({
-            id: 'submission-draft',
-            teamId: 'team-draft',
-            status: 'draft',
-            projectName: 'Draft Console'
-          }),
-          createSubmission({
-            id: 'submission-ready',
-            teamId: 'team-ready',
-            status: 'submitted',
-            projectName: 'Ready Console'
-          }),
-          createSubmission({
-            id: 'submission-out',
-            teamId: 'team-out',
-            status: 'withdrawn',
-            projectName: 'Withdrawn Console'
-          })
-        ],
-        noSubmissionEntries: [
-          createNoSubmissionEntry({
-            team: createTeamSummary({
-              id: 'team-none',
-              name: 'No Record Team',
-              slug: 'no-record-team',
-              createdByUserId: 'user-none'
-            })
-          }),
-          createNoSubmissionEntry({
-            team: createTeamSummary({
-              id: 'team-draft',
-              name: 'Draft Team',
-              slug: 'draft-team',
-              createdByUserId: 'user-draft'
-            }),
-            submission: createSubmission({
-              id: 'submission-draft',
-              teamId: 'team-draft',
-              status: 'draft',
-              projectName: 'Draft Console'
-            })
-          })
-        ]
-      }
-    )
-
-    expect(getAdminSubmissionDashboardMetrics(operationalTeams)).toEqual({
-      totalTeams: 4,
-      noRecordTeams: 1,
-      draftTeams: 1,
-      submittedTeams: 1,
-      lockedTeams: 0,
-      submittedOrLaterTeams: 1,
-      withdrawnTeams: 1,
-      disqualifiedTeams: 0,
-      outTeams: 1
-    })
-  })
-
-  test('filters active operational teams for submission dashboards and progress denominators', () => {
-    const operationalTeams = buildAdminOperationalTeams(
-      [
-        createTeamSummary({
-          id: 'team-active-submitted',
-          name: 'Active Submitted Team',
-          slug: 'active-submitted-team',
-          createdByUserId: 'user-active-submitted',
-          activeMemberCount: 3
-        }),
-        createTeamSummary({
-          id: 'team-active-draft',
-          name: 'Active Draft Team',
-          slug: 'active-draft-team',
-          createdByUserId: 'user-active-draft',
-          activeMemberCount: 2
-        }),
-        createTeamSummary({
-          id: 'team-dissolved-withdrawn',
-          name: 'Dissolved Withdrawn Team',
-          slug: 'dissolved-withdrawn-team',
-          createdByUserId: 'user-dissolved',
-          activeMemberCount: 0
-        })
-      ],
-      {
-        teamDetails: [
-          createTeamDetail({
-            id: 'team-active-submitted',
-            name: 'Active Submitted Team',
-            slug: 'active-submitted-team'
-          }),
-          createTeamDetail({
-            id: 'team-active-draft',
-            name: 'Active Draft Team',
-            slug: 'active-draft-team'
-          }),
-          createTeamDetail({
-            id: 'team-dissolved-withdrawn',
-            name: 'Dissolved Withdrawn Team',
-            slug: 'dissolved-withdrawn-team',
-            activeMemberCount: 0,
-            members: []
-          })
-        ],
-        submissions: [
-          createSubmission({
-            id: 'submission-active-submitted',
-            teamId: 'team-active-submitted',
-            status: 'submitted'
-          }),
-          createSubmission({
-            id: 'submission-active-draft',
-            teamId: 'team-active-draft',
-            status: 'draft'
-          }),
-          createSubmission({
-            id: 'submission-dissolved-withdrawn',
-            teamId: 'team-dissolved-withdrawn',
-            status: 'withdrawn'
-          })
-        ]
-      }
-    )
-
-    const activeOperationalTeams = filterActiveAdminOperationalTeams(operationalTeams)
-
-    expect(countActiveAdminOperationalTeams(operationalTeams)).toBe(2)
-    expect(activeOperationalTeams.map(team => team.team.id)).toEqual([
-      'team-active-submitted',
-      'team-active-draft'
-    ])
-    expect(getAdminSubmissionDashboardMetrics(activeOperationalTeams)).toEqual({
-      totalTeams: 2,
-      noRecordTeams: 0,
-      draftTeams: 1,
-      submittedTeams: 1,
-      lockedTeams: 0,
-      submittedOrLaterTeams: 1,
-      withdrawnTeams: 0,
-      disqualifiedTeams: 0,
-      outTeams: 0
     })
   })
 

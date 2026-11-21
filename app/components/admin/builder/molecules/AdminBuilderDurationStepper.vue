@@ -53,19 +53,17 @@ const formatted = computed(() => {
     role="group"
     aria-label="Block duration"
   >
-    <button
-      type="button"
+    <AppButton
+      color="neutral"
+      variant="ghost"
+      size="xs"
+      icon="i-lucide-minus"
       :aria-label="`Shorten by ${model - decreaseValue} ${model - decreaseValue === 1 ? 'minute' : 'minutes'}`"
       :data-testid="`event-builder-duration-down-${props.blockId}`"
       :disabled="model <= eventBuilderMinBlockDurationMinutes"
-      class="inline-flex size-7 items-center justify-center rounded-md text-toned transition hover:bg-black/5 hover:text-highlighted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-black/30 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-white/[0.06] dark:focus-visible:outline-white/40"
+      class="w-7 px-0"
       @click="step(-1)"
-    >
-      <AppIcon
-        name="i-lucide-minus"
-        class="size-3.5"
-      />
-    </button>
+    />
     <label class="inline-flex min-w-11 items-center justify-center text-xs font-medium tabular-nums text-highlighted">
       <span class="sr-only">Duration in minutes</span>
       <input
@@ -83,18 +81,16 @@ const formatted = computed(() => {
       >
       <span aria-hidden="true">m</span>
     </label>
-    <button
-      type="button"
+    <AppButton
+      color="neutral"
+      variant="ghost"
+      size="xs"
+      icon="i-lucide-plus"
       :aria-label="`Extend by ${increaseValue - model} ${increaseValue - model === 1 ? 'minute' : 'minutes'}`"
       :data-testid="`event-builder-duration-up-${props.blockId}`"
       :disabled="model >= eventBuilderMaxBlockDurationMinutes"
-      class="inline-flex size-7 items-center justify-center rounded-md text-toned transition hover:bg-black/5 hover:text-highlighted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-black/30 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-white/[0.06] dark:focus-visible:outline-white/40"
+      class="w-7 px-0"
       @click="step(1)"
-    >
-      <AppIcon
-        name="i-lucide-plus"
-        class="size-3.5"
-      />
-    </button>
+    />
   </div>
 </template>

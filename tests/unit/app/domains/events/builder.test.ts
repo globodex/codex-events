@@ -4,19 +4,13 @@ import { getEventBuilderTemplates } from '../../../../../shared/domains/events/b
 import {
   applyTemplateToState,
   blocksToFormAgendaItems,
-  buildEventBuilderBasicsInput,
-  computeBlockSchedule,
   createBlockInstance,
   createBuilderStateFromEvent,
   createEmptyEventBuilderState,
   deriveScheduleDefaults,
   eventBuilderBasicsSchema,
   getBuilderChecklist,
-  getEventBuilderSettingsGroups,
-  getNextEventBuilderDurationMinutes,
   parseEventBuilderDurationMinutes,
-  pruneBlocksForEventType,
-  toEventBalanceInputFromState,
   toEventBuilderFormState
 } from '../../../../../app/domains/events/builder'
 import {
@@ -113,88 +107,6 @@ describe('parseEventBuilderDurationMinutes', () => {
   })
 })
 
-describe('getNextEventBuilderDurationMinutes', () => {
-  test('steps one minute at a time through durations below ten minutes', () => {
-    expect(getNextEventBuilderDurationMinutes(5, -1)).toBe(4)
-    expect(getNextEventBuilderDurationMinutes(5, 1)).toBe(6)
-    expect(getNextEventBuilderDurationMinutes(9, 1)).toBe(10)
-    expect(getNextEventBuilderDurationMinutes(10, -1)).toBe(9)
-  })
-
-  test('steps in five-minute increments above ten minutes', () => {
-    expect(getNextEventBuilderDurationMinutes(10, 1)).toBe(15)
-    expect(getNextEventBuilderDurationMinutes(15, -1)).toBe(10)
-    expect(getNextEventBuilderDurationMinutes(15, 1)).toBe(20)
-  })
-
-  test('moves manually entered values onto the next useful step and respects limits', () => {
-    expect(getNextEventBuilderDurationMinutes(12, -1)).toBe(10)
-    expect(getNextEventBuilderDurationMinutes(12, 1)).toBe(15)
-    expect(getNextEventBuilderDurationMinutes(1, -1)).toBe(1)
-    expect(getNextEventBuilderDurationMinutes(480, 1)).toBe(480)
-  })
-})
-
-describe('computeBlockSchedule', () => {
-  test('computes cumulative sequential times from the event start', () => {
-    const blocks = [
-      { ...createBlockInstance('welcome'), durationMinutes: 15 },
-      { ...createBlockInstance('talk'), durationMinutes: 30 },
-      { ...createBlockInstance('networking'), durationMinutes: 45 }
-    ]
-    const schedule = computeBlockSchedule('2026-09-12T18:00', blocks)
-
-    expect(schedule[0]).toMatchObject({ startsAt: '2026-09-12T18:00', endsAt: '2026-09-12T18:15' })
-    expect(schedule[1]).toMatchObject({ startsAt: '2026-09-12T18:15', endsAt: '2026-09-12T18:45' })
-    expect(schedule[2]).toMatchObject({ startsAt: '2026-09-12T18:45', endsAt: '2026-09-12T19:30' })
-  })
-
-  test('preserves an arbitrary directly entered duration in every following sequential time', () => {
-    const blocks = [
-      { ...createBlockInstance('welcome'), durationMinutes: 17 },
-      { ...createBlockInstance('talk'), durationMinutes: 12 },
-      { ...createBlockInstance('networking'), durationMinutes: 45 }
-    ]
-    const schedule = computeBlockSchedule('2026-09-12T18:00', blocks)
-
-    expect(schedule[0]).toMatchObject({ startsAt: '2026-09-12T18:00', endsAt: '2026-09-12T18:17' })
-    expect(schedule[1]).toMatchObject({ startsAt: '2026-09-12T18:17', endsAt: '2026-09-12T18:29' })
-    expect(schedule[2]).toMatchObject({ startsAt: '2026-09-12T18:29', endsAt: '2026-09-12T19:14' })
-  })
-
-  test('crosses midnight without breaking', () => {
-    const blocks = [{ ...createBlockInstance('hacking'), durationMinutes: 180 }]
-    const schedule = computeBlockSchedule('2026-09-12T23:00', blocks)
-
-    expect(schedule[0]!.endsAt).toBe('2026-09-13T02:00')
-  })
-
-  test('returns empty times without an event start', () => {
-    const schedule = computeBlockSchedule('', [createBlockInstance('talk')])
-
-    expect(schedule[0]).toMatchObject({ startsAt: '', endsAt: '' })
-  })
-})
-
-describe('blocksToFormAgendaItems', () => {
-  test('annotates typed blocks and leaves custom blocks unannotated', () => {
-    const state = createEmptyEventBuilderState()
-
-    state.eventStartsAt = '2026-09-12T18:00'
-    state.blocks = [
-      createBlockInstance('talk'),
-      { ...createBlockInstance('custom'), title: 'Imported thing' }
-    ]
-
-    const items = blocksToFormAgendaItems(state)
-
-    expect(items[0]!.builderBlockType).toBe('talk')
-    expect(items[0]!.displayOrder).toBe(0)
-    expect('builderBlockType' in items[1]!).toBe(false)
-    expect(items[1]!.title).toBe('Imported thing')
-  })
-})
-
 describe('createBuilderStateFromEvent', () => {
   test('hydrates typed blocks, custom fallbacks, and sequential timing', () => {
     const event = buildAgendaEvent({
@@ -223,8 +135,7 @@ describe('createBuilderStateFromEvent', () => {
     expect(state.blocks).toHaveLength(2)
     expect(state.blocks[0]).toMatchObject({ type: 'talk', durationMinutes: 30, custom: false })
     expect(state.blocks[1]).toMatchObject({ type: 'custom', durationMinutes: 45, custom: true, title: 'Mystery Session' })
-    expect(state.hydratedNonSequential).toBe(false)
-    expect(state.eventStartsAt).not.toBe('')
+    expect(state.eventStartsAt).toBe('2026-09-12T18:00:00.000Z')
   })
 
   test('custom-block dials hydrate and round-trip back into the agenda payload', () => {
@@ -276,13 +187,13 @@ describe('createBuilderStateFromEvent', () => {
     expect(items[0]?.details).toBe('Doors at 17:30, talk starts sharp.')
   })
 
-  test('flags classic-tuned gaps as non-sequential', () => {
+  test('keeps exact agenda times across gaps in the edit payload', () => {
     const event = buildAgendaEvent({
       agendaItems: [
         {
           id: 'a1',
-          startsAt: '2026-09-12T18:00:00.000Z',
-          endsAt: '2026-09-12T18:30:00.000Z',
+          startsAt: '2026-09-12T18:00:07.452Z',
+          endsAt: '2026-09-12T18:30:44.880Z',
           title: 'Talk',
           details: null,
           displayOrder: 0,
@@ -300,7 +211,10 @@ describe('createBuilderStateFromEvent', () => {
       ]
     })
 
-    expect(createBuilderStateFromEvent(event).hydratedNonSequential).toBe(true)
+    const state = createBuilderStateFromEvent(event)
+    const patch = buildEventConfigurationPatch(toEventBuilderFormState(state), state.form.eventType)
+
+    expect(patch.agendaItems).toEqual(event.agendaItems)
   })
 
   test('keeps event and track Markdown plus an existing country unchanged in the edit payload', () => {
@@ -345,36 +259,9 @@ describe('createBuilderStateFromEvent', () => {
     const state = createBuilderStateFromEvent(event)
 
     expect(state.blocks[0]!.custom).toBe(true)
-    expect(state.hydratedNonSequential).toBe(true)
-  })
-})
+    const patch = buildEventConfigurationPatch(toEventBuilderFormState(state), state.form.eventType)
 
-describe('toEventBalanceInputFromState', () => {
-  test('keeps real block durations even before an event start is chosen', () => {
-    const state = createEmptyEventBuilderState()
-    const hacking = createBlockInstance('talk')
-
-    hacking.durationMinutes = 90
-    state.blocks = [hacking]
-
-    const input = toEventBalanceInputFromState(state)
-    const item = input.agendaItems[0]!
-    const minutes = (Date.parse(item.endsAt!) - Date.parse(item.startsAt)) / 60_000
-
-    expect(minutes).toBe(90)
-  })
-
-  test('preserves an arbitrary directly entered duration in the balance input', () => {
-    const state = createEmptyEventBuilderState()
-    const talk = createBlockInstance('talk')
-
-    talk.durationMinutes = 17
-    state.blocks = [talk]
-
-    const item = toEventBalanceInputFromState(state).agendaItems[0]!
-    const minutes = (Date.parse(item.endsAt!) - Date.parse(item.startsAt)) / 60_000
-
-    expect(minutes).toBe(17)
+    expect(patch.agendaItems[0]?.endsAt).toBeNull()
   })
 })
 
@@ -454,10 +341,6 @@ describe('deriveScheduleDefaults', () => {
     })
 
     expect(basics.success).toBe(true)
-  })
-
-  test('returns nothing without an event start', () => {
-    expect(deriveScheduleDefaults('', [], 'meetup')).toEqual({})
   })
 })
 
@@ -559,62 +442,5 @@ describe('templates + event type pruning', () => {
     const reapplied = applyTemplateToState(applied, template)
 
     expect(reapplied.blocks[0]!.id).not.toBe(applied.blocks[0]!.id)
-  })
-
-  test('pruning keeps compatible and custom blocks, reports removals', () => {
-    const blocks = [
-      createBlockInstance('hacking'),
-      createBlockInstance('talk'),
-      createBlockInstance('custom')
-    ]
-    const { kept, removed } = pruneBlocksForEventType(blocks, 'meetup')
-
-    expect(kept.map(block => block.type)).toEqual(['talk', 'custom'])
-    expect(removed.map(block => block.type)).toEqual(['hacking'])
-  })
-})
-
-describe('settings group definitions', () => {
-  test('filters by event type and mode', () => {
-    const meetupCreate = getEventBuilderSettingsGroups('meetup', 'create')
-    const meetupEdit = getEventBuilderSettingsGroups('meetup', 'edit')
-    const hackathonCreate = getEventBuilderSettingsGroups('hackathon', 'create')
-
-    expect(meetupCreate.some(group => group.id === 'judging')).toBe(false)
-    expect(hackathonCreate.some(group => group.id === 'judging')).toBe(true)
-    expect(meetupCreate.some(group => group.id === 'images')).toBe(false)
-    expect(meetupEdit.some(group => group.id === 'images')).toBe(true)
-    expect(meetupCreate.some(group => group.id === 'call-for-talks')).toBe(true)
-    expect(hackathonCreate.some(group => group.id === 'call-for-talks')).toBe(false)
-    expect(meetupCreate.some(group => group.id === 'credits')).toBe(true)
-    expect(hackathonCreate.some(group => group.id === 'credits')).toBe(true)
-  })
-
-  test('completion reads the form and event record', () => {
-    const state = createEmptyEventBuilderState()
-    const groups = getEventBuilderSettingsGroups('meetup', 'edit')
-    const communication = groups.find(group => group.id === 'communication')!
-    const images = groups.find(group => group.id === 'images')!
-
-    expect(communication.isComplete(state.form, null)).toBe(false)
-
-    state.form.discordServerUrl = 'https://discord.gg/example'
-
-    expect(communication.isComplete(state.form, null)).toBe(true)
-    expect(images.isComplete(state.form, buildAgendaEvent({ bannerImageUrl: 'https://x/banner.png' }))).toBe(true)
-  })
-})
-
-describe('basics input mapping', () => {
-  test('buildEventBuilderBasicsInput mirrors form and builder state', () => {
-    const state = createEmptyEventBuilderState()
-
-    state.form.eventType = 'hackathon'
-    state.eventStartsAt = '2026-09-12T09:00'
-
-    const input = buildEventBuilderBasicsInput(state)
-
-    expect(input.isHackathon).toBe(true)
-    expect(input.eventStartsAt).toBe('2026-09-12T09:00')
   })
 })

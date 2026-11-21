@@ -6,6 +6,7 @@
 .nitro
 .cache
 dist
+storybook-static
 
 # Node dependencies
 node_modules

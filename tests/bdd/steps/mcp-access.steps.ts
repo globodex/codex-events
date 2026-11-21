@@ -5,7 +5,7 @@ import { createBdd } from 'playwright-bdd'
 
 import { createAuthenticatedApiClient } from '../support/api-client'
 import { platformFixtureIds } from '../support/platform-fixtures'
-import { getBaseUrl, stablePersonaKeys, type StablePersonaKey } from '../support/personas'
+import { getBaseUrl, parsePersonaKey, type StablePersonaKey } from '../support/personas.ts'
 
 const { When, Then } = createBdd()
 
@@ -24,11 +24,6 @@ type ScenarioState = {
 }
 
 const scenarioState = new WeakMap<Page, ScenarioState>()
-
-function parsePersonaKey(value: string): StablePersonaKey {
-  if (stablePersonaKeys.includes(value as StablePersonaKey)) return value as StablePersonaKey
-  throw new Error(`Unknown stable persona key: ${value}`)
-}
 
 function representativeCall(persona: StablePersonaKey) {
   if (persona === 'event_admin') {

@@ -3,6 +3,7 @@ import type { HTMLAttributes } from 'vue'
 
 import { Loader2Icon } from 'lucide-vue-next'
 
+import { NuxtLink } from '#components'
 import { Button as UiButton } from '~/components/ui/button'
 import { cn } from '~/lib/utils'
 
@@ -99,27 +100,32 @@ const rootClass = computed(() =>
   )
 )
 
-const linkClass = computed(() =>
-  cn(props.disabled || props.loading ? 'pointer-events-none opacity-50' : '')
-)
+const inactive = computed(() => props.disabled || props.loading)
+const targetElement = computed(() => {
+  if (!props.to) return 'button'
+  if (inactive.value) return 'span'
+  return props.external ? 'a' : NuxtLink
+})
 
-const hasDefaultSlot = computed(() => Boolean(useSlots().default))
+const targetAttributes = computed(() => {
+  if (!props.to) return { type: props.type, disabled: inactive.value }
+  if (inactive.value) return { 'role': 'link', 'aria-disabled': true, 'class': 'pointer-events-none opacity-50' }
+  if (props.external) return { href: props.to, target: props.target, rel: props.rel }
+  return { to: props.to }
+})
 </script>
 
 <template>
   <UiButton
-    v-if="props.to && props.external"
     variant="ghost"
     size="default"
     as-child
     :class="rootClass"
     v-bind="$attrs"
   >
-    <a
-      :href="props.to"
-      :target="props.target"
-      :rel="props.rel"
-      :class="linkClass"
+    <component
+      :is="targetElement"
+      v-bind="targetAttributes"
     >
       <Loader2Icon
         v-if="props.loading"
@@ -142,74 +148,6 @@ const hasDefaultSlot = computed(() => Boolean(useSlots().default))
           class="size-4"
         />
       </slot>
-    </a>
-  </UiButton>
-
-  <UiButton
-    v-else-if="props.to"
-    variant="ghost"
-    size="default"
-    as-child
-    :class="rootClass"
-    v-bind="$attrs"
-  >
-    <NuxtLink
-      :to="props.to"
-      :class="linkClass"
-    >
-      <Loader2Icon
-        v-if="props.loading"
-        class="size-4 animate-spin"
-      />
-      <slot name="leading">
-        <AppIcon
-          v-if="!props.loading && props.icon"
-          :name="props.icon"
-          class="size-4"
-        />
-      </slot>
-      <slot>
-        <span v-if="props.label">{{ props.label }}</span>
-      </slot>
-      <slot name="trailing">
-        <AppIcon
-          v-if="props.trailingIcon"
-          :name="props.trailingIcon"
-          class="size-4"
-        />
-      </slot>
-    </NuxtLink>
-  </UiButton>
-
-  <UiButton
-    v-else
-    variant="ghost"
-    size="default"
-    :type="props.type"
-    :disabled="props.disabled || props.loading"
-    :class="rootClass"
-    v-bind="$attrs"
-  >
-    <Loader2Icon
-      v-if="props.loading"
-      class="size-4 animate-spin"
-    />
-    <slot name="leading">
-      <AppIcon
-        v-if="!props.loading && props.icon"
-        :name="props.icon"
-        class="size-4"
-      />
-    </slot>
-    <slot>
-      <span v-if="props.label || !hasDefaultSlot">{{ props.label }}</span>
-    </slot>
-    <slot name="trailing">
-      <AppIcon
-        v-if="props.trailingIcon"
-        :name="props.trailingIcon"
-        class="size-4"
-      />
-    </slot>
+    </component>
   </UiButton>
 </template>

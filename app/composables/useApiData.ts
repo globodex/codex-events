@@ -1,7 +1,7 @@
 import type { MultiWatchSources } from 'vue'
 import type { ApiDataResponse } from '~/lib/api'
 
-import { computed, toValue } from 'vue'
+import { computed, toValue, watch } from 'vue'
 
 import { useAccountBootstrap } from './useAccountBootstrap'
 import { useApiClient } from './useApiClient'
@@ -16,6 +16,7 @@ interface UseApiDataOptions<Data> {
   cacheScope?: ApiCacheScope
   default?: () => Data
   dedupe?: 'cancel' | 'defer'
+  enabled?: MaybeRefOrGetter<boolean>
   immediate?: boolean
   lazy?: boolean
   server?: boolean
@@ -77,37 +78,58 @@ export function useApiData<Data>(
   )
 
   const rawExecute = request.execute
-  const activate = (executeOptions?: Parameters<typeof request.execute>[0]) => {
+  const rawRefresh = request.refresh
+  const rawClear = request.clear
+  const enabled = options?.enabled
+  let queuedRefreshKey: string | undefined
+
+  const activate = () => {
     if (request.status.value !== 'idle') {
       return Promise.resolve()
     }
 
-    return rawExecute({
-      ...executeOptions,
-      dedupe: 'defer'
-    })
+    return rawExecute({ dedupe: 'defer' })
   }
 
-  if (!protectedRequestOwner) {
-    return Object.assign(request, { activate })
-  }
-
-  const rawRefresh = request.refresh
-  const rawClear = request.clear
   const refresh = (refreshOptions?: Parameters<typeof request.refresh>[0]) => {
-    protectedRequestOwner.invalidate(toValue(resolvedKey))
+    const currentKey = toValue(resolvedKey)
+    protectedRequestOwner?.invalidate(currentKey)
+
+    if (toValue(enabled) === false) {
+      queuedRefreshKey = currentKey
+      return Promise.resolve()
+    }
+
+    queuedRefreshKey = undefined
     return rawRefresh({
       ...refreshOptions,
       dedupe: 'cancel'
     })
   }
+
+  if (enabled !== undefined) {
+    watch(() => toValue(enabled), (active) => {
+      if (!active) {
+        return
+      }
+
+      const needsRefresh = queuedRefreshKey === toValue(resolvedKey)
+      queuedRefreshKey = undefined
+      void (needsRefresh && request.status.value !== 'pending' ? refresh() : activate())
+    })
+  }
+
+  if (!protectedRequestOwner) {
+    return request
+  }
+
   const clear = () => {
+    queuedRefreshKey = undefined
     protectedRequestOwner.invalidate(toValue(resolvedKey))
     rawClear()
   }
 
   return Object.assign(request, {
-    activate,
     clear,
     execute: refresh,
     refresh

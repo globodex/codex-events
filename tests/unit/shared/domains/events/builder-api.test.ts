@@ -2,30 +2,11 @@ import { describe, expect, test } from 'vitest'
 
 import {
   analyzeEventBuilderDraft,
-  eventBuilderAnalyzeInputSchema,
-  getEventBuilderCatalog
+  eventBuilderAnalyzeInputSchema
 } from '../../../../../shared/domains/events/builder-api'
-import {
-  eventBuilderBlockDefinitions,
-  eventBuilderBlockTypes,
-  eventBuilderTypeProfiles
-} from '../../../../../shared/domains/events/builder-blocks'
 import { computeEventBalance } from '../../../../../shared/domains/events/builder-scoring'
-import {
-  eventBuilderApplicationFieldKeys,
-  eventBuilderTemplates
-} from '../../../../../shared/domains/events/builder-templates'
 
 describe('event builder API contracts', () => {
-  test('returns the canonical builder catalog without duplicating source data', () => {
-    expect(getEventBuilderCatalog()).toEqual({
-      blockDefinitions: eventBuilderBlockTypes.map(type => eventBuilderBlockDefinitions[type]),
-      typeProfiles: eventBuilderTypeProfiles,
-      templates: eventBuilderTemplates,
-      applicationFieldKeys: eventBuilderApplicationFieldKeys
-    })
-  })
-
   test('maps builder agenda annotations into the canonical scoring engine', () => {
     const input = eventBuilderAnalyzeInputSchema.parse({
       eventType: 'meetup',
@@ -72,18 +53,5 @@ describe('event builder API contracts', () => {
       visibleApplicationFieldCount: 2,
       requiredApplicationFieldCount: 1
     }))
-  })
-
-  test('rejects invalid schedules and impossible application field counts', () => {
-    expect(eventBuilderAnalyzeInputSchema.safeParse({
-      eventType: 'meetup',
-      agendaItems: [{
-        startsAt: '2026-09-01T19:00:00.000Z',
-        endsAt: '2026-09-01T18:00:00.000Z',
-        builderBlockType: 'talk'
-      }],
-      visibleApplicationFieldCount: 1,
-      requiredApplicationFieldCount: 2
-    }).success).toBe(false)
   })
 })

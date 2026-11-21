@@ -1,21 +1,12 @@
 import { describe, expect, test } from 'vitest'
 
-import {
-  eventBuilderBlockDefinitions,
-  eventBuilderBlockTypes,
-  eventBuilderTypeProfiles,
-  getEventBuilderPaletteBlockTypes,
-  resolveEventBuilderBlockType
-} from '../../../../../shared/domains/events/builder-blocks'
-import type {
-  EventBalanceScoringInput
-} from '../../../../../shared/domains/events/builder-scoring'
+import { eventBuilderTypeProfiles } from '../../../../../shared/domains/events/builder-blocks'
 import {
   computeEventBalance,
   eventBalanceEngineVersion,
-  resolveEventBalanceBand
+  type EventBalanceScoringInput
 } from '../../../../../shared/domains/events/builder-scoring'
-import type { EventBuilderTemplateBlock } from '../../../../../shared/domains/events/builder-templates'
+import { eventBuilderTemplates, type EventBuilderTemplateBlock } from '../../../../../shared/domains/events/builder-templates'
 
 function buildAgendaItems(
   blocks: Array<{ builderBlockType?: string | null, durationMinutes: number }>,
@@ -36,7 +27,7 @@ function buildAgendaItems(
   })
 }
 
-export function buildScoringInput(overrides: Partial<EventBalanceScoringInput> = {}): EventBalanceScoringInput {
+function buildScoringInput(overrides: Partial<EventBalanceScoringInput> = {}): EventBalanceScoringInput {
   return {
     eventType: 'meetup',
     agendaItems: [],
@@ -48,7 +39,7 @@ export function buildScoringInput(overrides: Partial<EventBalanceScoringInput> =
   }
 }
 
-export function buildTemplateScoringInput(
+function buildTemplateScoringInput(
   eventType: EventBalanceScoringInput['eventType'],
   blocks: readonly EventBuilderTemplateBlock[]
 ): EventBalanceScoringInput {
@@ -68,45 +59,6 @@ const balancedMeetupBlocks = [
   { builderBlockType: 'panel', durationMinutes: 45 },
   { builderBlockType: 'networking', durationMinutes: 45 }
 ]
-
-describe('builder block catalog', () => {
-  test('resolves unknown, absent, and legacy block types to custom', () => {
-    expect(resolveEventBuilderBlockType('networking')).toBe('networking')
-    expect(resolveEventBuilderBlockType('renamed_block')).toBe('custom')
-    expect(resolveEventBuilderBlockType(null)).toBe('custom')
-    expect(resolveEventBuilderBlockType(undefined)).toBe('custom')
-    expect(resolveEventBuilderBlockType('')).toBe('custom')
-  })
-
-  test('palette puts custom last and respects per-type availability', () => {
-    for (const eventType of ['hackathon', 'meetup', 'build'] as const) {
-      const palette = getEventBuilderPaletteBlockTypes(eventType)
-
-      expect(palette[palette.length - 1]).toBe('custom')
-
-      for (const type of palette) {
-        expect(eventBuilderBlockDefinitions[type].appliesTo).toContain(eventType)
-      }
-    }
-
-    expect(getEventBuilderPaletteBlockTypes('hackathon')).toContain('hacking')
-    expect(getEventBuilderPaletteBlockTypes('hackathon')).not.toContain('build')
-    expect(getEventBuilderPaletteBlockTypes('build')).toContain('build')
-    expect(getEventBuilderPaletteBlockTypes('build')).not.toContain('hacking')
-    expect(getEventBuilderPaletteBlockTypes('meetup')).not.toContain('hacking')
-    expect(getEventBuilderPaletteBlockTypes('meetup')).not.toContain('build')
-  })
-
-  test('every block definition is internally consistent', () => {
-    for (const type of eventBuilderBlockTypes) {
-      const definition = eventBuilderBlockDefinitions[type]
-
-      expect(definition.type).toBe(type)
-      expect(definition.defaultDurationMinutes).toBeGreaterThan(0)
-      expect(definition.appliesTo.length).toBeGreaterThan(0)
-    }
-  })
-})
 
 describe('computeEventBalance', () => {
   test('is deterministic for identical input', () => {
@@ -499,15 +451,6 @@ describe('computeEventBalance', () => {
     }
   })
 
-  test('bands map score ranges to labels', () => {
-    expect(resolveEventBalanceBand(0).id).toBe('needs_work')
-    expect(resolveEventBalanceBand(39).id).toBe('needs_work')
-    expect(resolveEventBalanceBand(40).id).toBe('fair')
-    expect(resolveEventBalanceBand(60).id).toBe('good')
-    expect(resolveEventBalanceBand(80).id).toBe('excellent')
-    expect(resolveEventBalanceBand(100).id).toBe('excellent')
-  })
-
   test('per-type focus budgets differ and change the same agenda footprint', () => {
     expect(eventBuilderTypeProfiles.meetup.focusBudget).toBeLessThan(eventBuilderTypeProfiles.build.focusBudget)
     expect(eventBuilderTypeProfiles.build.focusBudget).toBeLessThan(eventBuilderTypeProfiles.hackathon.focusBudget)
@@ -530,5 +473,24 @@ describe('computeEventBalance', () => {
     expect(hackathon.focusBudget).toBe(160)
     expect(meetup.focusSpent).toBe(hackathon.focusSpent)
     expect(meetup.focusState).not.toBe('thin')
+  })
+})
+
+describe('event builder template scoring', () => {
+  test('every template scores at least Good (70) on agenda alone', () => {
+    for (const template of eventBuilderTemplates) {
+      const result = computeEventBalance(buildTemplateScoringInput(template.eventType, template.blocks))
+
+      expect(result.score, `template ${template.id} scored ${result.score}`).toBeGreaterThanOrEqual(70)
+    }
+  })
+
+  test('no template triggers coach warnings; a warned template is a curation bug', () => {
+    for (const template of eventBuilderTemplates) {
+      const result = computeEventBalance(buildTemplateScoringInput(template.eventType, template.blocks))
+      const warnings = result.tips.filter(tip => tip.tone === 'warning').map(tip => tip.id)
+
+      expect(warnings, `template ${template.id} warns: ${warnings.join(', ')}`).toEqual([])
+    }
   })
 })

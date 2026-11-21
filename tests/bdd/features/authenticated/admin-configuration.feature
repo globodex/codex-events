@@ -2,7 +2,6 @@ Feature: TASK-3.9 authenticated admin configuration coverage
   The backend release gate includes local-session coverage for the remaining admin configuration workflows that were not yet represented in the BDD suite.
 
   Scenario: Platform admin configures a managed event through authenticated API workflows
-    Given the saved "platform_admin" local session state exists
     When the saved "platform_admin" session creates a managed event named "BDD Managed Event"
     Then the remembered managed event should be created in state "draft"
     When the saved "platform_admin" session uploads a background image for the remembered managed event

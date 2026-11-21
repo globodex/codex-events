@@ -24,7 +24,8 @@ import type {
 
 import { normalizeApiError } from '~/lib/api'
 import {
-  LazyAccountEventsAccountEventParticipantsPanel as LazyAccountEventParticipantsPanel
+  LazyAccountEventsAccountEventParticipantsPanel as LazyAccountEventParticipantsPanel,
+  LazyAdminOrganismsAdminCompetitionPrizeRedemptionsPanel as LazyAdminCompetitionPrizeRedemptionsPanel
 } from '#components'
 import {
   buildAdminOperationalTeams,

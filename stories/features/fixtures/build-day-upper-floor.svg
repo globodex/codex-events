@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 360" role="img">
+  <rect width="600" height="360" fill="#e8edf2"/>
+  <g fill="#f8fafc" stroke="#475569" stroke-width="4">
+    <path d="M60 36h480v288H60z"/>
+    <path d="M60 36h480v108H60zm240 180h240v108H300z"/>
+  </g>
+  <g fill="#334155" font-family="sans-serif" font-size="18" text-anchor="middle">
+    <text x="300" y="96">Terrace</text>
+    <text x="420" y="276">Workshop Room</text>
+  </g>
+</svg>

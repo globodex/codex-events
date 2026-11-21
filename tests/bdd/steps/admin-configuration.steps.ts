@@ -4,7 +4,7 @@ import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import { createAuthenticatedApiClient } from '../support/api-client'
-import { stablePersonaKeys, type StablePersonaKey } from '../support/personas'
+import { parsePersonaKey } from '../support/personas.ts'
 
 const { When, Then } = createBdd()
 const pngFixtureBytes = Buffer.from(
@@ -34,14 +34,6 @@ function getScenarioState(page: Page) {
   }
 
   return state
-}
-
-function parsePersonaKey(personaKey: string): StablePersonaKey {
-  if (stablePersonaKeys.includes(personaKey as StablePersonaKey)) {
-    return personaKey as StablePersonaKey
-  }
-
-  throw new Error(`Unknown stable persona key: ${personaKey}`)
 }
 
 When('the saved {string} session creates a managed event named {string}', async ({ page }, personaKey: string, name: string) => {

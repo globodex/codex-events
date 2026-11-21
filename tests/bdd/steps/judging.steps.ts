@@ -5,7 +5,7 @@ import { createBdd } from 'playwright-bdd'
 
 import { createAuthenticatedApiClient } from '../support/api-client'
 import { platformFixtureIds } from '../support/platform-fixtures.ts'
-import { stablePersonaKeys, type StablePersonaKey } from '../support/personas'
+import { parsePersonaKey } from '../support/personas.ts'
 
 const { When, Then } = createBdd()
 
@@ -26,14 +26,6 @@ function getScenarioState(page: Page) {
   }
 
   return state
-}
-
-function parsePersonaKey(personaKey: string): StablePersonaKey {
-  if (stablePersonaKeys.includes(personaKey as StablePersonaKey)) {
-    return personaKey as StablePersonaKey
-  }
-
-  throw new Error(`Unknown stable persona key: ${personaKey}`)
 }
 
 When('the saved {string} session lists active assignments for the judging fixture event', async ({ page }, personaKey: string) => {

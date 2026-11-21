@@ -138,7 +138,6 @@ let sortableConstructor: SortableConstructor | null = null
 
 const currentEvent = computed(() => settingsPage.value?.event ?? props.eventData ?? null)
 
-// Builder-created events surface a live balance score and their native editor.
 const builderBalance = computed(() => {
   const event = currentEvent.value
 
@@ -1261,50 +1260,32 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
         class="space-y-6"
       >
         <div
-          v-if="builderBalance && currentEvent"
           data-testid="event-builder-settings-banner"
           class="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-black/8 bg-white/78 p-4 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] dark:border-white/[0.08] dark:bg-[#151515]/64"
         >
-          <div class="flex min-w-0 items-center gap-3">
-            <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-black/5 text-toned dark:bg-white/[0.06]">
+          <AppButton
+            color="neutral"
+            variant="solid"
+            size="sm"
+            :to="`/admin/events/builder/${currentEvent.slug}`"
+            data-testid="event-builder-open-in-builder"
+          >
+            Open event builder
+            <template #trailing>
               <AppIcon
-                name="i-lucide-blocks"
-                class="size-4.5"
+                name="i-lucide-arrow-right"
+                class="size-3.5"
               />
-            </span>
-            <div class="min-w-0">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-                Event Builder
-              </p>
-              <p class="truncate text-sm text-toned">
-                This event was assembled with the builder — the classic form below stays available for granular settings.
-              </p>
-            </div>
-          </div>
-          <div class="flex items-center gap-3">
-            <AppBadge
-              :color="builderBalance.score >= 80 ? 'success' : builderBalance.score >= 60 ? 'info' : 'warning'"
-              variant="soft"
-              class="tabular-nums"
-            >
-              Balance {{ builderBalance.score }} · {{ builderBalance.band.label }}
-            </AppBadge>
-            <AppButton
-              color="neutral"
-              variant="solid"
-              size="sm"
-              :to="`/admin/events/builder/${currentEvent.slug}`"
-              data-testid="event-builder-open-in-builder"
-            >
-              Open in builder
-              <template #trailing>
-                <AppIcon
-                  name="i-lucide-arrow-right"
-                  class="size-3.5"
-                />
-              </template>
-            </AppButton>
-          </div>
+            </template>
+          </AppButton>
+          <AppBadge
+            v-if="builderBalance"
+            :color="builderBalance.score >= 80 ? 'success' : builderBalance.score >= 60 ? 'info' : 'warning'"
+            variant="soft"
+            class="tabular-nums"
+          >
+            Balance {{ builderBalance.score }} · {{ builderBalance.band.label }}
+          </AppBadge>
         </div>
 
         <LazyAdminEventCreateEditForm
@@ -1398,18 +1379,15 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
 
                   <AdminEditorRowShell>
                     <template #controls>
-                      <button
-                        type="button"
-                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                      <AppButton
+                        color="neutral"
+                        variant="outline"
+                        icon="i-lucide-arrow-up"
+                        class="w-9 rounded-lg px-0"
                         :aria-label="`Move ${getCriterionEdit(criterion).name || `criterion ${index + 1}`} up`"
                         :disabled="index === 0"
                         @click="moveCriterion(criterion.id, -1)"
-                      >
-                        <AppIcon
-                          name="i-lucide-arrow-up"
-                          class="size-4"
-                        />
-                      </button>
+                      />
 
                       <button
                         type="button"
@@ -1423,18 +1401,15 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         />
                       </button>
 
-                      <button
-                        type="button"
-                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                      <AppButton
+                        color="neutral"
+                        variant="outline"
+                        icon="i-lucide-arrow-down"
+                        class="w-9 rounded-lg px-0"
                         :aria-label="`Move ${getCriterionEdit(criterion).name || `criterion ${index + 1}`} down`"
                         :disabled="index === orderedCriteria.length - 1"
                         @click="moveCriterion(criterion.id, 1)"
-                      >
-                        <AppIcon
-                          name="i-lucide-arrow-down"
-                          class="size-4"
-                        />
-                      </button>
+                      />
                     </template>
 
                     <div class="grid grid-cols-1 gap-2.5">
@@ -1494,17 +1469,14 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                     </div>
 
                     <template #actions>
-                      <button
-                        type="button"
-                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-red-400/50 hover:text-red-600 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-red-400/40 dark:hover:text-red-300"
+                      <AppButton
+                        color="error"
+                        variant="outline"
+                        icon="i-lucide-trash-2"
+                        class="w-9 rounded-lg px-0"
                         :aria-label="`Delete ${getCriterionEdit(criterion).name || `criterion ${index + 1}`}`"
                         @click="removeCriterion(criterion.id)"
-                      >
-                        <AppIcon
-                          name="i-lucide-trash-2"
-                          class="size-4"
-                        />
-                      </button>
+                      />
                     </template>
                   </AdminEditorRowShell>
                 </div>
@@ -1593,18 +1565,15 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                     columns-class="sm:grid-cols-[4.25rem_minmax(0,1fr)_4.25rem]"
                   >
                     <template #controls>
-                      <button
-                        type="button"
-                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                      <AppButton
+                        color="neutral"
+                        variant="outline"
+                        icon="i-lucide-arrow-up"
+                        class="w-9 rounded-lg px-0"
                         :aria-label="`Move ${getPrizeEdit(prize).name || `prize ${index + 1}`} up`"
                         :disabled="index === 0"
                         @click="movePrize(prize.id, -1)"
-                      >
-                        <AppIcon
-                          name="i-lucide-arrow-up"
-                          class="size-4"
-                        />
-                      </button>
+                      />
 
                       <button
                         type="button"
@@ -1618,18 +1587,15 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         />
                       </button>
 
-                      <button
-                        type="button"
-                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                      <AppButton
+                        color="neutral"
+                        variant="outline"
+                        icon="i-lucide-arrow-down"
+                        class="w-9 rounded-lg px-0"
                         :aria-label="`Move ${getPrizeEdit(prize).name || `prize ${index + 1}`} down`"
                         :disabled="index === orderedPrizes.length - 1"
                         @click="movePrize(prize.id, 1)"
-                      >
-                        <AppIcon
-                          name="i-lucide-arrow-down"
-                          class="size-4"
-                        />
-                      </button>
+                      />
                     </template>
 
                     <div class="grid grid-cols-1 gap-2.5">
@@ -1725,17 +1691,14 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                     </div>
 
                     <template #actions>
-                      <button
-                        type="button"
-                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-red-400/50 hover:text-red-600 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-red-400/40 dark:hover:text-red-300"
+                      <AppButton
+                        color="error"
+                        variant="outline"
+                        icon="i-lucide-trash-2"
+                        class="w-9 rounded-lg px-0"
                         :aria-label="`Delete ${getPrizeEdit(prize).name || `prize ${index + 1}`}`"
                         @click="removePrize(prize.id)"
-                      >
-                        <AppIcon
-                          name="i-lucide-trash-2"
-                          class="size-4"
-                        />
-                      </button>
+                      />
                     </template>
                   </AdminEditorRowShell>
                 </div>

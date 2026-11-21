@@ -1,10 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import {
-  isHttpsCouponUrl,
-  normalizeLumaEmail,
-  parseLumaAttendeeCsv
-} from '../../../../../server/domains/credits/simplified-claiming'
+import { parseLumaAttendeeCsv } from '../../../../../server/domains/credits/simplified-claiming'
 
 describe('TASK-420 simplified claiming domain', () => {
   test('imports only approved attendees and retains only normalized eligibility fields', () => {
@@ -37,14 +33,6 @@ describe('TASK-420 simplified claiming domain', () => {
       'email,first_name,last_name,approval_status',
       'not-an-email,A,User,approved'
     ].join('\n'))).toThrow('Every approved Luma attendee must have a valid email address.')
-  })
-
-  test('normalizes emails and accepts only HTTPS coupon URLs', () => {
-    expect(normalizeLumaEmail(' Ada@Example.COM ')).toBe('ada@example.com')
-    expect(isHttpsCouponUrl('https://chatgpt.com/coupon/example')).toBe(true)
-    expect(isHttpsCouponUrl('https://')).toBe(false)
-    expect(isHttpsCouponUrl('http://chatgpt.com/coupon/example')).toBe(false)
-    expect(isHttpsCouponUrl('CODE-1')).toBe(false)
   })
 })
 

@@ -119,7 +119,7 @@ describe('TASK-432.5.3 client request topology', () => {
       apiFetch,
       signal: new AbortController().signal
     })).resolves.toEqual({ groups: [], assignmentCount: 0, inProgressCount: 0 })
-    expect(sessionEnsureLoaded).toHaveBeenCalledOnce()
+    expect(sessionEnsureLoaded).not.toHaveBeenCalled()
     expect(apiFetch).toHaveBeenCalledOnce()
   })
 
@@ -159,7 +159,7 @@ describe('TASK-432.5.3 client request topology', () => {
   test('removes old event GET fan-out callers while leaving mutations on their existing routes', () => {
     expect(operationsSource).toContain('page: AccountEventOperationsPage | AccountEventSubmissionsPage | null')
     expect(operationsSource).not.toContain('useAccountEventPageRequest')
-    expect(operationsSource).not.toContain('useApiFetch')
+    expect(operationsSource).not.toMatch(/useApi(?:Data|Response)/)
     expect(operationsSource).not.toContain('listAllPaginatedItems')
     expect(operationsSource).toContain('/api/events/${eventId.value}/actions/start-pitch')
     expect(judgePanelSource).toContain('page: AccountEventJudgingPage | null')

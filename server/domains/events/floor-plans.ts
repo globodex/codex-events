@@ -1,0 +1,215 @@
+import type { H3Event } from 'h3'
+import { and, asc, eq, sql } from 'drizzle-orm'
+import { getRequestWebStream } from 'h3'
+import { z } from 'zod'
+
+import { eventFloorPlanMetadataSchema, type EventFloorPlan } from '#shared/domains/events/program'
+import { requirePlatformActor } from '#server/auth/actor'
+import { buildAuditLogInsert, writeAuditLog } from '#server/database/audit-log'
+import { getDatabase, type AppDatabase } from '#server/database/client'
+import { eventAgendaPrograms, eventFloorPlans } from '#server/database/schema'
+import { requireEventAdmin, routeIdParamsSchema } from '#server/domains/events'
+import {
+  assertValidEventImagePart,
+  eventImageMaxBytes,
+  getEventImageObject,
+  getEventImagesBucket,
+  privateEventImageCacheControl,
+  putEventImageObject
+} from '#server/domains/events/images'
+import { ApiError } from '#server/http/api-error'
+import { validateWithSchema } from '#server/http/validation'
+import { assertAuthenticatedUploadRateLimit } from '#server/utils/rate-limit'
+
+export const eventFloorPlanParamsSchema = routeIdParamsSchema.extend({
+  floorPlanId: z.string().trim().min(1)
+})
+
+type FloorPlanRecord = typeof eventFloorPlans.$inferSelect
+type FloorPlanMetadata = z.infer<typeof eventFloorPlanMetadataSchema>
+
+function floorPlanScope(eventId: string, floorPlanId: string) {
+  return and(eq(eventFloorPlans.eventId, eventId), eq(eventFloorPlans.id, floorPlanId))
+}
+
+function serializeFloorPlan(plan: FloorPlanRecord): EventFloorPlan {
+  const path = `/api/events/${encodeURIComponent(plan.eventId)}/floor-plans/${encodeURIComponent(plan.id)}/image`
+  const metadata = eventFloorPlanMetadataSchema.parse({
+    name: plan.name,
+    rooms: JSON.parse(plan.roomsJson)
+  })
+
+  return { id: plan.id, imageUrl: `${path}?v=${plan.imageRevision}`, ...metadata }
+}
+
+export async function listEventFloorPlans(database: AppDatabase, eventId: string): Promise<EventFloorPlan[]> {
+  const plans = await database.select()
+    .from(eventFloorPlans)
+    .where(eq(eventFloorPlans.eventId, eventId))
+    .orderBy(asc(eventFloorPlans.name), asc(eventFloorPlans.id))
+
+  return plans.map(serializeFloorPlan)
+}
+
+function floorPlanNotFound() {
+  return new ApiError({ statusCode: 404, code: 'floor_plan_not_found', message: 'Floor plan not found.' })
+}
+
+async function getFloorPlan(database: AppDatabase, eventId: string, floorPlanId: string) {
+  const [plan] = await database.select().from(eventFloorPlans).where(floorPlanScope(eventId, floorPlanId))
+  if (!plan) {
+    throw floorPlanNotFound()
+  }
+  return plan
+}
+
+async function requireFloorPlanEditor(h3Event: H3Event, eventId: string) {
+  const actor = await requirePlatformActor(h3Event)
+  await requireEventAdmin(h3Event, eventId)
+  return { database: getDatabase(h3Event), actorUserId: actor.platformUser.id }
+}
+
+function floorPlanUploadError(overLimit: boolean) {
+  return new ApiError({
+    statusCode: overLimit ? 413 : 400,
+    code: overLimit ? 'floor_plan_upload_too_large' : 'floor_plan_upload_invalid',
+    message: overLimit ? 'Choose an image that is 5 MB or smaller.' : 'Choose a PNG or JPEG image.'
+  })
+}
+
+async function readFloorPlanUpload(h3Event: H3Event, actorUserId: string) {
+  await assertAuthenticatedUploadRateLimit(h3Event, `authenticated-upload:${actorUserId}`)
+
+  // Bound the entire multipart request, including form fields and headers.
+  let remaining = eventImageMaxBytes + 16 * 1024
+  const body = getRequestWebStream(h3Event)?.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      remaining -= chunk.byteLength
+      if (remaining < 0) {
+        throw floorPlanUploadError(true)
+      }
+      controller.enqueue(chunk)
+    }
+  }))
+  const contentType = h3Event.headers.get('content-type') ?? ''
+  const request = new Response(body, { headers: { 'content-type': contentType } })
+  const form = await request.formData().catch(() => {
+    throw floorPlanUploadError(remaining < 0)
+  })
+  const image = form.get('file')
+  const data = image && typeof image !== 'string' ? new Uint8Array(await image.arrayBuffer()) : undefined
+
+  return { name: form.get('name'), image: assertValidEventImagePart({ data }) }
+}
+
+function newFloorPlanObjectKey(eventId: string, floorPlanId: string) {
+  return `events/${eventId}/floor-plans/${floorPlanId}/${crypto.randomUUID()}`
+}
+
+async function deleteUnusedFloorPlanImage(h3Event: H3Event, key: string) {
+  try {
+    await getEventImagesBucket(h3Event).delete(key)
+  } catch {
+    console.warn('Could not remove an unused floor plan image.')
+  }
+}
+
+function floorPlanAudit(actorUserId: string, eventId: string, floorPlanId: string, action: string) {
+  return { actorUserId, entityType: 'event', entityId: eventId, action, metadata: { floorPlanId } }
+}
+
+export async function createEventFloorPlan(h3Event: H3Event, eventId: string) {
+  const { database, actorUserId } = await requireFloorPlanEditor(h3Event, eventId)
+  const upload = await readFloorPlanUpload(h3Event, actorUserId)
+  const { name } = validateWithSchema(eventFloorPlanMetadataSchema, { name: upload.name, rooms: [] }, 'body')
+  const id = crypto.randomUUID()
+  const objectKey = newFloorPlanObjectKey(eventId, id)
+  const plan = { id, eventId, name, objectKey, imageRevision: 1, roomsJson: '[]' }
+
+  await putEventImageObject(h3Event, objectKey, upload.image)
+  const audit = floorPlanAudit(actorUserId, eventId, id, 'event.floor_plan.created')
+  await database.batch([
+    database.insert(eventFloorPlans).values(plan),
+    buildAuditLogInsert(database, audit).query
+  ])
+
+  return serializeFloorPlan(plan)
+}
+
+function noRemovedRoomsInProgram(eventId: string, floorPlanId: string, roomsJson: string) {
+  return sql`not exists (
+    select 1
+    from ${eventAgendaPrograms}
+    join json_each(${eventAgendaPrograms.tracksJson}) as track
+    join json_each(track.value, '$.sessions') as session
+    where ${eventAgendaPrograms.eventId} = ${eventId}
+      and json_extract(session.value, '$.room.floorPlanId') = ${floorPlanId}
+      and not exists (
+        select 1 from json_each(${roomsJson}) as room
+        where json_extract(room.value, '$.id') = json_extract(session.value, '$.room.roomId')
+      )
+  )`
+}
+
+export async function updateEventFloorPlan(
+  h3Event: H3Event,
+  eventId: string,
+  floorPlanId: string,
+  metadata: FloorPlanMetadata
+) {
+  const { database, actorUserId } = await requireFloorPlanEditor(h3Event, eventId)
+  const roomsJson = JSON.stringify(metadata.rooms)
+  const [updated] = await database.update(eventFloorPlans)
+    .set({ name: metadata.name, roomsJson })
+    .where(and(floorPlanScope(eventId, floorPlanId), noRemovedRoomsInProgram(eventId, floorPlanId, roomsJson)))
+    .returning()
+
+  if (!updated) {
+    await getFloorPlan(database, eventId, floorPlanId)
+    throw new ApiError({ statusCode: 409, code: 'floor_plan_room_in_use', message: 'Remove the room from its sessions first.' })
+  }
+
+  await writeAuditLog(database, floorPlanAudit(actorUserId, eventId, floorPlanId, 'event.floor_plan.updated'))
+  return serializeFloorPlan(updated)
+}
+
+export async function replaceEventFloorPlanImage(h3Event: H3Event, eventId: string, floorPlanId: string) {
+  const { database, actorUserId } = await requireFloorPlanEditor(h3Event, eventId)
+  const current = await getFloorPlan(database, eventId, floorPlanId)
+  const { image } = await readFloorPlanUpload(h3Event, actorUserId)
+  const objectKey = newFloorPlanObjectKey(eventId, floorPlanId)
+
+  await putEventImageObject(h3Event, objectKey, image)
+
+  const [updated] = await database.update(eventFloorPlans)
+    .set({ objectKey, imageRevision: current.imageRevision + 1 })
+    .where(and(floorPlanScope(eventId, floorPlanId), eq(eventFloorPlans.imageRevision, current.imageRevision)))
+    .returning()
+
+  if (!updated) {
+    await deleteUnusedFloorPlanImage(h3Event, objectKey)
+    throw new ApiError({ statusCode: 409, code: 'floor_plan_image_changed', message: 'The image changed. Try uploading it again.' })
+  }
+
+  await deleteUnusedFloorPlanImage(h3Event, current.objectKey)
+  await writeAuditLog(database, floorPlanAudit(actorUserId, eventId, floorPlanId, 'event.floor_plan.image_replaced'))
+  return serializeFloorPlan(updated)
+}
+
+export async function readEventFloorPlanImage(h3Event: H3Event, database: AppDatabase, eventId: string, floorPlanId: string) {
+  const floorPlan = await getFloorPlan(database, eventId, floorPlanId)
+  const image = await getEventImageObject(h3Event, floorPlan.objectKey)
+  const contentType = image?.httpMetadata?.contentType
+
+  if (!image || (contentType !== 'image/png' && contentType !== 'image/jpeg')) {
+    throw floorPlanNotFound()
+  }
+
+  return new Response(image.body, {
+    headers: {
+      'content-type': contentType,
+      'cache-control': privateEventImageCacheControl,
+      'x-content-type-options': 'nosniff'
+    }
+  })
+}

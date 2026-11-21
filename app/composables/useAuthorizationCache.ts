@@ -56,6 +56,7 @@ export function buildAuthorizationFingerprint(
 }
 
 export function useAuthorizationCache() {
+  const nuxtApp = useNuxtApp()
   const generation = useState<number>(authorizationGenerationStateKey, () => 0)
   const fingerprint = useState<string | null>(authorizationFingerprintStateKey, () => null)
 
@@ -73,11 +74,25 @@ export function useAuthorizationCache() {
     const hasPreviousAuthorization = fingerprint.value !== null
     fingerprint.value = nextFingerprint
 
-    if (hasPreviousAuthorization) {
-      generation.value += 1
+    if (!hasPreviousAuthorization) {
+      return true
     }
 
-    clearNuxtData(key => key.startsWith(protectedAsyncDataKeyPrefix))
+    // Pending reactive keys can already hold data without a payload entry. Nuxt
+    // can carry that data into the next key, so clear the live entries first.
+    const protectedKeys = [...new Set([
+      ...Object.keys(nuxtApp._asyncData),
+      ...Object.keys(nuxtApp.payload.data)
+    ])].filter(key => key.startsWith(protectedAsyncDataKeyPrefix))
+
+    // clearNuxtData drops the pending promise without aborting its transport.
+    for (const key of protectedKeys) {
+      nuxtApp._asyncData[key]?._abortController?.abort()
+    }
+
+    clearNuxtData(protectedKeys)
+    generation.value += 1
+
     return true
   }
 

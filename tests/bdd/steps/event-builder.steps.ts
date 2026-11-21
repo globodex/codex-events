@@ -1,13 +1,7 @@
-import { existsSync, readFileSync } from 'node:fs'
-
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
-
-import {
-  stablePersonaKeys,
-  storageStatePathForPersona,
-  type StablePersonaKey
-} from '../support/personas'
+import { parsePersonaKey } from '../support/personas.ts'
+import { signInAs } from '../support/session-state.ts'
 
 const { When, Then } = createBdd()
 
@@ -17,43 +11,8 @@ async function waitForNuxtHydration(page: Page) {
   )
 }
 
-type StoredState = {
-  cookies?: Array<{
-    name: string
-    value: string
-    domain: string
-    path: string
-    expires: number
-    httpOnly: boolean
-    secure: boolean
-    sameSite: 'Strict' | 'Lax' | 'None'
-  }>
-}
-
-function parsePersonaKey(value: string): StablePersonaKey {
-  if (stablePersonaKeys.includes(value as StablePersonaKey)) {
-    return value as StablePersonaKey
-  }
-
-  throw new Error(`Unknown stable persona key: ${value}`)
-}
-
-async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) {
-  const path = storageStatePathForPersona(personaKey)
-
-  if (!existsSync(path)) {
-    throw new Error(`Missing storage state for persona ${personaKey}.`)
-  }
-
-  const state = JSON.parse(readFileSync(path, 'utf8')) as StoredState
-
-  if (state.cookies?.length) {
-    await page.context().addCookies(state.cookies)
-  }
-}
-
 When('I open the event builder with the saved {string} session', async ({ page }, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await signInAs(parsePersonaKey(personaKey), page)
   await page.goto('/admin/events/builder/new')
   await waitForNuxtHydration(page)
   // The staged reveal starts with just the name field.

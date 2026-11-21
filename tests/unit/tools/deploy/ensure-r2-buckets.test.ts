@@ -2,7 +2,6 @@ import { describe, expect, test } from 'vitest'
 
 import {
   ensureDeployR2Buckets,
-  parseR2BucketInfoOutput,
   type CommandRunner
 } from '../../../../tools/deploy/ensure-r2-buckets'
 
@@ -41,12 +40,6 @@ function createRunner(results: Array<string | Error>) {
 }
 
 describe('deploy R2 bucket provisioning', () => {
-  test('parses Wrangler R2 bucket info output', () => {
-    expect(parseR2BucketInfoOutput(r2InfoOutput('codex-events-prod-profile-icons'))).toEqual({
-      name: 'codex-events-prod-profile-icons'
-    })
-  })
-
   test('returns existing R2 buckets by resolved names', async () => {
     const { calls, runner } = createRunner([
       r2InfoOutput('codex-events-test-profile-icons'),

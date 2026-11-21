@@ -73,14 +73,14 @@ const shouldShowDescriptionToggle = computed(() =>
           {{ descriptionPreview }}
         </p>
 
-        <button
+        <AppButton
           v-if="shouldShowDescriptionToggle"
-          type="button"
-          class="inline-flex text-[13px] font-medium text-highlighted transition-colors hover:text-neutral-700 dark:text-white dark:hover:text-[#D9D9D9]"
+          color="neutral"
+          variant="ghost"
+          class="h-auto p-0 text-[13px] text-highlighted hover:bg-transparent hover:text-neutral-700 dark:hover:bg-transparent dark:hover:text-[#D9D9D9]"
+          :label="props.expanded ? 'Show less' : 'Load more'"
           @click="emit('toggleExpanded')"
-        >
-          {{ props.expanded ? 'Show less' : 'Load more' }}
-        </button>
+        />
 
         <div class="flex flex-wrap items-center gap-3 text-[12px] text-muted">
           <span

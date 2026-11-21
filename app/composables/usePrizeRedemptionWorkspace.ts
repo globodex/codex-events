@@ -24,8 +24,6 @@ export function usePrizeRedemptionWorkspace() {
   const workspaceRequest = useApiData<AccountPrizeRedemptionsPage>(
     buildAccountPrizeRedemptionsPageCacheKey(),
     async ({ apiFetch, signal }) => {
-      await session.ensureLoaded()
-
       if (actor.value.kind !== 'platform_user') {
         return { redemptions: [] }
       }

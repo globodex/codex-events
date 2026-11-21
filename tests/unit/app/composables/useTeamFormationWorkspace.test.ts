@@ -115,15 +115,6 @@ describe('useTeamFormationWorkspace', () => {
         }
       }
 
-      if (url === '/api/events/event_1/teams' && options?.query?.slug === 'north-star-team-1234') {
-        return {
-          data: [],
-          meta: {
-            total: 0
-          }
-        }
-      }
-
       if (url === '/api/events/event_1/teams') {
         return {
           data: [
@@ -159,12 +150,6 @@ describe('useTeamFormationWorkspace', () => {
         }
       }
 
-      if (url === '/api/events/event_1/teams/team_1/join-requests') {
-        return {
-          data: [createJoinRequest(requestApproved ? 'approved' : 'pending')]
-        }
-      }
-
       if (url === '/api/events/event_1/team-join-requests/request_1/actions/approve' && options?.method === 'POST') {
         requestApproved = true
 
@@ -181,6 +166,8 @@ describe('useTeamFormationWorkspace', () => {
     vi.stubGlobal('watch', watch)
     vi.stubGlobal('toValue', toValue)
     vi.stubGlobal('useState', (_key: string, init: () => unknown) => ref(init()))
+    const nuxtApp = {}
+    vi.stubGlobal('useNuxtApp', () => nuxtApp)
     vi.stubGlobal('useAsyncData', () => ({
       data: ref({
         id: 'application_1',

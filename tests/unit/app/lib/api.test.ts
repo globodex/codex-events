@@ -1,19 +1,11 @@
 import { describe, expect, test } from 'vitest'
 
 import {
-  buildApiCacheKey,
-  getApiSubjectKey,
   listAllPaginatedItems,
   normalizeApiError
 } from '../../../../app/lib/api'
 
 describe('client API helpers', () => {
-  test('normalizes authenticated subjects for cache-key partitioning', () => {
-    expect(getApiSubjectKey('  auth0|admin  ')).toBe('auth0|admin')
-    expect(getApiSubjectKey('')).toBe('anonymous')
-    expect(buildApiCacheKey('admin-workspace-session', 'auth0|admin')).toBe('admin-workspace-session:auth0|admin')
-  })
-
   test('extracts canonical API messages from fetch-style upload errors', () => {
     expect(normalizeApiError({
       response: {

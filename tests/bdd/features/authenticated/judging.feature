@@ -2,7 +2,6 @@ Feature: TASK-3.7 authenticated judging flows
   Authenticated platform actors can use the implemented TASK-3.7 judging API surface through fixed local sessions.
 
   Scenario: Judge completes a blind review for the judging fixture event
-    Given the saved "judge" local session state exists
     When the saved "judge" session lists active assignments for the judging fixture event
     Then the judging assignment list should expose the fixture blind assignment without team identity
     When the saved "judge" session starts the remembered judging assignment
@@ -12,6 +11,5 @@ Feature: TASK-3.7 authenticated judging flows
     And the remembered judging assignment should include both fixture judging criterion scores
 
   Scenario: Platform admin force-skips the started judging fixture assignment
-    Given the saved "platform_admin" local session state exists
     When the saved "platform_admin" session force-skips the started judging fixture assignment
     Then the force-skip response should reassign the started judging fixture submission to "user_backup_judge"

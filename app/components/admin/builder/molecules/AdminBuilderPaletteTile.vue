@@ -151,33 +151,25 @@ const kindLabel = computed(() => {
             color="neutral"
             variant="soft"
             size="sm"
+            label="Add to agenda"
+            trailing-icon="i-lucide-plus"
             class="w-full justify-center"
             @click="emit('add', type)"
-          >
-            Add to agenda
-            <template #trailing>
-              <AppIcon
-                name="i-lucide-plus"
-                class="size-3.5"
-              />
-            </template>
-          </AppButton>
+          />
         </PopoverClose>
       </div>
     </AppPopover>
 
-    <button
-      type="button"
+    <AppButton
+      color="neutral"
+      variant="outline"
+      size="xs"
+      icon="i-lucide-plus"
       :data-testid="`event-builder-add-block-${type}`"
       :aria-label="`Add ${definition.label}, ${definition.defaultDurationMinutes} minutes`"
       title="Add to agenda"
-      class="inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-black/8 text-muted transition hover:border-black/25 hover:bg-black/5 hover:text-highlighted dark:border-white/[0.1] dark:hover:border-white/[0.25] dark:hover:bg-white/[0.06]"
+      class="size-6 px-0"
       @click="emit('add', type)"
-    >
-      <AppIcon
-        name="i-lucide-plus"
-        class="size-3.5"
-      />
-    </button>
+    />
   </div>
 </template>

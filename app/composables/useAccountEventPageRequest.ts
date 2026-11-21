@@ -1,7 +1,5 @@
 import type { MultiWatchSources } from 'vue'
 
-import type { ApiDataResponse } from '~/lib/api'
-import { throwIfAborted } from '~/lib/request-cancellation'
 import {
   buildAccountEventPageCacheKey,
   buildAccountEventPagePath,
@@ -12,8 +10,7 @@ import {
   type AccountEventPageResponse
 } from '~/domains/events/account-workspace-page'
 
-import { useAbortableRequest } from './useAbortableRequest'
-import { useApiData } from './useApiData'
+import { useApiResponse } from './useApiData'
 import { useAuthorizationCache } from './useAuthorizationCache'
 import { useSessionActor } from './useSessionActor'
 
@@ -28,100 +25,10 @@ function areAccountEventPageQueriesEqual(
 
 export interface UseAccountEventPageRequestOptions<TPage> {
   default?: () => AccountEventPageResponse<TPage>
+  enabled?: MaybeRefOrGetter<boolean>
   immediate?: boolean
   query?: MaybeRefOrGetter<AccountEventPageQuery | null | undefined>
   watch?: MultiWatchSources
-}
-
-function linkAbortSignals(...signals: AbortSignal[]) {
-  const controller = new AbortController()
-  const abort = () => controller.abort()
-
-  if (signals.some(signal => signal.aborted)) {
-    controller.abort()
-    return {
-      signal: controller.signal,
-      dispose: () => undefined
-    }
-  }
-
-  for (const signal of signals) {
-    signal.addEventListener('abort', abort, { once: true })
-  }
-
-  return {
-    signal: controller.signal,
-    dispose: () => {
-      for (const signal of signals) {
-        signal.removeEventListener('abort', abort)
-      }
-    }
-  }
-}
-
-interface UseProtectedAccountEventRequestOptions<TData> {
-  channel: string
-  default?: () => TData
-  enabled?: MaybeRefOrGetter<boolean>
-  immediate?: boolean
-  watch?: MultiWatchSources
-}
-
-function useProtectedAccountEventRequest<TData>(
-  requestKey: MaybeRefOrGetter<string>,
-  path: MaybeRefOrGetter<string>,
-  options: UseProtectedAccountEventRequestOptions<TData>
-) {
-  const session = useSessionActor()
-  const requests = useAbortableRequest()
-  const enabled = computed(() => options.enabled === undefined
-    ? true
-    : Boolean(toValue(options.enabled)))
-  const request = useApiData<TData>(
-    requestKey,
-    async ({ apiFetch, signal }) => {
-      throwIfAborted(signal)
-
-      if (!enabled.value) {
-        return options.default?.() as TData
-      }
-
-      const pageSignal = requests.createSignal(options.channel)
-      const linkedSignal = linkAbortSignals(signal, pageSignal)
-
-      try {
-        throwIfAborted(pageSignal)
-        await session.ensureLoaded()
-        throwIfAborted(signal)
-        throwIfAborted(pageSignal)
-
-        const response = await apiFetch<ApiDataResponse<TData>>(
-          toValue(path),
-          { signal: linkedSignal.signal }
-        )
-
-        throwIfAborted(signal)
-        throwIfAborted(pageSignal)
-        return response.data
-      } finally {
-        linkedSignal.dispose()
-      }
-    },
-    {
-      cacheScope: 'protected',
-      default: options.default,
-      dedupe: 'cancel',
-      immediate: options.immediate ?? true,
-      server: false,
-      watch: [enabled, ...(options.watch ?? [])]
-    }
-  )
-
-  return {
-    request,
-    session,
-    abort: () => requests.abort(options.channel)
-  }
 }
 
 export function useAccountEventPageRequest<TPage>(
@@ -130,6 +37,7 @@ export function useAccountEventPageRequest<TPage>(
   options: UseAccountEventPageRequestOptions<TPage> = {}
 ) {
   const authorizationCache = useAuthorizationCache()
+  const session = useSessionActor()
   const resolvedSlug = computed(() => toValue(slug))
   const resolvedPage = computed(() => toValue(page))
   const resolvedQuery = computed<AccountEventPageQuery>((previous) => {
@@ -152,27 +60,20 @@ export function useAccountEventPageRequest<TPage>(
     resolvedQuery.value
   ))
 
-  const protectedRequest = useProtectedAccountEventRequest<AccountEventPageResponse<TPage>>(
-    requestKey,
-    path,
-    {
-      channel: 'account-event-page',
-      default: options.default,
-      immediate: options.immediate,
-      watch: [resolvedSlug, resolvedPage, resolvedQuery, ...(options.watch ?? [])]
-    }
-  )
-  const pageRequest = protectedRequest.request
+  const { query: _query, ...requestOptions } = options
+  const pageRequest = useApiResponse<AccountEventPageResponse<TPage>>(requestKey, path, {
+    ...requestOptions,
+    server: false
+  })
 
   return {
-    actor: protectedRequest.session.actor,
+    actor: session.actor,
     authorizationGeneration: authorizationCache.authorizationGeneration,
-    bootstrap: protectedRequest.session.bootstrap,
-    capabilities: protectedRequest.session.capabilities,
+    bootstrap: session.bootstrap,
+    capabilities: session.capabilities,
     clear: pageRequest.clear,
     data: pageRequest.data,
     error: pageRequest.error,
-    activate: pageRequest.activate,
     page: resolvedPage,
     path,
     pending: pageRequest.pending,
@@ -180,8 +81,7 @@ export function useAccountEventPageRequest<TPage>(
     refresh: pageRequest.refresh,
     requestKey,
     slug: resolvedSlug,
-    status: pageRequest.status,
-    abort: protectedRequest.abort
+    status: pageRequest.status
   }
 }
 
@@ -198,6 +98,7 @@ export function useAccountJudgeAssignmentPageRequest<TPage>(
   options: UseAccountJudgeAssignmentPageRequestOptions<TPage> = {}
 ) {
   const authorizationCache = useAuthorizationCache()
+  const session = useSessionActor()
   const resolvedSlug = computed(() => toValue(slug))
   const resolvedAssignmentId = computed(() => toValue(assignmentId))
   const requestKey = computed(() =>
@@ -207,35 +108,22 @@ export function useAccountJudgeAssignmentPageRequest<TPage>(
     resolvedSlug.value,
     resolvedAssignmentId.value
   ))
-  const protectedRequest = useProtectedAccountEventRequest<TPage>(
-    requestKey,
-    path,
-    {
-      channel: 'account-event-judge-assignment',
-      default: options.default,
-      enabled: options.enabled,
-      immediate: options.immediate,
-      watch: [resolvedSlug, resolvedAssignmentId, ...(options.watch ?? [])]
-    }
-  )
-  const pageRequest = protectedRequest.request
+  const pageRequest = useApiResponse<TPage>(requestKey, path, { ...options, server: false })
 
   return {
-    actor: protectedRequest.session.actor,
+    actor: session.actor,
     authorizationGeneration: authorizationCache.authorizationGeneration,
-    bootstrap: protectedRequest.session.bootstrap,
-    capabilities: protectedRequest.session.capabilities,
+    bootstrap: session.bootstrap,
+    capabilities: session.capabilities,
     clear: pageRequest.clear,
     data: pageRequest.data,
     error: pageRequest.error,
-    activate: pageRequest.activate,
     assignmentId: resolvedAssignmentId,
     path,
     pending: pageRequest.pending,
     refresh: pageRequest.refresh,
     requestKey,
     slug: resolvedSlug,
-    status: pageRequest.status,
-    abort: protectedRequest.abort
+    status: pageRequest.status
   }
 }

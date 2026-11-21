@@ -2,10 +2,6 @@ Feature: TASK-3.8 authenticated outcome flows
   Authenticated platform actors can exercise finalist selection, partial pitch review closure, final-ranking override, winners, prize redemption, and audit reads through fixed local sessions.
 
   Scenario: Event admins move from shortlist through winners with a final-ranking override
-    Given the saved "event_admin" local session state exists
-    And the saved "judge" local session state exists
-    And the saved "platform_admin" local session state exists
-    And the saved "regular_user" local session state exists
     When the saved "event_admin" session selects outcomes finalists to prefer submission two
     Then the outcomes shortlist should save submission two as finalist one and submission one as finalist two
     And the outcomes shortlist should remain blind to team identity

@@ -1,4 +1,4 @@
-import { defineEventHandler, getQuery, sendRedirect } from 'h3'
+import { createError, defineEventHandler, getQuery, sendRedirect } from 'h3'
 
 import { normalizeAuthReturnTo } from '#shared/domains/accounts/auth-navigation'
 import {
@@ -8,6 +8,14 @@ import {
 
 export default defineEventHandler(async (event) => {
   const runtimeConfig = useRuntimeConfig(event)
+
+  if (runtimeConfig.localAuthFixtures) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Use a saved BDD persona session.'
+    })
+  }
+
   const queryReturnTo = getQuery(event).returnTo
   const returnTo = normalizeAuthReturnTo(
     typeof queryReturnTo === 'string' ? queryReturnTo : null,

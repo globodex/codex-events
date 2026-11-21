@@ -15,8 +15,6 @@ export function useEventParticipationWorkspace() {
   const participationRequest = useApiData<AccountOverviewPage>(
     buildAccountOverviewPageCacheKey(),
     async ({ apiFetch, signal }) => {
-      await session.ensureLoaded()
-
       if (actor.value.kind !== 'platform_user') {
         return {
           current: [],

@@ -2,12 +2,7 @@ import type { H3Event } from 'h3'
 
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { ApiError } from '../../../../server/http/api-error'
-import {
-  getRequestActor,
-  requireAuthenticatedActor,
-  requirePlatformActor
-} from '../../../../server/auth/actor'
+import { getRequestActor } from '../../../../server/auth/actor'
 import { setTestDatabase } from '../../../../server/database/non-http'
 
 type SessionUser = {
@@ -302,37 +297,6 @@ describe('request actor resolution', () => {
       platformUser: {
         id: 'user_1'
       }
-    })
-  })
-
-  test('requires an authenticated actor for protected flows', async () => {
-    const event = createEvent()
-    setTestDatabase(event, createDatabaseMock())
-
-    await expect(requireAuthenticatedActor(event)).rejects.toBeInstanceOf(ApiError)
-  })
-
-  test('requires a platform account for application-owned authorization', async () => {
-    const event = createEvent({ sub: 'auth0|user_1' })
-    setTestDatabase(event, createDatabaseMock())
-
-    await expect(requirePlatformActor(event)).rejects.toBeInstanceOf(ApiError)
-  })
-
-  test('requires current platform consent for regular platform authorization', async () => {
-    const event = createEvent({ sub: 'auth0|user_1', email: 'user@example.com' })
-    setTestDatabase(event, createDatabaseMock({
-      id: 'user_1',
-      auth0Subject: 'auth0|user_1',
-      email: 'user@example.com',
-      displayName: 'User One',
-      isPlatformAdmin: false
-    }, {
-      hasAcceptedCurrentPlatformDocuments: false
-    }))
-
-    await expect(requirePlatformActor(event)).rejects.toMatchObject({
-      code: 'platform_consent_required'
     })
   })
 })

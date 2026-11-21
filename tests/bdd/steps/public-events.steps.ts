@@ -1,9 +1,7 @@
-import { existsSync, readFileSync } from 'node:fs'
-
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
-
-import { stablePersonaKeys, storageStatePathForPersona, type StablePersonaKey } from '../support/personas.ts'
+import { parsePersonaKey } from '../support/personas.ts'
+import { signInAs } from '../support/session-state.ts'
 
 const { Given, When, Then } = createBdd()
 
@@ -12,68 +10,6 @@ const publicEventDocumentPayloads = new WeakMap<Page, {
   signedIn: string
   signedOut: string
 }>()
-
-type StoredState = {
-  cookies?: Array<{
-    name: string
-    value: string
-    domain: string
-    path: string
-    expires: number
-    httpOnly: boolean
-    secure: boolean
-    sameSite: 'Strict' | 'Lax' | 'None'
-  }>
-  origins?: Array<{
-    origin: string
-    localStorage: Array<{
-      name: string
-      value: string
-    }>
-  }>
-}
-
-function parsePersonaKey(personaKey: string): StablePersonaKey {
-  if (stablePersonaKeys.includes(personaKey as StablePersonaKey)) {
-    return personaKey as StablePersonaKey
-  }
-
-  throw new Error(`Unknown stable persona key: ${personaKey}`)
-}
-
-async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) {
-  const storageStatePath = storageStatePathForPersona(personaKey)
-
-  if (!existsSync(storageStatePath)) {
-    throw new Error(`Missing storage state for persona "${personaKey}" at ${storageStatePath}.`)
-  }
-
-  const storageState = JSON.parse(readFileSync(storageStatePath, 'utf8')) as StoredState
-
-  if (storageState.cookies?.length) {
-    await page.context().addCookies(storageState.cookies)
-  }
-
-  const origins = storageState.origins ?? []
-
-  if (origins.length) {
-    await page.addInitScript((entries: StoredState['origins']) => {
-      if (!entries) {
-        return
-      }
-
-      for (const entry of entries) {
-        if (entry.origin !== window.location.origin) {
-          continue
-        }
-
-        for (const item of entry.localStorage) {
-          window.localStorage.setItem(item.name, item.value)
-        }
-      }
-    }, origins)
-  }
-}
 
 async function waitForNuxtHydration(page: Page) {
   await page.waitForFunction(() =>
@@ -148,7 +84,7 @@ Then('I should see {int} public event cards', async ({ page }, count: number) =>
 })
 
 When('I open the public events page with the saved {string} session', async ({ page }, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await signInAs(parsePersonaKey(personaKey), page)
   await page.goto('/')
 })
 
@@ -174,7 +110,7 @@ Given('I am on the public event detail page for the fixture event', async ({ pag
 })
 
 When('I open the public event detail page for the fixture event with the saved {string} session', async ({ page }, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await signInAs(parsePersonaKey(personaKey), page)
   const response = await page.goto('/events/e2e-fixture-event')
 
   expect(response?.ok()).toBe(true)
@@ -188,7 +124,7 @@ When('I compare the signed-out and signed-in public event documents for the fixt
   expect(signedOutResponse?.ok()).toBe(true)
   expect(signedOutHtml).toBeTruthy()
 
-  await applyStoredStateToPage('platform_admin', page)
+  await signInAs('platform_admin', page)
   const signedInResponse = await page.goto('/events/e2e-fixture-event')
   const signedInHtml = await signedInResponse?.text()
 

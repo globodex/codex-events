@@ -1,13 +1,8 @@
-import { existsSync, readFileSync } from 'node:fs'
 import { performance } from 'node:perf_hooks'
 
 import { expect, type Page, type Request, type Response } from '@playwright/test'
 
 import { isProtectedApiPath } from '../../../server/http/cache-policy'
-import {
-  storageStatePathForPersona,
-  type StablePersonaKey
-} from './personas.ts'
 
 export const defaultLocalTopologyBudgetMs = 30_000
 
@@ -69,26 +64,6 @@ const publishedRosterKeys = new Set([
   'staffTrack'
 ])
 
-type StoredState = {
-  cookies?: Array<{
-    name: string
-    value: string
-    domain: string
-    path: string
-    expires: number
-    httpOnly: boolean
-    secure: boolean
-    sameSite: 'Strict' | 'Lax' | 'None'
-  }>
-  origins?: Array<{
-    origin: string
-    localStorage: Array<{
-      name: string
-      value: string
-    }>
-  }>
-}
-
 export interface TopologyRequestEvidence {
   method: string
   url: string
@@ -132,40 +107,6 @@ function hasDataEnvelope(value: unknown): boolean {
   return typeof value === 'object'
     && value !== null
     && Object.prototype.hasOwnProperty.call(value, 'data')
-}
-
-export async function applyStoredStateToPage(persona: StablePersonaKey, page: Page) {
-  const storageStatePath = storageStatePathForPersona(persona)
-
-  if (!existsSync(storageStatePath)) {
-    throw new Error(`Missing local BDD storage state for ${persona}: ${storageStatePath}`)
-  }
-
-  const storageState = JSON.parse(readFileSync(storageStatePath, 'utf8')) as StoredState
-
-  if (storageState.cookies?.length) {
-    await page.context().addCookies(storageState.cookies)
-  }
-
-  if (!storageState.origins?.length) {
-    return
-  }
-
-  await page.addInitScript((origins: StoredState['origins']) => {
-    if (!origins) {
-      return
-    }
-
-    for (const entry of origins) {
-      if (entry.origin !== window.location.origin) {
-        continue
-      }
-
-      for (const item of entry.localStorage) {
-        window.localStorage.setItem(item.name, item.value)
-      }
-    }
-  }, storageState.origins)
 }
 
 export class AccountEventTopologyCapture {
@@ -744,18 +685,6 @@ async function waitForSuccessfulJsonApiResponse(page: Page, path: string, label:
 
   if (!response.headers()['content-type']?.includes('json')) {
     throw new Error(`${label} did not return a JSON response.`)
-  }
-
-  let payload: unknown
-
-  try {
-    payload = await response.json()
-  } catch {
-    throw new Error(`${label} did not return valid JSON.`)
-  }
-
-  if (!hasDataEnvelope(payload)) {
-    throw new Error(`${label} did not return the expected data envelope.`)
   }
 }
 

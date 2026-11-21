@@ -748,20 +748,18 @@ async function copyCreditValue(value: string) {
                     <p class="text-xs text-muted">
                       {{ offer.totalCount }} total rows
                     </p>
-                    <button
+                    <AppButton
                       v-if="offer.codes.length > 0"
-                      type="button"
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      :label="isInventoryExpanded(offer.id) ? 'Hide values' : `Show all ${offer.codes.length}`"
+                      :trailing-icon="isInventoryExpanded(offer.id) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
                       :aria-expanded="isInventoryExpanded(offer.id)"
                       :aria-controls="`credit-offer-values-${offer.id}`"
-                      class="inline-flex items-center gap-1 text-[12px] font-medium text-highlighted transition-colors hover:text-toned dark:text-white dark:hover:text-[#D9D9D9]"
+                      class="h-auto gap-1 p-0 text-highlighted hover:bg-transparent hover:text-toned dark:hover:bg-transparent dark:hover:text-[#D9D9D9]"
                       @click="toggleInventoryExpanded(offer.id)"
-                    >
-                      <span>{{ isInventoryExpanded(offer.id) ? 'Hide values' : `Show all ${offer.codes.length}` }}</span>
-                      <AppIcon
-                        :name="isInventoryExpanded(offer.id) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                        class="size-3.5"
-                      />
-                    </button>
+                    />
                   </div>
                 </div>
 
@@ -1046,19 +1044,16 @@ async function copyCreditValue(value: string) {
                     </AppBadge>
                   </div>
 
-                  <button
-                    type="button"
+                  <AppButton
+                    color="neutral"
+                    variant="outline"
+                    :label="isParticipantOfferExpanded(offer.id) ? 'Collapse' : 'Expand'"
+                    :trailing-icon="isParticipantOfferExpanded(offer.id) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
                     :aria-expanded="isParticipantOfferExpanded(offer.id)"
                     :aria-controls="`participant-credit-offer-body-${offer.id}`"
-                    class="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 self-center rounded-full border border-black/10 px-3.5 text-sm font-medium text-highlighted transition hover:border-black/20 hover:text-toned dark:border-white/[0.12] dark:text-white dark:hover:border-white/[0.22] dark:hover:text-[#D9D9D9]"
+                    class="gap-1.5 self-center rounded-full px-3.5"
                     @click="toggleParticipantOfferExpanded(offer.id)"
-                  >
-                    <span>{{ isParticipantOfferExpanded(offer.id) ? 'Collapse' : 'Expand' }}</span>
-                    <AppIcon
-                      :name="isParticipantOfferExpanded(offer.id) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                      class="size-4"
-                    />
-                  </button>
+                  />
                 </div>
               </div>
 

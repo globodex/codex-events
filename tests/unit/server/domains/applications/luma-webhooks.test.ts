@@ -4,7 +4,6 @@ import { describe, expect, test, vi } from 'vitest'
 
 import {
   buildLumaWebhookSignatureHeader,
-  extractLumaAttendanceCheckInEvent,
   extractLumaGuestCancellationEvent,
   resolveLumaAttendanceGuestEmail,
   verifyLumaWebhookRequest
@@ -79,44 +78,6 @@ describe('luma webhook utilities', () => {
     })).rejects.toMatchObject({
       statusCode: 401,
       code: 'luma_webhook_signature_invalid'
-    })
-  })
-
-  test('extracts a guest check-in from the webhook payload', () => {
-    const rawBody = JSON.stringify({
-      type: 'guest.updated',
-      data: {
-        event: {
-          api_id: 'evt-123'
-        },
-        guest: {
-          api_id: 'gst-123',
-          email: 'guest@example.com',
-          checked_in_at: '2026-04-13T17:30:00.000Z'
-        }
-      }
-    })
-
-    expect(extractLumaAttendanceCheckInEvent(rawBody)).toEqual({
-      envelope: {
-        type: 'guest.updated',
-        data: {
-          event: {
-            api_id: 'evt-123'
-          },
-          guest: {
-            api_id: 'gst-123',
-            email: 'guest@example.com',
-            checked_in_at: '2026-04-13T17:30:00.000Z'
-          }
-        }
-      },
-      attendanceEvent: {
-        eventApiId: 'evt-123',
-        guestId: 'gst-123',
-        guestEmail: 'guest@example.com',
-        checkedInAt: '2026-04-13T17:30:00.000Z'
-      }
     })
   })
 

@@ -2,7 +2,6 @@ import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import {
-  applyStoredStateToPage,
   assertActiveAccountEventTab,
   assertBudget,
   assertExactPathCount,
@@ -26,7 +25,8 @@ import {
   type AccountEventTopologyCapture,
   type TopologyRequestEvidence
 } from '../support/account-event-workspace-topology.ts'
-import { stablePersonaKeys, type StablePersonaKey } from '../support/personas.ts'
+import { parsePersonaKey } from '../support/personas.ts'
+import { signInAs } from '../support/session-state.ts'
 
 const { Given, When, Then } = createBdd()
 
@@ -60,6 +60,7 @@ const measurements = new WeakMap<Page, Measurement>()
 
 const tabLabels: Record<string, string> = {
   overview: 'Overview',
+  details: 'Details',
   operations: 'Operations',
   participants: 'Participants',
   submissions: 'Submissions',
@@ -96,14 +97,6 @@ const globalSurfaces: Record<string, { path: string, heading: string, criticalPa
     heading: 'Prize redemptions',
     criticalPath: '/api/prize-redemptions/workspace'
   }
-}
-
-function parsePersona(value: string): StablePersonaKey {
-  if (stablePersonaKeys.includes(value as StablePersonaKey)) {
-    return value as StablePersonaKey
-  }
-
-  throw new Error(`Unknown BDD persona: ${value}`)
 }
 
 function eventMeasurement(page: Page) {
@@ -156,18 +149,18 @@ function selectedEventReadPath(slug: string, pageFamily: string) {
 }
 
 Given('the saved {string} local session state exists for account topology', async ({ page }, persona: string) => {
-  await applyStoredStateToPage(parsePersona(persona), page)
+  await signInAs(parsePersonaKey(persona), page)
 })
 
 When('I warm and measure a direct account event {string} tab for event slug {string} as {string} with page family {string}', async ({ page }, tab: string, slug: string, persona: string, pageFamily: string) => {
-  const personaKey = parsePersona(persona)
+  const personaKey = parsePersonaKey(persona)
   const tabLabel = tabLabels[tab]
 
   if (!tabLabel) {
     throw new Error(`Unknown account event tab label: ${tab}`)
   }
 
-  await applyStoredStateToPage(personaKey, page)
+  await signInAs(personaKey, page)
   await warmAccountEventSurface(page, slug, `/api/account/events/${encodeURIComponent(slug)}/entry`)
 
   const capture = capturePageTopology(page)
@@ -198,14 +191,14 @@ When('I warm and measure a direct account event {string} tab for event slug {str
 })
 
 When('I measure a direct account event {string} tab for event slug {string} as {string} with page family {string} for protected request settlement', async ({ page }, tab: string, slug: string, persona: string, pageFamily: string) => {
-  const personaKey = parsePersona(persona)
+  const personaKey = parsePersonaKey(persona)
   const tabLabel = tabLabels[tab]
 
   if (!tabLabel) {
     throw new Error(`Unknown account event tab label: ${tab}`)
   }
 
-  await applyStoredStateToPage(personaKey, page)
+  await signInAs(personaKey, page)
   await warmAccountEventSurface(page, slug, `/api/account/events/${encodeURIComponent(slug)}/entry`)
 
   const capture = capturePageTopology(page)
@@ -257,14 +250,14 @@ When('I measure a direct account event {string} tab for event slug {string} as {
 })
 
 When('I measure a forbidden direct account event {string} tab for event slug {string} as {string} with page family {string} expecting API error code {string}', async ({ page }, tab: string, slug: string, persona: string, pageFamily: string, expectedCode: string) => {
-  const personaKey = parsePersona(persona)
+  const personaKey = parsePersonaKey(persona)
   const tabLabel = tabLabels[tab]
 
   if (!tabLabel) {
     throw new Error(`Unknown account event tab label: ${tab}`)
   }
 
-  await applyStoredStateToPage(personaKey, page)
+  await signInAs(personaKey, page)
   await warmAccountEventSurface(page, slug, `/api/account/events/${encodeURIComponent(slug)}/entry`)
 
   const capture = capturePageTopology(page)
@@ -293,7 +286,7 @@ When('I measure a forbidden direct account event {string} tab for event slug {st
 When('I warm and measure the account event overview for event slug {string} as {string}', async ({ page }, slug: string, persona: string) => {
   const selectedPath = `/api/account/events/${encodeURIComponent(slug)}/entry`
 
-  await applyStoredStateToPage(parsePersona(persona), page)
+  await signInAs(parsePersonaKey(persona), page)
   await warmAccountEventSurface(page, slug, selectedPath)
 
   const capture = capturePageTopology(page)
@@ -319,29 +312,30 @@ When('I warm and measure the account event overview for event slug {string} as {
   })
 })
 
-When('I warm and measure the account event SPA flow for event slug {string} as {string} through tab {string} with page family {string}', async ({ page }, slug: string, persona: string, tab: string, pageFamily: string) => {
-  const personaKey = parsePersona(persona)
+When('I warm and measure the account event SPA flow for event slug {string} as {string} from tab {string} through tab {string} with page family {string}', async ({ page }, slug: string, persona: string, entryTab: string, tab: string, pageFamily: string) => {
+  const personaKey = parsePersonaKey(persona)
+  const entryTabLabel = tabLabels[entryTab]
   const tabLabel = tabLabels[tab]
 
-  if (!tabLabel) {
-    throw new Error(`Unknown account event tab label: ${tab}`)
+  if (!entryTabLabel || !tabLabel) {
+    throw new Error(`Unknown account event tab: ${!entryTabLabel ? entryTab : tab}`)
   }
 
-  await applyStoredStateToPage(personaKey, page)
+  await signInAs(personaKey, page)
   const entryPath = `/api/account/events/${encodeURIComponent(slug)}/entry`
   await warmAccountEventSurface(page, slug, entryPath)
 
   const capture = capturePageTopology(page)
   const selectedPath = selectedEventReadPath(slug, pageFamily)
 
-  await page.goto(`/account/events/${encodeURIComponent(slug)}?tab=overview`, {
+  await page.goto(`/account/events/${encodeURIComponent(slug)}?tab=${entryTab}`, {
     waitUntil: 'domcontentloaded'
   })
   capture.markShell()
   const entryRead = await capture.waitForCompletedPath(entryPath)
   capture.markCritical(entryPath)
   assertJsonApiRecord(capture, entryRead, 'SPA account event entry read', 'entry')
-  await waitForAccountEventTab(page, 'Overview')
+  await waitForAccountEventTab(page, entryTabLabel)
 
   await assertActiveAccountEventTab(page, tabLabel).click()
   const selectedRead = await capture.waitForCompletedPath(selectedPath)
@@ -352,8 +346,8 @@ When('I warm and measure the account event SPA flow for event slug {string} as {
   }
   await waitForAccountEventTab(page, tabLabel)
 
-  await assertActiveAccountEventTab(page, 'Overview').click()
-  await waitForAccountEventTab(page, 'Overview')
+  await assertActiveAccountEventTab(page, entryTabLabel).click()
+  await waitForAccountEventTab(page, entryTabLabel)
   capture.markUsable()
   await finishCapture(capture)
 
@@ -374,7 +368,7 @@ When('I warm and measure the {string} global account workspace as {string}', asy
     throw new Error(`Unknown global account workspace: ${workspace}`)
   }
 
-  await applyStoredStateToPage(parsePersona(persona), page)
+  await signInAs(parsePersonaKey(persona), page)
   await warmGlobalSurface(page, surface.path, surface.heading, surface.criticalPath)
 
   const capture = capturePageTopology(page)
@@ -396,7 +390,7 @@ When('I warm and measure the {string} global account workspace as {string}', asy
 })
 
 When('I cold-start the judging workspace while holding the account bootstrap response as {string}', async ({ page }, persona: string) => {
-  await applyStoredStateToPage(parsePersona(persona), page)
+  await signInAs(parsePersonaKey(persona), page)
 
   const capture = capturePageTopology(page)
   const criticalPath = '/api/account/judging'
@@ -445,8 +439,8 @@ When('I cold-start the judging workspace while holding the account bootstrap res
 })
 
 When('I measure account event cancellation from Operations to Settings for event slug {string} as {string}', async ({ page }, slug: string, persona: string) => {
-  const personaKey = parsePersona(persona)
-  await applyStoredStateToPage(personaKey, page)
+  const personaKey = parsePersonaKey(persona)
+  await signInAs(personaKey, page)
   await warmAccountEventSurface(page, slug, `/api/account/events/${encodeURIComponent(slug)}/entry`)
 
   const capture = capturePageTopology(page)
@@ -480,10 +474,12 @@ When('I measure account event cancellation from Operations to Settings for event
 
     await assertActiveAccountEventTab(page, 'Operations').click()
     await capture.waitForStartedPath(operationsPath)
-    await assertActiveAccountEventTab(page, 'Settings').click()
+    await Promise.all([
+      page.waitForEvent('requestfailed', request => new URL(request.url()).pathname === operationsPath),
+      assertActiveAccountEventTab(page, 'Settings').click()
+    ])
     await waitForAccountEventTab(page, 'Settings')
     await capture.waitForCompletedPath(settingsPath)
-    await page.waitForTimeout(100)
   } finally {
     releaseDelayedResponse?.()
     await page.unroute(operationsPattern, delayedRoute)

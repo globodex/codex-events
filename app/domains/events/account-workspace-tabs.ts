@@ -1,34 +1,18 @@
 import type { PublicEventState } from '~/domains/events/presentation'
 import type { EventType } from '~/domains/events/records'
 import type { AccountEventPageName } from '~/domains/events/account-workspace-page'
+import { accountEventEntryTabs, type AccountEventEntryTab } from '#shared/domains/events/account-event-entry-page'
 
-export const accountEventWorkspaceTabs = [
-  'overview',
-  'credits',
-  'prizes',
-  'details',
-  'call-for-talks',
-  'gallery',
-  'feedback',
-  'judges',
-  'staff',
-  'workspace',
-  'teams',
-  'participants',
-  'certificates',
-  'submissions',
-  'judging',
-  'operations',
-  'settings'
-] as const
+export const accountEventWorkspaceTabs = accountEventEntryTabs
 
-export type AccountEventWorkspaceTab = (typeof accountEventWorkspaceTabs)[number]
+export type AccountEventWorkspaceTab = AccountEventEntryTab
 
 export const accountEventWorkspacePageByTab: Readonly<Record<AccountEventWorkspaceTab, AccountEventPageName>> = {
   'overview': 'entry',
   'credits': 'entry',
   'prizes': 'prizes',
   'details': 'entry',
+  'program': 'program',
   'call-for-talks': 'entry',
   'gallery': 'gallery',
   'feedback': 'feedback',
@@ -92,6 +76,7 @@ const defaultAccountEventTabLabels: Record<AccountEventWorkspaceTab, string> = {
   'workspace': 'Workspace',
   'prizes': 'Prizes',
   'details': 'Details',
+  'program': 'Agenda',
   'call-for-talks': 'Call for talks',
   'gallery': 'Gallery',
   'feedback': 'Feedback',

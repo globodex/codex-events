@@ -7,6 +7,7 @@ This document defines the canonical technology stack for the Codex event platfor
 - `Nuxt` for the web application
 - `shadcn-vue` for the component primitive layer
 - `Tailwind CSS` for the interface styling system
+- `Storybook` for local previews of the Vue component library
 - `Zod` for validation and data contracts
 - `Drizzle ORM` for database schema management and queries
 - `Vitest` for unit and integration testing

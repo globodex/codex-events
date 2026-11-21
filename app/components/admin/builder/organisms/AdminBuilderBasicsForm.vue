@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AdminMarkdownEditorField from '~/components/admin/AdminMarkdownEditorField.vue'
 import type { EventFormState } from '~/domains/events/admin-event'
+import { toDateTimeLocalValue } from '~/domains/events/admin-event'
 import { getCountryOptions } from '~/utils/country-options'
 
 const form = defineModel<EventFormState>('form', { required: true })
@@ -17,8 +18,14 @@ const emit = defineEmits<{
 }>()
 
 const eventStartsAtModel = computed({
-  get: () => props.eventStartsAt,
-  set: value => emit('update:eventStartsAt', value ?? '')
+  get: () => toDateTimeLocalValue(props.eventStartsAt),
+  set(value: string | undefined) {
+    const nextStart = value ?? ''
+
+    if (nextStart !== toDateTimeLocalValue(props.eventStartsAt)) {
+      emit('update:eventStartsAt', nextStart)
+    }
+  }
 })
 
 const isHackathon = computed(() => form.value.eventType === 'hackathon')

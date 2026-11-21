@@ -29,7 +29,7 @@ import EventPrizeList from '~/components/public/events/EventPrizeList.vue'
 import EventOverviewPanel from '~/components/public/events/EventOverviewPanel.vue'
 import EventAgendaPanel from '~/components/public/events/EventAgendaPanel.vue'
 import EventPublishedProjectsShowcase from '~/components/public/events/EventPublishedProjectsShowcase.vue'
-import EventTracksPanel from '~/components/public/events/EventTracksPanel.vue'
+import EventTracksPanel from '~/components/public/events/organisms/EventTracksPanel.vue'
 import EventTimeline from '~/components/public/events/EventTimeline.vue'
 import EventWinnersShowcase from '~/components/public/events/EventWinnersShowcase.vue'
 import EventTalkProposalCallout from '~/components/public/events/EventTalkProposalCallout.vue'
@@ -67,8 +67,7 @@ const { data: eventData, error: eventError } = await useApiResponse<PublicEvent>
   () => `public-event-detail:${slug.value}:${includeFullTrackDetails.value ? 'full-tracks' : 'short-tracks'}`,
   () => publicEventDetailPath.value,
   {
-    cacheScope: 'public',
-    watch: [slug, includeFullTrackDetails]
+    cacheScope: 'public'
   }
 )
 
@@ -114,30 +113,30 @@ const {
   actor: accountActor,
   hasEventWorkspaceAccess
 } = usePublicEventWorkspaceAccess(slug)
-const { data: prizesData } = await useApiData<PublicPrize[]>(
-  () => `public-event-prizes:${slug.value}:${isCompetitionEvent.value ? 'competition' : 'registration'}`,
-  async ({ apiFetch, signal }) => {
-    if (!isCompetitionEvent.value) {
-      return []
-    }
-
-    const response = await apiFetch<PublicApiListResponse<PublicPrize>>(`/api/public/events/${slug.value}/prizes`, {
-      signal
-    })
-
-    return response.data
-  },
-  {
-    cacheScope: 'public',
-    default: () => [],
-    watch: [slug, isCompetitionEvent]
-  }
-)
 const [
+  { data: prizesData },
   { data: winnersData, error: winnersError },
   { data: publishedProjectsData, error: publishedProjectsError },
   { data: galleryPhotosData, error: galleryError }
 ] = await Promise.all([
+  useApiData<PublicPrize[]>(
+    () => `public-event-prizes:${slug.value}:${isCompetitionEvent.value ? 'competition' : 'registration'}`,
+    async ({ apiFetch, signal }) => {
+      if (!isCompetitionEvent.value) {
+        return []
+      }
+
+      const response = await apiFetch<PublicApiListResponse<PublicPrize>>(`/api/public/events/${slug.value}/prizes`, {
+        signal
+      })
+
+      return response.data
+    },
+    {
+      cacheScope: 'public',
+      default: () => []
+    }
+  ),
   useApiData<WinnerEntry[]>(
     () => `public-event-winners:${slug.value}:${eventState.value}`,
     async ({ apiFetch, signal }) => {
@@ -153,8 +152,7 @@ const [
     },
     {
       cacheScope: 'public',
-      default: () => [],
-      watch: [slug, eventState]
+      default: () => []
     }
   ),
   useApiData<PublishedProjectEntry[]>(
@@ -175,14 +173,12 @@ const [
     },
     {
       cacheScope: 'public',
-      default: () => [],
-      watch: [slug, eventState]
+      default: () => []
     }
   ),
   useApiResponse<EventPhotoRecord[]>(() => `public-event-gallery:${slug.value}`, () => `/api/public/events/${slug.value}/photos`, {
     cacheScope: 'public',
-    default: () => [],
-    watch: [slug]
+    default: () => []
   })
 ])
 
@@ -257,6 +253,13 @@ type PublicSectionTab = (typeof publicSectionTabs)[number]
 const activePublicSection = computed<PublicSectionTab>(() =>
   resolveTabQueryValue(route.query.tab, publicSectionTabs, 'overview')
 )
+
+const visiblePublicTabs = computed(() => ([
+  { id: 'overview', label: 'Overview', visible: true },
+  { id: 'prizes', label: publicPrizeTabLabel.value, visible: hasPublishedPrizes.value || isWinnerRevealVisible.value },
+  { id: 'details', label: 'Details', visible: true },
+  { id: 'gallery', label: 'Gallery', visible: hasPublicGallery.value }
+] satisfies { id: PublicSectionTab, label: string, visible: boolean }[]).filter(tab => tab.visible))
 
 async function selectPublicSection(nextSection: PublicSectionTab) {
   if (normalizeTabQueryValue(route.query.tab) === nextSection) {
@@ -397,56 +400,16 @@ useSeoMeta({
             role="tablist"
             class="flex items-center gap-5 overflow-x-auto"
           >
-            <button
-              id="public-tab-overview"
-              type="button"
-              role="tab"
-              :aria-selected="activePublicSection === 'overview'"
-              aria-controls="public-tab-panel-overview"
-              class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
-              :class="activePublicSection === 'overview' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="void selectPublicSection('overview')"
+            <AppSectionTab
+              v-for="tab in visiblePublicTabs"
+              :id="`public-tab-${tab.id}`"
+              :key="tab.id"
+              :selected="activePublicSection === tab.id"
+              :aria-controls="`public-tab-panel-${tab.id}`"
+              @click="void selectPublicSection(tab.id)"
             >
-              Overview
-            </button>
-            <button
-              v-if="hasPublishedPrizes || isWinnerRevealVisible"
-              id="public-tab-prizes"
-              type="button"
-              role="tab"
-              :aria-selected="activePublicSection === 'prizes'"
-              aria-controls="public-tab-panel-prizes"
-              class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
-              :class="activePublicSection === 'prizes' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="void selectPublicSection('prizes')"
-            >
-              {{ publicPrizeTabLabel }}
-            </button>
-            <button
-              id="public-tab-details"
-              type="button"
-              role="tab"
-              :aria-selected="activePublicSection === 'details'"
-              aria-controls="public-tab-panel-details"
-              class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
-              :class="activePublicSection === 'details' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="void selectPublicSection('details')"
-            >
-              Details
-            </button>
-            <button
-              v-if="hasPublicGallery"
-              id="public-tab-gallery"
-              type="button"
-              role="tab"
-              :aria-selected="activePublicSection === 'gallery'"
-              aria-controls="public-tab-panel-gallery"
-              class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
-              :class="activePublicSection === 'gallery' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="void selectPublicSection('gallery')"
-            >
-              Gallery
-            </button>
+              {{ tab.label }}
+            </AppSectionTab>
           </nav>
         </div>
       </AppContainer>

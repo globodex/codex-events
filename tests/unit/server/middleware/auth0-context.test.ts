@@ -22,21 +22,6 @@ describe('auth0 context middleware', () => {
     vi.unstubAllGlobals()
   })
 
-  test('derives a non-secure session cookie for local http development', async () => {
-    const { buildAuth0ClientOptions } = await loadMiddlewareModule()
-
-    expect(buildAuth0ClientOptions({
-      appBaseUrl: 'http://localhost:3000'
-    })).toMatchObject({
-      appBaseUrl: 'http://localhost:3000',
-      sessionConfiguration: {
-        cookie: {
-          secure: false
-        }
-      }
-    })
-  })
-
   test('keeps secure cookies for https environments', async () => {
     const { buildAuth0ClientOptions } = await loadMiddlewareModule()
 
@@ -44,25 +29,6 @@ describe('auth0 context middleware', () => {
       appBaseUrl: 'https://test.codex-events.com'
     })).toMatchObject({
       appBaseUrl: 'https://test.codex-events.com',
-      sessionConfiguration: {
-        cookie: {
-          secure: true
-        }
-      }
-    })
-  })
-
-  test('preserves an explicit secure-cookie override from runtime config', async () => {
-    const { buildAuth0ClientOptions } = await loadMiddlewareModule()
-
-    expect(buildAuth0ClientOptions({
-      appBaseUrl: 'http://localhost:3000',
-      sessionConfiguration: {
-        cookie: {
-          secure: true
-        }
-      }
-    })).toMatchObject({
       sessionConfiguration: {
         cookie: {
           secure: true

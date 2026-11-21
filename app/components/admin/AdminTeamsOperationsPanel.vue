@@ -247,22 +247,15 @@ function formatMemberRole(role: 'admin' | 'member') {
 
       <div class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex flex-col gap-4 rounded-xl p-2">
         <div class="flex min-w-0 flex-wrap items-center gap-2">
-          <button
+          <AppFilterButton
             v-for="option in filterOptions"
             :key="option.value"
-            type="button"
-            class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
-            :class="filter === option.value ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
+            :pressed="filter === option.value"
+            :count="option.count"
             @click="filter = option.value"
           >
-            <span>{{ option.label }}</span>
-            <span
-              class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-              :class="filter === option.value ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
-            >
-              {{ option.count }}
-            </span>
-          </button>
+            {{ option.label }}
+          </AppFilterButton>
         </div>
 
         <div class="px-2 pb-2">
@@ -343,20 +336,17 @@ function formatMemberRole(role: 'admin' | 'member') {
                 </p>
               </div>
 
-              <button
-                type="button"
+              <AppButton
+                color="neutral"
+                variant="outline"
+                :label="formatAdminSubmissionRowToggleLabel(isExpanded(team.team.id))"
+                :trailing-icon="isExpanded(team.team.id) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
                 :data-testid="`admin-team-expand-toggle-${team.team.id}`"
                 :aria-expanded="isExpanded(team.team.id)"
                 :aria-controls="`admin-team-details-${team.team.id}`"
-                class="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 self-center rounded-full border border-black/10 px-3.5 text-sm font-medium text-highlighted transition hover:border-black/20 hover:text-toned dark:border-white/[0.12] dark:text-white dark:hover:border-white/[0.22] dark:hover:text-[#D9D9D9]"
+                class="self-center rounded-full"
                 @click="toggleExpanded(team.team.id)"
-              >
-                <span>{{ formatAdminSubmissionRowToggleLabel(isExpanded(team.team.id)) }}</span>
-                <AppIcon
-                  :name="isExpanded(team.team.id) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                  class="size-4"
-                />
-              </button>
+              />
             </div>
 
             <div

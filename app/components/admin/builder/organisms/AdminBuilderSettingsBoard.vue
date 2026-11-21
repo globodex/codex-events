@@ -9,6 +9,7 @@ import {
   parseParticipantsLimitInput
 } from '~/domains/events/admin-event'
 import type { EventBuilderSettingsGroupDefinition } from '~/domains/events/builder'
+import AdminBuilderChoiceCard from '~/components/admin/builder/molecules/AdminBuilderChoiceCard.vue'
 import AdminBuilderSettingsGroupCard from '~/components/admin/builder/molecules/AdminBuilderSettingsGroupCard.vue'
 import AdminBuilderFrictionGauge from '~/components/admin/builder/molecules/AdminBuilderFrictionGauge.vue'
 import AdminBuilderWeightSlider from '~/components/admin/builder/molecules/AdminBuilderWeightSlider.vue'
@@ -344,48 +345,22 @@ function groupById(id: string) {
         <div class="space-y-4">
           <!-- Modes combine: pick one or both. At least one stays on. -->
           <div class="grid gap-2 sm:grid-cols-3">
-            <button
-              type="button"
+            <AdminBuilderChoiceCard
               role="checkbox"
-              :aria-checked="blindReviewEnabled"
+              label="Blind review"
+              description="Assigned judges score each submission independently, without seeing who built it."
+              :checked="blindReviewEnabled"
               data-testid="event-builder-judging-mode-blind"
-              class="relative rounded-xl border p-3 text-left transition-colors"
-              :class="blindReviewEnabled
-                ? 'border-black/25 bg-white/95 dark:border-white/[0.28] dark:bg-[#181818]'
-                : 'border-black/8 bg-white/88 text-toned hover:border-black/20 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]'"
               @click="toggleBlindReview"
-            >
-              <AppIcon
-                v-if="blindReviewEnabled"
-                name="i-lucide-circle-check-big"
-                class="absolute right-3 top-3 size-4 text-emerald-500"
-              />
-              <span class="block pr-6 text-sm font-semibold text-highlighted">Blind review</span>
-              <span class="block text-[11px] text-dimmed">
-                Assigned judges score each submission independently, without seeing who built it.
-              </span>
-            </button>
-            <button
-              type="button"
+            />
+            <AdminBuilderChoiceCard
               role="checkbox"
-              :aria-checked="form.pitchReviewEnabled"
+              label="Live pitch"
+              description="Shortlisted teams present on stage and the judges score the pitch."
+              :checked="form.pitchReviewEnabled"
               data-testid="event-builder-judging-mode-pitch"
-              class="relative rounded-xl border p-3 text-left transition-colors"
-              :class="form.pitchReviewEnabled
-                ? 'border-black/25 bg-white/95 dark:border-white/[0.28] dark:bg-[#181818]'
-                : 'border-black/8 bg-white/88 text-toned hover:border-black/20 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]'"
               @click="togglePitchReview"
-            >
-              <AppIcon
-                v-if="form.pitchReviewEnabled"
-                name="i-lucide-circle-check-big"
-                class="absolute right-3 top-3 size-4 text-emerald-500"
-              />
-              <span class="block pr-6 text-sm font-semibold text-highlighted">Live pitch</span>
-              <span class="block text-[11px] text-dimmed">
-                Shortlisted teams present on stage and the judges score the pitch.
-              </span>
-            </button>
+            />
             <div
               class="relative rounded-xl border border-dashed border-black/8 p-3 opacity-70 dark:border-white/[0.1]"
               aria-disabled="true"
@@ -479,17 +454,15 @@ function groupById(id: string) {
               <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                 Track {{ index + 1 }}
               </p>
-              <button
-                type="button"
+              <AppButton
+                color="error"
+                variant="ghost"
+                size="xs"
+                icon="i-lucide-trash-2"
                 :aria-label="`Remove track ${index + 1}`"
-                class="inline-flex size-7 items-center justify-center rounded-lg text-muted transition hover:bg-rose-500/10 hover:text-rose-500"
+                class="w-7 px-0 text-muted hover:text-error rounded-lg"
                 @click="removeTrack(track.id)"
-              >
-                <AppIcon
-                  name="i-lucide-trash-2"
-                  class="size-3.5"
-                />
-              </button>
+              />
             </div>
             <div class="grid gap-3">
               <AppFormField label="Name">
@@ -554,17 +527,15 @@ function groupById(id: string) {
                   size="sm"
                   placeholder="Description"
                 />
-                <button
-                  type="button"
+                <AppButton
+                  color="error"
+                  variant="ghost"
+                  size="sm"
+                  icon="i-lucide-trash-2"
                   aria-label="Remove resource"
-                  class="inline-flex size-8 items-center justify-center rounded-lg text-muted transition hover:bg-rose-500/10 hover:text-rose-500"
+                  class="w-8 px-0 text-muted hover:text-error"
                   @click="removeTrackResource(track, resource.id)"
-                >
-                  <AppIcon
-                    name="i-lucide-trash-2"
-                    class="size-3.5"
-                  />
-                </button>
+                />
               </div>
             </div>
           </div>
@@ -573,17 +544,11 @@ function groupById(id: string) {
             color="neutral"
             variant="outline"
             size="sm"
+            label="Add track"
+            trailing-icon="i-lucide-plus"
             data-testid="event-builder-add-track"
             @click="addTrack"
-          >
-            Add track
-            <template #trailing>
-              <AppIcon
-                name="i-lucide-plus"
-                class="size-3.5"
-              />
-            </template>
-          </AppButton>
+          />
         </div>
       </AdminBuilderSettingsGroupCard>
 

@@ -7,7 +7,7 @@ import type {
 
 import {
   LazyJudgingJudgeAssignmentInboxCard as LazyJudgeAssignmentInboxCard,
-  LazyJudgingJudgeAssignmentWorkspacePanel as LazyJudgeAssignmentWorkspacePanel
+  LazyJudgingOrganismsJudgeAssignmentWorkspacePanel as LazyJudgeAssignmentWorkspacePanel
 } from '#components'
 import { buildAccountEventJudgingTabHref } from '~/domains/judging/query'
 import { normalizeJudgeAssignmentDetail } from '~/domains/judging/workspace'

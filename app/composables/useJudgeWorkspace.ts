@@ -70,7 +70,6 @@ export function useJudgeWorkspace() {
       const linkedSignal = linkAbortSignals(signal, pageSignal)
 
       try {
-        await session.ensureLoaded()
         throwIfAborted(signal)
         throwIfAborted(pageSignal)
         const response = await apiFetch<ApiDataResponse<AccountJudgeInboxPage>>(
@@ -160,7 +159,6 @@ export function useJudgeAssignmentWorkspace(
       const linkedSignal = linkAbortSignals(signal, pageSignal)
 
       try {
-        await session.ensureLoaded()
         throwIfAborted(signal)
         throwIfAborted(pageSignal)
         const response = await apiFetch<ApiDataResponse<AccountJudgeAssignmentWorkspacePage>>(

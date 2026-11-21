@@ -20,13 +20,6 @@ function createTool(name: string): WebMcpTool {
 }
 
 describe('WebMCP tool registration lifecycle', () => {
-  test('is a quiet no-op when the browser does not support WebMCP', () => {
-    const lifecycle = createWebMcpToolRegistrationLifecycle()
-
-    expect(() => lifecycle.setTool(createTool('unsupported'))).not.toThrow()
-    expect(() => lifecycle.dispose()).not.toThrow()
-  })
-
   test('registers a tool and removes it during cleanup', () => {
     const signals: AbortSignal[] = []
     const modelContext: WebMcpModelContext = {

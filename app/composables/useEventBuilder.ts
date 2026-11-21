@@ -23,11 +23,11 @@ import {
   getRequiredApplicationFieldCount,
   getVisibleApplicationFieldCount,
   pruneBlocksForEventType,
+  reorderAgendaBlocks,
   toEventBalanceInputFromState,
   toEventBuilderFormState
 } from '~/domains/events/builder'
 import type { EventRecord, EventType } from '~/domains/events/records'
-import { moveListItemByIndex } from '~/utils/reorder-list'
 
 export interface UseEventBuilderOptions {
   mode: 'create' | 'edit'
@@ -114,26 +114,19 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
 
   function removeBlock(id: string) {
     state.blocks = state.blocks.filter(block => block.id !== id)
+
+    if (state.blocks[0]) {
+      state.blocks[0].gapBeforeMs = 0
+    }
   }
 
   function moveBlock(id: string, direction: -1 | 1) {
     const index = state.blocks.findIndex(block => block.id === id)
-
-    if (index === -1) {
-      return
-    }
-
-    const target = index + direction
-
-    if (target < 0 || target >= state.blocks.length) {
-      return
-    }
-
-    state.blocks = moveListItemByIndex(state.blocks, index, target)
+    reorderBlocks(index, index + direction)
   }
 
   function reorderBlocks(oldIndex: number, newIndex: number) {
-    state.blocks = moveListItemByIndex(state.blocks, oldIndex, newIndex)
+    state.blocks = reorderAgendaBlocks(state.blocks, oldIndex, newIndex)
   }
 
   function setBlockDuration(id: string, minutes: number) {
@@ -156,7 +149,7 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
     const index = state.blocks.findIndex(entry => entry.id === id)
 
     if (index !== -1) {
-      state.blocks.splice(index + 1, 0, { ...state.blocks[index]!, id: crypto.randomUUID() })
+      state.blocks.splice(index + 1, 0, { ...state.blocks[index]!, id: crypto.randomUUID(), gapBeforeMs: 0 })
     }
   }
 
@@ -213,6 +206,11 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
     }
 
     state.blocks = kept
+
+    if (state.blocks[0]) {
+      state.blocks[0].gapBeforeMs = 0
+    }
+
     state.form.eventType = eventType
     state.eventTypeChosen = true
     state.appliedTemplateId = null

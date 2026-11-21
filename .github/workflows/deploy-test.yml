@@ -211,10 +211,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CI: true
-      NUXT_DATABASE_BINDING: DB
-      BDD_BASE_URL: http://localhost:3204
-      LOCAL_BDD_D1_STATE_ROOT: .wrangler/state-bdd-topology
-      LOCAL_D1_STATE_ROOT: .wrangler/state-bdd-topology
 
     steps:
       - name: Checkout
@@ -256,7 +252,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CI: true
-      NUXT_DATABASE_BINDING: DB
 
     steps:
       - name: Checkout

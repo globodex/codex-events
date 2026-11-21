@@ -162,26 +162,4 @@ describe('mounted participant registration controller', () => {
     expect(mounted.controller.displayedErrors.value['profileForm.firstName']).toBe('Enter your first name.')
     mounted.app.unmount()
   })
-
-  test('navigates the rail through the centrally derived section target', () => {
-    const mounted = mountController(createParticipantRegistrationDraft())
-    let selector = ''
-    let focused = false
-    const target = {
-      scrollIntoView: vi.fn(),
-      focus: () => { focused = true }
-    }
-    const root = {
-      querySelector: (value: string) => {
-        selector = value
-        return target
-      }
-    } as unknown as HTMLElement
-
-    mounted.controller.navigateToSection(root, 'confirmation')
-    expect(selector).toBe('#registration-section-confirmation')
-    expect(target.scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'start' })
-    expect(focused).toBe(true)
-    mounted.app.unmount()
-  })
 })

@@ -3,8 +3,6 @@ import { describe, expect, test } from 'vitest'
 import {
   formatTeamSubmissionStatus,
   getCreateSubmissionAvailability,
-  hasEventEnteredSubmissionPhase,
-  resolveSelectedTrackPrefillId,
   getTeamSubmissionStateSummary,
   getTeamSubmissionStatusColor,
   getSubmitSubmissionAvailability,
@@ -36,20 +34,6 @@ function createSubmission(status: TeamSubmissionRecord['status']): TeamSubmissio
 }
 
 describe('team submission helpers', () => {
-  test('treats submission_open and later states as the visible participant submission phase', () => {
-    expect(hasEventEnteredSubmissionPhase({
-      state: 'registration_open'
-    })).toBe(false)
-
-    expect(hasEventEnteredSubmissionPhase({
-      state: 'submission_open'
-    })).toBe(true)
-
-    expect(hasEventEnteredSubmissionPhase({
-      state: 'blind_review'
-    })).toBe(true)
-  })
-
   test('shows the participant submission workspace only after submission starts and only for team members', () => {
     expect(shouldShowParticipantSubmissionWorkspace({
       state: 'registration_open'
@@ -84,27 +68,6 @@ describe('team submission helpers', () => {
       isAllowed: false,
       reason: 'Only team admins can manage the project submission.'
     })
-  })
-
-  test('prefills new submission drafts from a valid participant-selected track only', () => {
-    const tracks = [
-      {
-        id: 'track_agents',
-        name: 'Agents',
-        shortDescription: 'Build agent projects.',
-        displayOrder: 1
-      },
-      {
-        id: 'track_tools',
-        name: 'Tools',
-        shortDescription: 'Build developer tools.',
-        displayOrder: 2
-      }
-    ]
-
-    expect(resolveSelectedTrackPrefillId(tracks, ' track_agents ')).toBe('track_agents')
-    expect(resolveSelectedTrackPrefillId(tracks, 'track_missing')).toBeNull()
-    expect(resolveSelectedTrackPrefillId(tracks, null)).toBeNull()
   })
 
   test('keeps existing submissions mutable during judging preparation until locking begins', () => {

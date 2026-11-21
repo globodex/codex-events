@@ -22,6 +22,7 @@ import {
 } from '~/domains/events/admin-event'
 import type { EventRecord, EventType } from '~/domains/events/records'
 import { cloneFormValues } from '~/utils/form-values'
+import { moveListItemByIndex } from '~/utils/reorder-list'
 
 export interface EventBuilderBlockInstance {
   id: string
@@ -29,7 +30,8 @@ export interface EventBuilderBlockInstance {
   title: string
   /** Public agenda description shown to participants, empty when unset. */
   details: string
-  durationMinutes: number
+  durationMinutes: number | null
+  gapBeforeMs: number
   /** True for agenda items that did not originate from a builder block (classic edits). */
   custom: boolean
   /** Organizer-declared focus cost, custom blocks only (absolute, no duration scaling). */
@@ -40,7 +42,7 @@ export interface EventBuilderBlockInstance {
 
 export interface EventBuilderState {
   credits: StagedCredit[]
-  /** Local datetime (YYYY-MM-DDTHH:mm) the first agenda block starts at. */
+  /** The first agenda block's start instant, or the organizer's local input. */
   eventStartsAt: string
   blocks: EventBuilderBlockInstance[]
   /**
@@ -51,8 +53,6 @@ export interface EventBuilderState {
   form: EventFormState
   slugEdited: boolean
   appliedTemplateId: string | null
-  /** Stored times did not match the sequential model when hydrating (classic fine-tuning). */
-  hydratedNonSequential: boolean
   /**
    * The form always carries an event type, but the builder starts with none
    * chosen: type-dependent sections unlock once the organizer picks one.
@@ -133,7 +133,6 @@ export function createEmptyEventBuilderState(): EventBuilderState {
     form,
     slugEdited: false,
     appliedTemplateId: null,
-    hydratedNonSequential: false,
     eventTypeChosen: false,
     locationChosen: false
   }
@@ -149,6 +148,7 @@ export function createBlockInstance(type: EventBuilderBlockType): EventBuilderBl
     title: definition.label,
     details: '',
     durationMinutes: definition.defaultDurationMinutes,
+    gapBeforeMs: 0,
     custom,
     // Custom blocks start as a mild talk; the organizer dials the real values.
     ...(custom ? { focusCost: 10, energyDelta: -8 } : {})
@@ -178,23 +178,38 @@ export function computeBlockSchedule(
   eventStartsAt: string,
   blocks: EventBuilderBlockInstance[]
 ): EventBuilderScheduleEntry[] {
-  if (!eventStartsAt.trim()) {
+  let cursor = Date.parse(eventStartsAt)
+
+  if (Number.isNaN(cursor)) {
     return blocks.map(block => ({ id: block.id, startsAt: '', endsAt: '' }))
   }
 
-  let offsetMinutes = 0
-
   return blocks.map((block) => {
-    const startsAt = addMinutesToLocalValue(eventStartsAt, offsetMinutes)
-
-    offsetMinutes += block.durationMinutes
+    cursor += block.gapBeforeMs
+    const startsAt = new Date(cursor).toISOString()
+    cursor += Math.round((block.durationMinutes ?? 0) * 60_000)
 
     return {
       id: block.id,
       startsAt,
-      endsAt: addMinutesToLocalValue(eventStartsAt, offsetMinutes)
+      endsAt: block.durationMinutes === null ? '' : new Date(cursor).toISOString()
     }
   })
+}
+
+export function reorderAgendaBlocks(blocks: EventBuilderBlockInstance[], oldIndex: number, newIndex: number) {
+  const reordered = moveListItemByIndex(blocks, oldIndex, newIndex)
+
+  if (reordered === blocks) {
+    return blocks
+  }
+
+  // Gaps belong to the timeline positions. Durations move with the sessions.
+  return reordered.map((block, index) => ({ ...block, gapBeforeMs: blocks[index]!.gapBeforeMs }))
+}
+
+export function getBlockDurationMinutes(block: EventBuilderBlockInstance) {
+  return Math.round(block.durationMinutes ?? eventBuilderBlockDefinitions[block.type].defaultDurationMinutes)
 }
 
 export function blocksToFormAgendaItems(state: EventBuilderState): EventFormAgendaItem[] {
@@ -221,54 +236,28 @@ export function toEventBuilderFormState(state: EventBuilderState): EventFormStat
   }
 }
 
-function minutesBetweenIso(startsAt: string, endsAt: string | null) {
-  if (!endsAt) {
-    return null
-  }
-
-  const start = Date.parse(startsAt)
-  const end = Date.parse(endsAt)
-
-  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
-    return null
-  }
-
-  return Math.round((end - start) / 60_000)
-}
-
 export function createBuilderStateFromEvent(event: EventRecord): EventBuilderState {
-  const form = createEventFormState(event)
+  const form = createEventFormState({ ...event, agendaItems: [] })
   const sortedItems = [...event.agendaItems]
     .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
-
-  let hydratedNonSequential = false
-  let expectedStart: number | null = null
+  const eventStartsAt = sortedItems[0]?.startsAt ?? ''
+  let previousEnd = Date.parse(eventStartsAt)
 
   const blocks = sortedItems.map((item) => {
     const type = resolveEventBuilderBlockType(item.builderBlockType)
-    const definition = eventBuilderBlockDefinitions[type]
-    const durationMinutes = minutesBetweenIso(item.startsAt, item.endsAt)
-      ?? definition.defaultDurationMinutes
-    const startMs = Date.parse(item.startsAt)
-
-    if (item.endsAt === null || Number.isNaN(startMs)) {
-      hydratedNonSequential = true
-    } else if (expectedStart !== null && Math.abs(startMs - expectedStart) > 60_000) {
-      hydratedNonSequential = true
-    }
-
-    if (!Number.isNaN(startMs)) {
-      expectedStart = startMs + durationMinutes * 60_000
-    }
-
+    const start = Date.parse(item.startsAt)
+    const end = Date.parse(item.endsAt ?? item.startsAt)
+    const gapBeforeMs = start - previousEnd
     const custom = type === 'custom'
+    previousEnd = end
 
     return {
       id: item.id,
       type,
       title: item.title,
       details: item.details ?? '',
-      durationMinutes,
+      durationMinutes: item.endsAt === null ? null : (end - start) / 60_000,
+      gapBeforeMs,
       custom,
       ...(custom && item.builderFocusCost !== undefined ? { focusCost: item.builderFocusCost } : {}),
       ...(custom && item.builderEnergyDelta !== undefined ? { energyDelta: item.builderEnergyDelta } : {})
@@ -277,12 +266,11 @@ export function createBuilderStateFromEvent(event: EventRecord): EventBuilderSta
 
   return {
     credits: [],
-    eventStartsAt: sortedItems.length > 0 ? toDateTimeLocalValue(sortedItems[0]!.startsAt) : '',
+    eventStartsAt,
     blocks,
     form,
     slugEdited: true,
     appliedTemplateId: null,
-    hydratedNonSequential,
     eventTypeChosen: true,
     locationChosen: true
   }
@@ -326,6 +314,7 @@ export function applyTemplateToState(state: EventBuilderState, template: EventBu
       title: block.title,
       details: '',
       durationMinutes: block.durationMinutes,
+      gapBeforeMs: 0,
       custom: false
     })),
     appliedTemplateId: template.id
@@ -349,18 +338,19 @@ export function deriveScheduleDefaults(eventStartsAt: string, blocks: EventBuild
     return {}
   }
 
-  const totalDurationMinutes = blocks.reduce((total, block) => total + block.durationMinutes, 0)
+  const totalDurationMinutes = getTotalAgendaDurationMinutes(blocks)
+  const localEventStart = toDateTimeLocalValue(eventStartsAt)
   const defaults: Partial<Pick<
     EventFormState,
     'registrationOpensAt' | 'registrationClosesAt' | 'submissionOpensAt' | 'submissionClosesAt'
   >> = {
     registrationOpensAt: addMinutesToLocalValue(eventStartsAt, -14 * dayMinutes),
-    registrationClosesAt: eventStartsAt
+    registrationClosesAt: localEventStart
   }
 
   if (eventType === 'hackathon') {
     // Mirrors the server rule: regOpen < regClose <= subOpen < subClose.
-    defaults.submissionOpensAt = eventStartsAt
+    defaults.submissionOpensAt = localEventStart
     defaults.submissionClosesAt = addMinutesToLocalValue(
       eventStartsAt,
       Math.max(totalDurationMinutes, 60)
@@ -794,7 +784,7 @@ export function getVisibleApplicationFieldCount(form: EventFormState) {
 }
 
 export function getTotalAgendaDurationMinutes(blocks: EventBuilderBlockInstance[]) {
-  return blocks.reduce((total, block) => total + block.durationMinutes, 0)
+  return Math.round(blocks.reduce((total, block) => total + (block.durationMinutes ?? 0), 0))
 }
 
 /** Agenda-only balance projection for template previews — deterministic fixed base date. */

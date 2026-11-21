@@ -128,18 +128,23 @@ async function deleteOffer(offer: Offer) {
         class="py-4"
       >
         <div class="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            class="flex min-w-0 flex-1 items-center gap-2 text-left"
+          <AppButton
+            color="neutral"
+            variant="ghost"
+            class="h-auto min-w-0 flex-1 justify-start whitespace-normal p-0 text-left text-highlighted hover:bg-transparent dark:hover:bg-transparent"
+            :icon="expandedId === offer.id ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
             :aria-expanded="expandedId === offer.id"
             @click="expandedId = expandedId === offer.id ? null : offer.id"
           >
-            <AppIcon
-              :name="expandedId === offer.id ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-              class="size-4 shrink-0"
-            />
-            <span><span class="block text-sm font-medium">{{ offer.name }}</span><span class="text-xs text-muted">{{ offer.linkCount }} {{ offer.linkCount === 1 ? 'link' : 'links' }} · {{ offer.codeCount }} {{ offer.codeCount === 1 ? 'code' : 'codes' }} · {{ offer.availableCount }} available</span></span>
-          </button>
+            <span>
+              <span class="block">{{ offer.name }}</span>
+              <span class="text-xs font-normal text-muted">
+                {{ offer.linkCount }} {{ offer.linkCount === 1 ? 'link' : 'links' }} ·
+                {{ offer.codeCount }} {{ offer.codeCount === 1 ? 'code' : 'codes' }} ·
+                {{ offer.availableCount }} available
+              </span>
+            </span>
+          </AppButton>
           <label
             v-if="simplified && offer.linkCount > 0 && offer.codeCount === 0"
             class="flex items-center gap-2 text-xs"

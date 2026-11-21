@@ -31,6 +31,7 @@ import type {
   AccountJudgeAssignmentWorkspacePage
 } from '#shared/domains/events/account-event-judging-page'
 import type { AccountEventSettingsPage } from '#shared/domains/events/account-event-settings-page'
+import type { ParticipantEventProgram } from '#shared/domains/events/program'
 import type { AccountEventPageVisibility } from '~/domains/events/account-workspace-page'
 import {
   buildVersionedEventImageUrl,
@@ -57,11 +58,12 @@ import {
   LazyAccountEventsAccountEventParticipantTeamPanel as LazyAccountEventParticipantTeamPanel,
   LazyAccountEventsAccountEventParticipantVisibilityPanel as LazyAccountEventParticipantVisibilityPanel,
   LazyAccountEventsAccountEventParticipantWorkspacePanel as LazyAccountEventParticipantWorkspacePanel,
+  LazyAccountEventsAccountEventProgramAgenda as LazyAccountEventProgramAgenda,
   LazyAccountEventsAccountEventPublishedRosterPanel as LazyAccountEventPublishedRosterPanel,
   LazyAccountEventsAccountEventRoleRosterPanel as LazyAccountEventRoleRosterPanel,
   LazyAccountEventsAccountEventTalkProposalPanel as LazyAccountEventTalkProposalPanel,
   LazyAccountEventsAccountEventTalkProposalReviewPanel as LazyAccountEventTalkProposalReviewPanel,
-  LazyAccountEventsAccountEventTracksPanel as LazyAccountEventTracksPanel,
+  LazyAccountEventsOrganismsAccountEventTracksPanel as LazyAccountEventTracksPanel,
   LazyPublicEventsEventAgendaPanel as LazyEventAgendaPanel,
   LazyPublicEventsEventPrizeList as LazyEventPrizeList,
   LazyPublicEventsEventPublishedProjectsShowcase as LazyEventPublishedProjectsShowcase,
@@ -155,7 +157,7 @@ const isDirectNonEntryNavigation = computed(() =>
   && !['overview', 'credits', 'details', 'call-for-talks'].includes(requestedWorkspaceTab.value)
 )
 const entryPageRequest = useAccountEventPageRequest<AccountEventEntryPage>(slug, 'entry', {
-  immediate: false,
+  enabled: () => !isDirectNonEntryNavigation.value,
   query: computed(() => requestedTab.value === 'details'
     ? { includeAdminEventConfiguration: true }
     : {})
@@ -181,28 +183,7 @@ const prizesPageQuery = computed(() => ({
     ? { includeAdminEventConfiguration: true }
     : {})
 }))
-const prizesPageRequest = useAccountEventPageRequest<AccountEventPrizesPage>(slug, 'prizes', {
-  immediate: false,
-  query: prizesPageQuery
-})
 const entryPage = computed(() => entryPageRequest.data.value?.page ?? null)
-const prizesPage = computed(() => prizesPageRequest.data.value?.page ?? null)
-const shouldLoadEntryPage = computed(() =>
-  !isDirectNonEntryNavigation.value
-)
-watch(shouldLoadEntryPage, (isEnabled, wasEnabled) => {
-  if (wasEnabled && !isEnabled) {
-    entryPageRequest.abort()
-  }
-
-  if (isEnabled && entryPageRequest.status.value === 'idle') {
-    void entryPageRequest.activate()
-  }
-}, { immediate: true })
-const prizesPageIsLoading = computed(() => prizesPageRequest.pending.value)
-const prizesPageErrorMessage = computed(() => prizesPageRequest.error.value
-  ? normalizeParticipantApiError(prizesPageRequest.error.value).message
-  : '')
 const pageShell = pageState.pageShell
 const pageVisibility = shallowRef<AccountEventPageVisibility | null>(null)
 const selectedPagePending = ref(false)
@@ -210,6 +191,19 @@ const selectedPageError = shallowRef<unknown | null>(null)
 const event = computed<AccountWorkspaceEvent | null>(() =>
   entryPage.value?.event ?? pageShell.value?.event ?? null
 )
+const programLink = computed(() => {
+  const itemId = event.value?.programItemId
+  const item = itemId && event.value?.agendaItems.find(item => item.id === itemId)
+  if (!item) {
+    return undefined
+  }
+
+  return {
+    itemId: item.id,
+    title: item.title,
+    href: `/account/events/${encodeURIComponent(slug.value)}?tab=program`
+  }
+})
 const accessRecord = shallowRef<AccountEventAccessRecord | null>(null)
 const participationRecord = shallowRef<AccountEventEntryParticipation | null>(null)
 const participantCreditOffers = shallowRef<AccountEventEntryParticipantCreditOffer[]>([])
@@ -253,7 +247,6 @@ const workspaceEventId = computed(() => resolveAccountEventScopedId({
   accessRecordId: accessRecord.value?.id,
   eventId: event.value?.id ?? ''
 }))
-const prizes = computed<AccountEventPrize[]>(() => prizesPage.value?.prizes ?? [])
 const canJudge = computed(() => {
   const currentEvent = event.value
 
@@ -497,8 +490,18 @@ const activeSection = computed<AccountEventWorkspaceTab>(() => {
 
   return resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
 })
+const prizesPageRequest = useAccountEventPageRequest<AccountEventPrizesPage>(slug, 'prizes', {
+  enabled: () => activeSection.value === 'prizes',
+  query: prizesPageQuery
+})
+const prizesPage = computed(() => prizesPageRequest.data.value?.page ?? null)
+const prizes = computed<AccountEventPrize[]>(() => prizesPage.value?.prizes ?? [])
+const prizesPageIsLoading = computed(() => prizesPageRequest.pending.value)
+const prizesPageErrorMessage = computed(() => prizesPageRequest.error.value
+  ? normalizeParticipantApiError(prizesPageRequest.error.value).message
+  : '')
 const settingsPageRequest = useAccountEventPageRequest<AccountEventSettingsPage>(slug, 'settings', {
-  immediate: false,
+  enabled: () => activeSection.value === 'settings' && (isDirectNonEntryNavigation.value || canAdmin.value),
   query: pageState.queryForPage('settings')
 })
 const settingsPage = computed(() => settingsPageRequest.data.value?.page ?? null)
@@ -506,58 +509,60 @@ const settingsPageIsLoading = computed(() => settingsPageRequest.pending.value)
 const settingsPageErrorMessage = computed(() => settingsPageRequest.error.value
   ? normalizeParticipantApiError(settingsPageRequest.error.value).message
   : '')
-const shouldLoadSettingsPage = computed(() =>
-  activeSection.value === 'settings'
-  && (isDirectNonEntryNavigation.value || canAdmin.value)
-)
-watch(shouldLoadSettingsPage, (isEnabled, wasEnabled) => {
-  if (wasEnabled && !isEnabled) {
-    settingsPageRequest.abort()
-  }
-
-  if (isEnabled && settingsPageRequest.status.value === 'idle') {
-    void settingsPageRequest.activate()
-  }
-}, { immediate: true })
 const selectedTeamSlug = computed(() => normalizeTeamSlugQueryValue(route.query.team))
 const selectedJudgeAssignmentId = computed(() => normalizeJudgeAssignmentIdQueryValue(route.query.assignment))
 const workspacePageRequest = useAccountEventPageRequest<AccountEventWorkspacePage>(slug, 'workspace', {
-  immediate: false,
+  enabled: () => activeSection.value === 'workspace',
   query: pageState.queryForPage('workspace')
 })
+const programPageRequest = useAccountEventPageRequest<ParticipantEventProgram>(slug, 'program', {
+  enabled: () => activeSection.value === 'program',
+  query: pageState.queryForPage('program')
+})
+const programPage = computed(() => programPageRequest.data.value?.page)
 const galleryPageRequest = useAccountEventPageRequest<AccountEventGalleryPage>(slug, 'gallery', {
-  immediate: false,
+  enabled: () => activeSection.value === 'gallery',
   query: pageState.queryForPage('gallery')
 })
 const feedbackPageRequest = useAccountEventPageRequest<AccountEventFeedbackPage>(slug, 'feedback', {
-  immediate: false,
+  enabled: () => activeSection.value === 'feedback',
   query: pageState.queryForPage('feedback')
 })
+const shouldLoadParticipantsPage = computed(() =>
+  activeSection.value === 'participants'
+  && (
+    isDirectNonEntryNavigation.value
+    || (
+      entryPageRequest.status.value === 'success'
+      && (canAdmin.value || canViewParticipantsAndTeams.value)
+    )
+  )
+)
 const participantsPageRequest = useAccountEventPageRequest<AccountEventParticipantsPage>(slug, 'participants', {
-  immediate: false,
+  enabled: shouldLoadParticipantsPage,
   query: pageState.queryForPage('participants')
 })
 const certificatesPageRequest = useAccountEventPageRequest<AccountEventCertificatesPage>(slug, 'certificates', {
-  immediate: false,
+  enabled: () => activeSection.value === 'certificates',
   query: pageState.queryForPage('certificates')
 })
 const teamsPageRequest = useAccountEventPageRequest<AccountEventTeamsPage>(slug, 'teams', {
-  immediate: false,
+  enabled: () => activeSection.value === 'teams',
   query: computed(() => ({
     ...pageState.queryForPage('teams'),
     selectedTeamSlug: selectedTeamSlug.value
   }))
 })
 const operationsPageRequest = useAccountEventPageRequest<AccountEventOperationsPage>(slug, 'operations', {
-  immediate: false,
+  enabled: () => activeSection.value === 'operations' && (isDirectNonEntryNavigation.value || canAdmin.value),
   query: pageState.queryForPage('operations')
 })
 const submissionsPageRequest = useAccountEventPageRequest<AccountEventSubmissionsPage>(slug, 'submissions', {
-  immediate: false,
+  enabled: () => activeSection.value === 'submissions' && (isDirectNonEntryNavigation.value || canAdmin.value),
   query: pageState.queryForPage('submissions')
 })
 const judgingPageRequest = useAccountEventPageRequest<AccountEventJudgingPage>(slug, 'judging', {
-  immediate: false,
+  enabled: () => activeSection.value === 'judging' && !selectedJudgeAssignmentId.value,
   query: pageState.queryForPage('judging')
 })
 const shouldLoadAssignmentPage = computed(() =>
@@ -568,8 +573,7 @@ const assignmentPageRequest = useAccountJudgeAssignmentPageRequest<AccountJudgeA
   computed(() => selectedJudgeAssignmentId.value ?? ''),
   {
     default: () => null,
-    enabled: shouldLoadAssignmentPage,
-    immediate: false
+    enabled: shouldLoadAssignmentPage
   }
 )
 const workspacePage = computed(() => workspacePageRequest.data.value?.page ?? null)
@@ -625,94 +629,8 @@ const assignmentPageErrorMessage = computed(() => assignmentPageRequest.error.va
   ? normalizeParticipantApiError(assignmentPageRequest.error.value).message
   : '')
 
-function watchActivePageRequest<T>(
-  tab: AccountEventWorkspaceTab,
-  request: ReturnType<typeof useAccountEventPageRequest<T>>
-) {
-  watch(activeSection, (section, previousSection) => {
-    if (previousSection === tab && section !== tab) {
-      request.abort()
-    }
-
-    if (section === tab && request.status.value === 'idle') {
-      void request.activate()
-    }
-  }, { immediate: true })
-}
-
-watchActivePageRequest('workspace', workspacePageRequest)
-watchActivePageRequest('gallery', galleryPageRequest)
-watchActivePageRequest('feedback', feedbackPageRequest)
-watchActivePageRequest('certificates', certificatesPageRequest)
-watchActivePageRequest('teams', teamsPageRequest)
-const shouldLoadParticipantsPage = computed(() =>
-  activeSection.value === 'participants'
-  && (
-    isDirectNonEntryNavigation.value
-    || (
-      entryPageRequest.status.value === 'success'
-      && (canAdmin.value || canViewParticipantsAndTeams.value)
-    )
-  )
-)
-watch(shouldLoadParticipantsPage, (isEnabled, wasEnabled) => {
-  if (wasEnabled && !isEnabled) {
-    participantsPageRequest.abort()
-  }
-
-  if (isEnabled && participantsPageRequest.status.value === 'idle') {
-    void participantsPageRequest.activate()
-  }
-}, { immediate: true })
-const shouldLoadOperationsPage = computed(() =>
-  activeSection.value === 'operations'
-  && (isDirectNonEntryNavigation.value || canAdmin.value)
-)
-watch(shouldLoadOperationsPage, (isEnabled, wasEnabled) => {
-  if (wasEnabled && !isEnabled) {
-    operationsPageRequest.abort()
-  }
-
-  if (isEnabled && operationsPageRequest.status.value === 'idle') {
-    void operationsPageRequest.activate()
-  }
-}, { immediate: true })
-const shouldLoadSubmissionsPage = computed(() =>
-  activeSection.value === 'submissions'
-  && (isDirectNonEntryNavigation.value || canAdmin.value)
-)
-watch(shouldLoadSubmissionsPage, (isEnabled, wasEnabled) => {
-  if (wasEnabled && !isEnabled) {
-    submissionsPageRequest.abort()
-  }
-
-  if (isEnabled && submissionsPageRequest.status.value === 'idle') {
-    void submissionsPageRequest.activate()
-  }
-}, { immediate: true })
-const shouldLoadJudgingPage = computed(() =>
-  activeSection.value === 'judging' && !selectedJudgeAssignmentId.value
-)
-watch(shouldLoadJudgingPage, (isEnabled, wasEnabled) => {
-  if (wasEnabled && !isEnabled) {
-    judgingPageRequest.abort()
-  }
-
-  if (isEnabled && judgingPageRequest.status.value === 'idle') {
-    void judgingPageRequest.activate()
-  }
-}, { immediate: true })
-watch(shouldLoadAssignmentPage, (isEnabled, wasEnabled) => {
-  if (wasEnabled && !isEnabled) {
-    assignmentPageRequest.abort()
-  }
-
-  if (isEnabled && assignmentPageRequest.status.value === 'idle') {
-    void assignmentPageRequest.activate()
-  }
-}, { immediate: true })
 const rostersPageRequest = useAccountEventPageRequest<AccountEventRostersPage>(slug, 'rosters', {
-  immediate: false,
+  enabled: () => activeSection.value === 'judges' || activeSection.value === 'staff',
   query: pageState.queryForPage('rosters')
 })
 const rostersPage = computed(() => rostersPageRequest.data.value?.page ?? null)
@@ -720,14 +638,12 @@ const rostersPageIsLoading = computed(() => rostersPageRequest.pending.value)
 const rostersPageErrorMessage = computed(() => rostersPageRequest.error.value
   ? normalizeParticipantApiError(rostersPageRequest.error.value).message
   : '')
-const shouldLoadRostersPage = computed(() =>
-  activeSection.value === 'judges' || activeSection.value === 'staff'
-)
 const selectedPageRequestState = computed(() => {
   const request = (() => {
     switch (requestedWorkspaceTab.value) {
       case 'prizes': return prizesPageRequest
       case 'workspace': return workspacePageRequest
+      case 'program': return programPageRequest
       case 'gallery': return galleryPageRequest
       case 'feedback': return feedbackPageRequest
       case 'judges':
@@ -770,28 +686,9 @@ watchEffect(() => {
   selectedPagePending.value = !entryPage.value && requestState.pending
   selectedPageError.value = !entryPage.value ? requestState.error : null
 })
-watch(shouldLoadRostersPage, (isEnabled, wasEnabled) => {
-  if (wasEnabled && !isEnabled) {
-    rostersPageRequest.abort()
-  }
-
-  if (isEnabled && rostersPageRequest.status.value === 'idle') {
-    void rostersPageRequest.activate()
-  }
-}, { immediate: true })
 const winners = computed<AccountEventWinner[]>(() => prizesPage.value?.winners ?? [])
 const publishedProjects = computed<AccountEventPublishedProject[]>(() => prizesPage.value?.publishedProjects ?? [])
 const participationRank = computed<EventParticipationRankSummary | null>(() => participantRank.value)
-watch(activeSection, (section, previousSection) => {
-  if (previousSection === 'prizes' && section !== 'prizes') {
-    prizesPageRequest.abort()
-  }
-
-  if (section === 'prizes' && prizesPageRequest.status.value === 'idle') {
-    void prizesPageRequest.activate()
-  }
-}, { immediate: true })
-
 async function refreshAccountEvent() {
   if (activeSection.value === 'prizes') {
     await prizesPageRequest.refresh()
@@ -1273,19 +1170,16 @@ useSeoMeta({
             role="tablist"
             class="account-event-tab-list flex items-center gap-5 overflow-x-auto"
           >
-            <NuxtLink
+            <AppSectionTab
               v-for="tab in visibleTabs"
               :id="`account-tab-${tab.id}`"
               :key="tab.id"
               :to="tab.to"
-              role="tab"
-              :aria-selected="activeSection === tab.id"
+              :selected="activeSection === tab.id"
               :aria-controls="`account-tab-panel-${tab.id}`"
-              class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
-              :class="activeSection === tab.id ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
             >
               {{ tab.label }}
-            </NuxtLink>
+            </AppSectionTab>
           </nav>
         </div>
       </AppContainer>
@@ -1525,6 +1419,13 @@ useSeoMeta({
         </section>
 
         <EventOverviewPanel :description="event.description" />
+
+        <AppButton
+          v-if="programLink"
+          :to="programLink.href"
+          :label="programLink.title"
+          trailing-icon="i-lucide-arrow-right"
+        />
 
         <section
           v-if="showTrackSelectionOverviewPrompt"
@@ -1846,7 +1747,10 @@ useSeoMeta({
           @select-track="selectParticipantTrack"
         />
 
-        <LazyEventAgendaPanel :agenda-items="event.agendaItems" />
+        <LazyEventAgendaPanel
+          :agenda-items="event.agendaItems"
+          :program="programLink"
+        />
 
         <LazyAccountEventAdminSettingsPanel
           v-if="tabAccess.showAgendaConfigurationInDetails"
@@ -1861,6 +1765,32 @@ useSeoMeta({
           :show-prize-configuration="false"
           @updated="refreshAccountEvent"
         />
+      </section>
+
+      <section
+        v-else-if="activeSection === 'program'"
+        id="account-tab-panel-program"
+        role="tabpanel"
+        aria-labelledby="account-tab-program"
+      >
+        <AppAlert
+          v-if="programPageRequest.error.value"
+          color="error"
+          title="Agenda unavailable"
+          :description="normalizeParticipantApiError(programPageRequest.error.value).message"
+        />
+        <LazyAccountEventProgramAgenda
+          v-else-if="programPage"
+          :key="programPage.eventId"
+          :program="programPage"
+        />
+        <p
+          v-else
+          role="status"
+          class="text-sm text-muted"
+        >
+          Loading agenda…
+        </p>
       </section>
 
       <section

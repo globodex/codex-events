@@ -4,8 +4,8 @@ import { expect, request } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import { createAuthenticatedApiClient } from '../support/api-client'
-import { platformFixtureIds } from '../support/platform-fixtures.ts'
-import { getBaseUrl, stablePersonaKeys, type StablePersonaKey } from '../support/personas'
+import { fixtureEventVisibilitySlug, platformFixtureIds } from '../support/platform-fixtures.ts'
+import { getBaseUrl, parsePersonaKey } from '../support/personas.ts'
 
 const { When, Then } = createBdd()
 
@@ -25,14 +25,6 @@ function getScenarioState(page: Page) {
   }
 
   return state
-}
-
-function parsePersonaKey(personaKey: string): StablePersonaKey {
-  if (stablePersonaKeys.includes(personaKey as StablePersonaKey)) {
-    return personaKey as StablePersonaKey
-  }
-
-  throw new Error(`Unknown stable persona key: ${personaKey}`)
 }
 
 function parseBooleanString(value: string) {
@@ -204,6 +196,27 @@ Then('the platform-admin grant response should promote user {string}', async ({ 
   })
 })
 
+When('the saved {string} session lists platform admins', async ({ page }, personaKey: string) => {
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    const response = await apiClient.get('/api/platform-admins')
+    scenarioState.set(page, { response, json: await response.json() })
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
+Then('the platform-admin list should include {string}', ({ page }, userId: string) => {
+  const { response, json } = getScenarioState(page)
+  expect(response?.ok()).toBe(true)
+  expect(json).toMatchObject({
+    data: expect.arrayContaining([
+      expect.objectContaining({ id: userId, isPlatformAdmin: true })
+    ])
+  })
+})
+
 When('the saved {string} session opens submission for the fixture event', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
@@ -229,21 +242,20 @@ Then('the fixture event state should be {string}', async ({ page }, expectedStat
   expect(payload.data?.state).toBe(expectedState)
 })
 
-When('the saved {string} session hides the fixture event with reason {string}', async ({ page }, personaKey: string, reason: string) => {
+When('the saved {string} session hides the visibility fixture with reason {string}', async ({ page }, personaKey: string, reason: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.post(`/api/events/${platformFixtureIds.eventId}/actions/hide`, {
+    const response = await apiClient.post(`/api/events/${platformFixtureIds.eventVisibilityId}/actions/hide`, {
       data: { reason }
     })
-    getScenarioState(page).response = response
-    getScenarioState(page).json = await response.json()
+    scenarioState.set(page, { response, json: await response.json() })
   } finally {
     await apiClient.dispose()
   }
 })
 
-Then('the fixture event hidden response should include reason {string}', async ({ page }, reason: string) => {
+Then('the hidden visibility fixture should include reason {string}', async ({ page }, reason: string) => {
   const payload = getScenarioState(page).json as {
     data?: {
       id?: string
@@ -253,38 +265,36 @@ Then('the fixture event hidden response should include reason {string}', async (
   }
 
   expect(getScenarioState(page).response?.ok()).toBe(true)
-  expect(payload.data?.id).toBe(platformFixtureIds.eventId)
+  expect(payload.data?.id).toBe(platformFixtureIds.eventVisibilityId)
   expect(payload.data?.hiddenAt).toBeTruthy()
   expect(payload.data?.hiddenReason).toBe(reason)
 })
 
-When('the public API requests the fixture event detail', async ({ page }) => {
+When('the public API requests the visibility fixture', async ({ page }) => {
   const apiClient = await request.newContext({
     baseURL: getBaseUrl(process.env)
   })
 
   try {
-    const response = await apiClient.get('/api/public/events/e2e-fixture-event')
-    getScenarioState(page).response = response
-    getScenarioState(page).json = await response.json()
+    const response = await apiClient.get(`/api/public/events/${fixtureEventVisibilitySlug}`)
+    scenarioState.set(page, { response, json: await response.json() })
   } finally {
     await apiClient.dispose()
   }
 })
 
-When('the saved {string} session makes the fixture event visible', async ({ page }, personaKey: string) => {
+When('the saved {string} session restores the visibility fixture', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.post(`/api/events/${platformFixtureIds.eventId}/actions/unhide`)
-    getScenarioState(page).response = response
-    getScenarioState(page).json = await response.json()
+    const response = await apiClient.post(`/api/events/${platformFixtureIds.eventVisibilityId}/actions/unhide`)
+    scenarioState.set(page, { response, json: await response.json() })
   } finally {
     await apiClient.dispose()
   }
 })
 
-Then('the fixture event response should show it is visible', async ({ page }) => {
+Then('the visibility fixture should be restored', async ({ page }) => {
   const payload = getScenarioState(page).json as {
     data?: {
       id?: string
@@ -295,13 +305,13 @@ Then('the fixture event response should show it is visible', async ({ page }) =>
   }
 
   expect(getScenarioState(page).response?.ok()).toBe(true)
-  expect(payload.data?.id).toBe(platformFixtureIds.eventId)
+  expect(payload.data?.id).toBe(platformFixtureIds.eventVisibilityId)
   expect(payload.data?.hiddenAt).toBeNull()
   expect(payload.data?.hiddenByUserId).toBeNull()
   expect(payload.data?.hiddenReason).toBeNull()
 })
 
-Then('the public fixture event response should include slug {string}', async ({ page }, slug: string) => {
+Then('the public API should show the visibility fixture', async ({ page }) => {
   const payload = getScenarioState(page).json as {
     data?: {
       slug?: string
@@ -309,7 +319,7 @@ Then('the public fixture event response should include slug {string}', async ({ 
   }
 
   expect(getScenarioState(page).response?.ok()).toBe(true)
-  expect(payload.data?.slug).toBe(slug)
+  expect(payload.data?.slug).toBe(fixtureEventVisibilitySlug)
 })
 
 Then('the API error code should be {string}', async ({ page }, expectedCode: string) => {

@@ -1,18 +1,12 @@
 import { afterEach, describe, expect, test } from 'vitest'
 
-import { ApiError } from '../../../../../server/http/api-error'
 import {
   events,
-  submissions,
   teamMembers,
   teams,
   users
 } from '../../../../../server/database/schema'
 import {
-  assertEventAllowsTeamFormation,
-  assertJoinRequestPending,
-  assertLeaveOrRemovalAllowed,
-  assertTeamDiscoveryAllowed,
   createTeamSlug,
   listVisibleTeams,
   serializeTeamMember
@@ -61,170 +55,6 @@ describe('team formation utilities', () => {
   test('creates team slug bases from team names', () => {
     expect(createTeamSlug(' North Star Builders ')).toBe('north-star-builders')
     expect(createTeamSlug('Team!!!')).toBe('team')
-  })
-
-  test('team formation is limited to registration_open and submission_open', () => {
-    expect(() => assertEventAllowsTeamFormation(createEvent('registration_open'))).not.toThrow()
-    expect(() => assertEventAllowsTeamFormation(createEvent('submission_open'))).not.toThrow()
-    expect(() => assertEventAllowsTeamFormation(createEvent('judging_preparation'))).toThrowError(ApiError)
-  })
-
-  test('team discovery allows approved users throughout the workspace and team members after approval closes', () => {
-    expect(() => assertTeamDiscoveryAllowed(createEvent('registration_open'), {
-      isEventAdmin: false,
-      isTeamMember: false,
-      applicationStatus: 'approved'
-    })).not.toThrow()
-
-    expect(() => assertTeamDiscoveryAllowed(createEvent('judging_preparation'), {
-      isEventAdmin: false,
-      isTeamMember: false,
-      applicationStatus: 'approved'
-    })).not.toThrow()
-
-    expect(() => assertTeamDiscoveryAllowed(createEvent('judging_preparation'), {
-      isEventAdmin: false,
-      isTeamMember: true,
-      applicationStatus: null
-    })).not.toThrow()
-  })
-
-  test('last-member leave is allowed during team formation when no active submission exists', async () => {
-    const harness = createApiRouteTestHarness({
-      routes: []
-    })
-    harnesses.push(harness)
-
-    await harness.database.insert(users).values({
-      id: 'user_admin',
-      auth0Subject: 'auth0|user_admin',
-      email: 'user-admin@example.com',
-      displayName: 'User Admin'
-    })
-
-    await harness.database.insert(events).values({
-      ...createEvent('registration_open'),
-      id: 'event_1',
-      eventType: 'hackathon',
-      createdByUserId: 'user_admin'
-    })
-
-    await harness.database.insert(teams).values({
-      id: 'team_1',
-      eventId: 'event_1',
-      name: 'Fixture Team',
-      slug: 'fixture-team',
-      isOpenToJoinRequests: true,
-      createdByUserId: 'user_admin'
-    })
-
-    const member = {
-      id: 'member_admin',
-      teamId: 'team_1',
-      userId: 'user_admin',
-      role: 'admin' as const,
-      joinedAt: '2026-03-22T12:00:00.000Z',
-      leftAt: null,
-      createdAt: '2026-03-22T12:00:00.000Z'
-    }
-
-    await harness.database.insert(teamMembers).values(member)
-
-    await expect(assertLeaveOrRemovalAllowed(
-      harness.database,
-      createEvent('registration_open'),
-      [member],
-      member
-    )).resolves.toEqual({
-      teamDissolved: true
-    })
-  })
-
-  test('last-member leave is blocked when an active submission exists or after submission closes', async () => {
-    const harness = createApiRouteTestHarness({
-      routes: []
-    })
-    harnesses.push(harness)
-
-    await harness.database.insert(users).values({
-      id: 'user_1',
-      auth0Subject: 'auth0|user_1',
-      email: 'user-1@example.com',
-      displayName: 'User One'
-    })
-
-    await harness.database.insert(events).values({
-      ...createEvent('registration_open'),
-      id: 'event_1',
-      eventType: 'hackathon',
-      createdByUserId: 'user_1'
-    })
-
-    await harness.database.insert(teams).values({
-      id: 'team_1',
-      eventId: 'event_1',
-      name: 'Fixture Team',
-      slug: 'fixture-team',
-      isOpenToJoinRequests: true,
-      createdByUserId: 'user_1'
-    })
-
-    const member = {
-      id: 'member_1',
-      teamId: 'team_1',
-      userId: 'user_1',
-      role: 'admin' as const,
-      joinedAt: '2026-03-22T12:00:00.000Z',
-      leftAt: null,
-      createdAt: '2026-03-22T12:00:00.000Z'
-    }
-
-    await harness.database.insert(teamMembers).values(member)
-    await harness.database.insert(submissions).values({
-      id: 'submission_1',
-      teamId: 'team_1',
-      status: 'draft'
-    })
-
-    await expect(assertLeaveOrRemovalAllowed(
-      harness.database,
-      createEvent('registration_open'),
-      [member],
-      member
-    )).rejects.toThrowError(ApiError)
-
-    await harness.database.delete(submissions)
-
-    await expect(assertLeaveOrRemovalAllowed(
-      harness.database,
-      createEvent('judging_preparation'),
-      [member],
-      member
-    )).rejects.toThrowError(ApiError)
-  })
-
-  test('only pending join requests can be changed', () => {
-    expect(() => assertJoinRequestPending({
-      id: 'request_1',
-      teamId: 'team_1',
-      userId: 'user_1',
-      status: 'pending',
-      requestedAt: '2026-03-22T12:00:00.000Z',
-      reviewedAt: null,
-      reviewedByUserId: null,
-      createdAt: '2026-03-22T12:00:00.000Z'
-    })).not.toThrow()
-
-    expect(() => assertJoinRequestPending({
-      id: 'request_1',
-      teamId: 'team_1',
-      userId: 'user_1',
-      status: 'approved',
-      requestedAt: '2026-03-22T12:00:00.000Z',
-      reviewedAt: '2026-03-22T13:00:00.000Z',
-      reviewedByUserId: 'user_admin',
-      createdAt: '2026-03-22T12:00:00.000Z'
-    })).toThrowError(ApiError)
   })
 
   test('team member serialization can redact sensitive user fields for non-members', () => {

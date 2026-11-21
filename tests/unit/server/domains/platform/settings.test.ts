@@ -8,7 +8,6 @@ import {
   clearDefaultEventBackgroundImageUrl,
   getEventDisplayImageOptions,
   getPlatformSettings,
-  resolveEventDisplayBackgroundImageUrl,
   resolveVersionedEventDisplayBackgroundImageUrl,
   serializePlatformSettings,
   setDefaultEventBackgroundImageUrl
@@ -177,20 +176,6 @@ describe('platform settings utilities', () => {
       defaultEventBackgroundImageObjectKey: 'platform/default/background-1',
       defaultEventBackgroundImageRevision: 1
     })
-  })
-
-  test('resolves event-specific background before the platform default', () => {
-    expect(resolveEventDisplayBackgroundImageUrl({
-      backgroundImageUrl: 'https://example.com/event-background.png'
-    }, {
-      defaultEventBackgroundImageUrl: 'https://example.com/default-background.png'
-    })).toBe('https://example.com/event-background.png')
-
-    expect(resolveEventDisplayBackgroundImageUrl({
-      backgroundImageUrl: null
-    }, {
-      defaultEventBackgroundImageUrl: 'https://example.com/default-background.png'
-    })).toBe('https://example.com/default-background.png')
   })
 
   test('serializes managed certificate backgrounds with the current pointer revision', () => {

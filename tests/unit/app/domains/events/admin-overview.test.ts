@@ -30,16 +30,6 @@ describe('admin overview event helpers', () => {
     }))).toBe('2026-05-18T09:00:00.000Z')
   })
 
-  test('keeps draft events in upcoming even when their derived start time is in the past', () => {
-    expect(getAdminOverviewTabForEvent(createEvent({
-      state: 'draft',
-      submissionOpensAt: '2026-01-10T10:00:00.000Z',
-      agendaItems: [
-        { startsAt: '2026-01-08T09:00:00.000Z' }
-      ]
-    }), Date.parse('2026-03-01T00:00:00.000Z'))).toBe('upcoming')
-  })
-
   test('classifies completed events as past and future-starting non-registration events as upcoming', () => {
     expect(getAdminOverviewTabForEvent(createEvent({
       state: 'completed',
@@ -50,16 +40,6 @@ describe('admin overview event helpers', () => {
       state: 'submission_open',
       submissionOpensAt: '2026-08-01T10:00:00.000Z'
     }), Date.parse('2026-04-01T00:00:00.000Z'))).toBe('upcoming')
-  })
-
-  test('classifies registration-open events as active even before their derived start time', () => {
-    expect(getAdminOverviewTabForEvent(createEvent({
-      state: 'registration_open',
-      submissionOpensAt: '2026-08-01T10:00:00.000Z',
-      agendaItems: [
-        { startsAt: '2026-07-31T09:00:00.000Z' }
-      ]
-    }), Date.parse('2026-04-01T00:00:00.000Z'))).toBe('active')
   })
 
   test('counts events across active upcoming and past tabs', () => {

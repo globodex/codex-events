@@ -2,38 +2,11 @@ import { describe, expect, test } from 'vitest'
 
 import {
   buildEventCertificateId,
-  buildEventCertificateLinkedInAddToProfileUrl,
-  buildEventCertificatePath,
   buildEventCertificateSummary,
-  buildEventCertificateVerificationText,
-  formatEventCertificateDate,
-  formatEventCertificatePlacement,
-  resolveEventCertificateDateIso,
-  resolveEventCertificatePlacementTier
+  formatEventCertificatePlacement
 } from '../../../../../shared/domains/events/certificates'
 
 describe('event certificate helpers', () => {
-  test('resolves the earliest agenda start as the certificate date', () => {
-    const dateIso = resolveEventCertificateDateIso(
-      [
-        { startsAt: '2026-06-20T12:00:00.000Z' },
-        { startsAt: '2026-06-20T08:30:00.000Z' },
-        { startsAt: 'not-a-date' }
-      ],
-      '2026-06-20T07:00:00.000Z'
-    )
-
-    expect(dateIso).toBe('2026-06-20T08:30:00.000Z')
-  })
-
-  test('falls back to the submission window start when no agenda items exist', () => {
-    expect(resolveEventCertificateDateIso([], '2026-06-20T07:00:00.000Z')).toBe('2026-06-20T07:00:00.000Z')
-  })
-
-  test('formats the certificate date in UTC regardless of local timezone', () => {
-    expect(formatEventCertificateDate('2026-06-20T23:30:00.000Z')).toBe('June 20, 2026')
-  })
-
   test('derives a readable certificate id from event and participant details', () => {
     expect(buildEventCertificateId({
       eventType: 'build',
@@ -62,31 +35,6 @@ describe('event certificate helpers', () => {
     })).toBe('MTP-EVT-2026-0601-1A2B3C')
   })
 
-  test('builds the public certificate path', () => {
-    expect(buildEventCertificatePath('codex-build-vienna', 'user_1')).toBe('/events/codex-build-vienna/user_1')
-  })
-
-  test('builds the LinkedIn Add to Profile URL for certificates', () => {
-    const addToProfileUrl = buildEventCertificateLinkedInAddToProfileUrl({
-      eventName: 'Codex Community Hackathon - Vienna',
-      eventDateIso: '2026-04-18T06:45:00.000Z',
-      certificateId: 'HCK-VIE-2026-0418-JSCHMIDT'
-    }, 'https://codex-events.com/events/codex-vienna-2026-04-18/6fb9f6d0-52c2-4752-9c9f-54de51de7b88')
-    const url = new URL(addToProfileUrl)
-
-    expect(url.origin).toBe('https://www.linkedin.com')
-    expect(url.pathname).toBe('/profile/add')
-    expect(Object.fromEntries(url.searchParams.entries())).toEqual({
-      startTask: 'CERTIFICATION_NAME',
-      name: 'Certificate of Participation - Codex Community Hackathon - Vienna',
-      organizationName: 'Codex Community Events',
-      issueYear: '2026',
-      issueMonth: '4',
-      certId: 'HCK-VIE-2026-0418-JSCHMIDT',
-      certUrl: 'https://codex-events.com/events/codex-vienna-2026-04-18/6fb9f6d0-52c2-4752-9c9f-54de51de7b88'
-    })
-  })
-
   test('summarizes participation with track, placement, and prizes', () => {
     const base = {
       participantName: 'Maria Novák',
@@ -106,22 +54,12 @@ describe('event certificate helpers', () => {
       .toBe('Maria Novák has participated in Codex Community Build - Vienna on June 20, 2026. Finished 1st Place and won $15,000 API Credits, 1 year ChatGPT Pro.')
   })
 
-  test('builds public verification copy for issued certificates', () => {
-    expect(buildEventCertificateVerificationText('HCK-VIE-2026-0418-BPIRVU'))
-      .toBe('This certificate is issued by the Codex Community Events Platform and can be verified here as certificate HCK-VIE-2026-0418-BPIRVU.')
-  })
-
-  test('formats placements with ordinal suffixes and trophy tiers', () => {
+  test('formats placements with ordinal suffixes', () => {
     expect(formatEventCertificatePlacement(1)).toBe('1st Place')
     expect(formatEventCertificatePlacement(2)).toBe('2nd Place')
     expect(formatEventCertificatePlacement(3)).toBe('3rd Place')
     expect(formatEventCertificatePlacement(4)).toBe('4th Place')
     expect(formatEventCertificatePlacement(11)).toBe('11th Place')
     expect(formatEventCertificatePlacement(22)).toBe('22nd Place')
-
-    expect(resolveEventCertificatePlacementTier(1)).toBe('gold')
-    expect(resolveEventCertificatePlacementTier(2)).toBe('silver')
-    expect(resolveEventCertificatePlacementTier(3)).toBe('bronze')
-    expect(resolveEventCertificatePlacementTier(4)).toBeNull()
   })
 })

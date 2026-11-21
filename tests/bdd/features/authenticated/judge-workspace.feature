@@ -2,7 +2,6 @@ Feature: TASK-4.7 judge workspace UI
   Authenticated judges can use the blind judge workspace without exposing team identity.
 
   Scenario: Judge starts and completes a blind review from the workspace
-    Given the saved "judge" local session state exists
     When I open the judge workspace with the saved "judge" session
     Then I should see the fixture blind workspace assignment card
     And the fixture blind workspace assignment card should show title "Workspace Project One"
@@ -18,7 +17,6 @@ Feature: TASK-4.7 judge workspace UI
     And the opened blind assignment should hide the complete action and show the queue return action
 
   Scenario: Judge skips an in-progress blind review from the workspace inbox
-    Given the saved "judge" local session state exists
     When I open the judge workspace with the saved "judge" session
     Then I should see the in-progress blind workspace assignment card
     When I open the in-progress blind workspace assignment

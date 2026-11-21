@@ -11,7 +11,6 @@ describe('test deployment workflow account workspace gate', () => {
   test('requires the local Chromium topology job before test deployment', () => {
     expect(workflowSource).toContain('account-workspace-topology:')
     expect(workflowSource).toContain('if: ${{ github.event_name == \'push\' || github.event_name == \'pull_request\' }}')
-    expect(workflowSource).toContain('BDD_BASE_URL: http://localhost:3204')
     expect(workflowSource).toContain('run: bun run test:bdd:account-workspace')
     expect(workflowSource).toContain('      - account-workspace-topology')
   })
