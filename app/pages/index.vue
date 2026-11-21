@@ -57,21 +57,26 @@ async function selectHomepageTab(nextTab: PublicHomepageTab) {
   })
 }
 
-const { data: initialResponse, error } = await useFetch<PublicApiListResponse<PublicEvent>>('/api/public/events', {
-  key: 'public-events-homepage:page-1',
-  query: {
-    page: 1,
-    page_size: publicEventsPageSize
-  }
-})
-const { data: pastCountResponse } = await useFetch<PublicApiListResponse<PublicEvent>>('/api/public/events', {
-  key: 'public-events-homepage:past-count',
-  query: {
-    page: 1,
-    page_size: 1,
-    state: 'completed'
-  }
-})
+const [
+  { data: initialResponse, error },
+  { data: pastCountResponse }
+] = await Promise.all([
+  useFetch<PublicApiListResponse<PublicEvent>>('/api/public/events', {
+    key: 'public-events-homepage:page-1',
+    query: {
+      page: 1,
+      page_size: publicEventsPageSize
+    }
+  }),
+  useFetch<PublicApiListResponse<PublicEvent>>('/api/public/events', {
+    key: 'public-events-homepage:past-count',
+    query: {
+      page: 1,
+      page_size: 1,
+      state: 'completed'
+    }
+  })
+])
 
 events.value = initialResponse.value?.data ?? []
 total.value = initialResponse.value?.meta?.total ?? events.value.length

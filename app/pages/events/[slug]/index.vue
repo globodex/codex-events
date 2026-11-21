@@ -67,8 +67,7 @@ const { data: eventData, error: eventError } = await useApiResponse<PublicEvent>
   () => `public-event-detail:${slug.value}:${includeFullTrackDetails.value ? 'full-tracks' : 'short-tracks'}`,
   () => publicEventDetailPath.value,
   {
-    cacheScope: 'public',
-    watch: [slug, includeFullTrackDetails]
+    cacheScope: 'public'
   }
 )
 
@@ -114,30 +113,30 @@ const {
   actor: accountActor,
   hasEventWorkspaceAccess
 } = usePublicEventWorkspaceAccess(slug)
-const { data: prizesData } = await useApiData<PublicPrize[]>(
-  () => `public-event-prizes:${slug.value}:${isCompetitionEvent.value ? 'competition' : 'registration'}`,
-  async ({ apiFetch, signal }) => {
-    if (!isCompetitionEvent.value) {
-      return []
-    }
-
-    const response = await apiFetch<PublicApiListResponse<PublicPrize>>(`/api/public/events/${slug.value}/prizes`, {
-      signal
-    })
-
-    return response.data
-  },
-  {
-    cacheScope: 'public',
-    default: () => [],
-    watch: [slug, isCompetitionEvent]
-  }
-)
 const [
+  { data: prizesData },
   { data: winnersData, error: winnersError },
   { data: publishedProjectsData, error: publishedProjectsError },
   { data: galleryPhotosData, error: galleryError }
 ] = await Promise.all([
+  useApiData<PublicPrize[]>(
+    () => `public-event-prizes:${slug.value}:${isCompetitionEvent.value ? 'competition' : 'registration'}`,
+    async ({ apiFetch, signal }) => {
+      if (!isCompetitionEvent.value) {
+        return []
+      }
+
+      const response = await apiFetch<PublicApiListResponse<PublicPrize>>(`/api/public/events/${slug.value}/prizes`, {
+        signal
+      })
+
+      return response.data
+    },
+    {
+      cacheScope: 'public',
+      default: () => []
+    }
+  ),
   useApiData<WinnerEntry[]>(
     () => `public-event-winners:${slug.value}:${eventState.value}`,
     async ({ apiFetch, signal }) => {
@@ -153,8 +152,7 @@ const [
     },
     {
       cacheScope: 'public',
-      default: () => [],
-      watch: [slug, eventState]
+      default: () => []
     }
   ),
   useApiData<PublishedProjectEntry[]>(
@@ -175,14 +173,12 @@ const [
     },
     {
       cacheScope: 'public',
-      default: () => [],
-      watch: [slug, eventState]
+      default: () => []
     }
   ),
   useApiResponse<EventPhotoRecord[]>(() => `public-event-gallery:${slug.value}`, () => `/api/public/events/${slug.value}/photos`, {
     cacheScope: 'public',
-    default: () => [],
-    watch: [slug]
+    default: () => []
   })
 ])
 
