@@ -51,7 +51,7 @@ const boundaries = computed(() => {
 const gridStyle = computed(() => {
   const rowSizes = boundaries.value.slice(0, -1).map(({ offset, hasSession }, index) => {
     const duration = boundaries.value[index + 1]!.offset - offset
-    return `${Math.max(hasSession ? 78 : 14, Math.min(duration, 100))}px`
+    return `${Math.max(hasSession ? 106 : 22, Math.min(duration * 1.5, 152))}px`
   })
 
   return {
@@ -94,7 +94,7 @@ const placements = computed(() => {
     tabindex="0"
   >
     <div
-      class="isolate grid"
+      class="isolate grid min-h-full"
       :style="hasParallelTracks ? gridStyle : undefined"
     >
       <template v-if="hasParallelTracks">
@@ -102,7 +102,7 @@ const placements = computed(() => {
         <h2
           v-for="track in tracks"
           :key="track.id"
-          class="border-b border-l border-default bg-elevated p-2 text-sm font-semibold text-highlighted"
+          class="border-b border-l border-default bg-elevated px-2 py-2.5 text-sm font-semibold text-highlighted"
         >
           {{ track.name }}
         </h2>

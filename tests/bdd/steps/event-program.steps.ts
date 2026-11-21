@@ -110,7 +110,7 @@ When('I open Build Time from my event agenda', async ({ page }) => {
   await page.getByRole('link', { name: 'Build Time', exact: true }).click()
   await expect(page).toHaveURL(url => url.pathname + url.search === agendaTabPath)
   await expect(page.getByRole('tab', { name: 'Agenda', exact: true })).toHaveAttribute('aria-selected', 'true')
-  await expect(page.getByRole('heading', { name: 'Build Time', level: 2 })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Agenda timeline' })).toBeVisible()
 })
 
 Then('both tracks should show their sessions at the same start time', async ({ page }) => {

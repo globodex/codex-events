@@ -58,7 +58,7 @@ import {
   LazyAccountEventsAccountEventParticipantTeamPanel as LazyAccountEventParticipantTeamPanel,
   LazyAccountEventsAccountEventParticipantVisibilityPanel as LazyAccountEventParticipantVisibilityPanel,
   LazyAccountEventsAccountEventParticipantWorkspacePanel as LazyAccountEventParticipantWorkspacePanel,
-  LazyAccountEventsAccountEventProgramPanel as LazyAccountEventProgramPanel,
+  LazyAccountEventsAccountEventProgramAgenda as LazyAccountEventProgramAgenda,
   LazyAccountEventsAccountEventPublishedRosterPanel as LazyAccountEventPublishedRosterPanel,
   LazyAccountEventsAccountEventRoleRosterPanel as LazyAccountEventRoleRosterPanel,
   LazyAccountEventsAccountEventTalkProposalPanel as LazyAccountEventTalkProposalPanel,
@@ -1772,7 +1772,6 @@ useSeoMeta({
         id="account-tab-panel-program"
         role="tabpanel"
         aria-labelledby="account-tab-program"
-        class="space-y-6"
       >
         <AppAlert
           v-if="programPageRequest.error.value"
@@ -1780,7 +1779,7 @@ useSeoMeta({
           title="Agenda unavailable"
           :description="normalizeParticipantApiError(programPageRequest.error.value).message"
         />
-        <LazyAccountEventProgramPanel
+        <LazyAccountEventProgramAgenda
           v-else-if="programPage"
           :key="programPage.eventId"
           :program="programPage"

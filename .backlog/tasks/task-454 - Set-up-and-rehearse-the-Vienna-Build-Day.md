@@ -37,7 +37,7 @@ Vienna Build Day uses one participant timeline. The Main room hosts two optional
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 An organizer can configure the venue, workshop rooms, agenda, Luma sync, questionnaire, challenge list, credits and gallery from the event editor.
-- [ ] #2 The Vienna schematic is an original, sketch-style drawing of the booked corridor with clear room names and confirmed room assignments before publishing.
+- [ ] #2 The Vienna diagram uses the room list and assignments confirmed for the event.
 - [ ] #3 A phone rehearsal covers pending registration, confirmation, room highlighting, Luma and manual check-in, and the questionnaire.
 - [ ] #4 A failed or stale Luma update can be recovered with manual sync. Unavailable credit inventory does not block a challenge.
 - [ ] #5 The workflow is verified with event staff and participant accounts before the event.
@@ -80,6 +80,8 @@ Use one participant timeline. Both workshops are optional and take place in the 
 Attending both workshops leaves 3 hours and 35 minutes of build time across the four build blocks. Show networking as a start time at 18:00 on the public agenda and in the final timeline item.
 
 ### Breakout rooms
+
+Room labels in the local preview come from the 27 October venue draft. Verify the room list and catering location against the current booking before publishing.
 
 The venue has seven seminar rooms. Join AE U1-4 and AE U1-5 into one breakout space, giving six breakout spaces. Mark eight selectable spaces on the map: the six breakouts, the Main room, and the separate Catering room shown on the TU Wien plan beside Seminar AE U1-3. Link both workshop sessions to the Main room. Use the Main room for overflow building with extra mentors whenever it is free. All six breakout rooms are open throughout the day. Participants can work on any idea in any room, move between rooms, work quietly, pair up, or ask someone to test their project.
 

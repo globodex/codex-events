@@ -31,7 +31,7 @@ Ambassadors need to provide their own static venue plans. Participants should be
 <!-- AC:BEGIN -->
 - [x] #1 An event admin can upload or replace their own static plan images, name the floors and rooms, and mark each room area once on the relevant image.
 - [x] #2 Sessions select a reusable room record and display its name. Choosing a session highlights the room area and shows the right floor.
-- [x] #3 The compact agenda is on the left and the plan gets most of the width on larger screens. On phones the selected map is reachable from the agenda item.
+- [x] #3 On larger screens, the narrower agenda is on the left and aligns with the height of the plan. On phones the selected map is reachable from the agenda item.
 - [x] #4 Confirmed participants can view the plan before check-in. Pending registrations and direct unauthenticated file requests cannot view it.
 - [x] #5 The full plan remains readable without cropping labels. Uploading or replacing a plan preserves unsaved agenda edits.
 - [x] #6 Participants can browse floor plans and select marked rooms with a tap, click, or keyboard. Selecting a session opens its linked floor and room.

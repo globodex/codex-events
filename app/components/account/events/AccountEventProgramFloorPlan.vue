@@ -23,10 +23,10 @@ function selectFloor(value: string | number | undefined) {
 
 <template>
   <figure
-    class="space-y-3"
+    class="flex min-w-0 flex-col overflow-hidden rounded-xl border border-default"
     data-testid="program-floor-plan"
   >
-    <figcaption class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+    <figcaption class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-default px-3 py-2">
       <AppSelect
         v-if="props.floors && props.floors.length > 1"
         aria-label="Floor"
@@ -61,29 +61,30 @@ function selectFloor(value: string | number | undefined) {
       </p>
     </figcaption>
 
-    <div class="relative overflow-hidden rounded-lg ring-1 ring-black/10 dark:ring-white/15">
-      <img
-        :src="props.plan.imageUrl"
-        :alt="`Floor plan for ${props.plan.name}`"
-        class="block h-auto w-full"
-      >
-      <AppButton
-        v-for="room in props.plan.rooms"
-        :key="room.id"
-        color="neutral"
-        variant="ghost"
-        size="xs"
-        :aria-label="room.name"
-        :aria-pressed="room.id === props.selectedRoom?.id"
-        :title="room.name"
-        :data-testid="room.id === props.selectedRoom?.id ? 'program-room-highlight' : undefined"
-        :style="roomAreaStyle(room.area)"
-        class="absolute rounded-md border-2 border-transparent bg-transparent p-0
-          hover:border-sky-700/70 hover:bg-sky-300/20
-          focus-visible:z-20 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-sky-900
-          aria-pressed:z-10 aria-pressed:border-sky-700 aria-pressed:bg-sky-300/25"
-        @click="emit('selectRoom', room.id)"
-      />
+    <div class="flex flex-1 items-center bg-elevated">
+      <div class="relative w-full">
+        <img
+          :src="props.plan.imageUrl"
+          :alt="`Floor plan for ${props.plan.name}`"
+          class="block h-auto w-full"
+        >
+        <AppButton
+          v-for="room in props.plan.rooms"
+          :key="room.id"
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          :aria-label="room.name"
+          :aria-pressed="room.id === props.selectedRoom?.id"
+          :title="room.name"
+          :data-testid="room.id === props.selectedRoom?.id ? 'program-room-highlight' : undefined"
+          :style="roomAreaStyle(room.area)"
+          class="absolute rounded-none border-2 border-transparent bg-transparent p-0
+            hover:bg-sky-300/20 focus-visible:z-20 focus-visible:outline-2 focus-visible:outline-sky-900
+            aria-pressed:z-10 aria-pressed:border-sky-700 aria-pressed:bg-sky-300/25"
+          @click="emit('selectRoom', room.id)"
+        />
+      </div>
     </div>
   </figure>
 </template>

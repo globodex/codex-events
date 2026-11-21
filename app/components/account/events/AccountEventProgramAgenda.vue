@@ -55,11 +55,12 @@ function returnToSession() {
     :class="hasDetails ? 'lg:grid-cols-[clamp(16rem,29%,22rem)_minmax(0,1fr)]' : ''"
   >
     <section
-      class="min-w-0"
+      class="min-w-0 lg:row-start-1 lg:self-stretch"
       aria-label="Sessions"
     >
       <AccountEventProgramTimeline
         v-if="hasSessions"
+        class="lg:h-full"
         :tracks="program.tracks"
         :floor-plans="program.floorPlans"
         :starts-at="program.agendaItem.startsAt"
@@ -69,7 +70,7 @@ function returnToSession() {
       />
       <p
         v-else
-        class="rounded-xl border border-default p-4 text-sm text-muted"
+        class="rounded-xl border border-default p-4 text-sm text-muted lg:h-full"
       >
         No sessions scheduled.
       </p>
@@ -78,7 +79,8 @@ function returnToSession() {
     <aside
       v-if="hasDetails"
       ref="details"
-      class="flex min-w-0 scroll-mt-4 flex-col gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-ring lg:sticky lg:top-4"
+      class="flex min-w-0 scroll-mt-4 flex-col gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-ring lg:col-start-2 lg:row-start-1 lg:grid lg:gap-6 lg:self-stretch"
+      :class="selectedPlan && selectedSession?.details ? 'lg:row-span-2 lg:grid-rows-subgrid' : ''"
       tabindex="-1"
       aria-label="Session details"
     >

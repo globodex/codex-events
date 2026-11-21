@@ -22,7 +22,7 @@ const accessibleLabel = computed(() =>
     :id="`program-session-${encodeURIComponent(session.id)}`"
     color="neutral"
     variant="ghost"
-    class="m-1 h-auto min-w-0 flex-col items-start justify-start gap-0.5 whitespace-normal rounded-lg border px-2.5 py-1.5 text-left hover:bg-primary/5 focus-visible:ring-inset"
+    class="m-1 h-auto min-w-0 flex-col items-start justify-start gap-1 whitespace-normal rounded-lg border px-2.5 py-2 text-left hover:bg-primary/5 focus-visible:ring-inset"
     :class="selected ? 'border-primary bg-primary/10' : 'border-default/75 bg-default'"
     :aria-label="accessibleLabel"
     :aria-pressed="selected"
