@@ -120,28 +120,14 @@ D1 map the subject to a user and provide all platform and event authorization.
 Tests must not encode platform roles in cookies, headers, tokens, or persona
 definitions.
 
-The BDD harness writes Playwright `storageState` files directly with the
-existing local-development cookie:
-
-```text
-codex-events-local-user=<persona email>
-```
-
-The application resolves that cookie through the normal local session
-middleware and then uses the same actor and authorization paths as ordinary
-requests. Browser and API scenarios reuse the generated storage state.
-
-BDD never opens Auth0 Universal Login, invokes the Codex CLI, or calls an
-external identity service.
+Playwright creates the local persona cookie in memory for each browser or API context. The app resolves it through the local session middleware, then uses the normal actor and permission checks. The BDD server disables interactive Codex and Auth0 sign-in.
 
 ## Production Authentication Boundary
 
 Auth0 remains the production authentication and identity provider. Application
 authorization remains in the platform database.
 
-The local persona mechanism is enabled only because the BDD and load-test Nuxt
-processes run in development with the required Auth0 runtime values cleared.
-Production startup does not enable local authentication.
+The BDD launcher explicitly enables persona sessions in its development server. The load-test server uses the local development session mode. Production uses Auth0.
 
 Auth0-specific behavior such as runtime configuration, callback handling,
 logout, account linking, management automation, and email verification is
@@ -150,36 +136,14 @@ claim to test Auth0-hosted pages or tenant behavior.
 
 ## Fixture Bootstrap
 
-BDD bootstrap is deterministic local work:
-
-1. Resolve the dedicated BDD D1 persistence root.
-2. Clear the selected state.
-3. Apply migrations.
-4. Seed users, roles, events, applications, teams, submissions, judging, and
-   outcome fixtures.
-5. Recreate storage-state files for all four personas.
-
-Local app development defaults to `.wrangler/state`. BDD defaults to
-`.wrangler/state-bdd` and accepts `LOCAL_BDD_D1_STATE_ROOT` as its persistence
-override. The guard rejects the normal local-development root for destructive
-BDD reset work.
-
-The BDD origin defaults to `http://localhost:3100`. `BDD_BASE_URL` is the only
-supported origin override.
-
-Fixture reset must:
-
-- preserve stable persona keys and subjects
-- recreate authorization and scenario rows before execution
-- keep destructive scenarios isolated from the rest of the suite
-- prevent one run from depending on state left by another
+The BDD launcher creates a fresh local D1 database and uses a free loopback port for each suite. It applies migrations and seeds the fixture data. Before Chromium starts, the session API must resolve all four test personas to their local platform accounts. Destructive account tests use a separate database.
 
 ## Browser and API End-to-End Tests
 
-Browser scenarios apply a persona's saved cookies to a Playwright context and
+Browser scenarios apply a persona's cookie to a Playwright context and
 exercise the visible application.
 
-API scenarios create a Playwright request context from the same storage state.
+API scenarios create a Playwright request context with the same cookie.
 They do not mint alternate test tokens or bypass actor resolution.
 
 Role-specific coverage includes:
@@ -243,7 +207,7 @@ one-critical-read topology.
 ## Local Load Runner
 
 `tools/load-tests/local-1000-participant-event.ts` uses the same four persona
-definitions and storage-state writer. Its D1 seed gives the event-admin persona
+definitions and cookie builder. Its D1 seed gives the event-admin persona
 the permissions needed for API and browser probes.
 
 The runner starts Nuxt in local-auth mode with `.env` ignored and Auth0 runtime

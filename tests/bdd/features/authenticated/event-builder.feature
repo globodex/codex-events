@@ -4,7 +4,6 @@ Feature: Gamified event builder creation flow
   events open the builder as their editor while the classic form stays available.
 
   Scenario: Platform admin builds a meetup through the event builder
-    Given the saved "platform_admin" local session state exists
     When I open the event builder with the saved "platform_admin" session
     And I name the event "BDD Builder Meetup"
     And I choose the "meetup" event type in the builder
@@ -21,7 +20,6 @@ Feature: Gamified event builder creation flow
     And the builder should retain the saved rich basics
 
   Scenario: Platform admin uses rich builder basics at a mobile width
-    Given the saved "platform_admin" local session state exists
     When I open the event builder with the saved "platform_admin" session
     And I name the event "BDD Mobile Builder Meetup"
     And I choose the "meetup" event type in the builder
@@ -31,7 +29,6 @@ Feature: Gamified event builder creation flow
     Then the builder rich basics should fit the mobile viewport
 
   Scenario: Platform admin authors a track short description in Markdown
-    Given the saved "platform_admin" local session state exists
     When I open the event builder with the saved "platform_admin" session
     And I name the event "BDD Builder Build"
     And I choose the "build" event type in the builder
@@ -39,7 +36,6 @@ Feature: Gamified event builder creation flow
     Then the builder track short description should retain its Markdown
 
   Scenario: Platform admin directly edits an agenda block duration
-    Given the saved "platform_admin" local session state exists
     When I open the event builder with the saved "platform_admin" session
     And I name the event "BDD Duration Meetup"
     And I choose the "meetup" event type in the builder
@@ -50,7 +46,6 @@ Feature: Gamified event builder creation flow
     And the second builder block should run from 8:17 AM to 8:32 AM
 
   Scenario: Organizer keeps one Luma connection across claiming methods
-    Given the saved "platform_admin" local session state exists
     When I open the event builder with the saved "platform_admin" session
     And I name the event "BDD Luma Claiming Meetup"
     And I choose the "meetup" event type in the builder
@@ -58,7 +53,6 @@ Feature: Gamified event builder creation flow
     Then Luma credentials stay in one section when I change claiming methods
 
   Scenario Outline: Organizer stages credits before creating a draft and retries a failed save
-    Given the saved "platform_admin" local session state exists
     When I open the event builder with the saved "platform_admin" session
     And I name the event "BDD Staged <method> Credits"
     And I choose the "meetup" event type in the builder

@@ -1,17 +1,11 @@
-import { existsSync, readFileSync } from 'node:fs'
-
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import { createAuthenticatedApiClient } from '../support/api-client'
-import {
-  getStablePersonas,
-  stablePersonaKeys,
-  storageStatePathForPersona,
-  type StablePersonaKey
-} from '../support/personas'
+import { getStablePersona, parsePersonaKey } from '../support/personas.ts'
+import { signInAs } from '../support/session-state.ts'
 
-const { Given, When, Then } = createBdd()
+const { When, Then } = createBdd()
 
 type AccountEventBootstrapState = {
   count: number
@@ -26,79 +20,8 @@ type AccountOverviewRequestState = {
 
 const accountOverviewRequestCounts = new WeakMap<Page, AccountOverviewRequestState>()
 
-function parsePersonaKey(personaKey: string): StablePersonaKey {
-  if (stablePersonaKeys.includes(personaKey as StablePersonaKey)) {
-    return personaKey as StablePersonaKey
-  }
-
-  throw new Error(`Unknown stable persona key: ${personaKey}`)
-}
-
-function getStablePersona(personaKey: StablePersonaKey) {
-  const persona = getStablePersonas().find(candidate => candidate.key === personaKey)
-
-  if (!persona) {
-    throw new Error(`Missing stable persona configuration for key: ${personaKey}`)
-  }
-
-  return persona
-}
-
-type StoredState = {
-  cookies?: Array<{
-    name: string
-    value: string
-    domain: string
-    path: string
-    expires: number
-    httpOnly: boolean
-    secure: boolean
-    sameSite: 'Strict' | 'Lax' | 'None'
-  }>
-  origins?: Array<{
-    origin: string
-    localStorage: Array<{
-      name: string
-      value: string
-    }>
-  }>
-}
-
-async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) {
-  const storageState = JSON.parse(readFileSync(storageStatePathForPersona(personaKey), 'utf8')) as StoredState
-
-  if (storageState.cookies?.length) {
-    await page.context().addCookies(storageState.cookies)
-  }
-
-  const origins = storageState.origins ?? []
-
-  if (origins.length) {
-    await page.addInitScript((entries: StoredState['origins']) => {
-      if (!entries) {
-        return
-      }
-
-      for (const entry of entries) {
-        if (entry.origin !== window.location.origin) {
-          continue
-        }
-
-        for (const item of entry.localStorage) {
-          window.localStorage.setItem(item.name, item.value)
-        }
-      }
-    }, origins)
-  }
-}
-
-Given('the saved {string} local session state exists', async ({ page }, personaKey: string) => {
-  void page
-  expect(existsSync(storageStatePathForPersona(parsePersonaKey(personaKey)))).toBe(true)
-})
-
 When('I open my events with the saved {string} session', async ({ page }, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await signInAs(parsePersonaKey(personaKey), page)
 
   const state = {
     bootstrapCount: 0,
@@ -121,7 +44,7 @@ When('I open my events with the saved {string} session', async ({ page }, person
 })
 
 When('I open the account event overview for {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await signInAs(parsePersonaKey(personaKey), page)
   const state = { count: 0 }
 
   accountEventBootstrapCounts.set(page, state)

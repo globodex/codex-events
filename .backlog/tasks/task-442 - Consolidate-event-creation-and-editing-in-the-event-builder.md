@@ -4,6 +4,7 @@ title: Consolidate event creation and editing in the event builder
 status: In Progress
 assignee: []
 created_date: '2026-11-21T15:22:00Z'
+updated_date: '2026-11-21T15:41:00Z'
 labels:
   - build-day
 milestone: m-3
@@ -48,4 +49,6 @@ Organizers currently maintain the same event through two editors, which makes be
 
 <!-- SECTION:NOTES:BEGIN -->
 The build-day branch contains the first agenda timing refactor. Classic editor retirement and parity for remaining controls are still outstanding.
+
+Stack acceptance goal: deliver more Build Day features and make failures easier to recover from, while reducing the amount and complexity of production code. Review the stack against its base and count test deletions separately. A junior developer should be able to follow the main paths and understand why the code behaves as it does.
 <!-- SECTION:NOTES:END -->

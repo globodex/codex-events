@@ -2,7 +2,6 @@ Feature: Admin certificate attendance management
   Event admins confirm who actually joined an event from the Certificates tab. Luma check-ins are the default and manual decisions override them in both directions.
 
   Scenario: Event admin marks an approved participant as joined and clears the decision again
-    Given the saved "event_admin" local session state exists
     When I open the certificates tab for event "event_e2e_fixture" with the saved "event_admin" session
     Then I should see the certificates row for participant "user_judge" with attendance "Not checked in"
     When I mark the certificates participant "user_judge" as "joined"

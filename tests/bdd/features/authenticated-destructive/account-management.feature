@@ -1,10 +1,13 @@
-Feature: TASK-4.3 platform account registration recovery and profile management
+Feature: Platform account deletion, recovery and profile management
   Authenticated identities can recover from account deletion by provisioning the platform account after sign-in and updating profile fields used by event registration.
 
-  Scenario: Recreating and updating the regular user platform account
-    Given the saved "regular_user" local session state exists
+  Scenario: Deleting, recreating, and updating the regular user platform account
+    When the saved "regular_user" session accepts the fixture platform terms document
+    Then the platform document acceptance response should reference the fixture platform terms document
+    When the saved "regular_user" session deletes the current platform account
+    Then the account deletion response should succeed for "regular_user"
     And the saved "regular_user" session should resolve to an authenticated identity without a platform account
-    When I open the account settings page with the saved "regular_user" session
+    When I open account settings and register again with the saved "regular_user" session
     Then I should see the profile settings heading
     And OAuth should be the recommended MCP connection
     When I create and copy an MCP access token named "BDD Codex client"

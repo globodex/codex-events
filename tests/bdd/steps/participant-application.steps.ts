@@ -1,13 +1,12 @@
 import type { APIResponse, Page } from '@playwright/test'
 
-import { existsSync, readFileSync } from 'node:fs'
-
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import { createAuthenticatedApiClient } from '../support/api-client'
 import { platformFixtureIds } from '../support/platform-fixtures.ts'
-import { stablePersonaKeys, storageStatePathForPersona, type StablePersonaKey } from '../support/personas'
+import { parsePersonaKey } from '../support/personas.ts'
+import { signInAs } from '../support/session-state.ts'
 
 const { When, Then } = createBdd()
 
@@ -51,14 +50,6 @@ function getScenarioState(page: Page) {
   return state
 }
 
-function parsePersonaKey(personaKey: string): StablePersonaKey {
-  if (stablePersonaKeys.includes(personaKey as StablePersonaKey)) {
-    return personaKey as StablePersonaKey
-  }
-
-  throw new Error(`Unknown stable persona key: ${personaKey}`)
-}
-
 function resolveParticipantApplicationFixture(slug: string) {
   const fixture = participantApplicationFixtures[slug]
 
@@ -69,62 +60,8 @@ function resolveParticipantApplicationFixture(slug: string) {
   return fixture
 }
 
-type StoredState = {
-  cookies?: Array<{
-    name: string
-    value: string
-    domain: string
-    path: string
-    expires: number
-    httpOnly: boolean
-    secure: boolean
-    sameSite: 'Strict' | 'Lax' | 'None'
-  }>
-  origins?: Array<{
-    origin: string
-    localStorage: Array<{
-      name: string
-      value: string
-    }>
-  }>
-}
-
-async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) {
-  const storageStatePath = storageStatePathForPersona(personaKey)
-
-  if (!existsSync(storageStatePath)) {
-    throw new Error(`Missing storage state for persona "${personaKey}" at ${storageStatePath}.`)
-  }
-
-  const storageState = JSON.parse(readFileSync(storageStatePath, 'utf8')) as StoredState
-
-  if (storageState.cookies?.length) {
-    await page.context().addCookies(storageState.cookies)
-  }
-
-  const origins = storageState.origins ?? []
-
-  if (origins.length) {
-    await page.addInitScript((entries: StoredState['origins']) => {
-      if (!entries) {
-        return
-      }
-
-      for (const entry of entries) {
-        if (entry.origin !== window.location.origin) {
-          continue
-        }
-
-        for (const item of entry.localStorage) {
-          window.localStorage.setItem(item.name, item.value)
-        }
-      }
-    }, origins)
-  }
-}
-
 When('I open the participant application page for event slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await signInAs(parsePersonaKey(personaKey), page)
   await page.goto(`/events/${slug}`)
 })
 

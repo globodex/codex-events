@@ -1,16 +1,14 @@
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
-import {
-  applyStoredStateToPage,
-  parsePersonaKey,
-  resolveEventSlug
-} from './admin-operations.steps'
+import { resolveEventSlug } from './admin-operations.steps'
+import { parsePersonaKey } from '../support/personas.ts'
+import { signInAs } from '../support/session-state.ts'
 
 const { When, Then } = createBdd()
 
 When('I open the certificates tab for event {string} with the saved {string} session', async ({ page }, eventId: string, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await signInAs(parsePersonaKey(personaKey), page)
   const eventSlug = resolveEventSlug(eventId)
 
   await Promise.all([

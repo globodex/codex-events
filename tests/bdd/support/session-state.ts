@@ -1,33 +1,24 @@
-import { writeFileSync } from 'node:fs'
+import type { Page } from '@playwright/test'
 
-import {
-  getBaseUrl,
-  storageStatePathForPersona,
-  type StablePersona
-} from './personas.ts'
+import { getBaseUrl, getStablePersona, type StablePersonaKey } from './personas.ts'
 
-export function writePersonaStorageState(
-  persona: StablePersona,
-  environment: NodeJS.ProcessEnv = process.env
-) {
-  const baseUrl = new URL(getBaseUrl(environment))
-  const storageStatePath = storageStatePathForPersona(persona.key)
-
-  writeFileSync(storageStatePath, JSON.stringify({
-    cookies: [
-      {
-        name: 'codex-events-local-user',
-        value: persona.email,
-        domain: baseUrl.hostname,
-        path: '/',
-        expires: -1,
-        httpOnly: true,
-        secure: baseUrl.protocol === 'https:',
-        sameSite: 'Lax'
-      }
-    ],
+export function personaStorageState(persona: StablePersonaKey, origin = getBaseUrl()) {
+  const url = new URL(origin)
+  return {
+    cookies: [{
+      name: 'codex-events-local-user',
+      value: getStablePersona(persona).email,
+      domain: url.hostname,
+      path: '/',
+      expires: -1,
+      httpOnly: true,
+      secure: url.protocol === 'https:',
+      sameSite: 'Lax' as const
+    }],
     origins: []
-  }, null, 2))
+  }
+}
 
-  return storageStatePath
+export async function signInAs(persona: StablePersonaKey, page: Page) {
+  await page.context().addCookies(personaStorageState(persona).cookies)
 }

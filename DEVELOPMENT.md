@@ -453,26 +453,17 @@ Run the generated end-to-end suite:
 bun run test:bdd
 ```
 
-This is the canonical local BDD command. It seeds four stable local personas, resets the persisted local Cloudflare D1 state, writes their local session cookies, regenerates the Playwright output, and runs all public, authenticated, and authenticated-destructive BDD scenarios.
+Each run starts Nuxt on a free loopback port and creates a fresh local D1 database under `.wrangler/bdd-*`. The launcher applies migrations, seeds test data, and checks the four test accounts through the real session API before opening Chromium. Account deletion and recovery use a second fresh database.
 
-BDD source files live under `tests/bdd/`: feature files in `tests/bdd/features`, matching step definitions in `tests/bdd/steps`, and authenticated bootstrap support in `tests/bdd/bootstrap.ts` plus `tests/bdd/support`. Generated files are written under `.features-gen/` and should not be edited by hand.
+The app resolves test cookies through the normal actor and permission checks. Interactive Codex and Auth0 sign-in are disabled in BDD. The launcher supplies its own server settings and browser connection.
 
-By default, local app development uses `.wrangler/state` and authenticated BDD uses `.wrangler/state-bdd`. You can override them independently with `LOCAL_DEV_D1_STATE_ROOT` and `LOCAL_BDD_D1_STATE_ROOT`. BDD does not honor a generic `LOCAL_D1_STATE_ROOT` override that points anywhere else, and it fails fast if the BDD root matches the normal local app root.
+Edit scenarios in `tests/bdd/features` and steps in `tests/bdd/steps`. The launcher removes generated files and database state after a run. On failure it prints the directory containing the Playwright report and screenshots.
 
-By default, the BDD suite runs the local app on `http://localhost:3100`. Override that origin with `BDD_BASE_URL` when you need a different dedicated test port.
-
-Examples:
+For a shorter run of the account workspace request checks:
 
 ```bash
-LOCAL_BDD_D1_STATE_ROOT=.wrangler/state-bdd-alt bun run test:bdd
-BDD_BASE_URL=http://localhost:3200 bun run test:bdd
-LOCAL_DEV_D1_STATE_ROOT=.wrangler/state-dev-alt bun run dev
-LOCAL_BDD_D1_STATE_ROOT=.wrangler/state-bdd-alt bun tests/bdd/bootstrap.ts
+bun run test:bdd:account-workspace
 ```
-
-The bootstrap flow clears the selected persisted local Cloudflare state, reapplies migrations, reseeds the fixture dataset, clears `tests/bdd/.auth/`, and writes fresh storage-state artifacts containing the existing local-development email cookie.
-
-The four personas are `platform_admin`, `event_admin`, `judge`, and `regular_user`. Their identity subjects are fixed in source, while platform and event permissions come only from the seeded D1 rows. Reusable session-state artifacts are written under `tests/bdd/.auth/`; these local files are gitignored.
 
 The authenticated BDD suite now covers the backend workflow surface delivered by `TASK-3.5` through `TASK-3.9` and the Milestone 1 UI flows delivered by `TASK-4.*`, including actor/session reads, public discovery, admin configuration, application and team formation, submissions, judging, shortlist and winners, prize redemption, audit access, and destructive account deletion.
 

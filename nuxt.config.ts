@@ -16,7 +16,8 @@ process.env.TMPDIR = nuxtTemporaryDirectory
 process.env.TMP = nuxtTemporaryDirectory
 process.env.TEMP = nuxtTemporaryDirectory
 
-const localCodexAuth = shouldUseLocalCodexAuth(
+const localAuthFixtures = process.env.NODE_ENV === 'development' && process.env.CODEX_EVENTS_BDD === '1'
+const localCodexAuth = localAuthFixtures || shouldUseLocalCodexAuth(
   process.env.NODE_ENV !== 'production',
   process.env
 )
@@ -27,6 +28,8 @@ export default defineNuxtConfig({
   modules: [
     '@nuxt/eslint',
     ['@auth0/auth0-nuxt', {
+      mountRoutes: !localAuthFixtures,
+      hydrateUser: !localAuthFixtures,
       routes: {
         login: '/auth/sdk/login',
         logout: '/auth/sdk/logout'
@@ -45,6 +48,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     firstPlatformAdminEmail: '',
     localCodexAuth,
+    localAuthFixtures,
     auth0: {
       domain: localCodexAuth ? 'local.invalid' : '',
       clientId: localCodexAuth ? 'local-client' : '',
@@ -105,6 +109,7 @@ export default defineNuxtConfig({
       resourceUrl: 'http://localhost:3000/mcp'
     }
   },
+  buildDir: localAuthFixtures ? join(process.env.CODEX_EVENTS_BDD_RUN_DIR!, 'nuxt') : undefined,
   alias: {
     '#ai-knowledge': fileURLToPath(new URL('./shared/domains/applications/ai-knowledge.ts', import.meta.url)),
     '#proof-of-execution-links': fileURLToPath(new URL('./shared/domains/applications/proof-of-execution-links.ts', import.meta.url))
@@ -126,6 +131,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-01-15',
 
   nitro: {
+    ignore: localAuthFixtures ? ['routes/auth/link/**'] : [],
     rollupConfig: {
       plugins: [certificateHarfBuzzPlugin()]
     },

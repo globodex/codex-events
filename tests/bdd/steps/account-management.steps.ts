@@ -1,46 +1,11 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
-import { createAuthenticatedApiClient } from '../support/api-client'
-import {
-  stablePersonaKeys,
-  storageStatePathForPersona,
-  type StablePersonaKey
-} from '../support/personas'
+import type { McpAccessTokenPage } from '../../../app/domains/accounts/mcp-tokens.ts'
+import { parsePersonaKey } from '../support/personas.ts'
+import { signInAs } from '../support/session-state.ts'
 
 const { When, Then } = createBdd()
-
-function parsePersonaKey(personaKey: string): StablePersonaKey {
-  if (stablePersonaKeys.includes(personaKey as StablePersonaKey)) {
-    return personaKey as StablePersonaKey
-  }
-
-  throw new Error(`Unknown stable persona key: ${personaKey}`)
-}
-
-type StoredState = {
-  cookies?: Array<{
-    name: string
-    value: string
-    domain: string
-    path: string
-    expires: number
-    httpOnly: boolean
-    secure: boolean
-    sameSite: 'Strict' | 'Lax' | 'None'
-  }>
-  origins?: Array<{
-    origin: string
-    localStorage: Array<{
-      name: string
-      value: string
-    }>
-  }>
-}
 
 async function waitForNuxtHydration(page: Page) {
   try {
@@ -54,112 +19,20 @@ async function waitForNuxtHydration(page: Page) {
   }
 }
 
-async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) {
-  const storageStatePath = storageStatePathForPersona(personaKey)
-
-  if (!existsSync(storageStatePath)) {
-    throw new Error(`Missing storage state for persona "${personaKey}" at ${storageStatePath}.`)
-  }
-
-  const storageState = JSON.parse(readFileSync(storageStatePath, 'utf8')) as StoredState
-
-  if (storageState.cookies?.length) {
-    await page.context().addCookies(storageState.cookies)
-  }
-
-  const origins = storageState.origins ?? []
-
-  if (origins.length) {
-    await page.addInitScript((entries: StoredState['origins']) => {
-      if (!entries) {
-        return
-      }
-
-      for (const entry of entries) {
-        if (entry.origin !== window.location.origin) {
-          continue
-        }
-
-        for (const item of entry.localStorage) {
-          window.localStorage.setItem(item.name, item.value)
-        }
-      }
-    }, origins)
-  }
-}
-
-When('I open the account settings page with the saved {string} session', async ({ page }, personaKey: string) => {
-  const parsedPersonaKey = parsePersonaKey(personaKey)
-
-  await applyStoredStateToPage(parsedPersonaKey, page)
+When('I open account settings and register again with the saved {string} session', async ({ page }, personaKey: string) => {
+  await signInAs(parsePersonaKey(personaKey), page)
   await page.goto('/account/settings')
-  await waitForNuxtHydration(page)
 
   const accountRegistrationHeading = page.getByRole('heading', { name: 'Finish account registration' })
+  await expect(accountRegistrationHeading).toBeVisible()
+  await waitForNuxtHydration(page)
 
-  if (await accountRegistrationHeading.isVisible().catch(() => false)) {
-    await waitForNuxtHydration(page)
+  await page.getByRole('checkbox', { name: 'I accept the current Privacy Policy.' }).check()
+  await page.getByRole('checkbox', { name: 'I accept the current Platform Terms.' }).check()
+  await page.getByRole('button', { name: 'Continue' }).click()
 
-    const privacyCheckbox = page.getByRole('checkbox', { name: 'I accept the current Privacy Policy.' })
-    const termsCheckbox = page.getByRole('checkbox', { name: 'I accept the current Platform Terms.' })
-    const continueButton = page.getByRole('button', { name: 'Continue' })
-
-    await privacyCheckbox.check()
-    await termsCheckbox.check()
-    await expect(privacyCheckbox).toBeChecked()
-    await expect(termsCheckbox).toBeChecked()
-    await expect(continueButton).toBeEnabled()
-
-    await Promise.all([
-      page.waitForResponse(response =>
-        response.url().includes('/api/account/registration')
-        && response.ok()
-      ),
-      continueButton.click()
-    ])
-
-    const apiClient = await createAuthenticatedApiClient(parsedPersonaKey)
-
-    try {
-      await expect.poll(async () => {
-        const response = await apiClient.get('/api/session')
-
-        if (!response.ok()) {
-          return null
-        }
-
-        const payload = await response.json() as {
-          data?: {
-            actor?: {
-              kind?: string
-              hasPlatformAccount?: boolean
-            }
-          }
-        }
-
-        const actor = payload.data?.actor
-
-        if (actor?.kind !== 'platform_user') {
-          return null
-        }
-
-        return actor.hasPlatformAccount === true ? 'ready' : null
-      }, {
-        timeout: 10_000
-      }).toBe('ready')
-    } finally {
-      await apiClient.dispose()
-    }
-
-    if (!page.url().includes('/account/settings')) {
-      await page.goto('/account/settings')
-      await waitForNuxtHydration(page)
-    }
-  }
-
-  await expect(page.getByRole('heading', { name: 'Profile settings' })).toBeVisible()
-  await page.waitForLoadState('networkidle')
-  await page.waitForTimeout(500)
+  await page.waitForURL(url => url.pathname === '/account/settings')
+  await expect(page.getByLabel('Company')).toBeEditable()
 })
 
 When('I delete the platform account through the account settings page', async ({ page }) => {
@@ -210,19 +83,38 @@ Then('the MCP access token named {string} should be listed', async ({ page }, to
 })
 
 When('I revoke the MCP access token named {string}', async ({ page }, tokenName: string) => {
-  const row = page.locator('div').filter({ has: page.getByText(tokenName, { exact: true }) }).filter({ has: page.getByRole('button', { name: 'Revoke' }) }).last()
+  const token = page.getByText(tokenName, { exact: true })
+  const revokeButton = page.getByRole('button', { name: 'Revoke' })
+  const row = page.locator('div')
+    .filter({ has: token })
+    .filter({ has: revokeButton })
+    .last()
+
   page.once('dialog', dialog => dialog.accept())
   await row.getByRole('button', { name: 'Revoke' }).click()
+  await expect(token).toHaveCount(0)
 })
 
 Then('the revoked MCP access token named {string} should be hidden after refresh', async ({ page }, tokenName: string) => {
-  await page.reload()
-  await waitForNuxtHydration(page)
+  const [response] = await Promise.all([
+    page.waitForResponse(response =>
+      new URL(response.url()).pathname === '/api/account/mcp-tokens'
+        && response.request().method() === 'GET'
+    ),
+    page.reload()
+  ])
+  expect(response.ok()).toBe(true)
+
+  const { data } = await response.json() as McpAccessTokenPage
+  expect(data.some(token => token.name === tokenName && token.revokedAt === null)).toBe(false)
+
   await expect(page.getByRole('heading', { name: 'MCP connections' })).toBeVisible()
   await expect(page.getByText(tokenName, { exact: true })).toHaveCount(0)
 })
 
 When('I update the account profile links', async ({ page }) => {
+  await page.getByLabel('First name').fill('Regular')
+  await page.getByLabel('Family name').fill('User')
   await page.getByLabel('Company').fill('Codex Labs')
   await page.getByLabel('Bio').fill('Building tools for event participants.')
   await page.getByLabel('GitHub profile URL').fill('https://github.com/regular-user-updated')
@@ -231,10 +123,21 @@ When('I update the account profile links', async ({ page }) => {
   await page.getByLabel('OpenAI org ID').fill('org_regular_user_updated')
   await page.getByLabel('Luma email').fill('regular-user-updated@luma.example')
   await page.getByLabel('X profile URL').fill('https://x.com/regular-user-updated')
-  await page.getByRole('button', { name: 'Save' }).click()
+
+  const [response] = await Promise.all([
+    page.waitForResponse(response =>
+      new URL(response.url()).pathname === '/api/account'
+        && response.request().method() === 'PATCH'
+    ),
+    page.getByRole('button', { name: 'Save' }).click()
+  ])
+  expect(response.ok(), `Profile save returned HTTP ${response.status()}`).toBe(true)
 })
 
 Then('the account profile should show the updated links', async ({ page }) => {
+  await page.reload()
+  await expect(page.getByLabel('First name')).toHaveValue('Regular')
+  await expect(page.getByLabel('Family name')).toHaveValue('User')
   await expect(page.getByLabel('Company')).toHaveValue('Codex Labs')
   await expect(page.getByLabel('Bio')).toHaveValue('Building tools for event participants.')
   await expect(page.getByLabel('GitHub profile URL')).toHaveValue('https://github.com/regular-user-updated')
@@ -246,14 +149,13 @@ Then('the account profile should show the updated links', async ({ page }) => {
 })
 
 When('I upload a profile icon from account settings', async ({ page }) => {
-  const fixturePath = join(tmpdir(), 'codex-profile-icon-test.png')
-  writeFileSync(
-    fixturePath,
-    // 1x1 transparent PNG
-    Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9pzyY5kAAAAASUVORK5CYII=', 'base64')
-  )
+  const transparentPixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9pzyY5kAAAAASUVORK5CYII='
 
-  await page.locator('input[type="file"]').setInputFiles(fixturePath)
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'profile-icon.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(transparentPixel, 'base64')
+  })
   await expect(page.getByText('Profile icon updated.')).toBeVisible()
 })
 

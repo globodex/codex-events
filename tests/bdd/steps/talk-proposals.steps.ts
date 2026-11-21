@@ -1,11 +1,9 @@
-import { existsSync, readFileSync } from 'node:fs'
-
 import { expect, type APIResponse, type Page, type Response } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import { createAuthenticatedApiClient } from '../support/api-client'
-import { stablePersonaKeys, storageStatePathForPersona, type StablePersonaKey } from '../support/personas'
-import { resetRegularUserParticipantAccessScenarioState } from '../support/platform-fixtures'
+import { parsePersonaKey } from '../support/personas.ts'
+import { signInAs } from '../support/session-state.ts'
 
 const { When, Then } = createBdd()
 
@@ -16,19 +14,6 @@ interface ScenarioState {
   response?: APIResponse | Response
   json?: unknown
   calloutStateSlugs?: Record<string, string>
-}
-
-interface StoredState {
-  cookies?: Array<{
-    name: string
-    value: string
-    domain: string
-    path: string
-    expires: number
-    httpOnly: boolean
-    secure: boolean
-    sameSite: 'Strict' | 'Lax' | 'None'
-  }>
 }
 
 const scenarioState = new WeakMap<Page, ScenarioState>()
@@ -71,19 +56,6 @@ function stateFor(page: Page) {
   const created = {}
   scenarioState.set(page, created)
   return created
-}
-
-function parsePersonaKey(personaKey: string): StablePersonaKey {
-  if (stablePersonaKeys.includes(personaKey as StablePersonaKey)) return personaKey as StablePersonaKey
-  throw new Error(`Unknown stable persona key: ${personaKey}`)
-}
-
-async function applyPersona(page: Page, personaKey: StablePersonaKey) {
-  const path = storageStatePathForPersona(personaKey)
-  if (!existsSync(path)) throw new Error(`Missing storage state for ${personaKey}.`)
-  const storage = JSON.parse(readFileSync(path, 'utf8')) as StoredState
-  await page.context().clearCookies()
-  if (storage.cookies?.length) await page.context().addCookies(storage.cookies)
 }
 
 When('the saved {string} session creates an open Meetup with a Call for talks', async ({ page }, personaKey: string) => {
@@ -139,11 +111,7 @@ Then('the public Meetup should show a Call for talks registration action without
 
 When('I open the remembered Meetup Call for talks with the saved {string} session', async ({ page }, personaKey: string) => {
   const state = stateFor(page)
-  const persona = parsePersonaKey(personaKey)
-  if (persona === 'regular_user') {
-    await resetRegularUserParticipantAccessScenarioState()
-  }
-  await applyPersona(page, persona)
+  await signInAs(parsePersonaKey(personaKey), page)
   await page.goto(`/events/${state.eventSlug}`)
   const action = page.getByTestId('public-call-for-talks').getByRole('link', { name: 'Propose a talk' })
   await expect(action).toHaveAttribute('href', `/events/${state.eventSlug}/register?intent=talk-proposal`)
@@ -219,7 +187,7 @@ When('the saved {string} session registers for the remembered Meetup', async ({ 
 })
 
 When('I open the remembered Meetup workspace with the saved {string} session', async ({ page }, personaKey: string) => {
-  await applyPersona(page, parsePersonaKey(personaKey))
+  await signInAs(parsePersonaKey(personaKey), page)
   const target = `/account/events/${stateFor(page).eventSlug}?tab=call-for-talks`
   try {
     await page.goto(target)
@@ -321,7 +289,7 @@ When('the saved {string} session reviews the remembered Talk proposal', async ({
   } finally {
     await api.dispose()
   }
-  await applyPersona(page, parsePersonaKey(personaKey))
+  await signInAs(parsePersonaKey(personaKey), page)
   await page.goto(`/account/events/${state.eventSlug}?tab=call-for-talks`)
   expect(new URL(page.url()).searchParams.get('tab')).toBe('call-for-talks')
   await expect(page.getByRole('tab', { name: 'Call for talks' })).toHaveAttribute('aria-selected', 'true')
@@ -338,7 +306,7 @@ Then('staff review should be read-only', async ({ page }) => {
 
 When('the saved {string} session accepts the remembered Talk proposal with message {string}', async ({ page }, personaKey: string, message: string) => {
   const state = stateFor(page)
-  await applyPersona(page, parsePersonaKey(personaKey))
+  await signInAs(parsePersonaKey(personaKey), page)
   await page.goto(`/account/events/${state.eventSlug}?tab=call-for-talks`)
   expect(new URL(page.url()).searchParams.get('tab')).toBe('call-for-talks')
   await expect(page.getByRole('tab', { name: 'Call for talks' })).toHaveAttribute('aria-selected', 'true')
@@ -355,7 +323,7 @@ When('the saved {string} session accepts the remembered Talk proposal with messa
 
 When('the saved {string} session does not accept the remembered Talk proposal with message {string}', async ({ page }, personaKey: string, message: string) => {
   const state = stateFor(page)
-  await applyPersona(page, parsePersonaKey(personaKey))
+  await signInAs(parsePersonaKey(personaKey), page)
   await page.goto(`/account/events/${state.eventSlug}?tab=call-for-talks`)
   expect(new URL(page.url()).searchParams.get('tab')).toBe('call-for-talks')
   await expect(page.getByRole('tab', { name: 'Call for talks' })).toHaveAttribute('aria-selected', 'true')

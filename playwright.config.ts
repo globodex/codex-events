@@ -1,71 +1,50 @@
+import { dirname, join } from 'node:path'
+
 import { defineConfig, devices } from '@playwright/test'
 import { defineBddConfig } from 'playwright-bdd'
 
+import { resolveLocalBddD1StateRoot } from './tests/bdd/support/local-d1-state'
 import { getBaseUrl } from './tests/bdd/support/personas'
 
-const publicBddTestDir = defineBddConfig({
-  features: 'tests/bdd/features/public/**/*.feature',
-  steps: 'tests/bdd/steps/**/*.ts',
-  outputDir: '.features-gen/public'
-})
+const runDirectory = dirname(resolveLocalBddD1StateRoot())
+const origin = new URL(getBaseUrl())
 
-const authenticatedBddTestDir = defineBddConfig({
-  features: 'tests/bdd/features/authenticated/**/*.feature',
-  steps: 'tests/bdd/steps/**/*.ts',
-  outputDir: '.features-gen/authenticated'
-})
-
-const destructiveAuthenticatedBddTestDir = defineBddConfig({
-  features: 'tests/bdd/features/authenticated-destructive/**/*.feature',
-  steps: 'tests/bdd/steps/**/*.ts',
-  outputDir: '.features-gen/authenticated-destructive'
-})
-const localBddD1StateRootShellExpression = '${LOCAL_BDD_D1_STATE_ROOT:-.wrangler/state-bdd}'
-const bddBaseUrl = getBaseUrl(process.env)
-const bddBaseUrlObject = new URL(bddBaseUrl)
-const bddBaseUrlPort = bddBaseUrlObject.port || (bddBaseUrlObject.protocol === 'https:' ? '443' : '80')
+if (process.env.CODEX_EVENTS_BDD !== '1') {
+  throw new Error('Start Playwright BDD with bun run test:bdd.')
+}
 
 export default defineConfig({
-  testDir: '.',
   fullyParallel: true,
-  reporter: [['list'], ['html', { open: 'never' }]],
+  globalSetup: './tests/bdd/support/preflight.ts',
+  reporter: [
+    ['list'],
+    ['html', { open: 'never', outputFolder: join(runDirectory, 'report') }]
+  ],
+  outputDir: join(runDirectory, 'results'),
   use: {
-    baseURL: bddBaseUrl,
-    trace: 'on-first-retry',
+    ...devices['Desktop Chrome'],
+    baseURL: origin.origin,
     screenshot: 'only-on-failure',
     video: 'retain-on-failure'
   },
   projects: [
-    {
-      name: 'chromium-bdd',
-      testDir: publicBddTestDir,
-      testMatch: ['**/*.spec.js'],
-      use: {
-        ...devices['Desktop Chrome']
-      }
-    },
-    {
-      name: 'chromium-authenticated-bdd',
-      testDir: authenticatedBddTestDir,
-      testMatch: ['**/*.spec.js'],
-      workers: 1,
-      use: {
-        ...devices['Desktop Chrome']
-      }
-    },
-    {
-      name: 'chromium-authenticated-destructive-bdd',
-      testDir: destructiveAuthenticatedBddTestDir,
-      testMatch: ['**/*.spec.js'],
-      use: {
-        ...devices['Desktop Chrome']
-      }
-    }
-  ],
+    { name: 'public', features: 'public' },
+    { name: 'authenticated', features: 'authenticated', workers: 1 },
+    { name: 'destructive', features: 'authenticated-destructive', workers: 1 }
+  ].map(({ name, features, workers }) => ({
+    name,
+    workers,
+    testDir: defineBddConfig({
+      features: `tests/bdd/features/${features}/**/*.feature`,
+      steps: 'tests/bdd/steps/**/*.ts',
+      outputDir: join(runDirectory, 'generated', features)
+    }),
+    testMatch: ['**/*.spec.js']
+  })),
   webServer: {
-    command: `LOCAL_BDD_D1_STATE_ROOT=${localBddD1StateRootShellExpression} LOCAL_D1_STATE_ROOT=${localBddD1StateRootShellExpression} bun run db:local:guard && LOCAL_BDD_D1_STATE_ROOT=${localBddD1StateRootShellExpression} LOCAL_D1_STATE_ROOT=${localBddD1StateRootShellExpression} NUXT_AUTH0_APP_BASE_URL=${bddBaseUrl} nuxt dev --dotenv /dev/null --host 0.0.0.0 --port ${bddBaseUrlPort}`,
-    url: bddBaseUrl,
+    command: `nuxt dev --dotenv /dev/null --host 127.0.0.1 --port ${origin.port}`,
+    url: origin.origin,
     reuseExistingServer: false,
-    timeout: 120000
+    timeout: 120_000
   }
 })

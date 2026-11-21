@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
@@ -6,12 +6,8 @@ import qrcode from 'qrcode-generator'
 
 import { createAuthenticatedApiClient } from '../support/api-client'
 import { platformFixtureIds } from '../support/platform-fixtures'
-import {
-  getStablePersonas,
-  stablePersonaKeys,
-  storageStatePathForPersona,
-  type StablePersonaKey
-} from '../support/personas'
+import { getStablePersona, parsePersonaKey } from '../support/personas.ts'
+import { signInAs } from '../support/session-state.ts'
 
 const { When, Then } = createBdd()
 const fixtureSlug = 'simplified-claiming-fixture-event'
@@ -24,55 +20,8 @@ async function waitForNuxtHydration(page: Page) {
   )
 }
 
-type StoredState = {
-  cookies?: Array<{
-    name: string
-    value: string
-    domain: string
-    path: string
-    expires: number
-    httpOnly: boolean
-    secure: boolean
-    sameSite: 'Strict' | 'Lax' | 'None'
-  }>
-  origins?: Array<{
-    origin: string
-    localStorage: Array<{ name: string, value: string }>
-  }>
-}
-
-function parsePersonaKey(value: string): StablePersonaKey {
-  if (stablePersonaKeys.includes(value as StablePersonaKey)) {
-    return value as StablePersonaKey
-  }
-  throw new Error(`Unknown stable persona key: ${value}`)
-}
-
 function getRegularUserEmail() {
-  return getStablePersonas().find(persona => persona.key === 'regular_user')!.email.trim().toLowerCase()
-}
-
-async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) {
-  const path = storageStatePathForPersona(personaKey)
-  if (!existsSync(path)) {
-    throw new Error(`Missing storage state for persona ${personaKey}.`)
-  }
-  const state = JSON.parse(readFileSync(path, 'utf8')) as StoredState
-  if (state.cookies?.length) {
-    await page.context().addCookies(state.cookies)
-  }
-  if (state.origins?.length) {
-    await page.addInitScript((origins: StoredState['origins']) => {
-      for (const origin of origins ?? []) {
-        if (origin.origin !== window.location.origin) {
-          continue
-        }
-        for (const item of origin.localStorage) {
-          window.localStorage.setItem(item.name, item.value)
-        }
-      }
-    }, state.origins)
-  }
+  return getStablePersona('regular_user').email
 }
 
 async function openClaimingLink(page: Page) {
@@ -83,7 +32,7 @@ async function openClaimingLink(page: Page) {
 }
 
 When('I open the simplified claiming link with the saved {string} session', async ({ page }, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await signInAs(parsePersonaKey(personaKey), page)
   await openClaimingLink(page)
 })
 
@@ -92,7 +41,7 @@ When('I open the simplified claiming link again', async ({ page }) => {
 })
 
 When('I open the closed simplified claiming link with the saved {string} session', async ({ page }, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await signInAs(parsePersonaKey(personaKey), page)
   await page.goto(`/events/${closedFixtureSlug}/redeem`)
 })
 
@@ -109,12 +58,12 @@ When('I restore my saved Luma email', async ({ page }) => {
 })
 
 When('I open the simplified claiming settings with the saved {string} session', async ({ page }, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await signInAs(parsePersonaKey(personaKey), page)
   await page.goto(`/account/events/${fixtureSlug}?tab=settings`)
 })
 
 When('I prepare simplified claiming on a new Meetup with the saved {string} session', async ({ page }, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await signInAs(parsePersonaKey(personaKey), page)
   await page.goto('/admin/events/new')
   await waitForNuxtHydration(page)
   await page.getByLabel('Event type').selectOption('meetup')
@@ -225,7 +174,7 @@ Then('the {string} should see the simplified claiming participant checked in', a
 })
 
 When('I add a code giveaway in the simplified event builder', async ({ page }) => {
-  await applyStoredStateToPage('event_admin', page)
+  await signInAs('event_admin', page)
   await page.goto(`/admin/events/builder/${fixtureSlug}`)
   const manager = page.getByTestId('simplified-giveaways')
   await expect(manager).toBeVisible()
@@ -259,7 +208,7 @@ Then('I should see automatically detected codes and the combined email preview',
 })
 
 When('I open the connected Luma event in the builder', async ({ page }) => {
-  await applyStoredStateToPage('event_admin', page)
+  await signInAs('event_admin', page)
   await page.goto(`/admin/events/builder/${fixtureSlug}`)
   await waitForNuxtHydration(page)
 })

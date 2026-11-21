@@ -38,10 +38,8 @@
     "test:bdd:install": "playwright install chromium",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "test:bdd": "LOCAL_BDD_D1_STATE_ROOT=${LOCAL_BDD_D1_STATE_ROOT:-.wrangler/state-bdd} LOCAL_D1_STATE_ROOT=${LOCAL_BDD_D1_STATE_ROOT:-.wrangler/state-bdd} bun run test:bdd:inner",
-    "test:bdd:inner": "bun run db:local:guard && bun tests/bdd/bootstrap.ts && bddgen && playwright test --project chromium-bdd --project chromium-authenticated-bdd && bun tests/bdd/bootstrap.ts && playwright test --project chromium-authenticated-destructive-bdd --workers=1",
-    "test:bdd:account-workspace": "LOCAL_BDD_D1_STATE_ROOT=${LOCAL_BDD_D1_STATE_ROOT:-.wrangler/state-bdd-topology} LOCAL_D1_STATE_ROOT=${LOCAL_BDD_D1_STATE_ROOT:-.wrangler/state-bdd-topology} BDD_BASE_URL=${BDD_BASE_URL:-http://localhost:3204} bun run test:bdd:account-workspace:inner",
-    "test:bdd:account-workspace:inner": "bun run db:local:guard && bun tests/bdd/bootstrap.ts && bddgen && playwright test --project chromium-authenticated-bdd --grep @task-432-5-7",
+    "test:bdd": "bun --no-env-file tests/bdd/run.ts",
+    "test:bdd:account-workspace": "bun --no-env-file tests/bdd/run.ts topology",
     "test:all": "bun run test:unit && bun run test:integration && bun run test:bdd"
   },
   "dependencies": {

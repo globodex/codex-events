@@ -2,9 +2,6 @@ Feature: TASK-3.6 authenticated application and team formation flows
   Authenticated platform actors can use the implemented TASK-3.6 application and team-formation API surface through fixed local sessions.
 
   Scenario: Regular user applies, is approved, and joins a judge-owned team
-    Given the saved "regular_user" local session state exists
-    And the saved "event_admin" local session state exists
-    And the saved "judge" local session state exists
     When the saved "regular_user" session submits an application for the fixture event
     Then the submitted application should accept the current fixture application terms
     When the saved "event_admin" session approves the remembered application
@@ -19,7 +16,6 @@ Feature: TASK-3.6 authenticated application and team formation flows
     Then the remembered team should include member "user_regular_user"
 
   Scenario: Platform admin can leave a solo team during team formation
-    Given the saved "platform_admin" local session state exists
     When the saved "platform_admin" session creates an open team named "Solo Admin Team"
     Then the remembered team should be created with admin "user_platform_admin"
     When the saved "platform_admin" session leaves the remembered team

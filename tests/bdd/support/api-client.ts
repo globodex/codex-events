@@ -1,13 +1,15 @@
 import { request } from '@playwright/test'
 
-import { getBaseUrl, storageStatePathForPersona, type StablePersonaKey } from './personas.ts'
+import { getBaseUrl, type StablePersonaKey } from './personas.ts'
+import { personaStorageState } from './session-state.ts'
 
 export async function createAuthenticatedApiClient(
   personaKey: StablePersonaKey,
   environment: NodeJS.ProcessEnv = process.env
 ) {
+  const baseURL = getBaseUrl(environment)
   return await request.newContext({
-    baseURL: getBaseUrl(environment),
-    storageState: storageStatePathForPersona(personaKey)
+    baseURL,
+    storageState: personaStorageState(personaKey, baseURL)
   })
 }

@@ -1,13 +1,7 @@
-import { existsSync, readFileSync } from 'node:fs'
-
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
-
-import {
-  stablePersonaKeys,
-  storageStatePathForPersona,
-  type StablePersonaKey
-} from '../support/personas'
+import { parsePersonaKey } from '../support/personas.ts'
+import { signInAs } from '../support/session-state.ts'
 
 const { Given, When, Then } = createBdd()
 
@@ -25,39 +19,6 @@ interface WebMcpCallResult {
 
 const createResults = new WeakMap<Page, WebMcpCallResult>()
 const invalidResults = new WeakMap<Page, WebMcpCallResult>()
-
-function parsePersonaKey(value: string): StablePersonaKey {
-  if (stablePersonaKeys.includes(value as StablePersonaKey)) {
-    return value as StablePersonaKey
-  }
-
-  throw new Error(`Unknown stable persona key: ${value}`)
-}
-
-async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) {
-  const path = storageStatePathForPersona(personaKey)
-
-  if (!existsSync(path)) {
-    throw new Error(`Missing storage state for persona ${personaKey}.`)
-  }
-
-  const state = JSON.parse(readFileSync(path, 'utf8')) as {
-    cookies?: Array<{
-      name: string
-      value: string
-      domain: string
-      path: string
-      expires: number
-      httpOnly: boolean
-      secure: boolean
-      sameSite: 'Strict' | 'Lax' | 'None'
-    }>
-  }
-
-  if (state.cookies?.length) {
-    await page.context().addCookies(state.cookies)
-  }
-}
 
 async function waitForNuxtHydration(page: Page) {
   await page.waitForFunction(() =>
@@ -155,14 +116,14 @@ Given('WebMCP site tools are available in the browser', async ({ page }) => {
 })
 
 When('I open the WebMCP event builder with the saved {string} session', async ({ page }, personaValue: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaValue), page)
+  await signInAs(parsePersonaKey(personaValue), page)
   await page.goto('/admin/events/builder/new')
   await waitForNuxtHydration(page)
   await expect(page.getByTestId('event-builder-name')).toBeVisible()
 })
 
 When('I try to open the WebMCP event builder with the saved {string} session', async ({ page }, personaValue: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaValue), page)
+  await signInAs(parsePersonaKey(personaValue), page)
   await page.goto('/admin/events/builder/new')
   await waitForNuxtHydration(page)
 })

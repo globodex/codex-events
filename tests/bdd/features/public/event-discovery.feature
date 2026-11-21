@@ -8,7 +8,6 @@ Feature: Public event discovery
     And the public event card for "E2E Fixture Event" should link to "/events/e2e-fixture-event"
 
   Scenario: Viewing the public event list with the saved platform-admin session
-    Given the saved "platform_admin" local session state exists
     When I open the public events page with the saved "platform_admin" session
     Then I should see the public event titled "E2E Fixture Event"
     Then I should not see the public event titled "Draft Managed Event"
@@ -28,11 +27,9 @@ Feature: Public event discovery
     And I should not see the admin control "Configure"
 
   Scenario: Authenticated public event detail remains publicly cacheable
-    Given the saved "platform_admin" local session state exists
     When I open the public event detail page for the fixture event with the saved "platform_admin" session
     Then the public event document should remain publicly cacheable
 
   Scenario: Signed-in public event detail keeps the signed-out HTML payload
-    Given the saved "platform_admin" local session state exists
     When I compare the signed-out and signed-in public event documents for the fixture event
     Then the signed-in public event payload should match the signed-out payload

@@ -2,7 +2,6 @@ Feature: Meetup Call for talks
   Meetup participants can privately submit one Talk proposal while public pages show only the Call for talks.
 
   Scenario: A new participant registers and submits a Talk proposal together
-    Given the saved "platform_admin" local session state exists
     When the saved "platform_admin" session creates an open Meetup with a Call for talks
     And I open the remembered Meetup Call for talks with the saved "regular_user" session
     Then Event registration and Talk proposal should be shown as separate sections
@@ -13,7 +12,6 @@ Feature: Meetup Call for talks
     Then the submitted Talk proposal workspace should open
 
   Scenario: A registered participant submits a private Talk proposal
-    Given the saved "platform_admin" local session state exists
     When the saved "platform_admin" session creates an open Meetup with a Call for talks
     Then the public Meetup should show a Call for talks registration action without proposal content
     When the saved "regular_user" session registers for the remembered Meetup
@@ -39,7 +37,6 @@ Feature: Meetup Call for talks
     Then only upcoming, open, and completed-open Meetups should show the public Call for talks
 
   Scenario: An admin does not accept a submitted Talk proposal
-    Given the saved "platform_admin" local session state exists
     When the saved "platform_admin" session creates an open Meetup with a Call for talks
     And the saved "regular_user" session registers for the remembered Meetup
     And I open the remembered Meetup workspace with the saved "regular_user" session
@@ -51,7 +48,6 @@ Feature: Meetup Call for talks
     And the Talk proposal decision email should be queued
 
   Scenario: A registered owner can withdraw after the Meetup is completed while the Call for talks is open
-    Given the saved "platform_admin" local session state exists
     When the saved "platform_admin" session creates an open Meetup with a Call for talks
     And the saved "regular_user" session registers for the remembered Meetup
     And I open the remembered Meetup workspace with the saved "regular_user" session

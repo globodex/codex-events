@@ -1,11 +1,3 @@
-import { mkdirSync, rmSync } from 'node:fs'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-import { z } from 'zod'
-
-export const defaultLocalBddBaseUrl = 'http://localhost:3100'
-
 export const stablePersonaKeys = [
   'platform_admin',
   'event_admin',
@@ -22,10 +14,6 @@ export interface StablePersona {
   nickname: string
   auth0Subject: string
 }
-
-const bddBaseUrlEnvironmentSchema = z.object({
-  BDD_BASE_URL: z.string().url().optional()
-})
 
 const stablePersonas: StablePersona[] = [
   {
@@ -63,23 +51,21 @@ export function getStablePersonas(): StablePersona[] {
 }
 
 export function getBaseUrl(environment: NodeJS.ProcessEnv = process.env) {
-  const config = bddBaseUrlEnvironmentSchema.parse(environment)
-  return config.BDD_BASE_URL ?? defaultLocalBddBaseUrl
+  const url = URL.parse(environment.BDD_BASE_URL ?? '')
+  if (!url || url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || !url.port) {
+    throw new Error('Use bun run test:bdd to start a local test server.')
+  }
+  return url.origin
 }
 
-export function getAuthArtifactDirectory() {
-  const directory = join(fileURLToPath(new URL('../.auth', import.meta.url)))
-  mkdirSync(directory, { recursive: true })
-  return directory
+export function parsePersonaKey(value: string): StablePersonaKey {
+  const key = stablePersonaKeys.find(candidate => candidate === value)
+  if (!key) {
+    throw new Error(`Unknown test persona: ${value}`)
+  }
+  return key
 }
 
-export function resetAuthArtifactDirectory() {
-  const directory = join(fileURLToPath(new URL('../.auth', import.meta.url)))
-  rmSync(directory, { recursive: true, force: true })
-  mkdirSync(directory, { recursive: true })
-  return directory
-}
-
-export function storageStatePathForPersona(personaKey: StablePersonaKey) {
-  return join(getAuthArtifactDirectory(), `${personaKey}.json`)
+export function getStablePersona(key: StablePersonaKey): StablePersona {
+  return stablePersonas.find(persona => persona.key === key)!
 }

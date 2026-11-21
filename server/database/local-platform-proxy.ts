@@ -22,9 +22,11 @@ export async function createLocalPlatformProxy(options?: {
   persist?: boolean | { path: string }
 }) {
   const { getPlatformProxy } = await loadWranglerModule()
+  const useTestBindings = process.env.CODEX_EVENTS_BDD === '1'
 
   return await getPlatformProxy({
     configPath: options?.configPath ?? localWranglerConfigPath,
+    ...(useTestBindings && { envFiles: [], remoteBindings: false }),
     persist: options?.persist ?? {
       path: localPlatformPersistPath
     }
