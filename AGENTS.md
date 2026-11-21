@@ -87,6 +87,7 @@ current source of truth and flag the mismatch.
 
 ## Package Scripts
 
+- Use the [cf skill](.agents/skills/cf/SKILL.md) for direct Cloudflare CLI work.
 - Treat root `package.json` scripts as developer-facing and automation-facing
   entrypoints.
 - Keep a script in `package.json` only when a contributor, CI workflow, or
