@@ -219,7 +219,7 @@ internal error.
 - Observability may record HTTP status, sanitized error code, operation ID,
   latency, and rate-limit outcomes only.
 
-The supported server stack pins `agents@0.33.0` and
+The supported server stack pins `agents@0.34.0` and
 `@modelcontextprotocol/server@2.4.0`. The `/mcp` endpoint uses
 `createMcpHandler` from `agents/mcp/server`, negotiates MCP 2026-07-28, and
 creates a fresh stateless server for every request. Auth0 OAuth and optional

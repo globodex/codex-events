@@ -27,7 +27,7 @@ jobs:
       - name: Install bun
         uses: oven-sh/setup-bun@v2.2.0
         with:
-          bun-version: 1.4.4
+          bun-version: 1.4.5
 
       - name: Cache Bun install cache
         uses: actions/cache@v6.1.0
@@ -148,7 +148,7 @@ jobs:
         if: ${{ steps.test_deploy_config.outputs.enabled == 'true' }}
         uses: oven-sh/setup-bun@v2.2.0
         with:
-          bun-version: 1.4.4
+          bun-version: 1.4.5
 
       - name: Cache Bun install cache
         if: ${{ steps.test_deploy_config.outputs.enabled == 'true' }}
@@ -223,7 +223,7 @@ jobs:
       - name: Install bun
         uses: oven-sh/setup-bun@v2.2.0
         with:
-          bun-version: 1.4.4
+          bun-version: 1.4.5
 
       - name: Cache Bun install cache
         uses: actions/cache@v6.1.0
@@ -265,7 +265,7 @@ jobs:
       - name: Install bun
         uses: oven-sh/setup-bun@v2.2.0
         with:
-          bun-version: 1.4.4
+          bun-version: 1.4.5
 
       - name: Cache Bun install cache
         uses: actions/cache@v6.1.0

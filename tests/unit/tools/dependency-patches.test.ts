@@ -10,11 +10,11 @@ const require = createRequire(import.meta.url)
 test.each([
   ['ESM', importX],
   ['CommonJS', require('eslint-plugin-import-x') as typeof importX]
-])('enforces import boundaries with the patched %s plugin and minimatch 11', (_, plugin) => {
+])('enforces import boundaries with the %s plugin and minimatch 11', (_, plugin) => {
   const linter = new Linter()
   const config = {
     plugins: { imports: plugin },
-    rules: { 'imports/no-internal-modules': ['error', { forbid: ['zod/**'] }] }
+    rules: { 'imports/no-internal-modules': ['error', { forbid: ['zod/**/*'] }] }
   } as const
 
   expect(linter.verify('import { z } from "zod"', config)).toEqual([])

@@ -228,7 +228,7 @@ at-least-once crash-recovery boundary.
 
 ### Local MCP client testing
 
-The local endpoint uses the stateless `agents@0.33.0` handler with
+The local endpoint uses the stateless `agents@0.34.0` handler with
 `@modelcontextprotocol/server@2.4.0` and MCP 2026-07-28.
 
 Auth0 OAuth is the recommended remote-client flow. The local deterministic

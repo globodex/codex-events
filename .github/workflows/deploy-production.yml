@@ -90,7 +90,7 @@ jobs:
       - name: Install bun
         uses: oven-sh/setup-bun@v2.2.0
         with:
-          bun-version: 1.4.4
+          bun-version: 1.4.5
 
       - name: Cache Bun install cache
         uses: actions/cache@v6.1.0

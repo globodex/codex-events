@@ -1,6 +1,6 @@
 {
-  "generatedAtIso": "2026-11-05T11:42:44.775Z",
-  "generatedAtLabel": "5 November 2026 at 11:42",
+  "generatedAtIso": "2026-11-21T12:53:17.324Z",
+  "generatedAtLabel": "21 November 2026 at 12:53",
   "notices": [
     {
       "homepageUrl": "https://github.com/antfu-collective/install-pkg#readme",
@@ -214,9 +214,9 @@
       "name": "@babel/generator",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fgenerator/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fgenerator/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-generator",
@@ -226,9 +226,9 @@
       "name": "@babel/generator",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fgenerator/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fgenerator/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-generator",
@@ -238,9 +238,9 @@
       "name": "@babel/generator",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fgenerator/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fgenerator/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-generator",
@@ -250,9 +250,9 @@
       "name": "@babel/generator",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fgenerator/v/8.1.0",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fgenerator/v/8.1.3",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "8.1.0"
+      "version": "8.1.3"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-helper-annotate-as-pure",
@@ -394,9 +394,9 @@
       "name": "@babel/helper-member-expression-to-functions",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-member-expression-to-functions/v/7.29.7",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-member-expression-to-functions/v/7.29.14",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.7"
+      "version": "7.29.14"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-helper-member-expression-to-functions",
@@ -406,9 +406,9 @@
       "name": "@babel/helper-member-expression-to-functions",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-member-expression-to-functions/v/8.0.5",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-member-expression-to-functions/v/8.1.2",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "8.0.5"
+      "version": "8.1.2"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-helper-module-imports",
@@ -442,9 +442,9 @@
       "name": "@babel/helper-module-transforms",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-module-transforms/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-module-transforms/v/7.29.14",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.14"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-helper-optimise-call-expression",
@@ -646,9 +646,9 @@
       "name": "@babel/helper-string-parser",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-helper-string-parser",
@@ -658,9 +658,9 @@
       "name": "@babel/helper-string-parser",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-helper-string-parser",
@@ -670,9 +670,9 @@
       "name": "@babel/helper-string-parser",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-helper-string-parser",
@@ -682,9 +682,9 @@
       "name": "@babel/helper-string-parser",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-helper-string-parser",
@@ -694,9 +694,9 @@
       "name": "@babel/helper-string-parser",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-helper-string-parser",
@@ -706,9 +706,9 @@
       "name": "@babel/helper-string-parser",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-helper-string-parser",
@@ -718,9 +718,9 @@
       "name": "@babel/helper-string-parser",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-helper-string-parser",
@@ -730,9 +730,9 @@
       "name": "@babel/helper-string-parser",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-helper-string-parser",
@@ -742,21 +742,9 @@
       "name": "@babel/helper-string-parser",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/7.29.7",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/8.1.3",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.7"
-    },
-    {
-      "homepageUrl": "https://babel.dev/docs/en/next/babel-helper-string-parser",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "MIT License\n\nCopyright (c) 2014-present Sebastian McKenzie and other contributors\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
-      "name": "@babel/helper-string-parser",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-string-parser/v/8.0.8",
-      "repositoryUrl": "https://github.com/babel/babel",
-      "version": "8.0.8"
+      "version": "8.1.3"
     },
     {
       "homepageUrl": null,
@@ -853,18 +841,6 @@
       "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-validator-identifier/v/7.28.5",
       "repositoryUrl": "https://github.com/babel/babel",
       "version": "7.28.5"
-    },
-    {
-      "homepageUrl": null,
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "MIT License\n\nCopyright (c) 2014-present Sebastian McKenzie and other contributors\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
-      "name": "@babel/helper-validator-identifier",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelper-validator-identifier/v/7.29.7",
-      "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.7"
     },
     {
       "homepageUrl": null,
@@ -1054,9 +1030,9 @@
       "name": "@babel/helpers",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelpers/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fhelpers/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-parser",
@@ -1126,9 +1102,9 @@
       "name": "@babel/parser",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fparser/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fparser/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-parser",
@@ -1138,9 +1114,9 @@
       "name": "@babel/parser",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fparser/v/7.29.8",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fparser/v/8.1.3",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.8"
+      "version": "8.1.3"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-parser",
@@ -1150,9 +1126,9 @@
       "name": "@babel/parser",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fparser/v/8.1.0",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fparser/v/8.1.3",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "8.1.0"
+      "version": "8.1.3"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-parser",
@@ -1162,9 +1138,9 @@
       "name": "@babel/parser",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fparser/v/8.1.0",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fparser/v/8.1.3",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "8.1.0"
+      "version": "8.1.3"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-parser",
@@ -1174,21 +1150,9 @@
       "name": "@babel/parser",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fparser/v/8.1.0",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fparser/v/8.1.3",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "8.1.0"
-    },
-    {
-      "homepageUrl": "https://babel.dev/docs/en/next/babel-parser",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "Copyright (C) 2012-2014 by various contributors (see AUTHORS)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
-      "name": "@babel/parser",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fparser/v/8.1.0",
-      "repositoryUrl": "https://github.com/babel/babel",
-      "version": "8.1.0"
+      "version": "8.1.3"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-plugin-proposal-decorators",
@@ -1246,9 +1210,9 @@
       "name": "@babel/plugin-transform-typescript",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fplugin-transform-typescript/v/7.29.9",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fplugin-transform-typescript/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.9"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-runtime",
@@ -1258,9 +1222,9 @@
       "name": "@babel/runtime",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fruntime/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fruntime/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": null,
@@ -1270,9 +1234,9 @@
       "name": "@babel/runtime-corejs3",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fruntime-corejs3/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Fruntime-corejs3/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-template",
@@ -1342,9 +1306,9 @@
       "name": "@babel/template",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftemplate/v/8.0.0",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftemplate/v/8.1.2",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "8.0.0"
+      "version": "8.1.2"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-traverse",
@@ -1378,9 +1342,9 @@
       "name": "@babel/traverse",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftraverse/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftraverse/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-traverse",
@@ -1390,9 +1354,9 @@
       "name": "@babel/traverse",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftraverse/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftraverse/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-traverse",
@@ -1402,9 +1366,9 @@
       "name": "@babel/traverse",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftraverse/v/7.29.13",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftraverse/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.13"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-traverse",
@@ -1414,9 +1378,9 @@
       "name": "@babel/traverse",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftraverse/v/8.1.0",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftraverse/v/8.1.3",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "8.1.0"
+      "version": "8.1.3"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-types",
@@ -1474,9 +1438,9 @@
       "name": "@babel/types",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/7.29.11",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.11"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-types",
@@ -1486,9 +1450,9 @@
       "name": "@babel/types",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/7.29.11",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.11"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-types",
@@ -1498,9 +1462,9 @@
       "name": "@babel/types",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/7.29.11",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.11"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-types",
@@ -1510,9 +1474,9 @@
       "name": "@babel/types",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/7.29.11",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.11"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-types",
@@ -1522,9 +1486,9 @@
       "name": "@babel/types",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/7.29.11",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.11"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-types",
@@ -1534,9 +1498,9 @@
       "name": "@babel/types",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/7.29.11",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.11"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-types",
@@ -1546,9 +1510,9 @@
       "name": "@babel/types",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/7.29.11",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.11"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-types",
@@ -1558,9 +1522,9 @@
       "name": "@babel/types",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/7.29.11",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/7.29.15",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.11"
+      "version": "7.29.15"
     },
     {
       "homepageUrl": "https://babel.dev/docs/en/next/babel-types",
@@ -1570,21 +1534,9 @@
       "name": "@babel/types",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/7.29.8",
+      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/8.1.3",
       "repositoryUrl": "https://github.com/babel/babel",
-      "version": "7.29.8"
-    },
-    {
-      "homepageUrl": "https://babel.dev/docs/en/next/babel-types",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "MIT License\n\nCopyright (c) 2014-present Sebastian McKenzie and other contributors\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
-      "name": "@babel/types",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40babel%2Ftypes/v/8.1.0",
-      "repositoryUrl": "https://github.com/babel/babel",
-      "version": "8.1.0"
+      "version": "8.1.3"
     },
     {
       "homepageUrl": "https://github.com/cfworker/cfworker/tree/master/packages/json-schema/README.md",
@@ -1606,9 +1558,9 @@
       "name": "@clack/core",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40clack%2Fcore/v/1.5.1",
+      "registryUrl": "https://www.npmjs.com/package/%40clack%2Fcore/v/1.6.0",
       "repositoryUrl": "https://github.com/bombshell-dev/clack",
-      "version": "1.5.1"
+      "version": "1.6.0"
     },
     {
       "homepageUrl": "https://github.com/bombshell-dev/clack/tree/main/packages/prompts#readme",
@@ -1618,9 +1570,9 @@
       "name": "@clack/prompts",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40clack%2Fprompts/v/1.8.1",
+      "registryUrl": "https://www.npmjs.com/package/%40clack%2Fprompts/v/1.9.0",
       "repositoryUrl": "https://github.com/bombshell-dev/clack",
-      "version": "1.8.1"
+      "version": "1.9.0"
     },
     {
       "homepageUrl": "https://github.com/cloudflare/workers-sdk#readme",
@@ -1954,9 +1906,9 @@
       "name": "@codemirror/lint",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40codemirror%2Flint/v/6.9.7",
+      "registryUrl": "https://www.npmjs.com/package/%40codemirror%2Flint/v/6.9.8",
       "repositoryUrl": "https://code.haverbeke.berlin/codemirror/lint",
-      "version": "6.9.7"
+      "version": "6.9.8"
     },
     {
       "homepageUrl": null,
@@ -2026,9 +1978,9 @@
       "name": "@csstools/css-tokenizer",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40csstools%2Fcss-tokenizer/v/4.0.2",
+      "registryUrl": "https://www.npmjs.com/package/%40csstools%2Fcss-tokenizer/v/4.0.3",
       "repositoryUrl": "https://github.com/csstools/postcss-plugins",
-      "version": "4.0.2"
+      "version": "4.0.3"
     },
     {
       "homepageUrl": null,
@@ -2158,9 +2110,9 @@
       "name": "@iconify-json/lucide",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40iconify-json%2Flucide/v/1.2.151",
+      "registryUrl": "https://www.npmjs.com/package/%40iconify-json%2Flucide/v/1.2.157",
       "repositoryUrl": null,
-      "version": "1.2.151"
+      "version": "1.2.157"
     },
     {
       "homepageUrl": null,
@@ -2170,9 +2122,9 @@
       "name": "@iconify/collections",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40iconify%2Fcollections/v/1.0.761",
+      "registryUrl": "https://www.npmjs.com/package/%40iconify%2Fcollections/v/1.0.767",
       "repositoryUrl": null,
-      "version": "1.0.761"
+      "version": "1.0.767"
     },
     {
       "homepageUrl": "https://github.com/iconify/iconify",
@@ -2266,9 +2218,9 @@
       "name": "@isaacs/nonrecursive-glob-match",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40isaacs%2Fnonrecursive-glob-match/v/1.0.3",
+      "registryUrl": "https://www.npmjs.com/package/%40isaacs%2Fnonrecursive-glob-match/v/1.1.0",
       "repositoryUrl": null,
-      "version": "1.0.3"
+      "version": "1.1.0"
     },
     {
       "homepageUrl": "https://github.com/jridgewell/sourcemaps/tree/main/packages/gen-mapping",
@@ -2475,42 +2427,6 @@
       "version": "0.3.31"
     },
     {
-      "homepageUrl": "https://github.com/jridgewell/sourcemaps/tree/main/packages/trace-mapping",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "Copyright 2024 Justin Ridgewell <justin@ridgewell.name>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
-      "name": "@jridgewell/trace-mapping",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40jridgewell%2Ftrace-mapping/v/0.3.31",
-      "repositoryUrl": "https://github.com/jridgewell/sourcemaps",
-      "version": "0.3.31"
-    },
-    {
-      "homepageUrl": "https://github.com/jridgewell/sourcemaps/tree/main/packages/trace-mapping",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "Copyright 2024 Justin Ridgewell <justin@ridgewell.name>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
-      "name": "@jridgewell/trace-mapping",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40jridgewell%2Ftrace-mapping/v/0.3.31",
-      "repositoryUrl": "https://github.com/jridgewell/sourcemaps",
-      "version": "0.3.31"
-    },
-    {
-      "homepageUrl": "https://github.com/jridgewell/sourcemaps/tree/main/packages/trace-mapping",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "Copyright 2024 Justin Ridgewell <justin@ridgewell.name>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
-      "name": "@jridgewell/trace-mapping",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40jridgewell%2Ftrace-mapping/v/0.3.31",
-      "repositoryUrl": "https://github.com/jridgewell/sourcemaps",
-      "version": "0.3.31"
-    },
-    {
       "homepageUrl": null,
       "license": "MIT",
       "licenseFileName": "LICENSE",
@@ -2518,9 +2434,9 @@
       "name": "@lezer/common",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40lezer%2Fcommon/v/1.5.5",
+      "registryUrl": "https://www.npmjs.com/package/%40lezer%2Fcommon/v/1.5.6",
       "repositoryUrl": "https://code.haverbeke.berlin/lezer/common",
-      "version": "1.5.5"
+      "version": "1.5.6"
     },
     {
       "homepageUrl": null,
@@ -2590,9 +2506,9 @@
       "name": "@lezer/java",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40lezer%2Fjava/v/1.1.5",
+      "registryUrl": "https://www.npmjs.com/package/%40lezer%2Fjava/v/1.2.0",
       "repositoryUrl": "https://code.haverbeke.berlin/lezer/java",
-      "version": "1.1.5"
+      "version": "1.2.0"
     },
     {
       "homepageUrl": null,
@@ -2722,9 +2638,9 @@
       "name": "@lucide/vue",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40lucide%2Fvue/v/1.69.0",
+      "registryUrl": "https://www.npmjs.com/package/%40lucide%2Fvue/v/1.77.0",
       "repositoryUrl": "https://github.com/lucide-icons/lucide",
-      "version": "1.69.0"
+      "version": "1.77.0"
     },
     {
       "homepageUrl": null,
@@ -2871,6 +2787,18 @@
       "version": "3.4.4"
     },
     {
+      "homepageUrl": "https://nuxt.com/modules/devtools/utils-kit",
+      "license": "MIT",
+      "licenseFileName": "LICENSE",
+      "licenseText": "MIT License\n\nCopyright (c) 2022-PRESENT Nuxt Team\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
+      "name": "@nuxt/devtools-kit",
+      "noticeFileName": null,
+      "noticeText": null,
+      "registryUrl": "https://www.npmjs.com/package/%40nuxt%2Fdevtools-kit/v/4.2.0",
+      "repositoryUrl": "https://github.com/nuxt/devtools",
+      "version": "4.2.0"
+    },
+    {
       "homepageUrl": "https://devtools.nuxt.com",
       "license": "MIT",
       "licenseFileName": "LICENSE",
@@ -2890,9 +2818,9 @@
       "name": "@nuxt/icon",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40nuxt%2Ficon/v/2.6.2",
+      "registryUrl": "https://www.npmjs.com/package/%40nuxt%2Ficon/v/2.6.3",
       "repositoryUrl": "nuxt/icon",
-      "version": "2.6.2"
+      "version": "2.6.3"
     },
     {
       "homepageUrl": "https://nuxt.com/docs/api/kit",
@@ -3142,9 +3070,9 @@
       "name": "@rolldown/binding-darwin-arm64",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40rolldown%2Fbinding-darwin-arm64/v/1.2.16",
+      "registryUrl": "https://www.npmjs.com/package/%40rolldown%2Fbinding-darwin-arm64/v/1.2.19",
       "repositoryUrl": "https://github.com/rolldown/rolldown",
-      "version": "1.2.16"
+      "version": "1.2.19"
     },
     {
       "homepageUrl": "https://github.com/rolldown/plugins/tree/main/packages/babel#readme",
@@ -3166,9 +3094,9 @@
       "name": "@rolldown/pluginutils",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40rolldown%2Fpluginutils/v/1.0.1",
+      "registryUrl": "https://www.npmjs.com/package/%40rolldown%2Fpluginutils/v/1.1.1",
       "repositoryUrl": "https://github.com/rolldown/plugins",
-      "version": "1.0.1"
+      "version": "1.1.1"
     },
     {
       "homepageUrl": "https://github.com/rollup/plugins/tree/master/packages/alias#readme",
@@ -3274,9 +3202,9 @@
       "name": "@rollup/rollup-darwin-arm64",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40rollup%2Frollup-darwin-arm64/v/4.67.5",
+      "registryUrl": "https://www.npmjs.com/package/%40rollup%2Frollup-darwin-arm64/v/4.68.8",
       "repositoryUrl": "https://github.com/rollup/rollup",
-      "version": "4.67.5"
+      "version": "4.68.8"
     },
     {
       "homepageUrl": null,
@@ -3334,9 +3262,9 @@
       "name": "@swc/helpers",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40swc%2Fhelpers/v/0.5.19",
+      "registryUrl": "https://www.npmjs.com/package/%40swc%2Fhelpers/v/0.5.24",
       "repositoryUrl": "https://github.com/swc-project/swc",
-      "version": "0.5.19"
+      "version": "0.5.24"
     },
     {
       "homepageUrl": "https://tailwindcss.com",
@@ -3346,9 +3274,9 @@
       "name": "@tailwindcss/node",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40tailwindcss%2Fnode/v/4.3.4",
+      "registryUrl": "https://www.npmjs.com/package/%40tailwindcss%2Fnode/v/4.3.5",
       "repositoryUrl": "https://github.com/tailwindlabs/tailwindcss",
-      "version": "4.3.4"
+      "version": "4.3.5"
     },
     {
       "homepageUrl": null,
@@ -3358,9 +3286,9 @@
       "name": "@tailwindcss/oxide",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40tailwindcss%2Foxide/v/4.3.4",
+      "registryUrl": "https://www.npmjs.com/package/%40tailwindcss%2Foxide/v/4.3.5",
       "repositoryUrl": "https://github.com/tailwindlabs/tailwindcss",
-      "version": "4.3.4"
+      "version": "4.3.5"
     },
     {
       "homepageUrl": null,
@@ -3370,9 +3298,9 @@
       "name": "@tailwindcss/oxide-darwin-arm64",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40tailwindcss%2Foxide-darwin-arm64/v/4.3.4",
+      "registryUrl": "https://www.npmjs.com/package/%40tailwindcss%2Foxide-darwin-arm64/v/4.3.5",
       "repositoryUrl": "https://github.com/tailwindlabs/tailwindcss",
-      "version": "4.3.4"
+      "version": "4.3.5"
     },
     {
       "homepageUrl": null,
@@ -3382,9 +3310,9 @@
       "name": "@tailwindcss/oxide-wasm32-wasi",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40tailwindcss%2Foxide-wasm32-wasi/v/4.3.4",
+      "registryUrl": "https://www.npmjs.com/package/%40tailwindcss%2Foxide-wasm32-wasi/v/4.3.5",
       "repositoryUrl": "https://github.com/tailwindlabs/tailwindcss",
-      "version": "4.3.4"
+      "version": "4.3.5"
     },
     {
       "homepageUrl": "https://tailwindcss.com",
@@ -3394,9 +3322,9 @@
       "name": "@tailwindcss/vite",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40tailwindcss%2Fvite/v/4.3.4",
+      "registryUrl": "https://www.npmjs.com/package/%40tailwindcss%2Fvite/v/4.3.5",
       "repositoryUrl": "https://github.com/tailwindlabs/tailwindcss",
-      "version": "4.3.4"
+      "version": "4.3.5"
     },
     {
       "homepageUrl": "https://tanstack.com/virtual",
@@ -3445,6 +3373,30 @@
       "registryUrl": "https://www.npmjs.com/package/%40types%2Festree/v/1.0.10",
       "repositoryUrl": "https://github.com/DefinitelyTyped/DefinitelyTyped",
       "version": "1.0.10"
+    },
+    {
+      "homepageUrl": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/estree",
+      "license": "MIT",
+      "licenseFileName": "LICENSE",
+      "licenseText": "MIT License\n\n    Copyright (c) Microsoft Corporation.\n\n    Permission is hereby granted, free of charge, to any person obtaining a copy\n    of this software and associated documentation files (the \"Software\"), to deal\n    in the Software without restriction, including without limitation the rights\n    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell\n    copies of the Software, and to permit persons to whom the Software is\n    furnished to do so, subject to the following conditions:\n\n    The above copyright notice and this permission notice shall be included in all\n    copies or substantial portions of the Software.\n\n    THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n    SOFTWARE",
+      "name": "@types/estree",
+      "noticeFileName": null,
+      "noticeText": null,
+      "registryUrl": "https://www.npmjs.com/package/%40types%2Festree/v/1.0.8",
+      "repositoryUrl": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+      "version": "1.0.8"
+    },
+    {
+      "homepageUrl": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/estree",
+      "license": "MIT",
+      "licenseFileName": "LICENSE",
+      "licenseText": "MIT License\n\n    Copyright (c) Microsoft Corporation.\n\n    Permission is hereby granted, free of charge, to any person obtaining a copy\n    of this software and associated documentation files (the \"Software\"), to deal\n    in the Software without restriction, including without limitation the rights\n    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell\n    copies of the Software, and to permit persons to whom the Software is\n    furnished to do so, subject to the following conditions:\n\n    The above copyright notice and this permission notice shall be included in all\n    copies or substantial portions of the Software.\n\n    THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n    SOFTWARE",
+      "name": "@types/estree",
+      "noticeFileName": null,
+      "noticeText": null,
+      "registryUrl": "https://www.npmjs.com/package/%40types%2Festree/v/1.0.8",
+      "repositoryUrl": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+      "version": "1.0.8"
     },
     {
       "homepageUrl": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/estree",
@@ -3586,9 +3538,9 @@
       "name": "@vavt/util",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40vavt%2Futil/v/2.1.2",
+      "registryUrl": "https://www.npmjs.com/package/%40vavt%2Futil/v/2.2.0",
       "repositoryUrl": "https://github.com/imzbf/vavt-util",
-      "version": "2.1.2"
+      "version": "2.2.0"
     },
     {
       "homepageUrl": "https://vee-validate.logaretm.com/v4/integrations/zod-schema-validation/",
@@ -3610,9 +3562,9 @@
       "name": "@vercel/nft",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40vercel%2Fnft/v/1.11.0",
+      "registryUrl": "https://www.npmjs.com/package/%40vercel%2Fnft/v/1.11.11",
       "repositoryUrl": "https://github.com/vercel/nft",
-      "version": "1.11.0"
+      "version": "1.11.11"
     },
     {
       "homepageUrl": "https://github.com/vitejs/vite-plugin-vue/tree/main/packages/plugin-vue#readme",
@@ -3622,9 +3574,9 @@
       "name": "@vitejs/plugin-vue",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40vitejs%2Fplugin-vue/v/6.0.10",
+      "registryUrl": "https://www.npmjs.com/package/%40vitejs%2Fplugin-vue/v/6.0.11",
       "repositoryUrl": "https://github.com/vitejs/vite-plugin-vue",
-      "version": "6.0.10"
+      "version": "6.0.11"
     },
     {
       "homepageUrl": "https://github.com/vitejs/vite-plugin-vue/tree/main/packages/plugin-vue-jsx#readme",
@@ -3694,21 +3646,9 @@
       "name": "@vue/compiler-core",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fcompiler-core/v/3.5.41",
+      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fcompiler-core/v/3.5.46",
       "repositoryUrl": "https://github.com/vuejs/core",
-      "version": "3.5.41"
-    },
-    {
-      "homepageUrl": "https://github.com/vuejs/core/tree/main/packages/compiler-core#readme",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "The MIT License (MIT)\n\nCopyright (c) 2018-present, Yuxi (Evan) You\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
-      "name": "@vue/compiler-core",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fcompiler-core/v/3.5.45",
-      "repositoryUrl": "https://github.com/vuejs/core",
-      "version": "3.5.45"
+      "version": "3.5.46"
     },
     {
       "homepageUrl": "https://github.com/vuejs/core/tree/main/packages/compiler-dom#readme",
@@ -3718,21 +3658,9 @@
       "name": "@vue/compiler-dom",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fcompiler-dom/v/3.5.41",
+      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fcompiler-dom/v/3.5.46",
       "repositoryUrl": "https://github.com/vuejs/core",
-      "version": "3.5.41"
-    },
-    {
-      "homepageUrl": "https://github.com/vuejs/core/tree/main/packages/compiler-dom#readme",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "The MIT License (MIT)\n\nCopyright (c) 2018-present, Yuxi (Evan) You\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
-      "name": "@vue/compiler-dom",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fcompiler-dom/v/3.5.45",
-      "repositoryUrl": "https://github.com/vuejs/core",
-      "version": "3.5.45"
+      "version": "3.5.46"
     },
     {
       "homepageUrl": "https://github.com/vuejs/core/tree/main/packages/compiler-sfc#readme",
@@ -3742,21 +3670,9 @@
       "name": "@vue/compiler-sfc",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fcompiler-sfc/v/3.5.41",
+      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fcompiler-sfc/v/3.5.46",
       "repositoryUrl": "https://github.com/vuejs/core",
-      "version": "3.5.41"
-    },
-    {
-      "homepageUrl": "https://github.com/vuejs/core/tree/main/packages/compiler-sfc#readme",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "The MIT License (MIT)\n\nCopyright (c) 2018-present, Yuxi (Evan) You\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
-      "name": "@vue/compiler-sfc",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fcompiler-sfc/v/3.5.45",
-      "repositoryUrl": "https://github.com/vuejs/core",
-      "version": "3.5.45"
+      "version": "3.5.46"
     },
     {
       "homepageUrl": "https://github.com/vuejs/core/tree/main/packages/compiler-ssr#readme",
@@ -3766,21 +3682,9 @@
       "name": "@vue/compiler-ssr",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fcompiler-ssr/v/3.5.41",
+      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fcompiler-ssr/v/3.5.46",
       "repositoryUrl": "https://github.com/vuejs/core",
-      "version": "3.5.41"
-    },
-    {
-      "homepageUrl": "https://github.com/vuejs/core/tree/main/packages/compiler-ssr#readme",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "The MIT License (MIT)\n\nCopyright (c) 2018-present, Yuxi (Evan) You\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
-      "name": "@vue/compiler-ssr",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fcompiler-ssr/v/3.5.45",
-      "repositoryUrl": "https://github.com/vuejs/core",
-      "version": "3.5.45"
+      "version": "3.5.46"
     },
     {
       "homepageUrl": null,
@@ -3874,9 +3778,9 @@
       "name": "@vue/reactivity",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40vue%2Freactivity/v/3.5.45",
+      "registryUrl": "https://www.npmjs.com/package/%40vue%2Freactivity/v/3.5.46",
       "repositoryUrl": "https://github.com/vuejs/core",
-      "version": "3.5.45"
+      "version": "3.5.46"
     },
     {
       "homepageUrl": "https://github.com/vuejs/core/tree/main/packages/runtime-core#readme",
@@ -3886,9 +3790,9 @@
       "name": "@vue/runtime-core",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fruntime-core/v/3.5.45",
+      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fruntime-core/v/3.5.46",
       "repositoryUrl": "https://github.com/vuejs/core",
-      "version": "3.5.45"
+      "version": "3.5.46"
     },
     {
       "homepageUrl": "https://github.com/vuejs/core/tree/main/packages/runtime-dom#readme",
@@ -3898,9 +3802,9 @@
       "name": "@vue/runtime-dom",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fruntime-dom/v/3.5.45",
+      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fruntime-dom/v/3.5.46",
       "repositoryUrl": "https://github.com/vuejs/core",
-      "version": "3.5.45"
+      "version": "3.5.46"
     },
     {
       "homepageUrl": "https://github.com/vuejs/core/tree/main/packages/server-renderer#readme",
@@ -3910,9 +3814,9 @@
       "name": "@vue/server-renderer",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fserver-renderer/v/3.5.45",
+      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fserver-renderer/v/3.5.46",
       "repositoryUrl": "https://github.com/vuejs/core",
-      "version": "3.5.45"
+      "version": "3.5.46"
     },
     {
       "homepageUrl": "https://github.com/vuejs/core/tree/main/packages/shared#readme",
@@ -3934,9 +3838,9 @@
       "name": "@vue/shared",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fshared/v/3.5.45",
+      "registryUrl": "https://www.npmjs.com/package/%40vue%2Fshared/v/3.5.46",
       "repositoryUrl": "https://github.com/vuejs/core",
-      "version": "3.5.45"
+      "version": "3.5.46"
     },
     {
       "homepageUrl": "https://github.com/vueuse/vueuse#readme",
@@ -4090,30 +3994,6 @@
       "name": "acorn",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/acorn/v/8.16.0",
-      "repositoryUrl": "https://github.com/acornjs/acorn",
-      "version": "8.16.0"
-    },
-    {
-      "homepageUrl": "https://github.com/acornjs/acorn",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "MIT License\n\nCopyright (C) 2012-2022 by various contributors (see AUTHORS)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
-      "name": "acorn",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/acorn/v/8.16.0",
-      "repositoryUrl": "https://github.com/acornjs/acorn",
-      "version": "8.16.0"
-    },
-    {
-      "homepageUrl": "https://github.com/acornjs/acorn",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "MIT License\n\nCopyright (C) 2012-2022 by various contributors (see AUTHORS)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
-      "name": "acorn",
-      "noticeFileName": null,
-      "noticeText": null,
       "registryUrl": "https://www.npmjs.com/package/acorn/v/8.19.0",
       "repositoryUrl": "https://github.com/acornjs/acorn",
       "version": "8.19.0"
@@ -4150,9 +4030,9 @@
       "name": "agents",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/agents/v/0.33.0",
+      "registryUrl": "https://www.npmjs.com/package/agents/v/0.34.0",
       "repositoryUrl": "https://github.com/cloudflare/agents",
-      "version": "0.33.0"
+      "version": "0.34.0"
     },
     {
       "homepageUrl": null,
@@ -4306,9 +4186,9 @@
       "name": "ast-kit",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/ast-kit/v/3.0.0",
+      "registryUrl": "https://www.npmjs.com/package/ast-kit/v/3.0.1",
       "repositoryUrl": "https://github.com/sxzz/ast-kit",
-      "version": "3.0.0"
+      "version": "3.0.1"
     },
     {
       "homepageUrl": "https://github.com/sxzz/ast-walker-scope#readme",
@@ -4354,9 +4234,9 @@
       "name": "autoprefixer",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/autoprefixer/v/10.6.2",
+      "registryUrl": "https://www.npmjs.com/package/autoprefixer/v/10.7.0",
       "repositoryUrl": "postcss/autoprefixer",
-      "version": "10.6.2"
+      "version": "10.7.0"
     },
     {
       "homepageUrl": "https://github.com/holepunchto/b4a#readme",
@@ -4395,6 +4275,18 @@
       "version": "4.0.4"
     },
     {
+      "homepageUrl": "https://github.com/holepunchto/bare-buffer#readme",
+      "license": "Apache-2.0",
+      "licenseFileName": "LICENSE",
+      "licenseText": "Apache License\n                           Version 2.0, January 2004\n                        http://www.apache.org/licenses/\n\n   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION\n\n   1. Definitions.\n\n      \"License\" shall mean the terms and conditions for use, reproduction,\n      and distribution as defined by Sections 1 through 9 of this document.\n\n      \"Licensor\" shall mean the copyright owner or entity authorized by\n      the copyright owner that is granting the License.\n\n      \"Legal Entity\" shall mean the union of the acting entity and all\n      other entities that control, are controlled by, or are under common\n      control with that entity. For the purposes of this definition,\n      \"control\" means (i) the power, direct or indirect, to cause the\n      direction or management of such entity, whether by contract or\n      otherwise, or (ii) ownership of fifty percent (50%) or more of the\n      outstanding shares, or (iii) beneficial ownership of such entity.\n\n      \"You\" (or \"Your\") shall mean an individual or Legal Entity\n      exercising permissions granted by this License.\n\n      \"Source\" form shall mean the preferred form for making modifications,\n      including but not limited to software source code, documentation\n      source, and configuration files.\n\n      \"Object\" form shall mean any form resulting from mechanical\n      transformation or translation of a Source form, including but\n      not limited to compiled object code, generated documentation,\n      and conversions to other media types.\n\n      \"Work\" shall mean the work of authorship, whether in Source or\n      Object form, made available under the License, as indicated by a\n      copyright notice that is included in or attached to the work\n      (an example is provided in the Appendix below).\n\n      \"Derivative Works\" shall mean any work, whether in Source or Object\n      form, that is based on (or derived from) the Work and for which the\n      editorial revisions, annotations, elaborations, or other modifications\n      represent, as a whole, an original work of authorship. For the purposes\n      of this License, Derivative Works shall not include works that remain\n      separable from, or merely link (or bind by name) to the interfaces of,\n      the Work and Derivative Works thereof.\n\n      \"Contribution\" shall mean any work of authorship, including\n      the original version of the Work and any modifications or additions\n      to that Work or Derivative Works thereof, that is intentionally\n      submitted to Licensor for inclusion in the Work by the copyright owner\n      or by an individual or Legal Entity authorized to submit on behalf of\n      the copyright owner. For the purposes of this definition, \"submitted\"\n      means any form of electronic, verbal, or written communication sent\n      to the Licensor or its representatives, including but not limited to\n      communication on electronic mailing lists, source code control systems,\n      and issue tracking systems that are managed by, or on behalf of, the\n      Licensor for the purpose of discussing and improving the Work, but\n      excluding communication that is conspicuously marked or otherwise\n      designated in writing by the copyright owner as \"Not a Contribution.\"\n\n      \"Contributor\" shall mean Licensor and any individual or Legal Entity\n      on behalf of whom a Contribution has been received by Licensor and\n      subsequently incorporated within the Work.\n\n   2. Grant of Copyright License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      copyright license to reproduce, prepare Derivative Works of,\n      publicly display, publicly perform, sublicense, and distribute the\n      Work and such Derivative Works in Source or Object form.\n\n   3. Grant of Patent License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      (except as stated in this section) patent license to make, have made,\n      use, offer to sell, sell, import, and otherwise transfer the Work,\n      where such license applies only to those patent claims licensable\n      by such Contributor that are necessarily infringed by their\n      Contribution(s) alone or by combination of their Contribution(s)\n      with the Work to which such Contribution(s) was submitted. If You\n      institute patent litigation against any entity (including a\n      cross-claim or counterclaim in a lawsuit) alleging that the Work\n      or a Contribution incorporated within the Work constitutes direct\n      or contributory patent infringement, then any patent licenses\n      granted to You under this License for that Work shall terminate\n      as of the date such litigation is filed.\n\n   4. Redistribution. You may reproduce and distribute copies of the\n      Work or Derivative Works thereof in any medium, with or without\n      modifications, and in Source or Object form, provided that You\n      meet the following conditions:\n\n      (a) You must give any other recipients of the Work or\n          Derivative Works a copy of this License; and\n\n      (b) You must cause any modified files to carry prominent notices\n          stating that You changed the files; and\n\n      (c) You must retain, in the Source form of any Derivative Works\n          that You distribute, all copyright, patent, trademark, and\n          attribution notices from the Source form of the Work,\n          excluding those notices that do not pertain to any part of\n          the Derivative Works; and\n\n      (d) If the Work includes a \"NOTICE\" text file as part of its\n          distribution, then any Derivative Works that You distribute must\n          include a readable copy of the attribution notices contained\n          within such NOTICE file, excluding those notices that do not\n          pertain to any part of the Derivative Works, in at least one\n          of the following places: within a NOTICE text file distributed\n          as part of the Derivative Works; within the Source form or\n          documentation, if provided along with the Derivative Works; or,\n          within a display generated by the Derivative Works, if and\n          wherever such third-party notices normally appear. The contents\n          of the NOTICE file are for informational purposes only and\n          do not modify the License. You may add Your own attribution\n          notices within Derivative Works that You distribute, alongside\n          or as an addendum to the NOTICE text from the Work, provided\n          that such additional attribution notices cannot be construed\n          as modifying the License.\n\n      You may add Your own copyright statement to Your modifications and\n      may provide additional or different license terms and conditions\n      for use, reproduction, or distribution of Your modifications, or\n      for any such Derivative Works as a whole, provided Your use,\n      reproduction, and distribution of the Work otherwise complies with\n      the conditions stated in this License.\n\n   5. Submission of Contributions. Unless You explicitly state otherwise,\n      any Contribution intentionally submitted for inclusion in the Work\n      by You to the Licensor shall be under the terms and conditions of\n      this License, without any additional terms or conditions.\n      Notwithstanding the above, nothing herein shall supersede or modify\n      the terms of any separate license agreement you may have executed\n      with Licensor regarding such Contributions.\n\n   6. Trademarks. This License does not grant permission to use the trade\n      names, trademarks, service marks, or product names of the Licensor,\n      except as required for reasonable and customary use in describing the\n      origin of the Work and reproducing the content of the NOTICE file.\n\n   7. Disclaimer of Warranty. Unless required by applicable law or\n      agreed to in writing, Licensor provides the Work (and each\n      Contributor provides its Contributions) on an \"AS IS\" BASIS,\n      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or\n      implied, including, without limitation, any warranties or conditions\n      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A\n      PARTICULAR PURPOSE. You are solely responsible for determining the\n      appropriateness of using or redistributing the Work and assume any\n      risks associated with Your exercise of permissions under this License.\n\n   8. Limitation of Liability. In no event and under no legal theory,\n      whether in tort (including negligence), contract, or otherwise,\n      unless required by applicable law (such as deliberate and grossly\n      negligent acts) or agreed to in writing, shall any Contributor be\n      liable to You for damages, including any direct, indirect, special,\n      incidental, or consequential damages of any character arising as a\n      result of this License or out of the use or inability to use the\n      Work (including but not limited to damages for loss of goodwill,\n      work stoppage, computer failure or malfunction, or any and all\n      other commercial damages or losses), even if such Contributor\n      has been advised of the possibility of such damages.\n\n   9. Accepting Warranty or Additional Liability. While redistributing\n      the Work or Derivative Works thereof, You may choose to offer,\n      and charge a fee for, acceptance of support, warranty, indemnity,\n      or other liability obligations and/or rights consistent with this\n      License. However, in accepting such obligations, You may act only\n      on Your own behalf and on Your sole responsibility, not on behalf\n      of any other Contributor, and only if You agree to indemnify,\n      defend, and hold each Contributor harmless for any liability\n      incurred by, or claims asserted against, such Contributor by reason\n      of your accepting any such warranty or additional liability.\n\n   END OF TERMS AND CONDITIONS\n\n   APPENDIX: How to apply the Apache License to your work.\n\n      To apply the Apache License to your work, attach the following\n      boilerplate notice, with the fields enclosed by brackets \"[]\"\n      replaced with your own identifying information. (Don't include\n      the brackets!)  The text should be enclosed in the appropriate\n      comment syntax for the file format. We also recommend that a\n      file or class name and description of purpose be included on the\n      same \"printed page\" as the copyright notice for easier\n      identification within third-party archives.\n\n   Copyright [yyyy] [name of copyright owner]\n\n   Licensed under the Apache License, Version 2.0 (the \"License\");\n   you may not use this file except in compliance with the License.\n   You may obtain a copy of the License at\n\n       http://www.apache.org/licenses/LICENSE-2.0\n\n   Unless required by applicable law or agreed to in writing, software\n   distributed under the License is distributed on an \"AS IS\" BASIS,\n   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n   See the License for the specific language governing permissions and\n   limitations under the License.",
+      "name": "bare-buffer",
+      "noticeFileName": null,
+      "noticeText": null,
+      "registryUrl": "https://www.npmjs.com/package/bare-buffer/v/3.7.3",
+      "repositoryUrl": "https://github.com/holepunchto/bare-buffer",
+      "version": "3.7.3"
+    },
+    {
       "homepageUrl": "https://github.com/holepunchto/bare-events#readme",
       "license": "Apache-2.0",
       "licenseFileName": "LICENSE",
@@ -4414,21 +4306,9 @@
       "name": "bare-fs",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/bare-fs/v/4.8.4",
+      "registryUrl": "https://www.npmjs.com/package/bare-fs/v/4.8.5",
       "repositoryUrl": "https://github.com/holepunchto/bare-fs",
-      "version": "4.8.4"
-    },
-    {
-      "homepageUrl": "https://github.com/holepunchto/bare-os#readme",
-      "license": "Apache-2.0",
-      "licenseFileName": "LICENSE",
-      "licenseText": "Apache License\n                           Version 2.0, January 2004\n                        http://www.apache.org/licenses/\n\n   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION\n\n   1. Definitions.\n\n      \"License\" shall mean the terms and conditions for use, reproduction,\n      and distribution as defined by Sections 1 through 9 of this document.\n\n      \"Licensor\" shall mean the copyright owner or entity authorized by\n      the copyright owner that is granting the License.\n\n      \"Legal Entity\" shall mean the union of the acting entity and all\n      other entities that control, are controlled by, or are under common\n      control with that entity. For the purposes of this definition,\n      \"control\" means (i) the power, direct or indirect, to cause the\n      direction or management of such entity, whether by contract or\n      otherwise, or (ii) ownership of fifty percent (50%) or more of the\n      outstanding shares, or (iii) beneficial ownership of such entity.\n\n      \"You\" (or \"Your\") shall mean an individual or Legal Entity\n      exercising permissions granted by this License.\n\n      \"Source\" form shall mean the preferred form for making modifications,\n      including but not limited to software source code, documentation\n      source, and configuration files.\n\n      \"Object\" form shall mean any form resulting from mechanical\n      transformation or translation of a Source form, including but\n      not limited to compiled object code, generated documentation,\n      and conversions to other media types.\n\n      \"Work\" shall mean the work of authorship, whether in Source or\n      Object form, made available under the License, as indicated by a\n      copyright notice that is included in or attached to the work\n      (an example is provided in the Appendix below).\n\n      \"Derivative Works\" shall mean any work, whether in Source or Object\n      form, that is based on (or derived from) the Work and for which the\n      editorial revisions, annotations, elaborations, or other modifications\n      represent, as a whole, an original work of authorship. For the purposes\n      of this License, Derivative Works shall not include works that remain\n      separable from, or merely link (or bind by name) to the interfaces of,\n      the Work and Derivative Works thereof.\n\n      \"Contribution\" shall mean any work of authorship, including\n      the original version of the Work and any modifications or additions\n      to that Work or Derivative Works thereof, that is intentionally\n      submitted to Licensor for inclusion in the Work by the copyright owner\n      or by an individual or Legal Entity authorized to submit on behalf of\n      the copyright owner. For the purposes of this definition, \"submitted\"\n      means any form of electronic, verbal, or written communication sent\n      to the Licensor or its representatives, including but not limited to\n      communication on electronic mailing lists, source code control systems,\n      and issue tracking systems that are managed by, or on behalf of, the\n      Licensor for the purpose of discussing and improving the Work, but\n      excluding communication that is conspicuously marked or otherwise\n      designated in writing by the copyright owner as \"Not a Contribution.\"\n\n      \"Contributor\" shall mean Licensor and any individual or Legal Entity\n      on behalf of whom a Contribution has been received by Licensor and\n      subsequently incorporated within the Work.\n\n   2. Grant of Copyright License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      copyright license to reproduce, prepare Derivative Works of,\n      publicly display, publicly perform, sublicense, and distribute the\n      Work and such Derivative Works in Source or Object form.\n\n   3. Grant of Patent License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      (except as stated in this section) patent license to make, have made,\n      use, offer to sell, sell, import, and otherwise transfer the Work,\n      where such license applies only to those patent claims licensable\n      by such Contributor that are necessarily infringed by their\n      Contribution(s) alone or by combination of their Contribution(s)\n      with the Work to which such Contribution(s) was submitted. If You\n      institute patent litigation against any entity (including a\n      cross-claim or counterclaim in a lawsuit) alleging that the Work\n      or a Contribution incorporated within the Work constitutes direct\n      or contributory patent infringement, then any patent licenses\n      granted to You under this License for that Work shall terminate\n      as of the date such litigation is filed.\n\n   4. Redistribution. You may reproduce and distribute copies of the\n      Work or Derivative Works thereof in any medium, with or without\n      modifications, and in Source or Object form, provided that You\n      meet the following conditions:\n\n      (a) You must give any other recipients of the Work or\n          Derivative Works a copy of this License; and\n\n      (b) You must cause any modified files to carry prominent notices\n          stating that You changed the files; and\n\n      (c) You must retain, in the Source form of any Derivative Works\n          that You distribute, all copyright, patent, trademark, and\n          attribution notices from the Source form of the Work,\n          excluding those notices that do not pertain to any part of\n          the Derivative Works; and\n\n      (d) If the Work includes a \"NOTICE\" text file as part of its\n          distribution, then any Derivative Works that You distribute must\n          include a readable copy of the attribution notices contained\n          within such NOTICE file, excluding those notices that do not\n          pertain to any part of the Derivative Works, in at least one\n          of the following places: within a NOTICE text file distributed\n          as part of the Derivative Works; within the Source form or\n          documentation, if provided along with the Derivative Works; or,\n          within a display generated by the Derivative Works, if and\n          wherever such third-party notices normally appear. The contents\n          of the NOTICE file are for informational purposes only and\n          do not modify the License. You may add Your own attribution\n          notices within Derivative Works that You distribute, alongside\n          or as an addendum to the NOTICE text from the Work, provided\n          that such additional attribution notices cannot be construed\n          as modifying the License.\n\n      You may add Your own copyright statement to Your modifications and\n      may provide additional or different license terms and conditions\n      for use, reproduction, or distribution of Your modifications, or\n      for any such Derivative Works as a whole, provided Your use,\n      reproduction, and distribution of the Work otherwise complies with\n      the conditions stated in this License.\n\n   5. Submission of Contributions. Unless You explicitly state otherwise,\n      any Contribution intentionally submitted for inclusion in the Work\n      by You to the Licensor shall be under the terms and conditions of\n      this License, without any additional terms or conditions.\n      Notwithstanding the above, nothing herein shall supersede or modify\n      the terms of any separate license agreement you may have executed\n      with Licensor regarding such Contributions.\n\n   6. Trademarks. This License does not grant permission to use the trade\n      names, trademarks, service marks, or product names of the Licensor,\n      except as required for reasonable and customary use in describing the\n      origin of the Work and reproducing the content of the NOTICE file.\n\n   7. Disclaimer of Warranty. Unless required by applicable law or\n      agreed to in writing, Licensor provides the Work (and each\n      Contributor provides its Contributions) on an \"AS IS\" BASIS,\n      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or\n      implied, including, without limitation, any warranties or conditions\n      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A\n      PARTICULAR PURPOSE. You are solely responsible for determining the\n      appropriateness of using or redistributing the Work and assume any\n      risks associated with Your exercise of permissions under this License.\n\n   8. Limitation of Liability. In no event and under no legal theory,\n      whether in tort (including negligence), contract, or otherwise,\n      unless required by applicable law (such as deliberate and grossly\n      negligent acts) or agreed to in writing, shall any Contributor be\n      liable to You for damages, including any direct, indirect, special,\n      incidental, or consequential damages of any character arising as a\n      result of this License or out of the use or inability to use the\n      Work (including but not limited to damages for loss of goodwill,\n      work stoppage, computer failure or malfunction, or any and all\n      other commercial damages or losses), even if such Contributor\n      has been advised of the possibility of such damages.\n\n   9. Accepting Warranty or Additional Liability. While redistributing\n      the Work or Derivative Works thereof, You may choose to offer,\n      and charge a fee for, acceptance of support, warranty, indemnity,\n      or other liability obligations and/or rights consistent with this\n      License. However, in accepting such obligations, You may act only\n      on Your own behalf and on Your sole responsibility, not on behalf\n      of any other Contributor, and only if You agree to indemnify,\n      defend, and hold each Contributor harmless for any liability\n      incurred by, or claims asserted against, such Contributor by reason\n      of your accepting any such warranty or additional liability.\n\n   END OF TERMS AND CONDITIONS\n\n   APPENDIX: How to apply the Apache License to your work.\n\n      To apply the Apache License to your work, attach the following\n      boilerplate notice, with the fields enclosed by brackets \"[]\"\n      replaced with your own identifying information. (Don't include\n      the brackets!)  The text should be enclosed in the appropriate\n      comment syntax for the file format. We also recommend that a\n      file or class name and description of purpose be included on the\n      same \"printed page\" as the copyright notice for easier\n      identification within third-party archives.\n\n   Copyright [yyyy] [name of copyright owner]\n\n   Licensed under the Apache License, Version 2.0 (the \"License\");\n   you may not use this file except in compliance with the License.\n   You may obtain a copy of the License at\n\n       http://www.apache.org/licenses/LICENSE-2.0\n\n   Unless required by applicable law or agreed to in writing, software\n   distributed under the License is distributed on an \"AS IS\" BASIS,\n   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n   See the License for the specific language governing permissions and\n   limitations under the License.",
-      "name": "bare-os",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/bare-os/v/3.8.0",
-      "repositoryUrl": "https://github.com/holepunchto/bare-os",
-      "version": "3.8.0"
+      "version": "4.8.5"
     },
     {
       "homepageUrl": "https://github.com/holepunchto/bare-path#readme",
@@ -4438,9 +4318,9 @@
       "name": "bare-path",
       "noticeFileName": "NOTICE",
       "noticeText": "Copyright 2023 Holepunch Inc\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n    http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an \"AS IS\" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.\n\n---\n\nCopyright Joyent, Inc. and other Node contributors.\n\nPermission is hereby granted, free of charge, to any person obtaining a\ncopy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to permit\npersons to whom the Software is furnished to do so, subject to the\nfollowing conditions:\n\nThe above copyright notice and this permission notice shall be included\nin all copies or substantial portions of the Software.",
-      "registryUrl": "https://www.npmjs.com/package/bare-path/v/3.0.0",
+      "registryUrl": "https://www.npmjs.com/package/bare-path/v/3.1.3",
       "repositoryUrl": "https://github.com/holepunchto/bare-path",
-      "version": "3.0.0"
+      "version": "3.1.3"
     },
     {
       "homepageUrl": "https://github.com/holepunchto/bare-stream#readme",
@@ -4450,9 +4330,9 @@
       "name": "bare-stream",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/bare-stream/v/2.8.1",
+      "registryUrl": "https://www.npmjs.com/package/bare-stream/v/2.13.4",
       "repositoryUrl": "https://github.com/holepunchto/bare-stream",
-      "version": "2.8.1"
+      "version": "2.13.4"
     },
     {
       "homepageUrl": "https://github.com/holepunchto/bare-url",
@@ -4462,9 +4342,9 @@
       "name": "bare-url",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/bare-url/v/2.3.2",
+      "registryUrl": "https://www.npmjs.com/package/bare-url/v/2.5.8",
       "repositoryUrl": "https://github.com/holepunchto/bare-url",
-      "version": "2.3.2"
+      "version": "2.5.8"
     },
     {
       "homepageUrl": null,
@@ -4498,9 +4378,9 @@
       "name": "baseline-browser-mapping",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/baseline-browser-mapping/v/2.11.35",
+      "registryUrl": "https://www.npmjs.com/package/baseline-browser-mapping/v/2.11.39",
       "repositoryUrl": "https://github.com/web-platform-dx/baseline-browser-mapping",
-      "version": "2.11.35"
+      "version": "2.11.39"
     },
     {
       "homepageUrl": "https://github.com/TooTallNate/node-bindings",
@@ -4558,9 +4438,9 @@
       "name": "brace-expansion",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/brace-expansion/v/5.0.12",
+      "registryUrl": "https://www.npmjs.com/package/brace-expansion/v/5.0.13",
       "repositoryUrl": "https://github.com/juliangruber/brace-expansion",
-      "version": "5.0.12"
+      "version": "5.0.13"
     },
     {
       "homepageUrl": "https://github.com/micromatch/braces",
@@ -4582,9 +4462,9 @@
       "name": "browserslist",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/browserslist/v/4.29.5",
+      "registryUrl": "https://www.npmjs.com/package/browserslist/v/4.29.6",
       "repositoryUrl": "browserslist/browserslist",
-      "version": "4.29.5"
+      "version": "4.29.6"
     },
     {
       "homepageUrl": "https://github.com/feross/buffer",
@@ -4630,9 +4510,9 @@
       "name": "bundle-name",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/bundle-name/v/4.1.0",
+      "registryUrl": "https://www.npmjs.com/package/bundle-name/v/4.1.1",
       "repositoryUrl": "sindresorhus/bundle-name",
-      "version": "4.1.0"
+      "version": "4.1.1"
     },
     {
       "homepageUrl": null,
@@ -4650,13 +4530,13 @@
       "homepageUrl": "https://github.com/cacjs/cac#readme",
       "license": "MIT",
       "licenseFileName": "LICENSE",
-      "licenseText": "The MIT License (MIT)\n\nCopyright (c) EGOIST <0x142857@gmail.com> (https://github.com/egoist)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
+      "licenseText": "The MIT License (MIT)\n\nCopyright (c) EGOIST <0x142857@gmail.com> (https://github.com/egoist)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.\n\n---\n\nsrc/mri.ts is forked from mri (https://github.com/lukeed/mri),\ndistributed under the following license:\n\nThe MIT License (MIT)\n\nCopyright (c) Luke Edwards <luke.edwards05@gmail.com> (lukeed.com)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
       "name": "cac",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/cac/v/7.1.0",
+      "registryUrl": "https://www.npmjs.com/package/cac/v/7.1.1",
       "repositoryUrl": "https://github.com/cacjs/cac",
-      "version": "7.1.0"
+      "version": "7.1.1"
     },
     {
       "homepageUrl": "https://github.com/ljharb/camelize",
@@ -4690,9 +4570,9 @@
       "name": "caniuse-lite",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/caniuse-lite/v/1.0.30001820",
+      "registryUrl": "https://www.npmjs.com/package/caniuse-lite/v/1.0.30001826",
       "repositoryUrl": "browserslist/caniuse-lite",
-      "version": "1.0.30001820"
+      "version": "1.0.30001826"
     },
     {
       "homepageUrl": "https://github.com/cloudflare/capnweb#readme",
@@ -4717,6 +4597,18 @@
       "registryUrl": "https://www.npmjs.com/package/chokidar/v/5.0.0",
       "repositoryUrl": "https://github.com/paulmillr/chokidar",
       "version": "5.0.0"
+    },
+    {
+      "homepageUrl": "https://github.com/paulmillr/chokidar",
+      "license": "MIT",
+      "licenseFileName": "LICENSE",
+      "licenseText": "The MIT License (MIT)\n\nCopyright (c) 2012 Paul Miller (https://paulmillr.com), Elan Shanker\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the “Software”), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
+      "name": "chokidar",
+      "noticeFileName": null,
+      "noticeText": null,
+      "registryUrl": "https://www.npmjs.com/package/chokidar/v/6.0.0",
+      "repositoryUrl": "https://github.com/paulmillr/chokidar",
+      "version": "6.0.0"
     },
     {
       "homepageUrl": "https://github.com/paulmillr/chokidar",
@@ -5278,9 +5170,9 @@
       "name": "csstype",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/csstype/v/3.2.3",
+      "registryUrl": "https://www.npmjs.com/package/csstype/v/3.2.4",
       "repositoryUrl": "https://github.com/frenic/csstype",
-      "version": "3.2.3"
+      "version": "3.2.4"
     },
     {
       "homepageUrl": "https://csv.js.org/parse",
@@ -5518,9 +5410,9 @@
       "name": "electron-to-chromium",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/electron-to-chromium/v/1.5.477",
+      "registryUrl": "https://www.npmjs.com/package/electron-to-chromium/v/1.5.492",
       "repositoryUrl": "https://github.com/Kilian/electron-to-chromium",
-      "version": "1.5.477"
+      "version": "1.5.492"
     },
     {
       "homepageUrl": "https://mths.be/emoji-regex",
@@ -5578,9 +5470,9 @@
       "name": "enhanced-resolve",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/enhanced-resolve/v/5.26.1",
+      "registryUrl": "https://www.npmjs.com/package/enhanced-resolve/v/5.27.0",
       "repositoryUrl": "https://github.com/webpack/enhanced-resolve",
-      "version": "5.26.1"
+      "version": "5.27.0"
     },
     {
       "homepageUrl": null,
@@ -5593,18 +5485,6 @@
       "registryUrl": "https://www.npmjs.com/package/entities/v/4.5.0",
       "repositoryUrl": "https://github.com/fb55/entities",
       "version": "4.5.0"
-    },
-    {
-      "homepageUrl": null,
-      "license": "BSD-2-Clause",
-      "licenseFileName": "LICENSE",
-      "licenseText": "Copyright (c) Felix Böhm\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:\n\nRedistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.\n\nRedistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.\n\nTHIS IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS,\nEVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.",
-      "name": "entities",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/entities/v/7.0.1",
-      "repositoryUrl": "https://github.com/fb55/entities",
-      "version": "7.0.1"
     },
     {
       "homepageUrl": null,
@@ -5710,9 +5590,9 @@
       "name": "es-module-lexer",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/es-module-lexer/v/3.0.4",
+      "registryUrl": "https://www.npmjs.com/package/es-module-lexer/v/3.0.5",
       "repositoryUrl": "https://github.com/guybedford/es-module-lexer",
-      "version": "3.0.4"
+      "version": "3.0.5"
     },
     {
       "homepageUrl": null,
@@ -5821,18 +5701,6 @@
       "registryUrl": "https://www.npmjs.com/package/escape-string-regexp/v/5.0.0",
       "repositoryUrl": "sindresorhus/escape-string-regexp",
       "version": "5.0.0"
-    },
-    {
-      "homepageUrl": null,
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "Copyright (c) 2015-20 [these people](https://github.com/Rich-Harris/estree-walker/graphs/contributors)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
-      "name": "estree-walker",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/estree-walker/v/2.0.2",
-      "repositoryUrl": "https://github.com/Rich-Harris/estree-walker",
-      "version": "2.0.2"
     },
     {
       "homepageUrl": null,
@@ -6346,9 +6214,9 @@
       "name": "glob",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/glob/v/14.0.3",
+      "registryUrl": "https://www.npmjs.com/package/glob/v/14.0.6",
       "repositoryUrl": "git@github.com:isaacs/node-glob",
-      "version": "14.0.3"
+      "version": "14.0.6"
     },
     {
       "homepageUrl": null,
@@ -6388,15 +6256,15 @@
     },
     {
       "homepageUrl": null,
-      "license": "ISC",
-      "licenseFileName": "LICENSE",
-      "licenseText": "The ISC License\n\nCopyright (c) 2011-2022 Isaac Z. Schlueter, Ben Noordhuis, and Contributors\n\nPermission to use, copy, modify, and/or distribute this software for any\npurpose with or without fee is hereby granted, provided that the above\ncopyright notice and this permission notice appear in all copies.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\" AND THE AUTHOR DISCLAIMS ALL WARRANTIES\nWITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF\nMERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR\nANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES\nWHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN\nACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR\nIN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.",
+      "license": "BlueOak-1.0.0",
+      "licenseFileName": "LICENSE.md",
+      "licenseText": "# Blue Oak Model License\n\nVersion 1.0.0\n\n## Purpose\n\nThis license gives everyone as much permission to work with\nthis software as possible, while protecting contributors\nfrom liability.\n\n## Acceptance\n\nIn order to receive this license, you must agree to its\nrules.  The rules of this license are both obligations\nunder that agreement and conditions to your license.\nYou must not do anything with this software that triggers\na rule that you cannot or will not follow.\n\n## Copyright\n\nEach contributor licenses you to do everything with this\nsoftware that would otherwise infringe that contributor's\ncopyright in it.\n\n## Notices\n\nYou must ensure that everyone who gets a copy of\nany part of this software from you, with or without\nchanges, also gets the text of this license or a link to\n<https://blueoakcouncil.org/license/1.0.0>.\n\n## Excuse\n\nIf anyone notifies you in writing that you have not\ncomplied with [Notices](#notices), you can keep your\nlicense by taking all practical steps to comply within 30\ndays after the notice.  If you do not do so, your license\nends immediately.\n\n## Patent\n\nEach contributor licenses you to do everything with this\nsoftware that would otherwise infringe any patent claims\nthey can license or become able to license.\n\n## Reliability\n\nNo contributor can revoke this license.\n\n## No Liability\n\n***As far as the law allows, this software comes as is,\nwithout any warranty or condition, and no contributor\nwill be liable to anyone for any damages related to this\nsoftware or this license, under any kind of legal claim.***",
       "name": "graceful-fs",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/graceful-fs/v/4.2.11",
+      "registryUrl": "https://www.npmjs.com/package/graceful-fs/v/4.2.12",
       "repositoryUrl": "https://github.com/isaacs/node-graceful-fs",
-      "version": "4.2.11"
+      "version": "4.2.12"
     },
     {
       "homepageUrl": null,
@@ -6598,9 +6466,9 @@
       "name": "ignore",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/ignore/v/7.0.14",
+      "registryUrl": "https://www.npmjs.com/package/ignore/v/7.0.16",
       "repositoryUrl": "https://github.com/kaelzhang/node-ignore",
-      "version": "7.0.14"
+      "version": "7.0.16"
     },
     {
       "homepageUrl": null,
@@ -6610,9 +6478,9 @@
       "name": "ignore",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/ignore/v/7.0.14",
+      "registryUrl": "https://www.npmjs.com/package/ignore/v/7.0.16",
       "repositoryUrl": "https://github.com/kaelzhang/node-ignore",
-      "version": "7.0.14"
+      "version": "7.0.16"
     },
     {
       "homepageUrl": null,
@@ -6622,9 +6490,9 @@
       "name": "ignore",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/ignore/v/7.0.14",
+      "registryUrl": "https://www.npmjs.com/package/ignore/v/7.0.16",
       "repositoryUrl": "https://github.com/kaelzhang/node-ignore",
-      "version": "7.0.14"
+      "version": "7.0.16"
     },
     {
       "homepageUrl": null,
@@ -6634,9 +6502,9 @@
       "name": "ignore",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/ignore/v/7.0.5",
-      "repositoryUrl": "git@github.com:kaelzhang/node-ignore",
-      "version": "7.0.5"
+      "registryUrl": "https://www.npmjs.com/package/ignore/v/7.0.16",
+      "repositoryUrl": "https://github.com/kaelzhang/node-ignore",
+      "version": "7.0.16"
     },
     {
       "homepageUrl": null,
@@ -6982,9 +6850,9 @@
       "name": "jose",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/jose/v/6.2.15",
+      "registryUrl": "https://www.npmjs.com/package/jose/v/6.2.18",
       "repositoryUrl": "panva/jose",
-      "version": "6.2.15"
+      "version": "6.2.18"
     },
     {
       "homepageUrl": null,
@@ -6994,9 +6862,9 @@
       "name": "js-base64",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/js-base64/v/3.9.6",
+      "registryUrl": "https://www.npmjs.com/package/js-base64/v/3.9.7",
       "repositoryUrl": "https://github.com/dankogai/js-base64",
-      "version": "3.9.6"
+      "version": "3.9.7"
     },
     {
       "homepageUrl": null,
@@ -7287,6 +7155,54 @@
       "version": "1.2.1"
     },
     {
+      "homepageUrl": "https://github.com/antfu-collective/local-pkg#readme",
+      "license": "MIT",
+      "licenseFileName": "LICENSE",
+      "licenseText": "MIT License\n\nCopyright (c) 2021 Anthony Fu <https://github.com/antfu>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
+      "name": "local-pkg",
+      "noticeFileName": null,
+      "noticeText": null,
+      "registryUrl": "https://www.npmjs.com/package/local-pkg/v/1.2.1",
+      "repositoryUrl": "https://github.com/antfu-collective/local-pkg",
+      "version": "1.2.1"
+    },
+    {
+      "homepageUrl": "https://github.com/antfu-collective/local-pkg#readme",
+      "license": "MIT",
+      "licenseFileName": "LICENSE",
+      "licenseText": "MIT License\n\nCopyright (c) 2021 Anthony Fu <https://github.com/antfu>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
+      "name": "local-pkg",
+      "noticeFileName": null,
+      "noticeText": null,
+      "registryUrl": "https://www.npmjs.com/package/local-pkg/v/1.2.1",
+      "repositoryUrl": "https://github.com/antfu-collective/local-pkg",
+      "version": "1.2.1"
+    },
+    {
+      "homepageUrl": "https://github.com/antfu-collective/local-pkg#readme",
+      "license": "MIT",
+      "licenseFileName": "LICENSE",
+      "licenseText": "MIT License\n\nCopyright (c) 2021 Anthony Fu <https://github.com/antfu>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
+      "name": "local-pkg",
+      "noticeFileName": null,
+      "noticeText": null,
+      "registryUrl": "https://www.npmjs.com/package/local-pkg/v/1.2.1",
+      "repositoryUrl": "https://github.com/antfu-collective/local-pkg",
+      "version": "1.2.1"
+    },
+    {
+      "homepageUrl": "https://github.com/antfu-collective/local-pkg#readme",
+      "license": "MIT",
+      "licenseFileName": "LICENSE",
+      "licenseText": "MIT License\n\nCopyright (c) 2021 Anthony Fu <https://github.com/antfu>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
+      "name": "local-pkg",
+      "noticeFileName": null,
+      "noticeText": null,
+      "registryUrl": "https://www.npmjs.com/package/local-pkg/v/2.0.0",
+      "repositoryUrl": "https://github.com/antfu-collective/local-pkg",
+      "version": "2.0.0"
+    },
+    {
       "homepageUrl": null,
       "license": "BlueOak-1.0.0",
       "licenseFileName": "LICENSE.md",
@@ -7522,9 +7438,9 @@
       "name": "md-editor-v3",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/md-editor-v3/v/7.1.0",
+      "registryUrl": "https://www.npmjs.com/package/md-editor-v3/v/7.1.1",
       "repositoryUrl": "https://github.com/imzbf/md-editor-v3",
-      "version": "7.1.0"
+      "version": "7.1.1"
     },
     {
       "homepageUrl": null,
@@ -7690,9 +7606,9 @@
       "name": "minimatch",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/minimatch/v/11.0.4",
-      "repositoryUrl": "git@github.com:isaacs/minimatch",
-      "version": "11.0.4"
+      "registryUrl": "https://www.npmjs.com/package/minimatch/v/11.0.9",
+      "repositoryUrl": "ssh://git@github.com/isaacs/minimatch",
+      "version": "11.0.9"
     },
     {
       "homepageUrl": null,
@@ -7822,21 +7738,9 @@
       "name": "my-bad",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/my-bad/v/0.2.11",
+      "registryUrl": "https://www.npmjs.com/package/my-bad/v/0.2.12",
       "repositoryUrl": "danielroe/my-bad",
-      "version": "0.2.11"
-    },
-    {
-      "homepageUrl": null,
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "The MIT License (MIT)\n\nCopyright 2017 Andrey Sitnik <andrey@sitnik.ru>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of\nthis software and associated documentation files (the \"Software\"), to deal in\nthe Software without restriction, including without limitation the rights to\nuse, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of\nthe Software, and to permit persons to whom the Software is furnished to do so,\nsubject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS\nFOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR\nCOPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER\nIN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN\nCONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
-      "name": "nanoid",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/nanoid/v/3.3.18",
-      "repositoryUrl": "ai/nanoid",
-      "version": "3.3.18"
+      "version": "0.2.12"
     },
     {
       "homepageUrl": null,
@@ -7966,9 +7870,9 @@
       "name": "node-releases",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/node-releases/v/2.0.63",
+      "registryUrl": "https://www.npmjs.com/package/node-releases/v/2.0.65",
       "repositoryUrl": "https://github.com/chicoxyzzy/node-releases",
-      "version": "2.0.63"
+      "version": "2.0.65"
     },
     {
       "homepageUrl": null,
@@ -8002,9 +7906,9 @@
       "name": "nostics",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/nostics/v/1.3.0",
+      "registryUrl": "https://www.npmjs.com/package/nostics/v/1.4.0",
       "repositoryUrl": "https://github.com/vercel-labs/nostics",
-      "version": "1.3.0"
+      "version": "1.4.0"
     },
     {
       "homepageUrl": null,
@@ -8050,9 +7954,9 @@
       "name": "oauth4webapi",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/oauth4webapi/v/3.8.8",
+      "registryUrl": "https://www.npmjs.com/package/oauth4webapi/v/3.8.9",
       "repositoryUrl": "panva/oauth4webapi",
-      "version": "3.8.8"
+      "version": "3.8.9"
     },
     {
       "homepageUrl": null,
@@ -8122,30 +8026,6 @@
       "name": "ohash",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/ohash/v/2.0.11",
-      "repositoryUrl": "unjs/ohash",
-      "version": "2.0.11"
-    },
-    {
-      "homepageUrl": null,
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "MIT License\n\nCopyright (c) Pooya Parsa <pooya@pi0.io>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
-      "name": "ohash",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/ohash/v/2.0.11",
-      "repositoryUrl": "unjs/ohash",
-      "version": "2.0.11"
-    },
-    {
-      "homepageUrl": null,
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "MIT License\n\nCopyright (c) Pooya Parsa <pooya@pi0.io>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
-      "name": "ohash",
-      "noticeFileName": null,
-      "noticeText": null,
       "registryUrl": "https://www.npmjs.com/package/ohash/v/2.0.12",
       "repositoryUrl": "unjs/ohash",
       "version": "2.0.12"
@@ -8206,9 +8086,9 @@
       "name": "openid-client",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/openid-client/v/6.8.9",
+      "registryUrl": "https://www.npmjs.com/package/openid-client/v/6.9.1",
       "repositoryUrl": "panva/openid-client",
-      "version": "6.8.9"
+      "version": "6.9.1"
     },
     {
       "homepageUrl": "https://oxc.rs",
@@ -8542,21 +8422,9 @@
       "name": "postcss",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/postcss/v/8.5.26",
+      "registryUrl": "https://www.npmjs.com/package/postcss/v/8.5.33",
       "repositoryUrl": "postcss/postcss",
-      "version": "8.5.26"
-    },
-    {
-      "homepageUrl": "https://postcss.org/",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "The MIT License (MIT)\n\nCopyright 2013 Andrey Sitnik <andrey@sitnik.es>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of\nthis software and associated documentation files (the \"Software\"), to deal in\nthe Software without restriction, including without limitation the rights to\nuse, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of\nthe Software, and to permit persons to whom the Software is furnished to do so,\nsubject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS\nFOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR\nCOPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER\nIN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN\nCONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
-      "name": "postcss",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/postcss/v/8.5.32",
-      "repositoryUrl": "postcss/postcss",
-      "version": "8.5.32"
+      "version": "8.5.33"
     },
     {
       "homepageUrl": "https://github.com/postcss/postcss-calc",
@@ -8566,9 +8434,9 @@
       "name": "postcss-calc",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/postcss-calc/v/11.2.3",
+      "registryUrl": "https://www.npmjs.com/package/postcss-calc/v/11.3.0",
       "repositoryUrl": "https://github.com/postcss/postcss-calc",
-      "version": "11.2.3"
+      "version": "11.3.0"
     },
     {
       "homepageUrl": "https://github.com/TrySound/postcss-value-parser",
@@ -8602,9 +8470,9 @@
       "name": "prettier",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/prettier/v/3.9.10",
+      "registryUrl": "https://www.npmjs.com/package/prettier/v/3.10.1",
       "repositoryUrl": "prettier/prettier",
-      "version": "3.9.10"
+      "version": "3.10.1"
     },
     {
       "homepageUrl": null,
@@ -8691,6 +8559,54 @@
       "version": "0.2.11"
     },
     {
+      "homepageUrl": "https://github.com/quansync-dev/quansync#readme",
+      "license": "MIT",
+      "licenseFileName": "LICENSE.md",
+      "licenseText": "MIT License\n\nCopyright (c) 2025-PRESENT Anthony Fu <https://github.com/antfu> and Kevin Deng <https://github.com/sxzz>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
+      "name": "quansync",
+      "noticeFileName": null,
+      "noticeText": null,
+      "registryUrl": "https://www.npmjs.com/package/quansync/v/0.2.11",
+      "repositoryUrl": "https://github.com/quansync-dev/quansync",
+      "version": "0.2.11"
+    },
+    {
+      "homepageUrl": "https://github.com/quansync-dev/quansync#readme",
+      "license": "MIT",
+      "licenseFileName": "LICENSE.md",
+      "licenseText": "MIT License\n\nCopyright (c) 2025-PRESENT Anthony Fu <https://github.com/antfu> and Kevin Deng <https://github.com/sxzz>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
+      "name": "quansync",
+      "noticeFileName": null,
+      "noticeText": null,
+      "registryUrl": "https://www.npmjs.com/package/quansync/v/0.2.11",
+      "repositoryUrl": "https://github.com/quansync-dev/quansync",
+      "version": "0.2.11"
+    },
+    {
+      "homepageUrl": "https://github.com/quansync-dev/quansync#readme",
+      "license": "MIT",
+      "licenseFileName": "LICENSE.md",
+      "licenseText": "MIT License\n\nCopyright (c) 2025-PRESENT Anthony Fu <https://github.com/antfu> and Kevin Deng <https://github.com/sxzz>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
+      "name": "quansync",
+      "noticeFileName": null,
+      "noticeText": null,
+      "registryUrl": "https://www.npmjs.com/package/quansync/v/0.2.11",
+      "repositoryUrl": "https://github.com/quansync-dev/quansync",
+      "version": "0.2.11"
+    },
+    {
+      "homepageUrl": "https://github.com/quansync-dev/quansync#readme",
+      "license": "MIT",
+      "licenseFileName": "LICENSE.md",
+      "licenseText": "MIT License\n\nCopyright (c) 2025-PRESENT Anthony Fu <https://github.com/antfu> and Kevin Deng <https://github.com/sxzz>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
+      "name": "quansync",
+      "noticeFileName": null,
+      "noticeText": null,
+      "registryUrl": "https://www.npmjs.com/package/quansync/v/1.0.0",
+      "repositoryUrl": "https://github.com/quansync-dev/quansync",
+      "version": "1.0.0"
+    },
+    {
       "homepageUrl": "https://github.com/feross/queue-microtask",
       "license": "MIT",
       "licenseFileName": "LICENSE",
@@ -8758,9 +8674,9 @@
       "name": "readable-stream",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/readable-stream/v/4.7.0",
+      "registryUrl": "https://www.npmjs.com/package/readable-stream/v/4.8.0",
       "repositoryUrl": "https://github.com/nodejs/readable-stream",
-      "version": "4.7.0"
+      "version": "4.8.0"
     },
     {
       "homepageUrl": "https://github.com/Yqnn/node-readdir-glob",
@@ -8785,6 +8701,18 @@
       "registryUrl": "https://www.npmjs.com/package/readdirp/v/5.0.0",
       "repositoryUrl": "https://github.com/paulmillr/readdirp",
       "version": "5.0.0"
+    },
+    {
+      "homepageUrl": "https://github.com/paulmillr/readdirp",
+      "license": "MIT",
+      "licenseFileName": "LICENSE",
+      "licenseText": "MIT License\n\nCopyright (c) 2012-2019 Thorsten Lorenz, Paul Miller (https://paulmillr.com)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
+      "name": "readdirp",
+      "noticeFileName": null,
+      "noticeText": null,
+      "registryUrl": "https://www.npmjs.com/package/readdirp/v/5.1.1",
+      "repositoryUrl": "https://github.com/paulmillr/readdirp",
+      "version": "5.1.1"
     },
     {
       "homepageUrl": "https://github.com/paulmillr/readdirp",
@@ -8902,9 +8830,9 @@
       "name": "rolldown",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/rolldown/v/1.2.16",
+      "registryUrl": "https://www.npmjs.com/package/rolldown/v/1.2.19",
       "repositoryUrl": "https://github.com/rolldown/rolldown",
-      "version": "1.2.16"
+      "version": "1.2.19"
     },
     {
       "homepageUrl": "https://github.com/sxzz/rolldown-string#readme",
@@ -8926,9 +8854,9 @@
       "name": "rollup",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/rollup/v/4.67.5",
+      "registryUrl": "https://www.npmjs.com/package/rollup/v/4.68.8",
       "repositoryUrl": "https://github.com/rollup/rollup",
-      "version": "4.67.5"
+      "version": "4.68.8"
     },
     {
       "homepageUrl": "https://github.com/btd/rollup-plugin-visualizer",
@@ -8938,9 +8866,9 @@
       "name": "rollup-plugin-visualizer",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/rollup-plugin-visualizer/v/7.1.2",
+      "registryUrl": "https://www.npmjs.com/package/rollup-plugin-visualizer/v/7.1.3",
       "repositoryUrl": "git@github.com:btd/rollup-plugin-visualizer",
-      "version": "7.1.2"
+      "version": "7.1.3"
     },
     {
       "homepageUrl": null,
@@ -9046,9 +8974,9 @@
       "name": "semver",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/semver/v/6.3.1",
+      "registryUrl": "https://www.npmjs.com/package/semver/v/6.3.2",
       "repositoryUrl": "https://github.com/npm/node-semver",
-      "version": "6.3.1"
+      "version": "6.3.2"
     },
     {
       "homepageUrl": null,
@@ -9058,9 +8986,9 @@
       "name": "semver",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/semver/v/6.3.1",
+      "registryUrl": "https://www.npmjs.com/package/semver/v/6.3.2",
       "repositoryUrl": "https://github.com/npm/node-semver",
-      "version": "6.3.1"
+      "version": "6.3.2"
     },
     {
       "homepageUrl": null,
@@ -9118,9 +9046,9 @@
       "name": "seroval",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/seroval/v/1.7.7",
+      "registryUrl": "https://www.npmjs.com/package/seroval/v/1.8.2",
       "repositoryUrl": "https://github.com/lxsmnsyc/seroval",
-      "version": "1.7.7"
+      "version": "1.8.2"
     },
     {
       "homepageUrl": null,
@@ -9250,9 +9178,9 @@
       "name": "sisteransi",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/sisteransi/v/1.0.5",
+      "registryUrl": "https://www.npmjs.com/package/sisteransi/v/2.0.0",
       "repositoryUrl": "https://github.com/terkelg/sisteransi",
-      "version": "1.0.5"
+      "version": "2.0.0"
     },
     {
       "homepageUrl": null,
@@ -9334,9 +9262,9 @@
       "name": "source-map-js",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/source-map-js/v/1.2.2",
+      "registryUrl": "https://www.npmjs.com/package/source-map-js/v/1.2.4",
       "repositoryUrl": "7rulnik/source-map-js",
-      "version": "1.2.2"
+      "version": "1.2.4"
     },
     {
       "homepageUrl": null,
@@ -9421,18 +9349,6 @@
       "registryUrl": "https://www.npmjs.com/package/std-env/v/4.3.0",
       "repositoryUrl": "unjs/std-env",
       "version": "4.3.0"
-    },
-    {
-      "homepageUrl": "https://github.com/mafintosh/streamx",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "The MIT License (MIT)\n\nCopyright (c) 2019 Mathias Buus\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
-      "name": "streamx",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/streamx/v/2.23.0",
-      "repositoryUrl": "https://github.com/mafintosh/streamx",
-      "version": "2.23.0"
     },
     {
       "homepageUrl": "https://github.com/mafintosh/streamx",
@@ -9610,9 +9526,9 @@
       "name": "style-mod",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/style-mod/v/4.1.4",
+      "registryUrl": "https://www.npmjs.com/package/style-mod/v/4.1.5",
       "repositoryUrl": "https://code.haverbeke.berlin/marijn/style-mod",
-      "version": "4.1.4"
+      "version": "4.1.5"
     },
     {
       "homepageUrl": null,
@@ -9622,9 +9538,9 @@
       "name": "superjson",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/superjson/v/2.2.6",
+      "registryUrl": "https://www.npmjs.com/package/superjson/v/2.2.7",
       "repositoryUrl": "https://github.com/blitz-js/superjson",
-      "version": "2.2.6"
+      "version": "2.2.7"
     },
     {
       "homepageUrl": null,
@@ -9670,9 +9586,9 @@
       "name": "tailwind-merge",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/tailwind-merge/v/3.7.0",
+      "registryUrl": "https://www.npmjs.com/package/tailwind-merge/v/3.7.1",
       "repositoryUrl": "https://github.com/dcastil/tailwind-merge",
-      "version": "3.7.0"
+      "version": "3.7.1"
     },
     {
       "homepageUrl": "https://tailwindcss.com",
@@ -9682,9 +9598,9 @@
       "name": "tailwindcss",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/tailwindcss/v/4.3.4",
+      "registryUrl": "https://www.npmjs.com/package/tailwindcss/v/4.3.5",
       "repositoryUrl": "https://github.com/tailwindlabs/tailwindcss",
-      "version": "4.3.4"
+      "version": "4.3.5"
     },
     {
       "homepageUrl": "https://github.com/webpack/tapable",
@@ -9694,9 +9610,9 @@
       "name": "tapable",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/tapable/v/2.3.3",
+      "registryUrl": "https://www.npmjs.com/package/tapable/v/2.3.4",
       "repositoryUrl": "http://github.com/webpack/tapable",
-      "version": "2.3.3"
+      "version": "2.3.4"
     },
     {
       "homepageUrl": null,
@@ -9706,9 +9622,9 @@
       "name": "tar",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/tar/v/7.5.22",
+      "registryUrl": "https://www.npmjs.com/package/tar/v/7.5.23",
       "repositoryUrl": "https://github.com/isaacs/node-tar",
-      "version": "7.5.22"
+      "version": "7.5.23"
     },
     {
       "homepageUrl": "https://github.com/mafintosh/tar-stream",
@@ -9742,9 +9658,9 @@
       "name": "terser",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/terser/v/5.51.2",
+      "registryUrl": "https://www.npmjs.com/package/terser/v/5.51.4",
       "repositoryUrl": "https://github.com/terser/terser",
-      "version": "5.51.2"
+      "version": "5.51.4"
     },
     {
       "homepageUrl": "https://github.com/holepunchto/text-decoder#readme",
@@ -9915,18 +9831,6 @@
       "version": "2.8.1"
     },
     {
-      "homepageUrl": "https://www.typescriptlang.org/",
-      "license": "0BSD",
-      "licenseFileName": "LICENSE.txt",
-      "licenseText": "Copyright (c) Microsoft Corporation.\r\n\r\nPermission to use, copy, modify, and/or distribute this software for any\r\npurpose with or without fee is hereby granted.\r\n\r\nTHE SOFTWARE IS PROVIDED \"AS IS\" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH\r\nREGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY\r\nAND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,\r\nINDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM\r\nLOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR\r\nOTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR\r\nPERFORMANCE OF THIS SOFTWARE.",
-      "name": "tslib",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/tslib/v/2.8.1",
-      "repositoryUrl": "https://github.com/Microsoft/tslib",
-      "version": "2.8.1"
-    },
-    {
       "homepageUrl": null,
       "license": "(MIT OR CC0-1.0)",
       "licenseFileName": null,
@@ -9946,9 +9850,9 @@
       "name": "type-fest",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/type-fest/v/5.4.4",
+      "registryUrl": "https://www.npmjs.com/package/type-fest/v/5.10.0",
       "repositoryUrl": "sindresorhus/type-fest",
-      "version": "5.4.4"
+      "version": "5.10.0"
     },
     {
       "homepageUrl": null,
@@ -10102,9 +10006,9 @@
       "name": "undici",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/undici/v/8.12.4",
+      "registryUrl": "https://www.npmjs.com/package/undici/v/8.13.1",
       "repositoryUrl": "https://github.com/nodejs/undici",
-      "version": "8.12.4"
+      "version": "8.13.1"
     },
     {
       "homepageUrl": null,
@@ -10186,9 +10090,9 @@
       "name": "unimport",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/unimport/v/7.0.2",
+      "registryUrl": "https://www.npmjs.com/package/unimport/v/7.0.3",
       "repositoryUrl": "unjs/unimport",
-      "version": "7.0.2"
+      "version": "7.0.3"
     },
     {
       "homepageUrl": "https://unplugin.unjs.io",
@@ -10306,9 +10210,9 @@
       "name": "update-browserslist-db",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/update-browserslist-db/v/1.3.4",
+      "registryUrl": "https://www.npmjs.com/package/update-browserslist-db/v/1.4.0",
       "repositoryUrl": "browserslist/update-db",
-      "version": "1.3.4"
+      "version": "1.4.0"
     },
     {
       "homepageUrl": "https://github.com/unjs/uqr#readme",
@@ -10366,9 +10270,9 @@
       "name": "vite",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/vite/v/8.3.6",
+      "registryUrl": "https://www.npmjs.com/package/vite/v/8.3.8",
       "repositoryUrl": "https://github.com/vitejs/vite",
-      "version": "8.3.6"
+      "version": "8.3.8"
     },
     {
       "homepageUrl": "https://github.com/antfu/vite-dev-rpc#readme",
@@ -10450,9 +10354,9 @@
       "name": "vue",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/vue/v/3.5.45",
+      "registryUrl": "https://www.npmjs.com/package/vue/v/3.5.46",
       "repositoryUrl": "https://github.com/vuejs/core",
-      "version": "3.5.45"
+      "version": "3.5.46"
     },
     {
       "homepageUrl": null,
@@ -10462,9 +10366,9 @@
       "name": "vue-bundle-renderer",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/vue-bundle-renderer/v/2.4.0",
+      "registryUrl": "https://www.npmjs.com/package/vue-bundle-renderer/v/2.5.0",
       "repositoryUrl": "nuxt-contrib/vue-bundle-renderer",
-      "version": "2.4.0"
+      "version": "2.5.0"
     },
     {
       "homepageUrl": null,
@@ -10498,9 +10402,9 @@
       "name": "vue-router",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/vue-router/v/5.4.0",
+      "registryUrl": "https://www.npmjs.com/package/vue-router/v/5.5.1",
       "repositoryUrl": "https://github.com/vuejs/router",
-      "version": "5.4.0"
+      "version": "5.5.1"
     },
     {
       "homepageUrl": "https://github.com/xiaoluoboding/vue-sonner",
@@ -10606,9 +10510,9 @@
       "name": "ws",
       "noticeFileName": null,
       "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/ws/v/8.22.1",
+      "registryUrl": "https://www.npmjs.com/package/ws/v/8.23.0",
       "repositoryUrl": "https://github.com/websockets/ws",
-      "version": "8.22.1"
+      "version": "8.23.0"
     },
     {
       "homepageUrl": null,
