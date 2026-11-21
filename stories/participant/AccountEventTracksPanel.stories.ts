@@ -10,13 +10,24 @@ const tracks = [
     name: 'Tools and workflows',
     shortDescription: 'Connect the tools you use every day.',
     fullDescription: 'Build a small workflow that reads from one tool and acts in another.',
+    staffInstructions: 'Keep the shared demo station ready for the next participant.',
     displayOrder: 1,
-    resources: [{
-      title: 'Project notes',
-      url: '#project-notes',
-      description: 'A place to sketch what you plan to build.',
-      displayOrder: 1
-    }]
+    resources: [
+      {
+        id: 'demo-checklist',
+        title: 'Demo checklist',
+        url: '#demo-checklist',
+        description: null,
+        displayOrder: 2
+      },
+      {
+        id: 'project-notes',
+        title: 'Project notes',
+        url: '#project-notes',
+        description: 'A place to sketch what you plan to build.',
+        displayOrder: 1
+      }
+    ]
   },
   {
     id: 'interfaces',
@@ -50,3 +61,4 @@ type Story = StoryObj<typeof meta>
 
 export const ChooseTrack: Story = {}
 export const TrackSelected: Story = { args: { selectedTrackId: 'tools' } }
+export const TrackStaff: Story = { args: { viewerMode: 'track-staff', staffTrackId: 'tools', canSelectTrack: false } }

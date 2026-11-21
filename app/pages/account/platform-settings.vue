@@ -145,21 +145,15 @@ useSeoMeta({
       </section>
 
       <section
-        v-else-if="activeTab === 'event-organizers'"
-        id="platform-settings-tab-panel-event-organizers"
+        v-else
+        :id="`platform-settings-tab-panel-${activeTab}`"
         role="tabpanel"
-        aria-labelledby="platform-settings-tab-event-organizers"
+        :aria-labelledby="`platform-settings-tab-${activeTab}`"
       >
-        <AccountEventOrganizerRosterPanel />
-      </section>
-
-      <section
-        v-else-if="activeTab === 'platform-admins'"
-        id="platform-settings-tab-panel-platform-admins"
-        role="tabpanel"
-        aria-labelledby="platform-settings-tab-platform-admins"
-      >
-        <AccountPlatformAdminRosterPanel />
+        <AccountPlatformRoleRosterPanel
+          :key="activeTab"
+          :role="activeTab === 'platform-admins' ? 'platform-admin' : 'event-organizer'"
+        />
       </section>
     </AppContainer>
   </div>

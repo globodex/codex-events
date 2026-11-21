@@ -23,3 +23,7 @@ Feature: Authenticated session foundation
     When I open my events with the saved "regular_user" session
     Then I should see the my events heading
     And the account overview should request one bootstrap and one page read
+
+  Scenario: Platform settings keeps the two role rosters independent
+    When I search for a candidate in the event organizer roster
+    Then the platform admin roster should load its own list with an empty search

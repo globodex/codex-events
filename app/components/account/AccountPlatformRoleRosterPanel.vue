@@ -7,20 +7,45 @@ import { useApiClient } from '~/composables/useApiClient'
 import { useApiResponse } from '~/composables/useApiData'
 import { useSessionActor } from '~/composables/useSessionActor'
 
+const props = defineProps<{
+  role: 'platform-admin' | 'event-organizer'
+}>()
+
+const roles = {
+  'platform-admin': {
+    label: 'Platform admin',
+    flag: 'isPlatformAdmin',
+    description: 'Review the current platform admins and grant platform-wide admin access to other active users.',
+    addHint: 'Promoting someone gives them platform-wide admin access across the existing events too.',
+    addedDescription: 'can now manage the platform and every event.',
+    removeHint: ' Their event-specific access will stay in place.',
+    removedDescription: (user: EventRoleUserSummary) =>
+      `${user.displayName} no longer has platform-wide admin access. Event-specific access was left unchanged.`
+  },
+  'event-organizer': {
+    label: 'Event organizer',
+    flag: 'isEventOrganizer',
+    description: 'Review who can create events without granting platform-wide admin access.',
+    addHint: 'Event organizers can create events and manage only the events they create or are assigned to.',
+    addedDescription: 'can now create events and manage the events they create.',
+    removeHint: '',
+    removedDescription: (user: EventRoleUserSummary) => user.isPlatformAdmin
+      ? `${user.displayName} still has platform admin access.`
+      : `${user.displayName} can no longer create events as an event organizer.`
+  }
+} as const
+
+const role = computed(() => roles[props.role])
+const roleNoun = computed(() => role.value.label.toLowerCase())
+const endpoint = computed(() => `/api/${props.role}s`)
 const actor = useSessionActor().actor
-const eventOrganizerCandidatePageSize = 20
+const apiFetch = useApiClient()
+const currentRoster = useApiResponse<EventRoleUserSummary[]>(() => `${props.role}s`, endpoint)
+const { mutationError, runRosterMutation, isPendingAction } = useRosterMutationRunner()
 
 const subjectKey = computed(() => getApiSubjectKey(
   actor.value.isAuthenticated ? actor.value.sessionUser.sub : null
 ))
-const apiFetch = useApiClient()
-const currentOrganizers = useApiResponse<EventRoleUserSummary[]>('event-organizers', '/api/event-organizers')
-
-const {
-  mutationError,
-  runRosterMutation,
-  isPendingAction
-} = useRosterMutationRunner()
 const {
   candidateSearchInput,
   appliedCandidateSearch,
@@ -33,32 +58,26 @@ const {
   loadCandidateUsers,
   loadMoreCandidates
 } = useRosterCandidateSearch<EventRoleUserSummary>({
-  pageSize: eventOrganizerCandidatePageSize,
-  requestKey: 'event-organizer-candidates',
-  resetKey: subjectKey,
-  loadPage: async ({ page, pageSize, search, signal }) => await apiFetch<ApiListResponse<EventRoleUserSummary>>(
-    '/api/event-organizers/candidates',
+  pageSize: 20,
+  requestKey: () => `${props.role}-candidates`,
+  resetKey: () => `${props.role}:${subjectKey.value}`,
+  loadPage: ({ page, pageSize, search, signal }) => apiFetch<ApiListResponse<EventRoleUserSummary>>(
+    `${endpoint.value}/candidates`,
     {
-      query: {
-        page,
-        page_size: pageSize,
-        ...(search.length > 0
-          ? {
-              search
-            }
-          : {})
-      },
+      query: { page, page_size: pageSize, search: search || undefined },
       signal
     }
   )
 })
 
-const currentEventOrganizers = computed(() => currentOrganizers.data.value ?? [])
-const currentEventOrganizerCount = computed(() => currentEventOrganizers.value.length)
-const candidateRows = computed(() =>
-  candidateUsers.value.filter(user => appliedCandidateSearch.value.length > 0 || !user.isEventOrganizer)
-)
-const candidateSkeletonRowCount = 3
+function hasRole(user: EventRoleUserSummary) {
+  return user[role.value.flag] === true
+}
+
+const currentUsers = computed(() => currentRoster.data.value ?? [])
+const candidateRows = computed(() => candidateUsers.value.filter(user =>
+  appliedCandidateSearch.value.length > 0 || !hasRole(user)
+))
 const emptyCandidateMessage = computed(() =>
   appliedCandidateSearch.value.length > 0
     ? 'No people match this search.'
@@ -67,56 +86,23 @@ const emptyCandidateMessage = computed(() =>
       : 'No more active users are available to add right now.'
 )
 
-function isCandidateActionDisabled(user: EventRoleUserSummary) {
-  return user.isEventOrganizer
-}
-
-function getCandidateActionLabel(user: EventRoleUserSummary) {
-  return user.isEventOrganizer ? 'Already event organizer' : 'Add event organizer'
-}
-
-async function addEventOrganizer(user: EventRoleUserSummary) {
-  await runRosterMutation({
-    actionKey: user.id,
-    action: async () => {
-      await apiFetch(`/api/event-organizers/${user.id}`, {
-        method: 'PUT'
-      })
-    },
-    successTitle: 'Event organizer added',
-    successDescription: `${user.displayName} can now create events and manage the events they create.`,
-    afterSuccess: async () => {
-      await Promise.all([
-        currentOrganizers.refresh(),
-        loadCandidateUsers()
-      ])
-    }
-  })
-}
-
-async function removeEventOrganizer(user: EventRoleUserSummary) {
-  const confirmed = window.confirm(`Remove event organizer access for ${user.displayName}?`)
-
-  if (!confirmed) {
+async function updateAccess(user: EventRoleUserSummary, action: 'add' | 'remove') {
+  const isAdding = action === 'add'
+  if (!isAdding && !window.confirm(`Remove ${roleNoun.value} access for ${user.displayName}?${role.value.removeHint}`)) {
     return
   }
 
   await runRosterMutation({
     actionKey: user.id,
     action: async () => {
-      await apiFetch(`/api/event-organizers/${user.id}`, {
-        method: 'DELETE'
-      })
+      await apiFetch(`${endpoint.value}/${user.id}`, { method: isAdding ? 'PUT' : 'DELETE' })
     },
-    successTitle: 'Event organizer removed',
-    successDescription: user.isPlatformAdmin
-      ? `${user.displayName} still has platform admin access.`
-      : `${user.displayName} can no longer create events as an event organizer.`,
+    successTitle: `${role.value.label} ${isAdding ? 'added' : 'removed'}`,
+    successDescription: isAdding
+      ? `${user.displayName} ${role.value.addedDescription}`
+      : role.value.removedDescription(user),
     afterSuccess: async () => {
-      await Promise.all([
-        currentOrganizers.refresh(),
-        loadCandidateUsers()
-      ])
+      await Promise.all([currentRoster.refresh(), loadCandidateUsers()])
     }
   })
 }
@@ -127,10 +113,10 @@ async function removeEventOrganizer(user: EventRoleUserSummary) {
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted dark:text-white">
-          Event organizers
+          {{ role.label }}s
         </h2>
         <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-          Review who can create events without granting platform-wide admin access.
+          {{ role.description }}
         </p>
       </div>
     </template>
@@ -140,42 +126,42 @@ async function removeEventOrganizer(user: EventRoleUserSummary) {
         v-if="mutationError"
         color="error"
         variant="soft"
-        title="Event organizer update failed"
+        :title="`${role.label} update failed`"
         :description="mutationError"
       />
 
       <div class="space-y-4">
         <div class="flex items-center justify-between gap-3">
           <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
-            Current event organizers
+            Current {{ roleNoun }}s
           </h3>
           <p class="text-xs text-muted">
-            {{ currentEventOrganizerCount }} current
+            {{ currentUsers.length }} current
           </p>
         </div>
 
         <AppAlert
-          v-if="currentOrganizers.error.value"
+          v-if="currentRoster.error.value"
           color="error"
           variant="soft"
-          title="Unable to load event organizers"
-          :description="currentOrganizers.error.value.message"
+          :title="`Unable to load ${roleNoun}s`"
+          :description="currentRoster.error.value.message"
         />
 
         <AppAlert
-          v-else-if="currentOrganizers.status.value === 'pending'"
+          v-else-if="currentRoster.status.value === 'pending'"
           color="neutral"
           variant="soft"
-          title="Loading event organizers"
-          description="Fetching the current event-organizer roster."
+          :title="`Loading ${roleNoun}s`"
+          :description="`Fetching the current ${props.role} roster.`"
         />
 
         <div
-          v-else-if="currentEventOrganizers.length > 0"
+          v-else-if="currentUsers.length > 0"
           class="grid gap-3"
         >
           <AccountRosterUserRow
-            v-for="user in currentEventOrganizers"
+            v-for="user in currentUsers"
             :key="user.id"
             :display-name="user.displayName"
             :email="user.email"
@@ -186,10 +172,10 @@ async function removeEventOrganizer(user: EventRoleUserSummary) {
                 variant="soft"
                 class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
               >
-                Event organizer
+                {{ role.label }}
               </AppBadge>
               <AppBadge
-                v-if="user.isPlatformAdmin"
+                v-if="props.role === 'event-organizer' && user.isPlatformAdmin"
                 color="neutral"
                 variant="soft"
                 class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
@@ -205,7 +191,7 @@ async function removeEventOrganizer(user: EventRoleUserSummary) {
                 variant="soft"
                 class="shrink-0 self-start md:self-auto"
                 :loading="isPendingAction(user.id)"
-                @click="removeEventOrganizer(user)"
+                @click="updateAccess(user, 'remove')"
               >
                 Remove access
               </AppButton>
@@ -217,24 +203,24 @@ async function removeEventOrganizer(user: EventRoleUserSummary) {
           v-else
           class="text-sm text-muted"
         >
-          No active event organizers are configured.
+          No active {{ roleNoun }}s are configured.
         </p>
       </div>
 
       <div class="space-y-4 border-t border-black/8 pt-6 dark:border-white/[0.08]">
         <div class="space-y-1">
           <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
-            Add event organizers
+            Add {{ roleNoun }}s
           </h3>
           <p class="text-sm text-muted">
-            Search by name, email, or user ID. Event organizers can create events and manage only the events they create or are assigned to.
+            Search by name, email, or user ID. {{ role.addHint }}
           </p>
         </div>
 
         <AppInput
           v-model="candidateSearchInput"
           type="search"
-          name="event-organizer-candidate-search"
+          :name="`${props.role}-candidate-search`"
           autocomplete="off"
           autocapitalize="none"
           autocorrect="off"
@@ -259,8 +245,8 @@ async function removeEventOrganizer(user: EventRoleUserSummary) {
         >
           <template v-if="candidateUsersStatus === 'pending' && candidateUsers.length === 0">
             <AccountRosterUserRowSkeleton
-              v-for="index in candidateSkeletonRowCount"
-              :key="`event-organizer-candidate-skeleton-${index}`"
+              v-for="index in 3"
+              :key="`candidate-skeleton-${index}`"
               action-width-class="w-32"
             />
           </template>
@@ -275,15 +261,15 @@ async function removeEventOrganizer(user: EventRoleUserSummary) {
             >
               <template #badges>
                 <AppBadge
-                  v-if="user.isEventOrganizer"
+                  v-if="hasRole(user)"
                   color="primary"
                   variant="soft"
                   class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
                 >
-                  Event organizer
+                  {{ role.label }}
                 </AppBadge>
                 <AppBadge
-                  v-if="user.isPlatformAdmin"
+                  v-if="props.role === 'event-organizer' && user.isPlatformAdmin"
                   color="neutral"
                   variant="soft"
                   class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
@@ -298,11 +284,11 @@ async function removeEventOrganizer(user: EventRoleUserSummary) {
                   color="neutral"
                   variant="soft"
                   class="shrink-0 self-start md:self-auto"
-                  :disabled="isCandidateActionDisabled(user)"
-                  :loading="!isCandidateActionDisabled(user) && isPendingAction(user.id)"
-                  @click="isCandidateActionDisabled(user) ? undefined : addEventOrganizer(user)"
+                  :disabled="hasRole(user)"
+                  :loading="!hasRole(user) && isPendingAction(user.id)"
+                  @click="updateAccess(user, 'add')"
                 >
-                  {{ getCandidateActionLabel(user) }}
+                  {{ hasRole(user) ? `Already ${roleNoun}` : `Add ${roleNoun}` }}
                 </AppButton>
               </template>
             </AccountRosterUserRow>

@@ -43,13 +43,42 @@ const operationsPrizeView = computed(() =>
   buildPrizeRedemptionOperationsView(props.winners, props.redemptions, props.finalRankingEntries)
 )
 const winnerItems = computed(() => operationsPrizeView.value.winnerItems)
-const shortlistedEntries = computed(() => operationsPrizeView.value.shortlistedEntries)
-const postShortlistEntries = computed(() =>
-  buildPrizeRedemptionPostShortlistEntries(
+const rankedTeamSections = computed(() => {
+  if (!isCompleted.value || props.isLoading || props.errorMessage) {
+    return []
+  }
+
+  const postShortlistEntries = buildPrizeRedemptionPostShortlistEntries(
     props.blindRankingEntries,
     props.pitchPresentationSubmissionIds
   )
-)
+  const sections = [
+    {
+      id: 'shortlisted',
+      title: 'Shortlisted Teams',
+      description: 'These teams made the shortlist and received a completed final rank, but they did not win a published prize.',
+      projectLabel: 'Shortlisted project',
+      entries: operationsPrizeView.value.shortlistedEntries.map(entry => ({
+        ...entry,
+        rank: entry.finalRank,
+        rankDescription: `Finished #${entry.finalRank} in the completed final ranking.`
+      }))
+    },
+    {
+      id: 'post-shortlist',
+      title: 'Remaining Teams',
+      description: 'Teams below the finalist cutoff remain visible here after completion in blind-review rank order.',
+      projectLabel: 'Ranked project',
+      entries: postShortlistEntries.map(entry => ({
+        ...entry,
+        rank: entry.blindRank,
+        rankDescription: `Finished #${entry.blindRank} in blind review and did not advance past the shortlist.`
+      }))
+    }
+  ]
+
+  return sections.filter(section => section.entries.length > 0)
+})
 
 function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
   return `${formatPrizeRank(prize)} · ${formatPrizeReward(prize)}`
@@ -377,25 +406,26 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
   </AppCard>
 
   <AppCard
-    v-if="isCompleted && !isLoading && !errorMessage && shortlistedEntries.length > 0"
+    v-for="section in rankedTeamSections"
+    :key="section.id"
     class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
   >
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
-          Shortlisted Teams
+          {{ section.title }}
         </h2>
         <p class="text-sm text-muted">
-          These teams made the shortlist and received a completed final rank, but they did not win a published prize.
+          {{ section.description }}
         </p>
       </div>
     </template>
 
     <div class="space-y-4">
       <article
-        v-for="entry in shortlistedEntries"
+        v-for="entry in section.entries"
         :key="entry.submissionId"
-        :data-testid="`admin-competition-shortlisted-${entry.submissionId}`"
+        :data-testid="`admin-competition-${section.id}-${entry.submissionId}`"
         class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 space-y-5 rounded-xl p-5"
       >
         <div class="space-y-3 border-b border-black/8 pb-4 dark:border-white/[0.08]">
@@ -405,13 +435,13 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
               variant="soft"
               class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
             >
-              #{{ entry.finalRank }}
+              #{{ entry.rank }}
             </AppBadge>
           </div>
 
           <div class="space-y-1">
             <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-              Shortlisted project
+              {{ section.projectLabel }}
             </p>
             <h3 class="text-xl font-semibold text-highlighted dark:text-white">
               {{ entry.projectName ?? 'Untitled project' }}
@@ -422,190 +452,7 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
           </div>
 
           <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-            Finished #{{ entry.finalRank }} in the completed final ranking.
-          </p>
-        </div>
-
-        <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
-          <div class="min-w-0 space-y-4">
-            <div class="space-y-2">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-                Project description
-              </p>
-              <AppMarkdownRenderer
-                v-if="entry.summary?.trim()"
-                :source="entry.summary"
-              />
-              <p
-                v-else
-                class="text-sm leading-7 text-neutral-700 dark:text-[#C7C7C7]"
-              >
-                No project description is available for this team yet.
-              </p>
-            </div>
-
-            <div
-              v-if="entry.repositoryUrl || entry.demoUrl"
-              class="flex flex-wrap gap-3"
-            >
-              <AppButton
-                v-if="entry.repositoryUrl"
-                :to="entry.repositoryUrl"
-                target="_blank"
-                rel="noreferrer"
-                color="primary"
-                variant="soft"
-                icon="i-lucide-github"
-                trailing-icon="i-lucide-external-link"
-                class="rounded-lg"
-              >
-                Source code
-              </AppButton>
-
-              <AppButton
-                v-if="entry.demoUrl"
-                :to="entry.demoUrl"
-                target="_blank"
-                rel="noreferrer"
-                color="neutral"
-                variant="outline"
-                icon="i-lucide-monitor-play"
-                trailing-icon="i-lucide-external-link"
-                class="rounded-lg"
-              >
-                Live demo
-              </AppButton>
-            </div>
-          </div>
-
-          <div class="space-y-3">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-              Team members
-            </p>
-
-            <div
-              v-if="entry.teamMembers.length > 0"
-              class="space-y-3"
-            >
-              <article
-                v-for="member in entry.teamMembers"
-                :key="member.id"
-                class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex items-center gap-3 rounded-xl p-4"
-              >
-                <AppAvatar
-                  size="lg"
-                  :src="member.profileIconUrl ?? undefined"
-                  :alt="member.fullName"
-                  class="shrink-0"
-                />
-
-                <div class="min-w-0 flex-1 space-y-3">
-                  <div class="space-y-1">
-                    <h4 class="text-sm font-semibold text-highlighted dark:text-white">
-                      {{ member.fullName }}
-                    </h4>
-                    <p
-                      v-if="member.bio"
-                      class="text-sm leading-6 text-neutral-700 dark:text-[#C7C7C7]"
-                    >
-                      {{ member.bio }}
-                    </p>
-                  </div>
-
-                  <div
-                    v-if="member.chatgptEmail || member.openaiOrgId"
-                    class="space-y-1 text-xs text-neutral-600 dark:text-[#A3A3A3]"
-                  >
-                    <p v-if="member.chatgptEmail">
-                      ChatGPT: {{ member.chatgptEmail }}
-                    </p>
-                    <p v-if="member.openaiOrgId">
-                      OpenAI org: {{ member.openaiOrgId }}
-                    </p>
-                  </div>
-
-                  <div
-                    v-if="getPublishedEventRosterLinks(member).length > 0"
-                    class="flex flex-wrap gap-2"
-                  >
-                    <a
-                      v-for="link in getPublishedEventRosterLinks(member)"
-                      :key="link.key"
-                      :href="link.href"
-                      target="_blank"
-                      rel="noreferrer"
-                      class="inline-flex items-center gap-1 rounded-full border border-black/10 px-3 py-1 text-sm text-sky-700 transition hover:border-black/20 hover:text-sky-800 dark:border-white/[0.12] dark:text-sky-300 dark:hover:border-white/[0.22] dark:hover:text-sky-200"
-                    >
-                      {{ link.label }}
-                      <AppIcon
-                        name="i-lucide-external-link"
-                        class="size-3"
-                      />
-                    </a>
-                  </div>
-                </div>
-              </article>
-            </div>
-
-            <p
-              v-else
-              class="text-sm text-neutral-600 dark:text-[#A3A3A3]"
-            >
-              No team members are published for this team.
-            </p>
-          </div>
-        </div>
-      </article>
-    </div>
-  </AppCard>
-
-  <AppCard
-    v-if="isCompleted && !isLoading && !errorMessage && postShortlistEntries.length > 0"
-    class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
-  >
-    <template #header>
-      <div class="space-y-1">
-        <h2 class="text-lg font-semibold text-highlighted">
-          Remaining Teams
-        </h2>
-        <p class="text-sm text-muted">
-          Teams below the finalist cutoff remain visible here after completion in blind-review rank order.
-        </p>
-      </div>
-    </template>
-
-    <div class="space-y-4">
-      <article
-        v-for="entry in postShortlistEntries"
-        :key="entry.submissionId"
-        :data-testid="`admin-competition-post-shortlist-${entry.submissionId}`"
-        class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 space-y-5 rounded-xl p-5"
-      >
-        <div class="space-y-3 border-b border-black/8 pb-4 dark:border-white/[0.08]">
-          <div class="flex flex-wrap items-center gap-2">
-            <AppBadge
-              color="neutral"
-              variant="soft"
-              class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
-            >
-              #{{ entry.blindRank }}
-            </AppBadge>
-          </div>
-
-          <div class="space-y-1">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-              Ranked project
-            </p>
-            <h3 class="text-xl font-semibold text-highlighted dark:text-white">
-              {{ entry.projectName ?? 'Untitled project' }}
-            </h3>
-            <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-              Team {{ entry.teamName }}
-            </p>
-          </div>
-
-          <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-            Finished #{{ entry.blindRank }} in blind review and did not advance past the shortlist.
+            {{ entry.rankDescription }}
           </p>
         </div>
 

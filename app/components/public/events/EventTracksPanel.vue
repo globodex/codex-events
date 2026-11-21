@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { PublicEventTrack, PublicEventType } from '~/domains/events/presentation'
 
+import EventTrackDetails from '~/components/events/EventTrackDetails.vue'
+
 const props = defineProps<{
   eventType: PublicEventType
   tracks: PublicEventTrack[]
@@ -11,7 +13,7 @@ const sortedTracks = computed(() =>
 )
 const hasFullTrackDetails = computed(() =>
   sortedTracks.value.some(track =>
-    normalizedText(track.fullDescription) || sortedResources(track).length > 0
+    track.fullDescription?.trim() || track.resources?.length
   )
 )
 const panelDescription = computed(() => {
@@ -25,16 +27,6 @@ const panelDescription = computed(() => {
 
   return 'Review the available tracks for this event.'
 })
-
-function normalizedText(value: string | null | undefined) {
-  return value?.trim() ?? ''
-}
-
-function sortedResources(track: PublicEventTrack) {
-  return [...(track.resources ?? [])].sort((left, right) =>
-    left.displayOrder - right.displayOrder || left.title.localeCompare(right.title)
-  )
-}
 </script>
 
 <template>
@@ -115,62 +107,10 @@ function sortedResources(track: PublicEventTrack) {
               class="max-w-[62ch]"
             />
 
-            <div
-              v-if="normalizedText(track.fullDescription) || sortedResources(track).length > 0"
-              class="mt-5 space-y-5 border-t border-black/8 pt-5 dark:border-white/[0.08]"
-            >
-              <AppMarkdownRenderer
-                v-if="normalizedText(track.fullDescription)"
-                :source="track.fullDescription ?? ''"
-                class="max-w-[72ch]"
-              />
-
-              <div
-                v-if="sortedResources(track).length > 0"
-                class="grid gap-3"
-              >
-                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
-                  Resources
-                </p>
-
-                <div class="flex flex-wrap gap-2">
-                  <a
-                    v-for="resource in sortedResources(track)"
-                    :key="`${track.displayOrder}-${resource.displayOrder}-${resource.title}`"
-                    :href="resource.url"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="inline-flex max-w-full items-center gap-2 rounded-lg border border-black/8 bg-white/78 px-3 py-2 text-[13px] font-medium text-highlighted transition hover:border-sky-500/40 hover:text-sky-700 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-white dark:hover:border-sky-300/35 dark:hover:text-sky-200"
-                  >
-                    <AppIcon
-                      name="i-lucide-link"
-                      class="size-3.5 shrink-0 text-sky-700 dark:text-sky-300"
-                    />
-                    <span class="min-w-0 truncate">
-                      {{ resource.title }}
-                    </span>
-                    <AppIcon
-                      name="i-lucide-external-link"
-                      class="size-3 shrink-0 text-neutral-500 dark:text-[#A3A3A3]"
-                    />
-                  </a>
-                </div>
-
-                <div
-                  v-if="sortedResources(track).some(resource => resource.description)"
-                  class="grid gap-2"
-                >
-                  <p
-                    v-for="resource in sortedResources(track).filter(item => item.description)"
-                    :key="`${track.displayOrder}-${resource.displayOrder}-description`"
-                    class="text-[13px] leading-relaxed text-neutral-500 dark:text-[#A3A3A3]"
-                  >
-                    <span class="font-medium text-toned">{{ resource.title }}:</span>
-                    {{ resource.description }}
-                  </p>
-                </div>
-              </div>
-            </div>
+            <EventTrackDetails
+              :description="track.fullDescription"
+              :resources="track.resources"
+            />
           </div>
         </details>
       </article>

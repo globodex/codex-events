@@ -1,29 +1,14 @@
 <script setup lang="ts">
+import type { AccountEventEntryTrack } from '#shared/domains/events/account-event-entry-page'
 import type { PublicEventType } from '~/domains/events/presentation'
 
-interface AccountEventTrackResource {
-  id?: string
-  title: string
-  url: string
-  description: string | null
-  displayOrder: number
-}
-
-interface AccountEventTrack {
-  id: string
-  name: string
-  shortDescription: string
-  fullDescription: string
-  staffInstructions?: string
-  resources: AccountEventTrackResource[]
-  displayOrder: number
-}
+import EventTrackDetails from '~/components/events/EventTrackDetails.vue'
 
 type ViewerMode = 'participant' | 'all-staff' | 'track-staff'
 
 const props = defineProps<{
   eventType: PublicEventType
-  tracks: AccountEventTrack[]
+  tracks: AccountEventEntryTrack[]
   selectedTrackId?: string | null
   canSelectTrack?: boolean
   pendingTrackId?: string | null
@@ -86,26 +71,12 @@ const panelDescription = computed(() => {
     : 'Choose the track you want to follow for this event.'
 })
 
-function isSelected(track: AccountEventTrack) {
+function isSelected(track: AccountEventEntryTrack) {
   return props.selectedTrackId === track.id
 }
 
-function isHighlighted(track: AccountEventTrack) {
+function shouldShowFullDetails(track: AccountEventEntryTrack) {
   return isStaffView.value || isSelected(track)
-}
-
-function shouldShowFullDetails(track: AccountEventTrack) {
-  return isStaffView.value || isSelected(track)
-}
-
-function normalizedText(value: string | null | undefined) {
-  return value?.trim() ?? ''
-}
-
-function sortedResources(track: AccountEventTrack) {
-  return [...track.resources].sort((left, right) =>
-    left.displayOrder - right.displayOrder || left.title.localeCompare(right.title)
-  )
 }
 </script>
 
@@ -142,7 +113,7 @@ function sortedResources(track: AccountEventTrack) {
         v-for="track in visibleTracks"
         :key="track.id"
         class="rounded-2xl border p-5 transition"
-        :class="isHighlighted(track)
+        :class="shouldShowFullDetails(track)
           ? 'border-sky-500/35 bg-sky-500/[0.07] shadow-[0_14px_38px_-30px_rgba(2,132,199,0.55)] dark:border-sky-300/30 dark:bg-sky-300/[0.08]'
           : 'border-black/8 bg-white/68 dark:border-white/[0.08] dark:bg-white/[0.03]'"
       >
@@ -188,72 +159,21 @@ function sortedResources(track: AccountEventTrack) {
           </AppButton>
         </div>
 
-        <div
+        <EventTrackDetails
           v-if="shouldShowFullDetails(track)"
-          class="mt-5 space-y-5 border-t border-black/8 pt-5 dark:border-white/[0.08]"
+          :description="track.fullDescription"
+          :resources="track.resources"
         >
-          <AppMarkdownRenderer
-            v-if="normalizedText(track.fullDescription)"
-            :source="track.fullDescription"
-            class="max-w-[72ch]"
-          />
-
           <div
-            v-if="sortedResources(track).length > 0"
-            class="grid gap-3"
-          >
-            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
-              Resources
-            </p>
-
-            <div class="flex flex-wrap gap-2">
-              <a
-                v-for="resource in sortedResources(track)"
-                :key="resource.id ?? `${track.id}-${resource.displayOrder}-${resource.title}`"
-                :href="resource.url"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="inline-flex max-w-full items-center gap-2 rounded-lg border border-black/8 bg-white/78 px-3 py-2 text-[13px] font-medium text-highlighted transition hover:border-sky-500/40 hover:text-sky-700 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-white dark:hover:border-sky-300/35 dark:hover:text-sky-200"
-              >
-                <AppIcon
-                  name="i-lucide-link"
-                  class="size-3.5 shrink-0 text-sky-700 dark:text-sky-300"
-                />
-                <span class="min-w-0 truncate">
-                  {{ resource.title }}
-                </span>
-                <AppIcon
-                  name="i-lucide-external-link"
-                  class="size-3 shrink-0 text-neutral-500 dark:text-[#A3A3A3]"
-                />
-              </a>
-            </div>
-
-            <div
-              v-if="sortedResources(track).some(resource => resource.description)"
-              class="grid gap-2"
-            >
-              <p
-                v-for="resource in sortedResources(track).filter(item => item.description)"
-                :key="`${track.id}-${resource.displayOrder}-description`"
-                class="text-[13px] leading-relaxed text-neutral-500 dark:text-[#A3A3A3]"
-              >
-                <span class="font-medium text-toned">{{ resource.title }}:</span>
-                {{ resource.description }}
-              </p>
-            </div>
-          </div>
-
-          <div
-            v-if="isStaffView && normalizedText(track.staffInstructions)"
+            v-if="isStaffView && track.staffInstructions?.trim()"
             class="rounded-xl border border-amber-400/25 bg-amber-400/10 p-4 text-amber-950 dark:border-amber-300/25 dark:bg-amber-300/10 dark:text-amber-100"
           >
             <p class="mb-3 text-xs font-semibold uppercase tracking-[0.16em]">
               Staff instructions
             </p>
-            <AppMarkdownRenderer :source="track.staffInstructions ?? ''" />
+            <AppMarkdownRenderer :source="track.staffInstructions" />
           </div>
-        </div>
+        </EventTrackDetails>
       </article>
     </div>
   </section>

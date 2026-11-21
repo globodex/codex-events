@@ -98,6 +98,44 @@ Then('the account event bootstrap should still be requested once', async ({ page
   await expect.poll(() => state.count).toBe(1)
 })
 
+function waitForRosterRead(page: Page, path: string, search: string | null = null) {
+  return page.waitForResponse((response) => {
+    const url = new URL(response.url())
+    return response.request().method() === 'GET'
+      && url.pathname === path
+      && url.searchParams.get('search') === search
+  })
+}
+
+When('I search for a candidate in the event organizer roster', async ({ page }) => {
+  await signInAs('platform_admin', page)
+  const [list] = await Promise.all([
+    waitForRosterRead(page, '/api/event-organizers'),
+    page.goto('/account/platform-settings?tab=event-organizers')
+  ])
+  expect(list.ok()).toBe(true)
+
+  const search = page.getByRole('searchbox')
+  const [candidates] = await Promise.all([
+    waitForRosterRead(page, '/api/event-organizers/candidates', 'Judge'),
+    search.fill('Judge')
+  ])
+  expect(candidates.ok()).toBe(true)
+  await expect(search).toHaveValue('Judge')
+})
+
+Then('the platform admin roster should load its own list with an empty search', async ({ page }) => {
+  const [list, candidates] = await Promise.all([
+    waitForRosterRead(page, '/api/platform-admins'),
+    waitForRosterRead(page, '/api/platform-admins/candidates'),
+    page.getByRole('tab', { name: 'Manage platform admins' }).click()
+  ])
+  expect(list.ok()).toBe(true)
+  expect(candidates.ok()).toBe(true)
+  await expect(page.getByRole('heading', { name: 'Current platform admins' })).toBeVisible()
+  await expect(page.getByRole('searchbox')).toHaveValue('')
+})
+
 Then('I should see the signed-in {string} email', async ({ page }, personaKey: string) => {
   const persona = getStablePersona(parsePersonaKey(personaKey))
   await expect(page.getByText(persona.email).first()).toBeVisible()

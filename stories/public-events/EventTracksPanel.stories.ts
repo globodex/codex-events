@@ -15,6 +15,12 @@ type Story = StoryObj<typeof meta>
 
 export const Tracks: Story = {}
 
+export const ResourcesOnly: Story = {
+  args: {
+    tracks: publicTracks.map(track => ({ ...track, fullDescription: undefined }))
+  }
+}
+
 export const SummariesOnly: Story = {
   args: {
     tracks: publicTracks.map(track => ({ ...track, fullDescription: undefined, resources: [] }))

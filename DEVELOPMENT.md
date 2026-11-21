@@ -445,8 +445,10 @@ add or change a shared component, show its important states in Storybook.
 Use local sample data and callbacks for interactions. Stories are anonymous
 by default.
 For a signed-in view, call `provideStorybookSession` from `.storybook/session.ts`
-with a sample actor in a parent component's setup. Storybook starts without a
-database or authentication service.
+with a sample actor in a parent component's setup. To exercise an API action,
+use `provideStorybookApiFixture` from `.storybook/api-client.ts` in the same
+setup and return sample payloads for the story's requests. Storybook starts
+without a database or authentication service.
 
 To verify a static build in `storybook-static/`, run:
 

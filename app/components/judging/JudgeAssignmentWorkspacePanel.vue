@@ -9,10 +9,9 @@ import type {
 } from '~/domains/judging/workspace'
 import type { AccountJudgeAssignmentWorkspacePage } from '#shared/domains/events/account-event-judging-page'
 
-import BlindSubmissionPanel from '~/components/judging/BlindSubmissionPanel.vue'
 import JudgeReviewActionFooter from '~/components/judging/JudgeReviewActionFooter.vue'
 import JudgeReviewRubric from '~/components/judging/JudgeReviewRubric.vue'
-import PitchSubmissionPanel from '~/components/judging/PitchSubmissionPanel.vue'
+import JudgeSubmissionPanel from '~/components/judging/JudgeSubmissionPanel.vue'
 import { buildAccountEventJudgingTabHref } from '~/domains/judging/query'
 import { useApiClient } from '~/composables/useApiClient'
 import {
@@ -566,63 +565,34 @@ async function markIneligible() {
       v-else
       class="flex flex-col gap-6"
     >
-      <BlindSubmissionPanel
-        v-if="blindAssignment"
+      <JudgeSubmissionPanel
         class="order-1"
-        :assignment="blindAssignment"
+        :assignment="assignment"
       >
         <div class="space-y-6">
-          <AppAlert
-            v-if="criteria.length === 0"
-            color="warning"
-            variant="soft"
-            title="No evaluation criteria configured"
-            description="This event has no scoring criteria yet, so the review cannot be completed from the blind workspace."
-          />
+          <template v-if="blindAssignment">
+            <AppAlert
+              v-if="criteria.length === 0"
+              color="warning"
+              variant="soft"
+              title="No evaluation criteria configured"
+              description="This event has no scoring criteria yet, so the review cannot be completed from the blind workspace."
+            />
 
-          <JudgeReviewRubric
+            <JudgeReviewRubric
+              v-else
+              :model-value="scoreDrafts"
+              :disabled="rubricInteractionDisabled"
+              :readonly="rubricReadonly"
+              :allow-score-selection-when-readonly="allowBlindScoreSelectionWhenReadonly"
+              @update:model-value="updateBlindScoreDrafts"
+            />
+          </template>
+
+          <div
             v-else
-            :model-value="scoreDrafts"
-            :disabled="rubricInteractionDisabled"
-            :readonly="rubricReadonly"
-            :allow-score-selection-when-readonly="allowBlindScoreSelectionWhenReadonly"
-            @update:model-value="updateBlindScoreDrafts"
-          />
-
-          <JudgeReviewActionFooter
-            v-model:skip-reason="skipReason"
-            v-model:ineligible-reason="ineligibleReason"
-            :assignment="blindAssignment"
-            :review-progress-heading="reviewProgressHeading"
-            :review-action-disabled-reason="reviewActionDisabledReason"
-            :action-success="actionState.success"
-            :action-error="actionState.error"
-            :pending-action="actionState.pendingAction"
-            :skip-review-disabled="skipReviewDisabled"
-            :complete-disabled="completeDisabled"
-            :show-inline-skip-form="showInlineSkipForm"
-            :skip-action-label="skipActionLabel"
-            :skip-description="skipDescription"
-            :complete-action-label="completeActionLabel"
-            :next-action-label="nextActionLabel"
-            :judging-workspace-href="judgingWorkspaceHref"
-            :next-review-href="props.nextReviewHref"
-            @open-skip-form="openInlineSkipForm"
-            @close-skip-form="closeInlineSkipForm"
-            @complete-review="completeReview"
-            @skip-review="skipReview"
-            @mark-ineligible="markIneligible"
-          />
-        </div>
-      </BlindSubmissionPanel>
-
-      <PitchSubmissionPanel
-        v-else-if="pitchAssignment"
-        class="order-1"
-        :assignment="pitchAssignment"
-      >
-        <div class="space-y-6">
-          <div class="space-y-5">
+            class="space-y-5"
+          >
             <div class="space-y-1">
               <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                 Pitch score
@@ -679,7 +649,7 @@ async function markIneligible() {
           <JudgeReviewActionFooter
             v-model:skip-reason="skipReason"
             v-model:ineligible-reason="ineligibleReason"
-            :assignment="pitchAssignment"
+            :assignment="assignment"
             :review-progress-heading="reviewProgressHeading"
             :review-action-disabled-reason="reviewActionDisabledReason"
             :action-success="actionState.success"
@@ -701,7 +671,7 @@ async function markIneligible() {
             @mark-ineligible="markIneligible"
           />
         </div>
-      </PitchSubmissionPanel>
+      </JudgeSubmissionPanel>
     </div>
   </div>
 </template>

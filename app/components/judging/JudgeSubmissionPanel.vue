@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import type { JudgeSubmissionPanelDisplay } from '~/domains/judging/workspace'
+import type { JudgeAssignmentDetail } from '~/domains/judging/workspace'
 
 import JudgeAssignmentStatusBadge from '~/components/judging/JudgeAssignmentStatusBadge.vue'
 import {
   formatJudgeIneligibilityStatus,
+  getJudgeSubmissionPanelDisplay,
   resolveJudgeIneligibilityColor
 } from '~/domains/judging/workspace'
 
-defineProps<{
-  display: JudgeSubmissionPanelDisplay
+const props = defineProps<{
+  assignment: JudgeAssignmentDetail
 }>()
+
+const display = computed(() => getJudgeSubmissionPanelDisplay(props.assignment))
 </script>
 
 <template>
