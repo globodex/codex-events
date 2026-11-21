@@ -375,6 +375,16 @@ The scheduled and manually dispatched BDD workflow is self-contained. It uses
 fixed local personas and an isolated D1 database, so it needs no GitHub
 environment, Auth0 tenant, persona credentials, or authentication secrets.
 
+### Architecture previews
+
+GitHub Pages publishes the [committed Groma map](https://globodex.github.io/codex-events/architecture/auto/).
+PRs from this repository that target `main` request a comparison automatically.
+The publishing workflow reads both revisions from Git and posts the before-and-after map to the PR.
+This workflow uses GitHub Pages separately from the Cloudflare application deployments.
+
+For a reviewed fork PR or to retry a preview, run **Groma architecture** on `main` with the PR number.
+If the PR predates the first Groma map, update its branch from `main` before building the preview.
+
 ## Validation
 
 Run the standard project checks with:
