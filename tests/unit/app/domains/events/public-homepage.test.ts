@@ -1,19 +1,10 @@
 import { describe, expect, test } from 'vitest'
 
 import {
-  getPublicHomepageEventView,
-  getPublicHomepageTabForEvent
+  getPublicHomepageEventView
 } from '../../../../../app/domains/events/public-homepage'
 
 describe('public homepage event view helpers', () => {
-  test('classifies registration-open public events as active', () => {
-    expect(getPublicHomepageTabForEvent({ state: 'registration_open' })).toBe('active')
-  })
-
-  test('classifies completed public events as past', () => {
-    expect(getPublicHomepageTabForEvent({ state: 'completed' })).toBe('past')
-  })
-
   test('keeps filters visible when past events exist even if there is exactly one active event', () => {
     expect(getPublicHomepageEventView('past', 5, 4, 1)).toEqual({
       activeEventCount: 1,

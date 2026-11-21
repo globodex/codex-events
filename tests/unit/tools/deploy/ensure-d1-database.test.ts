@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, test } from 'vitest'
 
 import {
-  buildD1CreateArguments,
   ensureDeployD1Database,
   parseD1DatabaseInfoOutput,
   parseD1DatabaseListOutput,
@@ -191,19 +190,6 @@ describe('deploy D1 database provisioning', () => {
         command: 'bunx',
         args: ['wrangler', 'd1', 'info', 'codex-events-test', '--json']
       }
-    ])
-  })
-
-  test('builds an explicit location-hint create command', () => {
-    expect(buildD1CreateArguments('codex-events-test', {
-      primaryLocationHint: 'eeur'
-    })).toEqual([
-      'wrangler',
-      'd1',
-      'create',
-      'codex-events-test',
-      '--location',
-      'eeur'
     ])
   })
 

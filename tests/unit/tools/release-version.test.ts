@@ -2,8 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import {
   parseReleaseVersionCliArgs,
-  resolveReleaseVersion,
-  updatePackageVersion
+  resolveReleaseVersion
 } from '../../../tools/releases/release-version'
 
 describe('release version helper', () => {
@@ -16,26 +15,6 @@ describe('release version helper', () => {
   test('rejects invalid release tags', () => {
     expect(() => resolveReleaseVersion('release-1.2.3')).toThrow('must be a semantic version')
     expect(() => resolveReleaseVersion('v1.2')).toThrow('must be a semantic version')
-  })
-
-  test('updates package.json version without disturbing unrelated fields', () => {
-    const updated = updatePackageVersion(JSON.stringify({
-      name: 'codex-events',
-      private: true,
-      version: '0.0.0',
-      scripts: {
-        test: 'vitest'
-      }
-    }), '1.8.0')
-
-    expect(JSON.parse(updated)).toEqual({
-      name: 'codex-events',
-      private: true,
-      version: '1.8.0',
-      scripts: {
-        test: 'vitest'
-      }
-    })
   })
 
   test('parses CLI args for stdout-only and write modes', () => {

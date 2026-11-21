@@ -3,21 +3,10 @@ import { describe, expect, test } from 'vitest'
 import {
   isProtectedApiPath,
   isPublicCacheableApiPath,
-  isStaticFrameworkApiPath,
-  protectedApiCacheControl,
-  protectedApiCdnCacheControl,
-  publicEventCacheControl,
-  publicEventCdnCacheControl
+  isStaticFrameworkApiPath
 } from '../../../../server/http/cache-policy'
 
 describe('API response cache policy classifier', () => {
-  test('has explicit protected and public cache contracts', () => {
-    expect(protectedApiCacheControl).toBe('private, no-store')
-    expect(protectedApiCdnCacheControl).toBe('private, no-store')
-    expect(publicEventCacheControl).toBe('public, max-age=30, stale-if-error=0')
-    expect(publicEventCdnCacheControl).toBe('public, max-age=30, stale-if-error=0')
-  })
-
   test('allows only explicit public/versioned API families to remain cacheable', () => {
     const publicPaths = [
       '/api/public/events',

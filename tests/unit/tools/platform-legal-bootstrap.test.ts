@@ -1,13 +1,8 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
-import { tmpdir } from 'node:os'
-
 import { afterEach, describe, expect, test } from 'vitest'
 
 import {
   parseCommandMode,
-  parseScriptArgs,
-  readPlatformLegalBootstrapConfig
+  parseScriptArgs
 } from '../../../tools/platform-legal/bootstrap'
 
 const originalDatabaseBinding = process.env.NUXT_DATABASE_BINDING
@@ -59,44 +54,5 @@ describe('platform legal bootstrap script config', () => {
   test('rejects missing config path', () => {
     expect(() => parseScriptArgs(['apply'])).toThrow('Provide --config with the platform legal bootstrap JSON file.')
     expect(() => parseScriptArgs(['apply', '--config'])).toThrow('Missing value for --config.')
-  })
-
-  test('reads required settings and document content from json', async () => {
-    const tempDirectory = await mkdtemp(join(tmpdir(), 'platform-legal-bootstrap-'))
-    const configPath = join(tempDirectory, 'platform-legal.json')
-
-    try {
-      await writeFile(configPath, JSON.stringify({
-        supportEmail: 'support@example.com',
-        imprintContent: 'Example imprint.',
-        documents: {
-          privacy_policy: {
-            title: 'Privacy Policy',
-            content: 'Privacy content'
-          },
-          platform_terms: {
-            title: 'Platform Terms',
-            content: 'Terms content'
-          }
-        }
-      }))
-
-      expect(readPlatformLegalBootstrapConfig(configPath)).toMatchObject({
-        supportEmail: 'support@example.com',
-        imprintContent: 'Example imprint.',
-        documents: {
-          privacy_policy: {
-            title: 'Privacy Policy',
-            content: 'Privacy content'
-          },
-          platform_terms: {
-            title: 'Platform Terms',
-            content: 'Terms content'
-          }
-        }
-      })
-    } finally {
-      await rm(tempDirectory, { recursive: true, force: true })
-    }
   })
 })

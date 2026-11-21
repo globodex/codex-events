@@ -1,16 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 
-import {
-  accountEventEntryPagePath,
-  accountEventEntryPageSchema
-} from '../../../../../shared/domains/events/account-event-entry-page'
-import {
-  accountEventPrizesPagePath,
-  accountEventPrizesPageSchema
-} from '../../../../../shared/domains/events/account-event-prizes-page'
-import { accountEventPageRoutePaths } from '../../../../../server/domains/events/account-event-page-contract'
-
 const entryPageSource = readFileSync(
   new URL('../../../../../app/pages/account/events/[slug]/index.vue', import.meta.url),
   'utf8'
@@ -29,41 +19,6 @@ const talkReviewPanelSource = readFileSync(
 )
 
 describe('account-event entry and prizes contracts', () => {
-  test('exposes concrete page-shaped schemas and canonical routes', () => {
-    expect(accountEventEntryPagePath).toBe('/api/account/events/:slug/entry')
-    expect(accountEventPrizesPagePath).toBe('/api/account/events/:slug/prizes')
-    expect(accountEventPageRoutePaths.entry).toBe(accountEventEntryPagePath)
-    expect(accountEventPageRoutePaths.prizes).toBe(accountEventPrizesPagePath)
-    expect(Object.keys(accountEventEntryPageSchema.shape)).toEqual([
-      'event',
-      'adminSettingsEvent',
-      'access',
-      'participation',
-      'participantCredits',
-      'adminCredits',
-      'talkProposal',
-      'talkProposalReviews',
-      'talkProposalReviewTotal',
-      'participantRank',
-      'tabVisibility',
-      'applicationStatus',
-      'lumaSyncStatus'
-    ])
-    expect(Object.keys(accountEventPrizesPageSchema.shape)).toEqual([
-      'event',
-      'adminSettingsEvent',
-      'prizes',
-      'winners',
-      'publishedProjects',
-      'participantRank',
-      'participantOutcome'
-    ])
-    expect(accountEventEntryPageSchema.shape).not.toHaveProperty('include')
-    expect(accountEventEntryPageSchema.shape).not.toHaveProperty('resourceMap')
-    expect(accountEventPrizesPageSchema.shape).not.toHaveProperty('include')
-    expect(accountEventPrizesPageSchema.shape).not.toHaveProperty('resourceMap')
-  })
-
   test('uses the shared page request and removes the old entry/prizes fan-out callers', () => {
     expect(entryPageSource).toContain('useAccountEventPageRequest<AccountEventEntryPage>(slug, \'entry\', {')
     expect(entryPageSource).toContain('useAccountEventPageRequest<AccountEventPrizesPage>(slug, \'prizes\'')

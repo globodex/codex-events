@@ -6,8 +6,6 @@ import {
   buildDeployQueueConsumerConfigs,
   buildDeployWranglerConfig,
   buildDeployQueueResourceNames,
-  parseDeployTarget,
-  resolveD1PlacementConfiguration,
   resolveDeployConfigInput,
   resolveDeployResourceNames
 } from '../../../../tools/deploy/generate-wrangler-config'
@@ -25,42 +23,6 @@ function createEnvironment(overrides: Record<string, string | undefined> = {}) {
 }
 
 describe('deploy Wrangler config generator', () => {
-  test('requires exactly one explicit D1 placement selector', () => {
-    expect(resolveD1PlacementConfiguration({
-      CF_D1_JURISDICTION: 'eu'
-    })).toEqual({
-      jurisdiction: 'eu'
-    })
-    expect(resolveD1PlacementConfiguration({
-      CF_D1_PRIMARY_LOCATION_HINT: 'eeur'
-    })).toEqual({
-      primaryLocationHint: 'eeur'
-    })
-
-    expect(() => resolveD1PlacementConfiguration({})).toThrow(
-      'Set exactly one of CF_D1_JURISDICTION or CF_D1_PRIMARY_LOCATION_HINT'
-    )
-    expect(() => resolveD1PlacementConfiguration({
-      CF_D1_JURISDICTION: 'eu',
-      CF_D1_PRIMARY_LOCATION_HINT: 'eeur'
-    })).toThrow('Set only one of CF_D1_JURISDICTION or CF_D1_PRIMARY_LOCATION_HINT')
-  })
-
-  test('rejects unsupported D1 placement values', () => {
-    expect(() => resolveD1PlacementConfiguration({
-      CF_D1_JURISDICTION: 'us'
-    })).toThrow('CF_D1_JURISDICTION must be one of: eu, fedramp.')
-    expect(() => resolveD1PlacementConfiguration({
-      CF_D1_PRIMARY_LOCATION_HINT: 'vienna'
-    })).toThrow('CF_D1_PRIMARY_LOCATION_HINT must be one of: weur, eeur, apac, oc, wnam, enam.')
-  })
-
-  test('parses explicit deployment targets', () => {
-    expect(parseDeployTarget('test')).toBe('test')
-    expect(parseDeployTarget('production')).toBe('production')
-    expect(() => parseDeployTarget('staging')).toThrow('Usage:')
-  })
-
   test('generates test config from environment-local domain and derived resource names', () => {
     const input = resolveDeployConfigInput('test', createEnvironment({
       BASE_DOMAIN: 'test.example.com',

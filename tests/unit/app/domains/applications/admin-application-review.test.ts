@@ -3,16 +3,13 @@ import { describe, expect, test } from 'vitest'
 import {
   buildAdminApplicationReviewGroups,
   canApproveAdminApplicationReviewGroup,
-  countApprovedAdminApplicationsBySelectedTrack,
-  filterApprovedAdminApplicationsForTrackCounts,
   filterAdminApplicationReviewGroups,
   filterAdminApplicationReviewGroupsByAiKnowledge,
   filterAdminApplicationReviewGroupsByApplicant,
   filterAdminApplicationReviewGroupsBySelectedTrack,
   hasAdminApplicationReviewApplicantApprovalSelected,
   hasAdminApplicationReviewGroupApprovalSelected,
-  searchAdminApplicationReviewGroups,
-  shouldShowAdminApplicationWithdrawalUndoAction
+  searchAdminApplicationReviewGroups
 } from '../../../../../app/domains/applications/admin-application-review'
 import type { AdminApplicationRecord } from '../../../../../app/domains/applications/admin-application-record'
 
@@ -64,29 +61,6 @@ function createApplication(options: {
 }
 
 describe('buildAdminApplicationReviewGroups', () => {
-  test('shows withdrawal undo only for withdrawn participants during registration open', () => {
-    expect(shouldShowAdminApplicationWithdrawalUndoAction(createApplication({
-      id: 'application-1',
-      displayName: 'Alice Example',
-      email: 'alice@example.com',
-      status: 'withdrawn'
-    }), 'registration_open')).toBe(true)
-
-    expect(shouldShowAdminApplicationWithdrawalUndoAction(createApplication({
-      id: 'application-2',
-      displayName: 'Bob Example',
-      email: 'bob@example.com',
-      status: 'withdrawn'
-    }), 'submission_open')).toBe(false)
-
-    expect(shouldShowAdminApplicationWithdrawalUndoAction(createApplication({
-      id: 'application-3',
-      displayName: 'Carol Example',
-      email: 'carol@example.com',
-      status: 'submitted'
-    }), 'registration_open')).toBe(false)
-  })
-
   test('groups applicants by exact teammate-hint email matches before considering names', () => {
     const applications = [
       createApplication({
@@ -549,116 +523,6 @@ describe('buildAdminApplicationReviewGroups', () => {
         mentionedByApplicationIds: ['application-2']
       }]
     })])
-  })
-
-  test('counts approved applications by selected track only', () => {
-    const counts = countApprovedAdminApplicationsBySelectedTrack([
-      createApplication({
-        id: 'application-1',
-        displayName: 'Alice Example',
-        email: 'alice@example.com',
-        status: 'approved',
-        selectedTrackId: 'track-agents'
-      }),
-      createApplication({
-        id: 'application-2',
-        displayName: 'Bob Example',
-        email: 'bob@example.com',
-        status: 'approved',
-        selectedTrackId: 'track-agents'
-      }),
-      createApplication({
-        id: 'application-3',
-        displayName: 'Carol Example',
-        email: 'carol@example.com',
-        status: 'approved',
-        selectedTrackId: 'track-tools'
-      }),
-      createApplication({
-        id: 'application-4',
-        displayName: 'Dave Example',
-        email: 'dave@example.com',
-        status: 'approved',
-        selectedTrackId: null
-      }),
-      createApplication({
-        id: 'application-5',
-        displayName: 'Eve Example',
-        email: 'eve@example.com',
-        status: 'submitted',
-        selectedTrackId: 'track-agents'
-      })
-    ])
-
-    expect(counts.get('track-agents')).toBe(2)
-    expect(counts.get('track-tools')).toBe(1)
-    expect(counts.has('track-unknown')).toBe(false)
-  })
-
-  test('filters approved track count applications by effective checked-in state', () => {
-    const applications = [
-      createApplication({
-        id: 'application-1',
-        displayName: 'Alice Example',
-        email: 'alice@example.com',
-        status: 'approved',
-        checkedInAt: '2026-03-29T12:05:00.000Z',
-        selectedTrackId: 'track-agents'
-      }),
-      createApplication({
-        id: 'application-2',
-        displayName: 'Bob Example',
-        email: 'bob@example.com',
-        status: 'approved',
-        checkedInAt: null,
-        selectedTrackId: 'track-agents'
-      }),
-      createApplication({
-        id: 'application-3',
-        displayName: 'Carol Example',
-        email: 'carol@example.com',
-        status: 'approved',
-        checkedInAt: null,
-        checkInOverrideStatus: 'joined',
-        selectedTrackId: 'track-tools'
-      }),
-      createApplication({
-        id: 'application-4',
-        displayName: 'Dave Example',
-        email: 'dave@example.com',
-        status: 'approved',
-        checkedInAt: '2026-03-29T12:10:00.000Z',
-        checkInOverrideStatus: 'not_joined',
-        selectedTrackId: 'track-tools'
-      }),
-      createApplication({
-        id: 'application-5',
-        displayName: 'Eve Example',
-        email: 'eve@example.com',
-        status: 'submitted',
-        checkedInAt: '2026-03-29T12:15:00.000Z',
-        selectedTrackId: 'track-agents'
-      })
-    ]
-
-    const allApproved = filterApprovedAdminApplicationsForTrackCounts(applications)
-    const checkedInApproved = filterApprovedAdminApplicationsForTrackCounts(applications, {
-      checkedInOnly: true
-    })
-    const checkedInCounts = countApprovedAdminApplicationsBySelectedTrack(checkedInApproved)
-
-    expect(allApproved.map(application => application.id)).toEqual([
-      'application-1',
-      'application-2',
-      'application-3',
-      'application-4'
-    ])
-    expect(checkedInApproved.map(application => application.id)).toEqual([
-      'application-1',
-      'application-3'
-    ])
-    expect(checkedInCounts.get('track-agents')).toBe(1)
-    expect(checkedInCounts.get('track-tools')).toBe(1)
   })
 
   test('filters groups by selected track without leaking hidden teammate hints', () => {

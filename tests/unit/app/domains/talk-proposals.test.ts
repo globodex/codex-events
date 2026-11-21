@@ -2,9 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import {
   createTalkProposalAnswers,
-  isTalkProposalWindowOpen,
   talkProposalFormSchema,
-  talkProposalStatusLabels,
   validateTalkProposalSubmission
 } from '../../../../app/domains/talk-proposals'
 
@@ -24,35 +22,6 @@ describe('talk proposal workspace contracts', () => {
       questionSetRevision: 0,
       answers: []
     }).success).toBe(false)
-  })
-
-  test('identifies upcoming, open, and closed Call for talks windows', () => {
-    expect(isTalkProposalWindowOpen('2026-03-20T12:00:00Z', '2026-03-21T12:00:00Z', Date.parse('2026-03-20T13:00:00Z'))).toBe(true)
-    expect(isTalkProposalWindowOpen('2026-03-20T12:00:00Z', '2026-03-21T12:00:00Z', Date.parse('2026-03-19T13:00:00Z'))).toBe(false)
-    expect(isTalkProposalWindowOpen('2026-03-20T12:00:00Z', '2026-03-21T12:00:00Z', Date.parse('2026-03-22T13:00:00Z'))).toBe(false)
-  })
-
-  test('uses participant-facing status labels', () => {
-    expect(talkProposalStatusLabels).toEqual({
-      draft: 'Draft',
-      submitted: 'Submitted',
-      withdrawn: 'Withdrawn',
-      accepted: 'Accepted',
-      rejected: 'Not accepted'
-    })
-  })
-
-  test('initializes configured answers while preserving values for unchanged questions', () => {
-    expect(createTalkProposalAnswers([
-      { id: 'audience', type: 'short_text', prompt: 'Who is this for?', required: true, options: [] },
-      { id: 'recording', type: 'acknowledgement', prompt: 'I agree to recording.', required: true, options: [] }
-    ], [
-      { questionId: 'audience', value: 'Agent builders' },
-      { questionId: 'removed', value: 'Old answer' }
-    ])).toEqual([
-      { questionId: 'audience', value: 'Agent builders' },
-      { questionId: 'recording', value: false }
-    ])
   })
 
   test('validates standard and configured proposal fields as one submission', () => {

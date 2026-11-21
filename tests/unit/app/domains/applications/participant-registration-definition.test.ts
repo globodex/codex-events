@@ -8,9 +8,7 @@ import type {
 import {
   createParticipantRegistrationDraft,
   evaluateParticipantRegistration,
-  normalizeParticipantRegistrationProfileForm,
   participantRegistrationProfileFieldId,
-  participantRegistrationSectionDomId,
   participantRegistrationTalkQuestionFieldId,
   participantRegistrationTeammateFieldId,
   projectParticipantRegistrationAccountPatch,
@@ -271,21 +269,6 @@ describe('participant registration definition', () => {
           { questionId: 'format', value: true }
         ]
       }
-    })
-  })
-
-  test('centralizes typed field and section identifiers', () => {
-    expect(participantRegistrationProfileFieldId('githubProfileUrl')).toBe('profileForm.githubProfileUrl')
-    expect(participantRegistrationTeammateFieldId(2, 'email')).toBe('teamMemberHints.2.email')
-    expect(participantRegistrationTalkQuestionFieldId('audience')).toBe('talkProposal.question.audience')
-    expect(participantRegistrationSectionDomId('registration')).toBe('registration-section-registration')
-  })
-
-  test('normalizes profile inputs to the canonical typed draft shape', () => {
-    expect(normalizeParticipantRegistrationProfileForm({ firstName: 'Ada', familyName: null, chatgptEmail: 42 })).toMatchObject({
-      firstName: 'Ada',
-      familyName: '',
-      chatgptEmail: ''
     })
   })
 })

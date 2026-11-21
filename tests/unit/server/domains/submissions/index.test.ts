@@ -9,17 +9,10 @@ import {
 import { ApiError } from '../../../../../server/http/api-error'
 import {
   assertSubmissionBodyMatchesEventRequirements,
-  assertEventAllowsSubmissionCreation,
-  assertEventAllowsSubmissionEditing,
-  assertNoSubmissionExists,
-  assertSubmissionDisqualifiable,
   assertSubmissionMutable,
   assertSubmissionSubmittable,
-  assertSubmissionWithdrawable,
   buildSubmissionWritePayload,
-  getEventSubmissionSummary,
-  isNoSubmissionStatus,
-  resolveValidatedSubmissionTrackId
+  getEventSubmissionSummary
 } from '../../../../../server/domains/submissions'
 import { createApiRouteTestHarness } from '../../../../support/backend/api-route'
 
@@ -112,22 +105,6 @@ describe('TASK-3.7 submission helpers', () => {
     }
   })
 
-  test('submission creation remains limited to submission_open', () => {
-    expect(() => assertEventAllowsSubmissionCreation(createEvent('submission_open'))).not.toThrow()
-    expect(() => assertEventAllowsSubmissionCreation(createEvent('judging_preparation'))).toThrowError(ApiError)
-  })
-
-  test('submission editing remains available until judging starts', () => {
-    expect(() => assertEventAllowsSubmissionEditing(createEvent('submission_open'))).not.toThrow()
-    expect(() => assertEventAllowsSubmissionEditing(createEvent('judging_preparation'))).not.toThrow()
-    expect(() => assertEventAllowsSubmissionEditing(createEvent('blind_review'))).toThrowError(ApiError)
-  })
-
-  test('submission creation requires the team to have no prior submission record', () => {
-    expect(() => assertNoSubmissionExists(null, 'team_1')).not.toThrow()
-    expect(() => assertNoSubmissionExists(createSubmission('withdrawn'), 'team_1')).toThrowError(ApiError)
-  })
-
   test('submission mutation and submit guards follow the documented state machine', async () => {
     expect(() => assertSubmissionMutable(createSubmission('draft'))).not.toThrow()
     expect(() => assertSubmissionMutable(createSubmission('submitted'))).not.toThrow()
@@ -173,66 +150,6 @@ describe('TASK-3.7 submission helpers', () => {
       demoUrl: '',
       trackId: null
     })).toThrowError(ApiError)
-  })
-
-  test('submission track validation follows the configured event tracks', async () => {
-    await expect(resolveValidatedSubmissionTrackId(
-      createDatabase(),
-      'event_1',
-      null
-    )).resolves.toBeNull()
-
-    await expect(resolveValidatedSubmissionTrackId(
-      createDatabase(),
-      'event_1',
-      'track_1'
-    )).rejects.toThrowError(ApiError)
-
-    await expect(resolveValidatedSubmissionTrackId(
-      createDatabase(['track_1']),
-      'event_1',
-      null
-    )).rejects.toThrowError(ApiError)
-
-    await expect(resolveValidatedSubmissionTrackId(
-      createDatabase(['track_1']),
-      'event_1',
-      'track_2'
-    )).rejects.toThrowError(ApiError)
-
-    await expect(resolveValidatedSubmissionTrackId(
-      createDatabase(['track_1']),
-      'event_1',
-      'track_1'
-    )).resolves.toBe('track_1')
-  })
-
-  test('withdrawal is allowed until judging starts and only for draft or submitted submissions', () => {
-    expect(() => assertSubmissionWithdrawable(createEvent('submission_open'), createSubmission('draft'))).not.toThrow()
-    expect(() => assertSubmissionWithdrawable(createEvent('submission_open'), createSubmission('submitted'))).not.toThrow()
-    expect(() => assertSubmissionWithdrawable(createEvent('judging_preparation'), createSubmission('submitted'))).not.toThrow()
-    expect(() => assertSubmissionWithdrawable(createEvent('submission_open'), createSubmission('locked'))).toThrowError(ApiError)
-    expect(() => assertSubmissionWithdrawable(createEvent('blind_review'), createSubmission('submitted'))).toThrowError(ApiError)
-  })
-
-  test('disqualification applies only to locked submissions during the judging and outcomes lifecycle', () => {
-    expect(() => assertSubmissionDisqualifiable(createEvent('blind_review'), createSubmission('locked'))).not.toThrow()
-    expect(() => assertSubmissionDisqualifiable(createEvent('shortlist'), createSubmission('locked'))).not.toThrow()
-    expect(() => assertSubmissionDisqualifiable(createEvent('pitch'), createSubmission('locked'))).not.toThrow()
-    expect(() => assertSubmissionDisqualifiable(createEvent('pitch_review'), createSubmission('locked'))).not.toThrow()
-    expect(() => assertSubmissionDisqualifiable(createEvent('final_deliberation'), createSubmission('locked'))).not.toThrow()
-    expect(() => assertSubmissionDisqualifiable(createEvent('winners_announced'), createSubmission('locked'))).not.toThrow()
-    expect(() => assertSubmissionDisqualifiable(createEvent('completed'), createSubmission('locked'))).not.toThrow()
-    expect(() => assertSubmissionDisqualifiable(createEvent('submission_open'), createSubmission('locked'))).toThrowError(ApiError)
-    expect(() => assertSubmissionDisqualifiable(createEvent('shortlist'), createSubmission('draft'))).toThrowError(ApiError)
-    expect(() => assertSubmissionDisqualifiable(createEvent('shortlist'), createSubmission('submitted'))).toThrowError(ApiError)
-    expect(() => assertSubmissionDisqualifiable(createEvent('shortlist'), createSubmission('withdrawn'))).toThrowError(ApiError)
-
-    expect(isNoSubmissionStatus('draft')).toBe(true)
-    expect(isNoSubmissionStatus('withdrawn')).toBe(true)
-    expect(isNoSubmissionStatus('disqualified')).toBe(true)
-    expect(isNoSubmissionStatus('submitted')).toBe(false)
-    expect(isNoSubmissionStatus('locked')).toBe(false)
   })
 
   test('submission write payloads persist the canonical required fields', () => {

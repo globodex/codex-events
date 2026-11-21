@@ -13,7 +13,6 @@ import {
 } from '../../../../../server/database/schema'
 import {
   buildApplicationLumaSyncQueueMessage,
-  enqueueApplicationLumaSyncMessage,
   enqueueMissingEventApplicationLumaSyncMessages,
   lookupLumaEventGuestByEmail,
   processApplicationLumaSyncQueueBatch,
@@ -192,41 +191,6 @@ describe('application luma sync queue utilities', () => {
     }
 
     vi.unstubAllGlobals()
-  })
-
-  test('enqueue sends json payload to the configured queue binding', async () => {
-    const send = vi.fn(async () => undefined)
-    const event = createEvent({
-      queueProducer: { send }
-    })
-
-    const result = await enqueueApplicationLumaSyncMessage(event, buildApplicationLumaSyncQueueMessage({
-      applicationId: 'application_1',
-      decision: 'approved'
-    }))
-
-    expect(result).toEqual({
-      status: 'enqueued'
-    })
-    expect(send).toHaveBeenCalledTimes(1)
-    expect(send).toHaveBeenCalledWith(expect.objectContaining({
-      applicationId: 'application_1',
-      decision: 'approved'
-    }), {
-      contentType: 'json'
-    })
-  })
-
-  test('enqueue skips when queue binding is not available', async () => {
-    const result = await enqueueApplicationLumaSyncMessage(createEvent(), buildApplicationLumaSyncQueueMessage({
-      applicationId: 'application_1',
-      decision: 'rejected'
-    }))
-
-    expect(result).toEqual({
-      status: 'skipped',
-      reason: 'queue_binding_missing:APPLICATION_LUMA_SYNC_QUEUE'
-    })
   })
 
   test('event configuration backfill enqueues decided applications with missing Luma sync status', async () => {

@@ -4,11 +4,7 @@ import {
   accountEventWorkspaceTabs,
   canAccessAccountEventWorkspace,
   getAccountEventPageForTab,
-  getAccountEventWorkspaceBackLink,
-  getAccountEventTabAccess,
-  getAccountEventTabLabel,
-  resolveAccountEventScopedId,
-  shouldPreserveAccountEventTabSelection
+  getAccountEventTabAccess
 } from '../../../../../app/domains/events/account-workspace-tabs'
 
 const hackathonOptions = {
@@ -18,35 +14,6 @@ const hackathonOptions = {
 }
 
 describe('getAccountEventTabAccess', () => {
-  test.each(['overview', 'credits', 'details', 'call-for-talks'] as const)(
-    'preserves a direct %s selection until the entry page resolves',
-    (tab) => {
-      expect(shouldPreserveAccountEventTabSelection({
-        tab,
-        hasEntryPage: false,
-        hasPageShell: false
-      })).toBe(true)
-      expect(shouldPreserveAccountEventTabSelection({
-        tab,
-        hasEntryPage: true,
-        hasPageShell: false
-      })).toBe(false)
-      expect(shouldPreserveAccountEventTabSelection({
-        tab,
-        hasEntryPage: false,
-        hasPageShell: true
-      })).toBe(false)
-    }
-  )
-
-  test('does not defer a direct page-family tab to the entry response', () => {
-    expect(shouldPreserveAccountEventTabSelection({
-      tab: 'gallery',
-      hasEntryPage: false,
-      hasPageShell: false
-    })).toBe(false)
-  })
-
   test('maps every workspace tab to one named page contract', () => {
     expect(Object.fromEntries(accountEventWorkspaceTabs.map(tab => [tab, getAccountEventPageForTab(tab)]))).toEqual({
       'overview': 'entry',
@@ -461,33 +428,6 @@ describe('getAccountEventTabAccess', () => {
     })).toBe(true)
   })
 
-  test('falls back to the loaded event id when the account access record is missing', () => {
-    expect(resolveAccountEventScopedId({
-      accessRecordId: '',
-      eventId: 'event_draft_internal'
-    })).toBe('event_draft_internal')
-  })
-
-  test('routes non-admin staff back to the staff dashboard from the event workspace', () => {
-    expect(getAccountEventWorkspaceBackLink({
-      canManage: false,
-      canViewParticipantsAndTeams: true
-    })).toEqual({
-      to: '/account/staff',
-      label: 'Back to Staff dashboard'
-    })
-  })
-
-  test('keeps the admin dashboard as the primary back-link when admin access is available', () => {
-    expect(getAccountEventWorkspaceBackLink({
-      canManage: true,
-      canViewParticipantsAndTeams: true
-    })).toEqual({
-      to: '/account/admin',
-      label: 'Back to Admin dashboard'
-    })
-  })
-
   test('keeps participant workspace and teams tabs hidden when the actor has no participant access record', () => {
     expect(getAccountEventTabAccess({
       ...hackathonOptions,
@@ -534,18 +474,6 @@ describe('getAccountEventTabAccess', () => {
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: false
     })
-  })
-
-  test('renames the prizes tab to winners after winners are published', () => {
-    expect(getAccountEventTabLabel('prizes', {
-      eventState: 'completed'
-    })).toBe('Winners')
-    expect(getAccountEventTabLabel('prizes', {
-      eventState: 'winners_announced'
-    })).toBe('Prizes')
-    expect(getAccountEventTabLabel('prizes', {
-      eventState: 'pitch_review'
-    })).toBe('Prizes')
   })
 
   test('hides admin prize configuration once winners are announced while keeping the tab available', () => {

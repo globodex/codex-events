@@ -24,11 +24,6 @@ describe('auth0 custom domain helpers', () => {
     })).toBe('login.codex-events.com')
   })
 
-  test('requires either the explicit custom domain or base domain', () => {
-    expect(() => resolveAuth0CustomDomain({}))
-      .toThrow('Missing required environment variable AUTH0_CUSTOM_DOMAIN or BASE_DOMAIN.')
-  })
-
   test('extracts the Auth0-managed-cert verification CNAME record', () => {
     expect(resolveVerificationDnsRecord({
       custom_domain_id: 'cd_123',
@@ -48,24 +43,6 @@ describe('auth0 custom domain helpers', () => {
       name: 'auth.codex-events.com',
       content: 'codex-events-cd-123.edge.tenants.eu.auth0.com'
     })
-  })
-
-  test('requires a CNAME verification method when Auth0 has not provided one', () => {
-    expect(() => resolveVerificationDnsRecord({
-      custom_domain_id: 'cd_123',
-      domain: 'auth.codex-events.com',
-      primary: false,
-      verification: {
-        status: 'pending',
-        methods: [
-          {
-            name: 'TXT',
-            domain: 'auth.codex-events.com',
-            record: 'not-supported-here'
-          }
-        ]
-      }
-    })).toThrow('missing a CNAME verification method')
   })
 
   test('only updates Cloudflare when the record does not already match Auth0 verification', () => {

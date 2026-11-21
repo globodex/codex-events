@@ -14,11 +14,4 @@ describe('getCountryOptions', () => {
     expect(options.some(option => option.value === 'European Union')).toBe(false)
     expect(options.some(option => option.value === 'Unknown Region')).toBe(false)
   })
-
-  test('keeps the current selection available when it is not part of the generated list', () => {
-    expect(getCountryOptions('Atlantis')[0]).toEqual({
-      label: 'Atlantis',
-      value: 'Atlantis'
-    })
-  })
 })

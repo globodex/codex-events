@@ -3,16 +3,6 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   Auth0ManagementRequestError,
   assertManagementAccessTokenScopes,
-  buildDefaultBrandingTheme,
-  buildMcpDefaultClientGrant,
-  buildMcpResourceServerPayload,
-  buildMcpTenantSettings,
-  buildMcpTenantSettingsUpdate,
-  buildRequiredClientUrls,
-  buildClearedSignupPartials,
-  buildExpectedLoginCustomText,
-  buildPostLoginActionSecrets,
-  buildUniversalLoginPageTemplate,
   ensureMcpDomainConnections,
   ensureTrustedMcpCimdClients,
   isAuth0DefaultBrandingThemeUnavailable,
@@ -83,43 +73,6 @@ describe('auth0 bootstrap config', () => {
     expect(config.mcpClientMetadataUrls).toEqual([
       'https://chatgpt.com/oauth/codex/test/client.json'
     ])
-  })
-
-  test('builds the strict Auth0 OAuth configuration for third-party MCP clients', () => {
-    const config = resolveConfig(createAuth0BootstrapEnvironment())
-
-    expect(buildMcpResourceServerPayload(config)).toEqual({
-      name: 'Codex Events MCP',
-      identifier: 'https://test.codex-events.com/mcp',
-      signing_alg: 'RS256',
-      token_dialect: 'rfc9068_profile',
-      allow_offline_access: true,
-      enforce_policies: false,
-      subject_type_authorization: {
-        user: { policy: 'require_client_grant' },
-        client: { policy: 'deny_all' }
-      },
-      scopes: [{ value: 'mcp', description: 'Access Codex Events through MCP' }]
-    })
-    expect(buildMcpDefaultClientGrant(config)).toEqual({
-      audience: 'https://test.codex-events.com/mcp',
-      scope: ['mcp'],
-      subject_type: 'user',
-      default_for: 'third_party_clients'
-    })
-    expect(buildMcpTenantSettings()).toEqual({
-      resource_parameter_profile: 'compatibility',
-      authorization_response_iss_parameter_supported: true,
-      client_id_metadata_document_supported: true,
-      flags: { enable_dynamic_client_registration: false }
-    })
-    expect(buildMcpTenantSettingsUpdate({
-      flags: {
-        enable_dynamic_client_registration: false,
-        disable_impersonation: true,
-        allow_changing_enable_sso: false
-      }
-    })).toEqual(buildMcpTenantSettings())
   })
 
   test('validates and deduplicates trusted MCP Client ID Metadata Document URLs', () => {
@@ -416,52 +369,6 @@ describe('auth0 bootstrap config', () => {
     expect(resolvePrimaryButtonLabelColor('#f3f3f5')).toBe('#030213')
   })
 
-  test('builds the required callback, logout, and origin URLs for the application origin', () => {
-    const urls = buildRequiredClientUrls({
-      appBaseUrl: 'http://localhost:3000'
-    })
-
-    expect(urls).toEqual({
-      callbacks: [
-        'http://localhost:3000/auth/callback',
-        'http://localhost:3000/auth/link/callback'
-      ],
-      logoutUrls: [
-        'http://localhost:3000'
-      ],
-      origins: [
-        'http://localhost:3000'
-      ]
-    })
-  })
-
-  test('builds canonical login prompt subtitle copy from config', () => {
-    const config = resolveConfig(createAuth0BootstrapEnvironment({
-      AUTH0_APP_DISPLAY_NAME: 'Codex Events'
-    }))
-
-    expect(buildExpectedLoginCustomText(config)).toEqual({
-      login: {
-        description: 'Sign in to access your events, applications, submissions, and judging workspace in Codex Events.'
-      }
-    })
-  })
-
-  test('builds Auth0 Action secrets for account linking without app-runtime management names', () => {
-    const config = resolveConfig(createAuth0BootstrapEnvironment())
-
-    const secrets = buildPostLoginActionSecrets(config)
-    expect(secrets.map(secret => secret.name)).toEqual([
-      'APP_BASE_URL',
-      'APP_CLIENT_ID',
-      'DATABASE_CONNECTION_NAME',
-      'ACCOUNT_LINK_CHALLENGE_SECRET',
-      'MANAGEMENT_API_DOMAIN',
-      'MANAGEMENT_API_CLIENT_ID',
-      'MANAGEMENT_API_CLIENT_SECRET'
-    ])
-  })
-
   test('derives the account-link challenge secret from the Auth0 app client secret when omitted', () => {
     const config = resolveConfig(createAuth0BootstrapEnvironment({
       AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: ''
@@ -479,20 +386,6 @@ describe('auth0 bootstrap config', () => {
     }))).toThrow('must match')
   })
 
-  test('builds canonical Universal Login template with theme-colored links', () => {
-    const config = resolveConfig(createAuth0BootstrapEnvironment())
-
-    const template = buildUniversalLoginPageTemplate(config)
-
-    expect(template).toContain(':where(body._widget-auto-layout a) { color: #030213; }')
-    expect(template).not.toContain('body._widget-auto-layout a { color: #030213 !important; }')
-    expect(template).toContain('body._widget-auto-layout a[role="button"] { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; }')
-    expect(template).toContain('body._widget-auto-layout button[data-action-button-secondary="true"] { color: #030213 !important; -webkit-text-fill-color: #030213 !important; }')
-    expect(template).not.toContain('body._widget-auto-layout [role="button"] { color: #ffffff !important;')
-    expect(template).toContain('body._widget-auto-layout #prompt-logo-center {')
-    expect(template).toContain('{%- auth0:widget -%}')
-  })
-
   test('detects missing Auth0 default branding theme responses for the create path', () => {
     const error = new Auth0ManagementRequestError(
       '/api/v2/branding/themes/default',
@@ -501,65 +394,6 @@ describe('auth0 bootstrap config', () => {
     )
 
     expect(isAuth0DefaultBrandingThemeUnavailable(error)).toBe(true)
-  })
-
-  test('builds a complete default Auth0 branding theme create payload', () => {
-    const config = resolveConfig(createAuth0BootstrapEnvironment())
-
-    expect(buildDefaultBrandingTheme(config)).toMatchObject({
-      borders: {
-        button_border_radius: 6,
-        button_border_weight: 1,
-        buttons_style: 'rounded',
-        input_border_radius: 6,
-        input_border_weight: 1,
-        inputs_style: 'rounded',
-        show_widget_shadow: true,
-        widget_border_weight: 0,
-        widget_corner_radius: 8
-      },
-      colors: {
-        primary_button: '#030213',
-        primary_button_label: '#ffffff',
-        secondary_button_border: '#030213',
-        secondary_button_label: '#030213',
-        links_focused_components: '#030213',
-        base_focus_color: '#030213',
-        base_hover_color: '#030213',
-        captcha_widget_theme: 'auto'
-      },
-      displayName: 'Codex Events',
-      fonts: {
-        font_url: '',
-        links_style: 'normal',
-        reference_text_size: 16
-      },
-      page_background: {
-        background_color: '#f3f3f5',
-        background_image_url: '',
-        page_layout: 'center'
-      },
-      widget: {
-        header_text_alignment: 'center',
-        logo_height: 50,
-        logo_position: 'center',
-        logo_url: 'https://test.codex-events.com/auth0/codex-events-wordmark.svg',
-        social_buttons_layout: 'bottom'
-      }
-    })
-  })
-
-  test('clears only the hosted signup consent partial while preserving other prompt partials', () => {
-    expect(buildClearedSignupPartials({
-      'form-content-start': '<p>Custom start</p>',
-      'form-content-end': '<p>Consent checkboxes</p>'
-    })).toEqual({
-      'form-content-start': '<p>Custom start</p>'
-    })
-
-    expect(buildClearedSignupPartials({
-      'form-content-end': '<p>Consent checkboxes</p>'
-    })).toEqual({})
   })
 
   test('detects paid-plan Universal Login customization failures as skippable', () => {

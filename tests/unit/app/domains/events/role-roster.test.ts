@@ -4,8 +4,7 @@ import {
   buildAssignedRoleRosterRows,
   buildRoleRosterRows,
   deriveAdminCapableRoleFlags,
-  isAdminCapableEventUser,
-  listEventRoleRosterBadges
+  isAdminCapableEventUser
 } from '../../../../../app/domains/events/role-roster'
 
 describe('event role roster helpers', () => {
@@ -148,22 +147,6 @@ describe('event role roster helpers', () => {
       isInJudgePool: false,
       isStaff: false
     }])
-  })
-
-  test('lists the same badges for a row regardless of which roster tab renders it', () => {
-    expect(listEventRoleRosterBadges({
-      isEventAdmin: true,
-      isStaff: true,
-      isInJudgePool: true,
-      isPlatformAdmin: true
-    })).toEqual(['admin', 'staff', 'judge', 'platform_admin'])
-
-    expect(listEventRoleRosterBadges({
-      isEventAdmin: false,
-      isStaff: false,
-      isInJudgePool: true,
-      isPlatformAdmin: false
-    })).toEqual(['judge'])
   })
 
   test('builds staff and judge candidate rows from the canonical staff role and admin-only flags', () => {

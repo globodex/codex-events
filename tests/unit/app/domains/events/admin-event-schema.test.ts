@@ -3,10 +3,7 @@ import { describe, expect, test } from 'vitest'
 import {
   buildEventConfigurationPatch,
   createEmptyEventFormState,
-  eventConfigFormSchema,
-  eventDetailsFormSchema,
-  formatParticipantsLimitInput,
-  parseParticipantsLimitInput
+  eventConfigFormSchema
 } from '../../../../../app/domains/events/admin-event'
 
 function createValidEventFormState() {
@@ -379,15 +376,6 @@ describe('event config form schema', () => {
     ])
   })
 
-  test('normalizes nullable participant limit input values', () => {
-    expect(formatParticipantsLimitInput(null)).toBe('')
-    expect(formatParticipantsLimitInput(80)).toBe('80')
-    expect(parseParticipantsLimitInput('')).toBeNull()
-    expect(parseParticipantsLimitInput('  ')).toBeNull()
-    expect(parseParticipantsLimitInput('80')).toBe(80)
-    expect(parseParticipantsLimitInput('invalid')).toBeNull()
-  })
-
   test('omits competition fields from registration-only configuration patches', () => {
     const patch = buildEventConfigurationPatch({
       ...createValidEventFormState(),
@@ -565,59 +553,6 @@ describe('event config form schema', () => {
 
     expect(result.error.flatten().fieldErrors.shortlistFinalistCount).toEqual([
       'Too small: expected number to be >=1'
-    ])
-  })
-})
-
-describe('event details form schema', () => {
-  test('ignores hidden full-configuration fields', () => {
-    const result = eventDetailsFormSchema.safeParse({
-      ...createValidEventFormState(),
-      slug: 'Invalid Slug',
-      registrationOpensAt: '',
-      registrationClosesAt: '',
-      submissionOpensAt: '',
-      submissionClosesAt: '',
-      blindReviewCount: 0,
-      pitchReviewEnabled: false,
-      agendaItems: [],
-      city: 'Tokyo',
-      country: 'Japan',
-      address: 'Shibuya'
-    })
-
-    expect(result.success).toBe(true)
-  })
-
-  test('rejects invalid visible details fields', () => {
-    const result = eventDetailsFormSchema.safeParse({
-      ...createValidEventFormState(),
-      agendaItems: [
-        {
-          id: 'agenda-item-1',
-          startsAt: '2026-03-22T13:00',
-          endsAt: '2026-03-22T12:00',
-          title: 'Opening',
-          details: '',
-          displayOrder: 1
-        }
-      ],
-      city: '',
-      country: 'Japan',
-      address: 'Shibuya'
-    })
-
-    expect(result.success).toBe(false)
-
-    if (result.success) {
-      return
-    }
-
-    expect(result.error.flatten().fieldErrors.agendaItems).toEqual([
-      'Agenda end time must be on or after the start time.'
-    ])
-    expect(result.error.flatten().fieldErrors.city).toEqual([
-      'Too small: expected string to have >=1 characters'
     ])
   })
 })

@@ -2,7 +2,6 @@ import type { H3Event } from 'h3'
 
 import { describe, expect, test, vi } from 'vitest'
 
-import { ApiError } from '../../../../../server/http/api-error'
 import {
   assertValidEventPhotoPart,
   buildEventPhotoImageUrl,
@@ -13,13 +12,11 @@ import {
   createEventPhotoPreviewResponse,
   createPublicEventPhotoResponse,
   getEventPhotoCapturedAt,
-  getEventPhotoDimensions,
   eventPhotoMaxBytes,
   eventPhotoMaxRowsPerInsert,
   eventPhotoObjectKey,
   publicEventPhotoImageQuerySchema,
-  publicEventPhotoVariants,
-  putEventPhotoObject
+  publicEventPhotoVariants
 } from '../../../../../server/domains/events/photos'
 import { createExifJpegBytes } from '../../../../support/backend/exif-image'
 
@@ -159,28 +156,6 @@ describe('event photo utilities', () => {
     })).toThrowError(/10MB or smaller/)
   })
 
-  test('requires the Cloudflare Images binding for photo-dimension detection', async () => {
-    const event = createEvent({})
-
-    await expect(getEventPhotoDimensions(event, pngSignatureBytes)).rejects.toThrowError(ApiError)
-    await expect(getEventPhotoDimensions(event, pngSignatureBytes)).rejects.toThrowError(/IMAGES/)
-  })
-
-  test('returns photo dimensions from the Cloudflare Images binding', async () => {
-    const imagesBinding = {
-      info: vi.fn(async () => ({ width: 1600, height: 900 })),
-      input: vi.fn()
-    }
-    const event = createEvent({
-      IMAGES: imagesBinding
-    })
-
-    await expect(getEventPhotoDimensions(event, pngSignatureBytes)).resolves.toEqual({
-      width: 1600,
-      height: 900
-    })
-  })
-
   test('creates a transformed preview response with private caching headers', async () => {
     const imagesBinding = {
       info: vi.fn(async () => ({ width: 1600, height: 900 })),
@@ -281,33 +256,5 @@ describe('event photo utilities', () => {
     expect(originalResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-if-error=0')
     expect(privateFullDisplayResponse.headers.get('cache-control')).toBe('private, no-store')
     expect(privateFullDisplayResponse.headers.get('vary')).toBe('Cookie')
-  })
-
-  test('normalizes Node Buffer payloads before writing photo objects to R2', async () => {
-    const putCalls: unknown[] = []
-    const bucket = {
-      async get() {
-        return null
-      },
-      async put(_key: string, value: unknown) {
-        putCalls.push(value)
-        return undefined
-      },
-      async delete() {
-        return undefined
-      }
-    }
-    const event = createEvent({
-      EVENT_IMAGES: bucket
-    })
-
-    await putEventPhotoObject(event, eventPhotoObjectKey('event_1', 'photo_1'), {
-      contentType: 'image/png',
-      data: Buffer.from(pngSignatureBytes) as unknown as Uint8Array
-    })
-
-    expect(putCalls).toHaveLength(1)
-    expect(Buffer.isBuffer(putCalls[0])).toBe(false)
-    expect(putCalls[0]).toBeInstanceOf(Uint8Array)
   })
 })

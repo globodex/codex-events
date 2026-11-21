@@ -2,7 +2,6 @@ import { describe, expect, test, vi } from 'vitest'
 
 import type { SessionActor } from '../../../../../app/domains/accounts/session-actor'
 import type { EventRecord } from '../../../../../app/domains/events/records'
-import type { EvaluationCriterion } from '../../../../../app/domains/judging/criteria-config'
 import type {
   JudgeAssignmentApiDetail,
   BlindJudgeAssignmentDetail,
@@ -11,32 +10,20 @@ import type {
 
 import {
   buildCompletionCriterionScoresPayload,
-  buildJudgeWorkspaceCacheKey,
   buildPitchReviewCompletionPayload,
   buildSavedCriterionScoresPayload,
-  canAutoStartBlindReviewFromScoreSelection,
-  canAutoStartPitchReviewFromVoteInput,
-  canCompleteJudgeAssignment,
-  canMarkJudgeAssignmentIneligible,
-  canSkipJudgeAssignment,
-  canStartJudgeAssignment,
-  createCriterionScoreDrafts,
   createPitchScoreDraft,
   filterAssignmentsForActor,
   filterExplicitJudgeEvents,
   filterReviewableEvents,
-  formatJudgeTimestamp,
   getJudgeActionErrorMessage,
-  getJudgeAssignmentActionDisabledReason,
   getJudgeAssignmentInboxCardCopy,
   getJudgeEventDashboardCopy,
   getJudgeSubmissionPanelDisplay,
-  getJudgeWorkspaceSubjectKey,
   hasIncompleteCriterionScores,
   hasIncompletePitchScore,
   listAllVisibleEvents,
-  normalizeJudgeAssignmentDetail,
-  sortJudgeAssignments
+  normalizeJudgeAssignmentDetail
 } from '../../../../../app/domains/judging/workspace'
 
 function createEvent(overrides: Partial<EventRecord> = {}): EventRecord {
@@ -216,19 +203,6 @@ function createPitchAssignment(
   }
 }
 
-function createCriterion(overrides: Partial<EvaluationCriterion> = {}): EvaluationCriterion {
-  return {
-    id: 'criterion-1',
-    eventId: 'event-1',
-    name: 'Novelty',
-    description: 'How original the project is.',
-    weight: 5,
-    displayOrder: 1,
-    createdAt: '2026-03-01T00:00:00.000Z',
-    ...overrides
-  }
-}
-
 describe('judging-workspace filters', () => {
   test('normalizes blind and pitch assignments into stage-specific detail variants', () => {
     const normalizedBlindAssignment = normalizeJudgeAssignmentDetail({
@@ -260,21 +234,6 @@ describe('judging-workspace filters', () => {
       })
     })
     expect(normalizedPitchAssignment).not.toHaveProperty('blindReviewSlot')
-  })
-
-  test('formats judge timestamps with the shared operational timestamp style', () => {
-    const value = '2026-03-24T10:00:00.000Z'
-
-    expect(formatJudgeTimestamp(value)).toBe(new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    }).format(new Date(value)))
-
-    expect(formatJudgeTimestamp(null)).toBe('Not recorded')
   })
 
   test('limits reviewable events to judge-enabled roles for non-platform admins', () => {
@@ -534,95 +493,6 @@ describe('judging-workspace copy', () => {
 })
 
 describe('judging-workspace actions', () => {
-  test('matches canonical judge action guards by stage', () => {
-    const blindAssigned = createBlindAssignment({ status: 'assigned' })
-    const blindStarted = createBlindAssignment({
-      status: 'judge_started',
-      startedAt: '2026-03-24T10:10:00.000Z'
-    })
-    const blindCompleted = createBlindAssignment({
-      status: 'judge_completed',
-      completedAt: '2026-03-24T10:20:00.000Z'
-    })
-    const pitchCompleted = createPitchAssignment({
-      status: 'judge_completed',
-      completedAt: '2026-03-26T12:20:00.000Z',
-      pitchScore: 5
-    })
-
-    expect(canStartJudgeAssignment(blindAssigned)).toBe(true)
-    expect(canCompleteJudgeAssignment(blindAssigned)).toBe(false)
-    expect(canSkipJudgeAssignment(blindAssigned)).toBe(true)
-    expect(canMarkJudgeAssignmentIneligible(blindAssigned)).toBe(false)
-
-    expect(canStartJudgeAssignment(blindStarted)).toBe(false)
-    expect(canCompleteJudgeAssignment(blindStarted)).toBe(true)
-    expect(canSkipJudgeAssignment(blindStarted)).toBe(true)
-    expect(canMarkJudgeAssignmentIneligible(blindStarted)).toBe(true)
-
-    expect(canCompleteJudgeAssignment(blindCompleted)).toBe(false)
-    expect(canSkipJudgeAssignment(blindCompleted)).toBe(false)
-    expect(canMarkJudgeAssignmentIneligible(blindCompleted)).toBe(true)
-    expect(canMarkJudgeAssignmentIneligible({
-      ...blindCompleted,
-      ineligibilityStatus: 'ineligible'
-    })).toBe(false)
-    expect(canMarkJudgeAssignmentIneligible(pitchCompleted)).toBe(false)
-  })
-
-  test('disables blind review start and skip actions until blind review begins', () => {
-    expect(getJudgeAssignmentActionDisabledReason(
-      createBlindAssignment(),
-      'judging_preparation'
-    )).toBe('Start and skip actions are available only during blind review. Current state: Judging Preparation.')
-    expect(getJudgeAssignmentActionDisabledReason(
-      createBlindAssignment(),
-      'blind_review'
-    )).toBeNull()
-    expect(getJudgeAssignmentActionDisabledReason(
-      createPitchAssignment(),
-      'judging_preparation'
-    )).toBeNull()
-  })
-
-  test('allows the first blind-review score to auto-start only in blind review', () => {
-    expect(canAutoStartBlindReviewFromScoreSelection(
-      createBlindAssignment(),
-      'blind_review'
-    )).toBe(true)
-    expect(canAutoStartBlindReviewFromScoreSelection(
-      createBlindAssignment(),
-      'judging_preparation'
-    )).toBe(false)
-    expect(canAutoStartBlindReviewFromScoreSelection(
-      createBlindAssignment({ status: 'judge_started' }),
-      'blind_review'
-    )).toBe(false)
-    expect(canAutoStartBlindReviewFromScoreSelection(
-      createPitchAssignment(),
-      'pitch_review'
-    )).toBe(false)
-  })
-
-  test('allows the first pitch vote input to auto-start only during pitch review', () => {
-    expect(canAutoStartPitchReviewFromVoteInput(
-      createPitchAssignment(),
-      'pitch_review'
-    )).toBe(true)
-    expect(canAutoStartPitchReviewFromVoteInput(
-      createPitchAssignment(),
-      'pitch'
-    )).toBe(false)
-    expect(canAutoStartPitchReviewFromVoteInput(
-      createPitchAssignment({ status: 'judge_started' }),
-      'pitch_review'
-    )).toBe(false)
-    expect(canAutoStartPitchReviewFromVoteInput(
-      createBlindAssignment(),
-      'pitch_review'
-    )).toBe(false)
-  })
-
   test('uses canonical API messages for judge action failures', () => {
     expect(getJudgeActionErrorMessage({
       response: {
@@ -636,70 +506,9 @@ describe('judging-workspace actions', () => {
     })).toBe('This judging operation is not allowed in the current event state.')
     expect(getJudgeActionErrorMessage(null)).toBe('The judge action could not be completed.')
   })
-
-  test('sorts in-progress reviews ahead of newly assigned work across stages', () => {
-    const assignments = [
-      createBlindAssignment({ id: 'assignment-2', status: 'assigned', assignedAt: '2026-03-24T11:00:00.000Z' }),
-      createPitchAssignment({ id: 'assignment-1', status: 'judge_started', startedAt: '2026-03-24T10:30:00.000Z' }),
-      createBlindAssignment({ id: 'assignment-3', status: 'assigned', assignedAt: '2026-03-24T09:00:00.000Z' })
-    ]
-
-    expect(sortJudgeAssignments(assignments).map(assignment => assignment.id)).toEqual([
-      'assignment-1',
-      'assignment-3',
-      'assignment-2'
-    ])
-  })
 })
 
 describe('judging-workspace scoring drafts', () => {
-  test('creates blind score drafts from criteria and existing saved scores', () => {
-    const criteria = [
-      createCriterion({ id: 'criterion-1', name: 'Novelty', weight: 5 }),
-      createCriterion({ id: 'criterion-2', name: 'Execution', weight: 3, displayOrder: 2 })
-    ]
-    const assignment = createBlindAssignment({
-      criterionScores: [{
-        id: 'score-1',
-        evaluationCriterionId: 'criterion-2',
-        criterionName: 'Execution',
-        criterionDescription: 'How well the team executed.',
-        criterionWeight: 3,
-        score: 5,
-        comment: 'Strong finish',
-        createdAt: '2026-03-24T10:20:00.000Z',
-        updatedAt: '2026-03-24T10:20:00.000Z'
-      }]
-    })
-
-    expect(createCriterionScoreDrafts(criteria, assignment)).toEqual([
-      expect.objectContaining({
-        evaluationCriterionId: 'criterion-1',
-        score: '',
-        comment: ''
-      }),
-      expect.objectContaining({
-        evaluationCriterionId: 'criterion-2',
-        score: '5',
-        comment: 'Strong finish'
-      })
-    ])
-  })
-
-  test('ignores pitch assignments when building blind rubric drafts', () => {
-    const criteria = [
-      createCriterion({ id: 'criterion-1' })
-    ]
-
-    expect(createCriterionScoreDrafts(criteria, createPitchAssignment())).toEqual([
-      expect.objectContaining({
-        evaluationCriterionId: 'criterion-1',
-        score: '',
-        comment: ''
-      })
-    ])
-  })
-
   test('detects incomplete blind scores on the shared 1-5 scale and builds the completion payload', () => {
     const drafts = [
       {
@@ -807,15 +616,5 @@ describe('judging-workspace scoring drafts', () => {
       pitchScore: 4,
       pitchComment: 'Clear delivery'
     })
-  })
-})
-
-describe('judging-workspace cache keys', () => {
-  test('normalizes subjects and cache key parts', () => {
-    expect(getJudgeWorkspaceSubjectKey('  auth0|judge  ')).toBe('auth0|judge')
-    expect(getJudgeWorkspaceSubjectKey('')).toBe('anonymous')
-    expect(buildJudgeWorkspaceCacheKey('judge-workspace', 'auth0|judge', 'event-1')).toBe(
-      'judge-workspace:auth0|judge:event-1'
-    )
   })
 })

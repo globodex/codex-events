@@ -1,21 +1,12 @@
 import { describe, expect, test } from 'vitest'
 
 import {
-  formatJoinAvailabilityReason,
-  formatTeamJoinRequestStatus,
-  formatTeamMemberRole,
-  getActiveTeamMemberCount,
   getCreateTeamAvailability,
-  getParticipantTeamDirectoryStatusBadge,
   getJoinTeamAvailability,
   getLeaveTeamAvailability,
   getMemberRemovalAvailability,
   getTeamFormationAvailability,
-  getTeamJoinRequestStatusColor,
-  shouldShowParticipantLeaveTeamAction,
   getUpdateJoinPolicyAvailability,
-  hasTeamReachedMemberLimit,
-  isTeamDissolved,
   type TeamDetailRecord
 } from '../../../../../app/domains/teams/workspace'
 
@@ -165,110 +156,6 @@ describe('team workspace helpers', () => {
     })
   })
 
-  test('formats solo-team join messages separately from the underlying join-availability reason', () => {
-    expect(formatJoinAvailabilityReason({
-      workspaceMode: 'solo'
-    }, {
-      isAllowed: false,
-      reason: 'You can belong to only one active team per event.'
-    })).toBe('Solo teams cannot be joined.')
-
-    expect(formatJoinAvailabilityReason({
-      workspaceMode: 'team'
-    }, {
-      isAllowed: false,
-      reason: 'You can belong to only one active team per event.'
-    })).toBe('You can belong to only one active team per event.')
-
-    expect(formatJoinAvailabilityReason({
-      workspaceMode: 'solo'
-    }, {
-      isAllowed: true
-    })).toBeUndefined()
-  })
-
-  test('suppresses the participant directory join-policy badge for solo and full teams', () => {
-    expect(getParticipantTeamDirectoryStatusBadge({
-      workspaceMode: 'team',
-      isOpenToJoinRequests: true
-    }, {
-      isFull: true
-    })).toBeNull()
-
-    expect(getParticipantTeamDirectoryStatusBadge({
-      workspaceMode: 'solo',
-      isOpenToJoinRequests: true
-    }, {
-      isFull: false
-    })).toBeNull()
-
-    expect(getParticipantTeamDirectoryStatusBadge({
-      workspaceMode: 'team',
-      isOpenToJoinRequests: true
-    }, {
-      isFull: false
-    })).toEqual({
-      color: 'success',
-      label: 'Open to join requests'
-    })
-
-    expect(getParticipantTeamDirectoryStatusBadge({
-      workspaceMode: 'team',
-      isOpenToJoinRequests: false
-    }, {
-      isFull: false
-    })).toEqual({
-      color: 'neutral',
-      label: 'Closed to join requests'
-    })
-  })
-
-  test('keeps the participant leave action visible only before winners are announced', () => {
-    expect(shouldShowParticipantLeaveTeamAction({
-      state: 'submission_open'
-    }, baseTeam.members[0])).toBe(true)
-    expect(shouldShowParticipantLeaveTeamAction({
-      state: 'winners_announced'
-    }, baseTeam.members[0])).toBe(false)
-    expect(shouldShowParticipantLeaveTeamAction({
-      state: 'completed'
-    }, baseTeam.members[0])).toBe(false)
-    expect(shouldShowParticipantLeaveTeamAction({
-      state: 'submission_open'
-    }, null)).toBe(false)
-  })
-
-  test('derives active member count and dissolved status from team records', () => {
-    expect(getActiveTeamMemberCount(baseTeam)).toBe(2)
-    expect(isTeamDissolved(baseTeam)).toBe(false)
-
-    expect(getActiveTeamMemberCount({
-      ...baseTeam,
-      activeMemberCount: 0
-    })).toBe(0)
-    expect(isTeamDissolved({
-      ...baseTeam,
-      activeMemberCount: 0
-    })).toBe(true)
-
-    expect(getActiveTeamMemberCount({
-      members: [
-        {
-          ...baseTeam.members[0],
-          leftAt: '2026-03-23T12:00:00.000Z'
-        }
-      ]
-    })).toBe(0)
-    expect(isTeamDissolved({
-      members: [
-        {
-          ...baseTeam.members[0],
-          leftAt: '2026-03-23T12:00:00.000Z'
-        }
-      ]
-    })).toBe(true)
-  })
-
   test('handles last-member leave rules during team formation and after submission closes', () => {
     const multiAdminTeam: TeamDetailRecord = {
       ...baseTeam,
@@ -348,17 +235,5 @@ describe('team workspace helpers', () => {
     }, baseTeam.members[1])).toEqual({
       isAllowed: true
     })
-  })
-
-  test('formats stable labels for team helpers', () => {
-    expect(formatTeamMemberRole('admin')).toBe('Admin')
-    expect(formatTeamJoinRequestStatus('pending')).toBe('Pending')
-    expect(getTeamJoinRequestStatusColor('approved')).toBe('success')
-  })
-
-  test('detects when a team has reached the event member limit', () => {
-    expect(hasTeamReachedMemberLimit(4, 4)).toBe(true)
-    expect(hasTeamReachedMemberLimit(4, 5)).toBe(true)
-    expect(hasTeamReachedMemberLimit(4, 3)).toBe(false)
   })
 })

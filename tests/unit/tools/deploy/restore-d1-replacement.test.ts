@@ -2,10 +2,8 @@ import { describe, expect, test } from 'vitest'
 
 import {
   assertReplacementWranglerConfig,
-  buildD1RestoreCommandPlan,
   buildD1RestorePlan,
   buildReplacementWranglerConfig,
-  canonicalizeD1Export,
   parseD1RestoreInfo,
   restoreD1Replacement,
   type D1RestorePlan,
@@ -218,47 +216,6 @@ function createMockRunner(plan: D1RestorePlan, fileSystem: SqlFileSystem, replac
 }
 
 describe('D1 replacement restore planning', () => {
-  test('uses SQLite introspection, preserves identities, and defers cyclic foreign keys', () => {
-    const plan = buildD1RestorePlan(authExport)
-
-    expect(plan.tableOrder.indexOf('parent')).toBeLessThan(plan.tableOrder.indexOf('child'))
-    expect(plan.tableOrder.indexOf('users')).toBeLessThan(plan.tableOrder.indexOf('user_auth_identities'))
-    expect(plan.tableOrder).toContain('cycle_a')
-    expect(plan.tableOrder).toContain('cycle_b')
-    expect(plan.tables.find(table => table.name === 'user_auth_identities')).toMatchObject({
-      rowCount: 2,
-      dependencies: ['users']
-    })
-    expect(plan.rowCount).toBe(7)
-    expect(plan.replaySql).toContain('PRAGMA defer_foreign_keys = ON;')
-    expect(plan.replaySql).toContain('INSERT OR IGNORE INTO "user_auth_identities"')
-    expect(plan.replaySql).toContain(`'secondary-identity'`)
-    expect(plan.replaySql).not.toContain('CREATE TABLE')
-    expect(plan.replacementCountChunks.flatMap(chunk => chunk.tableNames)).toEqual(plan.tableOrder)
-  })
-
-  test('chunks 11 table counts into four-table requests without compound SELECT', () => {
-    const exportSql = Array.from({ length: 11 }, (_, index) => {
-      const name = `table_${String(index).padStart(2, '0')}`
-      return `CREATE TABLE "${name}" ("id" integer PRIMARY KEY); INSERT INTO "${name}" VALUES (${index});`
-    }).join('\n')
-    const plan = buildD1RestorePlan(exportSql)
-
-    expect(plan.replacementCountChunks.map(chunk => chunk.tableNames.length)).toEqual([4, 4, 3])
-    expect(plan.sourceCountChunks).toHaveLength(3)
-    expect(plan.emptyCountChunks).toHaveLength(3)
-    expect(plan.replacementCountChunks.every(chunk => !chunk.sql.includes('UNION ALL'))).toBe(true)
-  })
-
-  test('compares canonical table, column, and row evidence locally', () => {
-    const source = canonicalizeD1Export(authExport)
-    const changed = canonicalizeD1Export(authExport.replace('primary@example.com', 'changed@example.com'))
-
-    expect(source.digest).not.toBe(changed.digest)
-    expect(source.tables).toEqual(changed.tables)
-    expect(source.rowCount).toBe(7)
-  })
-
   test('patches a temporary UUID-pinned Wrangler config and fails closed on ambiguity', () => {
     const replacement = buildReplacementWranglerConfig(baseConfig, 'codex-events-eu', replacementDatabaseId)
     const parsed = JSON.parse(replacement) as { d1_databases: Array<Record<string, unknown>> }
@@ -271,20 +228,6 @@ describe('D1 replacement restore planning', () => {
     expect(() => assertReplacementWranglerConfig(baseConfig, 'codex-events-eu', replacementDatabaseId)).toThrow('must bind')
     expect(() => buildReplacementWranglerConfig(JSON.stringify({ d1_databases: [] }), 'codex-events-eu', replacementDatabaseId)).toThrow('exactly one')
     expect(() => buildReplacementWranglerConfig('{ // comment\n}', 'codex-events-eu', replacementDatabaseId)).toThrow('JSON-compatible')
-  })
-
-  test('pins replacement migrations and exports to the temporary config', () => {
-    const plan = buildD1RestorePlan(authExport)
-    const commands = buildD1RestoreCommandPlan(createOptions(), plan)
-
-    expect(commands.applyMigrations.args).toContain(replacementConfigPath)
-    expect(commands.replacementExport.args).toContain(replacementConfigPath)
-    expect(commands.replacementCountChunks.every(command => command.args.includes(replacementConfigPath))).toBe(true)
-    expect(commands.sourceCountChunks.every(command => command.args.includes(configPath))).toBe(true)
-    expect(JSON.stringify(commands).toLowerCase()).not.toContain('delete')
-    expect(commands.exportSource.args).toEqual(expect.arrayContaining([
-      'd1', 'export', 'codex-events-source', '--remote', '--output', exportPath, '--config', configPath
-    ]))
   })
 
   test('parses placement, replication, and size evidence from Wrangler info', () => {

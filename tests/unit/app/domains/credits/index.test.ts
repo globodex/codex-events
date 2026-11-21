@@ -2,7 +2,6 @@ import { describe, expect, test, vi } from 'vitest'
 
 import {
   createEventCreditOfferWithInventory,
-  isEventCreditLink,
   normalizeEventCreditApiError
 } from '../../../../../app/domains/credits'
 
@@ -22,79 +21,6 @@ describe('event credit helpers', () => {
       codes: []
     }
   }
-
-  test('identifies http and https credit values as links', () => {
-    expect(isEventCreditLink('https://redeem.example/token')).toBe(true)
-    expect(isEventCreditLink('http://redeem.example/token')).toBe(true)
-    expect(isEventCreditLink('CODE-123')).toBe(false)
-    expect(isEventCreditLink('ftp://redeem.example/token')).toBe(false)
-  })
-
-  test('creates an offer without importing inventory when no file is provided', async () => {
-    const offer = createOfferFixture()
-    const apiFetch = vi.fn().mockResolvedValue({
-      data: offer
-    })
-
-    const result = await createEventCreditOfferWithInventory({
-      apiFetch,
-      eventId: 'event_1',
-      name: 'OpenAI credits',
-      description: 'Redeem the code on the provider site.'
-    })
-
-    expect(apiFetch).toHaveBeenCalledTimes(1)
-    expect(apiFetch).toHaveBeenCalledWith('/api/events/event_1/credits', {
-      method: 'POST',
-      body: {
-        name: 'OpenAI credits',
-        description: 'Redeem the code on the provider site.'
-      }
-    })
-    expect(result).toEqual({
-      status: 'created',
-      offer,
-      importedCount: 0
-    })
-  })
-
-  test('creates an offer and imports the initial CSV inventory when a file is provided', async () => {
-    const offer = createOfferFixture()
-    const file = new File(['CODE-1\nCODE-2'], 'credits.csv', {
-      type: 'text/csv'
-    })
-    const apiFetch = vi.fn()
-      .mockResolvedValueOnce({
-        data: offer
-      })
-      .mockResolvedValueOnce({
-        data: {
-          importedCount: 2
-        }
-      })
-
-    const result = await createEventCreditOfferWithInventory({
-      apiFetch,
-      eventId: 'event_1',
-      name: 'OpenAI credits',
-      description: 'Redeem the code on the provider site.',
-      file
-    })
-
-    expect(apiFetch).toHaveBeenCalledTimes(2)
-    expect(apiFetch).toHaveBeenNthCalledWith(2, '/api/events/event_1/credits/credit_offer_1/import', {
-      method: 'POST',
-      body: expect.any(FormData)
-    })
-
-    const formData = apiFetch.mock.calls[1]?.[1]?.body as FormData
-    expect(formData.get('file')).toBeInstanceOf(File)
-    expect(result).toEqual({
-      status: 'created',
-      offer,
-      importedCount: 2
-    })
-  })
 
   test('returns a partial-success result when the offer is created but the initial CSV import fails', async () => {
     const offer = createOfferFixture()

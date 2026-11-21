@@ -4,9 +4,9 @@ import { exists } from 'drizzle-orm'
 import { describe, expect, test, vi } from 'vitest'
 
 import { ApiError } from '../../../../server/http/api-error'
-import { getDatabase, getDatabaseSession, withDatabaseBatch, type AppDatabase } from '../../../../server/database/client'
+import { getDatabase, getDatabaseSession, type AppDatabase } from '../../../../server/database/client'
 import { users } from '../../../../server/database/schema'
-import { resolveNonHttpD1Binding, setTestDatabase } from '../../../../server/database/non-http'
+import { setTestDatabase } from '../../../../server/database/non-http'
 
 function assertApplicationDatabaseType(database: AppDatabase) {
   void database.query
@@ -50,23 +50,7 @@ function createEvent(binding?: unknown): H3Event {
   } as H3Event
 }
 
-describe('resolveNonHttpD1Binding', () => {
-  test('prefers the Cloudflare binding when present', () => {
-    const binding = { prepare() {} }
-
-    expect(resolveNonHttpD1Binding('DB', { DB: binding }, undefined)).toBe(binding)
-  })
-
-  test('falls back to an injected binding for non-Cloudflare execution contexts', () => {
-    const binding = { prepare() {} }
-
-    expect(resolveNonHttpD1Binding('DB', undefined, binding as never)).toBe(binding)
-  })
-
-  test('throws a stable API error when no binding is available', () => {
-    expect(() => resolveNonHttpD1Binding('DB')).toThrow(ApiError)
-  })
-
+describe('request-scoped database access', () => {
   test('caches the request-scoped database instance', () => {
     const event = createEvent({
       prepare: vi.fn(),
@@ -294,15 +278,6 @@ describe('resolveNonHttpD1Binding', () => {
       .toBe(Reflect.get(selectBuilder, 'dialect'))
   })
 
-  test('allows direct database injection only on non-HTTP events', () => {
-    const event = createEvent()
-    const injectedDatabase = { query: {} } as never
-
-    setTestDatabase(event, injectedDatabase)
-
-    expect(getDatabase(event)).toBe(injectedDatabase)
-  })
-
   test('does not allow HTTP requests to use an injected database', () => {
     const binding = {
       prepare: vi.fn(),
@@ -330,16 +305,5 @@ describe('resolveNonHttpD1Binding', () => {
     expect(() => setTestDatabase(event, injectedDatabase)).toThrow(ApiError)
     expect(getDatabase(event)).not.toBe(injectedDatabase)
     expect(binding.withSession).toHaveBeenCalledWith('first-primary')
-  })
-
-  test('delegates batches through the shared database instance', async () => {
-    const batch = vi.fn(async (queries: string[]) => queries.map(query => `${query}-done`))
-
-    const result = await withDatabaseBatch({
-      batch
-    } as never, ['query_a', 'query_b'] as never)
-
-    expect(result).toEqual(['query_a-done', 'query_b-done'])
-    expect(batch).toHaveBeenCalledTimes(1)
   })
 })

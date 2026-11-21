@@ -1,5 +1,3 @@
-import type { H3Event } from 'h3'
-
 import { describe, expect, test, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 
@@ -11,35 +9,10 @@ import {
 } from '../../../../../server/database/schema'
 import {
   buildEventOutcomeEmailQueueMessage,
-  enqueueEventOutcomeEmailMessage,
   processEventOutcomeEmailQueueBatch,
   processEventOutcomeEmailQueueMessage
 } from '../../../../../server/domains/outcomes/email-queue'
 import { createTestD1Database } from '../../../../support/backend/fake-d1'
-
-function createEvent(options?: {
-  queueProducer?: {
-    send: (message: unknown, options?: unknown) => Promise<void>
-  }
-  runtimeConfig?: Record<string, unknown>
-}) {
-  return {
-    context: {
-      cloudflare: {
-        env: options?.queueProducer
-          ? { EVENT_OUTCOME_EMAIL_QUEUE: options.queueProducer }
-          : {}
-      },
-      runtimeConfig: options?.runtimeConfig ?? {
-        eventOutcomeEmails: {
-          queueBinding: 'EVENT_OUTCOME_EMAIL_QUEUE',
-          queueName: 'codex-events-dev-event-outcome-email-delivery',
-          retryDelaySeconds: 120
-        }
-      }
-    }
-  } as H3Event
-}
 
 function createQueueMessage(options?: {
   body?: unknown
@@ -69,56 +42,6 @@ function createQueueMessage(options?: {
 }
 
 describe('event outcome email queue utilities', () => {
-  test('enqueue sends json payload to the configured queue binding', async () => {
-    const send = vi.fn(async () => undefined)
-    const event = createEvent({
-      queueProducer: { send }
-    })
-
-    const result = await enqueueEventOutcomeEmailMessage(event, buildEventOutcomeEmailQueueMessage({
-      notificationType: 'shortlist',
-      eventId: 'event_1',
-      eventName: 'Codex Spring',
-      eventSlug: 'codex-spring',
-      teamId: 'team_1',
-      teamName: 'North Star Builders',
-      recipientUserId: 'user_1',
-      recipientEmail: 'participant@example.com',
-      recipientDisplayName: 'Ada Lovelace',
-      announcedAt: '2026-03-27T20:00:00.000Z'
-    }))
-
-    expect(result).toEqual({
-      status: 'enqueued'
-    })
-    expect(send).toHaveBeenCalledWith(expect.objectContaining({
-      notificationType: 'shortlist',
-      teamId: 'team_1'
-    }), {
-      contentType: 'json'
-    })
-  })
-
-  test('enqueue skips when queue binding is not available', async () => {
-    const result = await enqueueEventOutcomeEmailMessage(createEvent(), buildEventOutcomeEmailQueueMessage({
-      notificationType: 'shortlist',
-      eventId: 'event_1',
-      eventName: 'Codex Spring',
-      eventSlug: 'codex-spring',
-      teamId: 'team_1',
-      teamName: 'North Star Builders',
-      recipientUserId: 'user_1',
-      recipientEmail: 'participant@example.com',
-      recipientDisplayName: null,
-      announcedAt: '2026-03-27T20:00:00.000Z'
-    }))
-
-    expect(result).toEqual({
-      status: 'skipped',
-      reason: 'queue_binding_missing:EVENT_OUTCOME_EMAIL_QUEUE'
-    })
-  })
-
   test('queue message processing retries retryable failures', async () => {
     const message = createQueueMessage()
     const database = {

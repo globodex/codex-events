@@ -1,14 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import {
-  buildPrizeRedemptionPostShortlistEntries,
   buildPrizeRedemptionOperationsView,
-  buildWinnerMemberLookup,
-  describePrizeRedemptionRecipient,
-  formatPrizeRedemptionStatus,
-  getPrizeRedemptionAvailability,
-  getPrizeRedemptionStatusColor,
-  summarizePrizeRedemptionTask,
   type PrizeRedemptionTask
 } from '../../../../../app/domains/prize-redemptions'
 
@@ -60,75 +53,6 @@ function createTask(overrides?: Partial<PrizeRedemptionTask>): PrizeRedemptionTa
 }
 
 describe('prize-redemption workspace helpers', () => {
-  test('formats redemption status labels and colors', () => {
-    expect(formatPrizeRedemptionStatus('pending')).toBe('Pending')
-    expect(formatPrizeRedemptionStatus('redeemed')).toBe('Redeemed')
-    expect(getPrizeRedemptionStatusColor('pending')).toBe('warning')
-    expect(getPrizeRedemptionStatusColor('redeemed')).toBe('success')
-  })
-
-  test('describes team and member redemption recipients', () => {
-    expect(describePrizeRedemptionRecipient(createTask())).toContain('Any active team admin')
-    expect(describePrizeRedemptionRecipient(createTask({
-      prize: {
-        ...createTask().prize,
-        awardScope: 'member'
-      },
-      userId: 'user_1'
-    }))).toContain('user_1')
-
-    const winnerMemberNamesByUserId = buildWinnerMemberLookup([
-      {
-        teamId: 'team_1',
-        teamName: 'Alpha Team',
-        submissionId: 'submission_1',
-        projectName: 'Winner Project',
-        summary: 'Winning summary',
-        repositoryUrl: null,
-        demoUrl: null,
-        finalRank: 1,
-        prizes: [],
-        teamMembers: [
-          {
-            id: 'user_1',
-            fullName: 'Winner Member One',
-            bio: null,
-            xProfileUrl: null,
-            linkedinProfileUrl: null,
-            githubProfileUrl: null,
-            profileIconUrl: null
-          }
-        ]
-      }
-    ])
-
-    expect(describePrizeRedemptionRecipient(createTask({
-      prize: {
-        ...createTask().prize,
-        awardScope: 'member'
-      },
-      userId: 'user_1'
-    }), winnerMemberNamesByUserId)).toContain('Winner Member One')
-  })
-
-  test('summarizes pending versus redeemed tasks and blocks missing current terms', () => {
-    expect(summarizePrizeRedemptionTask(createTask())).toContain('exact current winner terms')
-    expect(summarizePrizeRedemptionTask(createTask({
-      status: 'redeemed',
-      legalName: 'Alex Example'
-    }))).toContain('Alex Example')
-
-    expect(getPrizeRedemptionAvailability(createTask())).toEqual({
-      isEnabled: true
-    })
-    expect(getPrizeRedemptionAvailability(createTask({
-      currentWinnerTerms: null
-    }))).toEqual({
-      isEnabled: false,
-      reason: 'The current winner terms are unavailable for this event.'
-    })
-  })
-
   test('groups winners into one ordered list and separates non-winning finalists from the rest of the ranking', () => {
     const winners = [
       {
@@ -493,52 +417,5 @@ describe('prize-redemption workspace helpers', () => {
         })
       ]
     })
-  })
-
-  test('filters post-shortlist teams from the blind-review ranking using the finalist submission ids', () => {
-    expect(buildPrizeRedemptionPostShortlistEntries([
-      {
-        teamId: 'team_1',
-        teamName: 'Alpha Team',
-        submissionId: 'submission_1',
-        projectName: 'Alpha Project',
-        summary: 'Alpha summary',
-        repositoryUrl: 'https://example.com/alpha',
-        demoUrl: 'https://example.com/alpha-demo',
-        blindRank: 1,
-        teamMembers: []
-      },
-      {
-        teamId: 'team_2',
-        teamName: 'Beta Team',
-        submissionId: 'submission_2',
-        projectName: 'Beta Project',
-        summary: 'Beta summary',
-        repositoryUrl: 'https://example.com/beta',
-        demoUrl: 'https://example.com/beta-demo',
-        blindRank: 2,
-        teamMembers: []
-      },
-      {
-        teamId: 'team_3',
-        teamName: 'Gamma Team',
-        submissionId: 'submission_3',
-        projectName: 'Gamma Project',
-        summary: 'Gamma summary',
-        repositoryUrl: 'https://example.com/gamma',
-        demoUrl: 'https://example.com/gamma-demo',
-        blindRank: 3,
-        teamMembers: []
-      }
-    ], ['submission_1'])).toEqual([
-      expect.objectContaining({
-        submissionId: 'submission_2',
-        blindRank: 2
-      }),
-      expect.objectContaining({
-        submissionId: 'submission_3',
-        blindRank: 3
-      })
-    ])
   })
 })

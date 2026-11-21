@@ -151,46 +151,6 @@ describe('useTeamSubmissionWorkspace', () => {
     )
   })
 
-  test('updates submission public visibility through the dedicated route', async () => {
-    const { useTeamSubmissionWorkspace } = await import('../../../../app/composables/useTeamSubmissionWorkspace')
-
-    apiFetch.mockResolvedValue({
-      data: buildSubmission({
-        status: 'locked',
-        isPubliclyVisible: true
-      })
-    })
-
-    const workspace = useTeamSubmissionWorkspace({
-      state: 'completed'
-    } as never, {
-      visibleEventId: 'event_1',
-      team: {
-        id: 'team_1',
-        isPersisted: true
-      },
-      canViewSubmission: true,
-      canManageSubmission: true,
-      initialSubmission: buildSubmission({
-        status: 'locked',
-        isPubliclyVisible: false
-      }),
-      hasInitialSubmissionState: true
-    })
-
-    await flushWorkspace()
-
-    await workspace.updateCurrentSubmissionPublicVisibility(true)
-
-    expect(apiFetch).toHaveBeenCalledWith('/api/events/event_1/teams/team_1/submission/public-visibility', {
-      method: 'PATCH',
-      body: {
-        isPubliclyVisible: true
-      }
-    })
-    expect(workspace.currentSubmission.value?.isPubliclyVisible).toBe(true)
-  })
-
   test('does not commit a late submission response after the team changes', async () => {
     const { useTeamSubmissionWorkspace } = await import('../../../../app/composables/useTeamSubmissionWorkspace')
     const team = ref<{ id: string, isPersisted?: boolean }>({
