@@ -9,11 +9,9 @@ import type {
   AccountEventEntryParticipation,
   AccountEventEntryRankSummary,
   AccountEventEntryTalkProposal,
-  AccountEventEntryTalkProposalReview,
-  AccountEventEntryTabVisibility
+  AccountEventEntryTalkProposalReview
 } from '#shared/domains/events/account-event-entry-page'
 import { accountEventEntryPageSchema } from '#shared/domains/events/account-event-entry-page'
-import type { EventAuthorization } from '#server/auth/authorization'
 import type { events, teams, userApplications } from '#server/database/schema'
 import {
   eventCreditCodes,
@@ -47,6 +45,7 @@ import {
   type AccountEventPageContext
 } from './account-event-page-context'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
+import { buildAccountEventTabVisibility } from './account-event-tab-visibility'
 import { resolveEventCertificateDateIso } from '#shared/domains/events/certificates'
 import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
 import { parseTalkProposalQuestionsJson } from '#shared/domains/talk-proposals/questions'
@@ -166,129 +165,6 @@ function serializeAccess(
       : null,
     submissionStatus: submission?.status ?? null,
     roles: roles.map(role => role.role)
-  }
-}
-
-function buildTabVisibility(input: {
-  event: EventRecord
-  authorization: EventAuthorization
-  applicationStatus: ApplicationRecord['status'] | null
-  hasRetainedTalkProposal: boolean
-  hasCreditInventory: boolean
-  hasGallery: boolean
-  hasPublishedPrizes: boolean
-  hasPublishedStaff: boolean
-}): AccountEventEntryTabVisibility {
-  const {
-    event,
-    authorization,
-    applicationStatus,
-    hasRetainedTalkProposal,
-    hasCreditInventory,
-    hasGallery,
-    hasPublishedPrizes,
-    hasPublishedStaff
-  } = input
-  const hasApprovedParticipantAccess = applicationStatus === 'approved'
-  const hasEligibleTalkProposalApplicant = applicationStatus === 'submitted'
-    || applicationStatus === 'approved'
-  const isCompetitionEvent = event.eventType === 'hackathon'
-  const availableTabs: AccountEventEntryTabVisibility['availableTabs'] = ['overview']
-
-  if (!event.simplifiedClaimingEnabled && (
-    authorization.isEventAdmin
-    || ((hasApprovedParticipantAccess || authorization.canViewParticipantsAndTeams) && hasCreditInventory)
-  )) {
-    availableTabs.push('credits')
-  }
-
-  if (isCompetitionEvent && (hasPublishedPrizes || authorization.isEventAdmin || event.state === 'completed')) {
-    availableTabs.push('prizes')
-  }
-
-  availableTabs.push('details')
-
-  if (event.eventType === 'meetup' && event.talkProposalsEnabled && (
-    hasEligibleTalkProposalApplicant
-    || hasRetainedTalkProposal
-    || authorization.isEventAdmin
-    || authorization.canViewParticipantsAndTeams
-  )) {
-    availableTabs.push('call-for-talks')
-  }
-
-  if (
-    authorization.canReviewThroughAssignment
-    || authorization.isEventAdmin
-    || authorization.canViewParticipantsAndTeams
-    || (hasApprovedParticipantAccess && hasGallery)
-  ) {
-    availableTabs.push('gallery')
-  }
-
-  if (isCompetitionEvent) {
-    availableTabs.push('judges')
-  }
-
-  if (hasPublishedStaff || authorization.isEventAdmin) {
-    availableTabs.push('staff')
-  }
-
-  if (
-    authorization.canReviewThroughAssignment
-    || authorization.isEventAdmin
-    || authorization.canViewParticipantsAndTeams
-  ) {
-    availableTabs.push('feedback')
-  }
-
-  if (isCompetitionEvent && hasApprovedParticipantAccess) {
-    availableTabs.push('workspace', 'teams')
-  }
-
-  if (authorization.isEventAdmin || authorization.canViewParticipantsAndTeams) {
-    availableTabs.push('participants')
-  }
-
-  if (authorization.isEventAdmin) {
-    availableTabs.push('certificates')
-
-    if (!hasApprovedParticipantAccess && isCompetitionEvent) {
-      availableTabs.push('teams')
-    }
-
-    if (isCompetitionEvent) {
-      availableTabs.push('submissions')
-
-      if (authorization.canReviewThroughAssignment) {
-        availableTabs.push('judging')
-      }
-    }
-
-    availableTabs.push('operations', 'settings')
-  } else if (authorization.canViewParticipantsAndTeams) {
-    if (isCompetitionEvent && authorization.canReviewThroughAssignment) {
-      availableTabs.push('judging')
-    }
-
-    if (isCompetitionEvent && !hasApprovedParticipantAccess) {
-      availableTabs.push('teams')
-    }
-  } else if (isCompetitionEvent && authorization.canReviewThroughAssignment) {
-    availableTabs.push('judging')
-  }
-
-  return {
-    availableTabs,
-    showPrizeConfiguration: isCompetitionEvent
-      && authorization.isEventAdmin
-      && !['winners_announced', 'completed'].includes(event.state),
-    showAgendaConfigurationInDetails: authorization.isEventAdmin,
-    hasPublishedPrizes,
-    hasPublishedStaff,
-    hasCreditInventory,
-    hasEligibleTalkProposalApplicant,
-    hasGallery
   }
 }
 
@@ -545,13 +421,14 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
         : null,
       roles as EventRoleAssignmentRecord[]
     )
-    const tabVisibility = buildTabVisibility({
+    const tabVisibility = buildAccountEventTabVisibility({
       event,
       authorization: context.authorization,
       applicationStatus: application?.status ?? null,
       hasRetainedTalkProposal: Boolean(talkProposalResult[0]),
       hasCreditInventory: credits.participantCredits.some(offer => offer.totalCount > 0),
       hasGallery: galleryExists,
+      hasProgram: Boolean(programItemId),
       hasPublishedPrizes: Boolean(publishedPrize),
       hasPublishedStaff: Boolean(publishedStaffAssignment)
     })

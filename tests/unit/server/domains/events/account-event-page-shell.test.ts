@@ -22,6 +22,10 @@ vi.mock('#server/domains/events/photos', () => ({
   hasEventPhotos
 }))
 
+vi.mock('#server/domains/events/program', () => ({
+  findEventProgramItemId: vi.fn()
+}))
+
 vi.mock('#server/domains/platform/settings', () => ({
   getEventDisplayImageOptions
 }))
@@ -175,6 +179,7 @@ describe('account-event page shell request topology', () => {
     const shell = await shellPromise
 
     expect(shell.event.hasGallery).toBe(false)
+    expect(shell.event.programItemId).toBeNull()
     expect(shell.tabVisibility.hasCreditInventory).toBe(true)
     expect(getOwnTalkProposal).toHaveBeenCalledOnce()
     expect(getAccountEventPageAccess).toHaveBeenCalledOnce()

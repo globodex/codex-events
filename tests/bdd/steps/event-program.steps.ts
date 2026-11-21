@@ -1,4 +1,4 @@
-import { expect } from '@playwright/test'
+import { expect, type Request } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import type { EventFloorPlan, EventProgram, ProgramRoom } from '../../../shared/domains/events/program'
@@ -9,6 +9,10 @@ import { signInAs } from '../support/session-state'
 
 const { Given, When, Then } = createBdd()
 const eventPath = `/api/events/${platformFixtureIds.participantApprovedEventId}`
+const eventSlug = 'participant-approved-fixture-event'
+const workspacePath = `/account/events/${eventSlug}`
+const workspaceApiPath = `/api${workspacePath}`
+const agendaTabPath = `${workspacePath}?tab=program`
 const agendaItem = {
   id: 'bdd-build-time',
   title: 'Build Time',
@@ -88,9 +92,12 @@ Given('the event has two parallel sessions with rooms on {string}', async ({ req
 
 When('I open Build Time from my event agenda', async ({ page }) => {
   await signInAs('regular_user', page)
-  await page.goto('/account/events/participant-approved-fixture-event?tab=overview')
+  await page.goto(`${workspacePath}?tab=overview`)
+  await expect(page.getByRole('tab', { name: 'Overview', exact: true })).toHaveAttribute('aria-selected', 'true')
   await page.getByRole('link', { name: 'Build Time', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Build Time', level: 1 })).toBeVisible()
+  await expect(page).toHaveURL(url => url.pathname + url.search === agendaTabPath)
+  await expect(page.getByRole('tab', { name: 'Agenda', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('heading', { name: 'Build Time', level: 2 })).toBeVisible()
 })
 
 Then('both tracks should show their sessions at the same start time', async ({ page }) => {
@@ -138,9 +145,25 @@ When('I save the second session and open My agenda', async ({ page }) => {
   await page.getByRole('button', { name: 'My agenda', exact: true }).click()
 })
 
-When('I reload the program and open My agenda', async ({ page }) => {
-  await page.reload()
-  await page.getByRole('button', { name: 'My agenda', exact: true }).click()
+When('I reload the Agenda tab and open My agenda', async ({ page }) => {
+  const workspaceReads: string[] = []
+  const trackWorkspaceRead = (request: Request) => {
+    const url = new URL(request.url())
+    if (request.method() === 'GET' && url.pathname.startsWith(`${workspaceApiPath}/`)) {
+      workspaceReads.push(url.pathname + url.search)
+    }
+  }
+
+  page.on('request', trackWorkspaceRead)
+  try {
+    await page.reload()
+    await expect(page).toHaveURL(url => url.pathname + url.search === agendaTabPath)
+    await expect(page.getByRole('tab', { name: 'Agenda', exact: true })).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('button', { name: 'My agenda', exact: true }).click()
+    expect(workspaceReads).toEqual([`${workspaceApiPath}/program?includeEventShell=true`])
+  } finally {
+    page.off('request', trackWorkspaceRead)
+  }
 })
 
 Then('only the saved session should appear', async ({ page }) => {
@@ -151,7 +174,7 @@ Then('only the saved session should appear', async ({ page }) => {
 
 When('I replace the {string} image while editing a track', async ({ page }, floorName: string) => {
   await signInAs('platform_admin', page)
-  await page.goto('/admin/events/builder/participant-approved-fixture-event')
+  await page.goto(`/admin/events/builder/${eventSlug}`)
   await page.waitForFunction(() =>
     typeof window.useNuxtApp === 'function' && window.useNuxtApp().isHydrating === false
   )

@@ -6,7 +6,7 @@ import type { AdminEventProgram, EventFloorPlan, EventProgram } from '#shared/do
 
 import { normalizeApiError } from '~/lib/api'
 import { getTermsVersionPublishErrorMessage } from '~/domains/events/admin-event'
-import { buildAccountEventPageCacheKey } from '~/domains/events/account-workspace-page'
+import { accountEventPageNames, buildAccountEventPageCacheKey } from '~/domains/events/account-workspace-page'
 import AdminBuilderWorkspace from '~/components/admin/builder/AdminBuilderWorkspace.vue'
 import { useApiClient } from '~/composables/useApiClient'
 import { useApiResponse } from '~/composables/useApiData'
@@ -54,15 +54,25 @@ function syncProgramDisclosure() {
 watch(programDisclosure, syncProgramDisclosure)
 
 function clearAgendaReads(slug: string, includeParent: boolean) {
-  const reads = [buildAccountEventPageCacheKey(slug, 'program')]
+  const reads = new Set([
+    buildAccountEventPageCacheKey(slug, 'program'),
+    buildAccountEventPageCacheKey(slug, 'program', { includeEventShell: true })
+  ])
   if (includeParent) {
-    reads.push(
-      buildAccountEventPageCacheKey(slug, 'entry'),
-      buildAccountEventPageCacheKey(slug, 'entry', { includeAdminEventConfiguration: true })
-    )
+    reads.add(buildAccountEventPageCacheKey(slug, 'entry'))
+    reads.add(buildAccountEventPageCacheKey(slug, 'entry', { includeAdminEventConfiguration: true }))
+    for (const page of accountEventPageNames) {
+      if (page !== 'entry') {
+        reads.add(buildAccountEventPageCacheKey(slug, page, { includeEventShell: true }))
+      }
+    }
+    reads.add(buildAccountEventPageCacheKey(slug, 'prizes', {
+      includeAdminEventConfiguration: true,
+      includeEventShell: true
+    }))
   }
 
-  const keys = reads.map(read => protectedKey(read).value)
+  const keys = Array.from(reads, read => protectedKey(read).value)
   keys.forEach(key => requestOwner.invalidate(key))
   clearNuxtData(keys)
 }

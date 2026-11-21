@@ -2,8 +2,7 @@ import { and, eq, or } from 'drizzle-orm'
 
 import type {
   AccountEventEntryAccess,
-  AccountEventEntryEvent,
-  AccountEventEntryTabVisibility
+  AccountEventEntryEvent
 } from '#shared/domains/events/account-event-entry-page'
 import type { AccountEventPageShell } from '#shared/domains/events/account-event-page-shell'
 import {
@@ -17,6 +16,7 @@ import {
   serializeAccountEvent
 } from '#server/domains/events'
 import { hasEventPhotos } from '#server/domains/events/photos'
+import { findEventProgramItemId } from '#server/domains/events/program'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { getOwnTalkProposal } from '#server/domains/talk-proposals'
 import { parseTalkProposalQuestionsJson } from '#shared/domains/talk-proposals/questions'
@@ -24,129 +24,7 @@ import {
   getAccountEventPageAccess,
   type AccountEventPageContext
 } from './account-event-page-context'
-
-function buildTabVisibility(input: {
-  event: AccountEventPageContext['event']
-  authorization: AccountEventPageContext['authorization']
-  applicationStatus: AccountEventEntryAccess['applicationStatus']
-  hasRetainedTalkProposal: boolean
-  hasCreditInventory: boolean
-  hasGallery: boolean
-  hasPublishedPrizes: boolean
-  hasPublishedStaff: boolean
-}): AccountEventEntryTabVisibility {
-  const {
-    event,
-    authorization,
-    applicationStatus,
-    hasRetainedTalkProposal,
-    hasCreditInventory,
-    hasGallery,
-    hasPublishedPrizes,
-    hasPublishedStaff
-  } = input
-  const hasApprovedParticipantAccess = applicationStatus === 'approved'
-  const hasEligibleTalkProposalApplicant = applicationStatus === 'submitted'
-    || applicationStatus === 'approved'
-  const isCompetitionEvent = event.eventType === 'hackathon'
-  const availableTabs: AccountEventEntryTabVisibility['availableTabs'] = ['overview']
-
-  if (!event.simplifiedClaimingEnabled && (
-    authorization.isEventAdmin
-    || ((hasApprovedParticipantAccess || authorization.canViewParticipantsAndTeams) && hasCreditInventory)
-  )) {
-    availableTabs.push('credits')
-  }
-
-  if (isCompetitionEvent && (hasPublishedPrizes || authorization.isEventAdmin || event.state === 'completed')) {
-    availableTabs.push('prizes')
-  }
-
-  availableTabs.push('details')
-
-  if (event.eventType === 'meetup' && event.talkProposalsEnabled && (
-    hasEligibleTalkProposalApplicant
-    || hasRetainedTalkProposal
-    || authorization.isEventAdmin
-    || authorization.canViewParticipantsAndTeams
-  )) {
-    availableTabs.push('call-for-talks')
-  }
-
-  if (
-    authorization.canReviewThroughAssignment
-    || authorization.isEventAdmin
-    || authorization.canViewParticipantsAndTeams
-    || (hasApprovedParticipantAccess && hasGallery)
-  ) {
-    availableTabs.push('gallery')
-  }
-
-  if (isCompetitionEvent) {
-    availableTabs.push('judges')
-  }
-
-  if (hasPublishedStaff || authorization.isEventAdmin) {
-    availableTabs.push('staff')
-  }
-
-  if (
-    authorization.canReviewThroughAssignment
-    || authorization.isEventAdmin
-    || authorization.canViewParticipantsAndTeams
-  ) {
-    availableTabs.push('feedback')
-  }
-
-  if (isCompetitionEvent && hasApprovedParticipantAccess) {
-    availableTabs.push('workspace', 'teams')
-  }
-
-  if (authorization.isEventAdmin || authorization.canViewParticipantsAndTeams) {
-    availableTabs.push('participants')
-  }
-
-  if (authorization.isEventAdmin) {
-    availableTabs.push('certificates')
-
-    if (!hasApprovedParticipantAccess && isCompetitionEvent) {
-      availableTabs.push('teams')
-    }
-
-    if (isCompetitionEvent) {
-      availableTabs.push('submissions')
-
-      if (authorization.canReviewThroughAssignment) {
-        availableTabs.push('judging')
-      }
-    }
-
-    availableTabs.push('operations', 'settings')
-  } else if (authorization.canViewParticipantsAndTeams) {
-    if (isCompetitionEvent && authorization.canReviewThroughAssignment) {
-      availableTabs.push('judging')
-    }
-
-    if (isCompetitionEvent && !hasApprovedParticipantAccess) {
-      availableTabs.push('teams')
-    }
-  } else if (isCompetitionEvent && authorization.canReviewThroughAssignment) {
-    availableTabs.push('judging')
-  }
-
-  return {
-    availableTabs,
-    showPrizeConfiguration: isCompetitionEvent
-      && authorization.isEventAdmin
-      && !['winners_announced', 'completed'].includes(event.state),
-    showAgendaConfigurationInDetails: authorization.isEventAdmin,
-    hasPublishedPrizes,
-    hasPublishedStaff,
-    hasCreditInventory,
-    hasEligibleTalkProposalApplicant,
-    hasGallery
-  }
-}
+import { buildAccountEventTabVisibility } from './account-event-tab-visibility'
 
 function serializeShellAccess(
   context: AccountEventPageContext,
@@ -185,6 +63,7 @@ export async function loadAccountEventPageShell(
   const accessPromise = getAccountEventPageAccess(context)
   const [
     access,
+    programItemId,
     tracks,
     imageOptions,
     galleryExists,
@@ -194,6 +73,12 @@ export async function loadAccountEventPageShell(
     talkProposal
   ] = await Promise.all([
     accessPromise,
+    accessPromise.then(({ application }) => {
+      if (context.authorization.isEventAdmin || application?.status === 'approved') {
+        return findEventProgramItemId(context.database, context.event.id)
+      }
+      return null
+    }),
     listEventTracks(context.database, context.event.id),
     getEventDisplayImageOptions(context.database),
     hasEventPhotos(context.database, context.event.id),
@@ -228,7 +113,7 @@ export async function loadAccountEventPageShell(
   const serializedEvent = serializeAccountEvent(context.event, tracks, imageOptions)
   const event: AccountEventEntryEvent = {
     ...serializedEvent,
-    programItemId: null,
+    programItemId,
     address: canViewRestrictedDetails ? context.event.address : '',
     tracks: serializedEvent.tracks ?? [],
     discordServerUrl: canViewRestrictedDetails ? context.event.discordServerUrl : null,
@@ -239,11 +124,12 @@ export async function loadAccountEventPageShell(
     hasGallery: galleryExists
   }
   const hasCreditInventory = creditInventory.length > 0
-  const tabVisibility = buildTabVisibility({
+  const tabVisibility = buildAccountEventTabVisibility({
     event: context.event,
     authorization: context.authorization,
     applicationStatus: application?.status ?? null,
     hasRetainedTalkProposal: Boolean(talkProposal),
+    hasProgram: Boolean(programItemId),
     hasCreditInventory,
     hasGallery: galleryExists,
     hasPublishedPrizes: Boolean(publishedPrize),

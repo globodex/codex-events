@@ -243,6 +243,7 @@ export const accountEventEntryTabs = [
   'credits',
   'prizes',
   'details',
+  'program',
   'call-for-talks',
   'gallery',
   'feedback',

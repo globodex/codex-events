@@ -4,7 +4,7 @@ title: Add a private nested Build Time agenda with parallel sessions
 status: Done
 assignee: []
 created_date: '2026-11-21T15:22:00Z'
-updated_date: '2026-11-21T16:54:00Z'
+updated_date: '2026-11-21T17:41:00Z'
 labels:
   - build-day
 milestone: m-3
@@ -47,5 +47,5 @@ The public needs a simple day outline. A confirmed participant needs the actual 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-The existing event builder attaches named tracks and timed sessions to one public block. Confirmed participants can open the private program from Overview or Details before check-in. Sessions preserve their offsets when the public block moves. The private timeline reuses the public EventAgendaPanel time formatting and uses separate track columns to show concurrent sessions and gaps.
+The existing event builder attaches named tracks and timed sessions to one public block. Confirmed participants can open the Agenda tab from Build Time in Overview or Details before check-in. Sessions preserve their offsets when the public block moves. The Agenda tab uses the public agenda time format and shows concurrent sessions and gaps in separate track columns.
 <!-- SECTION:FINAL_SUMMARY:END -->

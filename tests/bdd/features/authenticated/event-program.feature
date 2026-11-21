@@ -9,7 +9,7 @@ Feature: Parallel event agenda
     Then the floor plan should highlight the selected room
     When I save the second session and open My agenda
     Then only the saved session should appear
-    When I reload the program and open My agenda
+    When I reload the Agenda tab and open My agenda
     Then only the saved session should appear
 
   Scenario: Replacing a floor image keeps the organizer's unsaved track edits

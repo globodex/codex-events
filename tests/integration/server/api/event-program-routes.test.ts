@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from 'vitest'
 
 import accountEventEntry from '../../../../server/api/account/events/[slug]/entry.get'
 import participantProgram from '../../../../server/api/account/events/[slug]/program.get'
+import accountEventRosters from '../../../../server/api/account/events/[slug]/rosters.get'
 import createFloorPlan from '../../../../server/api/events/[eventId]/floor-plans/index.post'
 import readFloorPlanImage from '../../../../server/api/events/[eventId]/floor-plans/[floorPlanId]/image.get'
 import replaceFloorPlanImage from '../../../../server/api/events/[eventId]/floor-plans/[floorPlanId]/image.post'
@@ -14,6 +15,7 @@ import updateProgram from '../../../../server/api/events/[eventId]/program/index
 import publicEvent from '../../../../server/api/public/events/[slug]/index.get'
 import { eventAgendaFavorites, eventRoleAssignments, events, userApplications, users } from '../../../../server/database/schema'
 import type { AccountEventEntryPage } from '../../../../shared/domains/events/account-event-entry-page'
+import type { AccountEventPageShell } from '../../../../shared/domains/events/account-event-page-shell'
 import type { AdminEventProgram, EventFloorPlan, EventProgram, ParticipantEventProgram } from '../../../../shared/domains/events/program'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 import { stubAuth0Session } from '../../../support/backend/runtime'
@@ -105,6 +107,7 @@ describe('event program routes', () => {
         { method: 'get', path: '/api/public/events/:slug', handler: publicEvent },
         { method: 'get', path: '/api/account/events/:slug/entry', handler: accountEventEntry },
         { method: 'get', path: '/api/account/events/:slug/program', handler: participantProgram },
+        { method: 'get', path: '/api/account/events/:slug/rosters', handler: accountEventRosters },
         { method: 'get', path: '/api/events/:eventId/program', handler: adminProgram },
         { method: 'put', path: '/api/events/:eventId/program', handler: updateProgram },
         { method: 'delete', path: '/api/events/:eventId/program', handler: deleteProgram },
@@ -212,10 +215,20 @@ describe('event program routes', () => {
     signIn('pending')
     const pendingEntry = await readData<{ page: AccountEventEntryPage }>(await harness.request(`${accountPath}/entry`))
     expect(pendingEntry.page.event.programItemId).toBeNull()
+    const pendingRosters = await readData<{ shell: AccountEventPageShell }>(
+      await harness.request(`${accountPath}/rosters?includeEventShell=true`)
+    )
+    expect(pendingRosters.shell.event.programItemId).toBeNull()
+    expect(pendingRosters.shell.tabVisibility.availableTabs).not.toContain('program')
 
     signIn('participant')
     const entry = await readData<{ page: AccountEventEntryPage }>(await harness.request(`${accountPath}/entry`))
     expect(entry.page.event.programItemId).toBe(publicBlock.id)
+    const participantRosters = await readData<{ shell: AccountEventPageShell }>(
+      await harness.request(`${accountPath}/rosters?includeEventShell=true`)
+    )
+    expect(participantRosters.shell.event.programItemId).toBe(publicBlock.id)
+    expect(participantRosters.shell.tabVisibility.availableTabs).toContain('program')
     expect(await readAgenda()).toMatchObject({
       eventId,
       agendaItem: { id: publicBlock.id, startsAt: publicBlock.startsAt },

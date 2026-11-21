@@ -31,6 +31,7 @@ import type {
   AccountJudgeAssignmentWorkspacePage
 } from '#shared/domains/events/account-event-judging-page'
 import type { AccountEventSettingsPage } from '#shared/domains/events/account-event-settings-page'
+import type { ParticipantEventProgram } from '#shared/domains/events/program'
 import type { AccountEventPageVisibility } from '~/domains/events/account-workspace-page'
 import {
   buildVersionedEventImageUrl,
@@ -57,6 +58,7 @@ import {
   LazyAccountEventsAccountEventParticipantTeamPanel as LazyAccountEventParticipantTeamPanel,
   LazyAccountEventsAccountEventParticipantVisibilityPanel as LazyAccountEventParticipantVisibilityPanel,
   LazyAccountEventsAccountEventParticipantWorkspacePanel as LazyAccountEventParticipantWorkspacePanel,
+  LazyAccountEventsAccountEventProgramPanel as LazyAccountEventProgramPanel,
   LazyAccountEventsAccountEventPublishedRosterPanel as LazyAccountEventPublishedRosterPanel,
   LazyAccountEventsAccountEventRoleRosterPanel as LazyAccountEventRoleRosterPanel,
   LazyAccountEventsAccountEventTalkProposalPanel as LazyAccountEventTalkProposalPanel,
@@ -190,7 +192,7 @@ const event = computed<AccountWorkspaceEvent | null>(() =>
   entryPage.value?.event ?? pageShell.value?.event ?? null
 )
 const programLink = computed(() => {
-  const itemId = entryPage.value?.event.programItemId
+  const itemId = event.value?.programItemId
   const item = itemId && event.value?.agendaItems.find(item => item.id === itemId)
   if (!item) {
     return undefined
@@ -199,7 +201,7 @@ const programLink = computed(() => {
   return {
     itemId: item.id,
     title: item.title,
-    href: `/account/events/${encodeURIComponent(slug.value)}/program`
+    href: `/account/events/${encodeURIComponent(slug.value)}?tab=program`
   }
 })
 const accessRecord = shallowRef<AccountEventAccessRecord | null>(null)
@@ -513,6 +515,12 @@ const workspacePageRequest = useAccountEventPageRequest<AccountEventWorkspacePag
   enabled: () => activeSection.value === 'workspace',
   query: pageState.queryForPage('workspace')
 })
+const programPageRequest = useAccountEventPageRequest<ParticipantEventProgram>(slug, 'program', {
+  enabled: () => activeSection.value === 'program',
+  query: pageState.queryForPage('program')
+})
+const programPage = computed(() => programPageRequest.data.value?.page)
+const { pendingSessions, toggleFavorite } = useEventProgramFavorites(programPageRequest)
 const galleryPageRequest = useAccountEventPageRequest<AccountEventGalleryPage>(slug, 'gallery', {
   enabled: () => activeSection.value === 'gallery',
   query: pageState.queryForPage('gallery')
@@ -636,6 +644,7 @@ const selectedPageRequestState = computed(() => {
     switch (requestedWorkspaceTab.value) {
       case 'prizes': return prizesPageRequest
       case 'workspace': return workspacePageRequest
+      case 'program': return programPageRequest
       case 'gallery': return galleryPageRequest
       case 'feedback': return feedbackPageRequest
       case 'judges':
@@ -1760,6 +1769,35 @@ useSeoMeta({
           :show-prize-configuration="false"
           @updated="refreshAccountEvent"
         />
+      </section>
+
+      <section
+        v-else-if="activeSection === 'program'"
+        id="account-tab-panel-program"
+        role="tabpanel"
+        aria-labelledby="account-tab-program"
+        class="space-y-6"
+      >
+        <AppAlert
+          v-if="programPageRequest.error.value"
+          color="error"
+          title="Agenda unavailable"
+          :description="normalizeParticipantApiError(programPageRequest.error.value).message"
+        />
+        <LazyAccountEventProgramPanel
+          v-else-if="programPage"
+          :key="programPage.eventId"
+          :program="programPage"
+          :pending-sessions="pendingSessions"
+          @toggle-favorite="toggleFavorite"
+        />
+        <p
+          v-else
+          role="status"
+          class="text-sm text-muted"
+        >
+          Loading agenda…
+        </p>
       </section>
 
       <section
