@@ -5,6 +5,11 @@ const clearNuxtData = vi.hoisted(() => vi.fn())
 const states = new Map<string, { value: unknown }>()
 
 describe('useAuthorizationCache', () => {
+  const settledKey = 'protected-api:0:account-event'
+  const pendingKey = 'protected-api:0:pending-event'
+  const publicKey = 'public-event:account-event'
+  const asyncData: Record<string, { _abortController: AbortController }> = {}
+
   beforeEach(() => {
     vi.resetModules()
     clearNuxtData.mockReset()
@@ -12,6 +17,10 @@ describe('useAuthorizationCache', () => {
 
     vi.stubGlobal('computed', computed)
     vi.stubGlobal('toValue', toValue)
+    vi.stubGlobal('useNuxtApp', () => ({
+      _asyncData: asyncData,
+      payload: { data: { [settledKey]: {}, [publicKey]: {} } }
+    }))
     vi.stubGlobal('useState', (key: string, init: () => unknown) => {
       const existing = states.get(key)
 
@@ -45,22 +54,27 @@ describe('useAuthorizationCache', () => {
       eventRoles: []
     }
 
-    expect(cache.protectedKey('account-event').value).toBe('protected-api:0:account-event')
+    const pendingRequest = new AbortController()
+    asyncData[pendingKey] = { _abortController: pendingRequest }
+
+    expect(cache.protectedKey('account-event').value).toBe(settledKey)
     expect(cache.syncAuthorization(actor, { canView: true })).toBe(true)
     expect(cache.authorizationGeneration.value).toBe(0)
+    expect(clearNuxtData).not.toHaveBeenCalled()
+    expect(pendingRequest.signal.aborted).toBe(false)
     expect(cache.syncAuthorization(actor, { canView: true })).toBe(false)
 
     const changedActor = {
       ...actor,
       hasAcceptedCurrentPlatformDocuments: false
     }
+    clearNuxtData.mockImplementationOnce(() => expect(cache.authorizationGeneration.value).toBe(0))
     expect(cache.syncAuthorization(changedActor, { canView: false })).toBe(true)
     expect(cache.authorizationGeneration.value).toBe(1)
     expect(cache.protectedKey('account-event').value).toBe('protected-api:1:account-event')
-    expect(clearNuxtData).toHaveBeenCalledTimes(2)
+    expect(clearNuxtData).toHaveBeenCalledTimes(1)
 
-    const predicate = clearNuxtData.mock.calls.at(-1)?.[0] as (key: string) => boolean
-    expect(predicate('protected-api:0:account-event')).toBe(true)
-    expect(predicate('public-event:account-event')).toBe(false)
+    expect(clearNuxtData).toHaveBeenLastCalledWith([pendingKey, settledKey])
+    expect(pendingRequest.signal.aborted).toBe(true)
   })
 })
