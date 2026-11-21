@@ -64,6 +64,7 @@ const certificatePalettes: Record<EventCertificateEventType, CertificatePalette>
 
 interface CertificateImageNode {
   type: 'div' | 'img'
+  key: null
   props: {
     style: Record<string, string | number>
     src?: string
@@ -76,6 +77,7 @@ interface CertificateImageNode {
 function box(style: Record<string, string | number>, children?: CertificateImageNode[] | string): CertificateImageNode {
   return {
     type: 'div',
+    key: null,
     props: {
       style: { display: 'flex', boxSizing: 'border-box', ...style },
       children
@@ -140,6 +142,7 @@ function verificationQrCodeTile(verifyUrl: string, size: number): CertificateIma
   }, [
     {
       type: 'img',
+      key: null,
       props: {
         src: buildVerificationQrCodeDataUrl(verifyUrl),
         width: codeSize,
@@ -274,6 +277,7 @@ function buildCertificateImageTree(certificate: EventCertificate, verifyUrl: str
     ringLayer(certificateImageWidth / 2, 270, 222, 0.05),
     {
       type: 'img',
+      key: null,
       props: {
         src: badgeDataUrl,
         width: 108,

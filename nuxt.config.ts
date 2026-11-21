@@ -4,8 +4,8 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import tailwindcss from '@tailwindcss/vite'
-import { certificateHarfBuzzPlugin } from './tools/build/certificate-harfbuzz'
-import { shouldUseLocalCodexAuth } from './tools/local-auth/mode'
+import { certificateHarfBuzzPlugin } from './tools/build/certificate-harfbuzz.ts'
+import { shouldUseLocalCodexAuth } from './tools/local-auth/mode.ts'
 
 const nuxtTemporaryDirectory = process.platform === 'win32'
   ? join(tmpdir(), 'codex-events-nuxt')
@@ -16,11 +16,12 @@ process.env.TMPDIR = nuxtTemporaryDirectory
 process.env.TMP = nuxtTemporaryDirectory
 process.env.TEMP = nuxtTemporaryDirectory
 
-const localAuthFixtures = process.env.NODE_ENV === 'development' && process.env.CODEX_EVENTS_BDD === '1'
-const localCodexAuth = localAuthFixtures || shouldUseLocalCodexAuth(
+const storybook = process.env.CODEX_EVENTS_STORYBOOK
+const localAuthFixtures = !storybook && process.env.NODE_ENV === 'development' && process.env.CODEX_EVENTS_BDD === '1'
+const localCodexAuth = localAuthFixtures || (!storybook && shouldUseLocalCodexAuth(
   process.env.NODE_ENV !== 'production',
   process.env
-)
+))
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -28,8 +29,8 @@ export default defineNuxtConfig({
   modules: [
     '@nuxt/eslint',
     ['@auth0/auth0-nuxt', {
-      mountRoutes: !localAuthFixtures,
-      hydrateUser: !localAuthFixtures,
+      mountRoutes: !localAuthFixtures && !storybook,
+      hydrateUser: !localAuthFixtures && !storybook,
       routes: {
         login: '/auth/sdk/login',
         logout: '/auth/sdk/logout'
@@ -40,7 +41,7 @@ export default defineNuxtConfig({
   ],
 
   devtools: {
-    enabled: process.env.NODE_ENV !== 'production'
+    enabled: !storybook && process.env.NODE_ENV !== 'production'
   },
 
   css: ['~/assets/css/main.css'],
@@ -109,7 +110,9 @@ export default defineNuxtConfig({
       resourceUrl: 'http://localhost:3000/mcp'
     }
   },
-  buildDir: localAuthFixtures ? join(process.env.CODEX_EVENTS_BDD_RUN_DIR!, 'nuxt') : undefined,
+  buildDir: storybook
+    ? `node_modules/.cache/codex-events-storybook-${storybook === 'dev' ? 'dev' : 'build'}`
+    : localAuthFixtures ? join(process.env.CODEX_EVENTS_BDD_RUN_DIR!, 'nuxt') : undefined,
   alias: {
     '#ai-knowledge': fileURLToPath(new URL('./shared/domains/applications/ai-knowledge.ts', import.meta.url)),
     '#proof-of-execution-links': fileURLToPath(new URL('./shared/domains/applications/proof-of-execution-links.ts', import.meta.url))
@@ -169,6 +172,15 @@ export default defineNuxtConfig({
     }
   },
 
+  typescript: {
+    appTsConfig: {
+      include: ['../stories/**/*', '../.storybook/preview.ts']
+    },
+    nodeTsConfig: {
+      include: ['../.storybook/main.ts']
+    }
+  },
+
   eslint: {
     config: {
       stylistic: {
@@ -177,6 +189,15 @@ export default defineNuxtConfig({
       }
     }
   },
+
+  icon: storybook
+    ? {
+        provider: 'none',
+        clientBundle: {
+          scan: { globInclude: ['app/**/*.{vue,ts}', 'stories/**/*.{vue,ts}'] }
+        }
+      }
+    : undefined,
 
   shadcn: {
     prefix: '',

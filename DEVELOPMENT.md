@@ -428,6 +428,32 @@ Refresh the generated third-party notices asset after runtime dependency changes
 bun run notices:generate
 ```
 
+## Component Previews
+
+Run Storybook and open [the local component catalog](http://127.0.0.1:6006).
+
+```bash
+bun run storybook
+```
+
+Storybook uses the app's components, styles, and icons. Use the theme toolbar
+to switch between light and dark. Compare shared button styles together before
+introducing a new button pattern.
+
+Keep stories under `stories/` and group them by component area. When you
+add or change a shared component, show its important states in Storybook.
+Use local sample data and callbacks for interactions. Stories are anonymous
+by default.
+For a signed-in view, call `provideStorybookSession` from `.storybook/session.ts`
+with a sample actor in a parent component's setup. Storybook starts without a
+database or authentication service.
+
+To verify a static build in `storybook-static/`, run:
+
+```bash
+bun run build:storybook
+```
+
 ## End-to-End Tests
 
 The repository uses `Playwright` with `playwright-bdd`, so end-to-end coverage is authored as Gherkin feature files plus step definitions and generated into Playwright tests before execution. Authenticated coverage uses four fixed local personas and requires no environment setup.

@@ -2,6 +2,7 @@
 import withNuxt from './.nuxt/eslint.config.mjs'
 
 export default withNuxt(
+  { ignores: ['storybook-static/**'] },
   {
     name: 'codex-events/runtime-query-guardrails',
     files: ['server/**/*.{ts,tsx,vue}', 'app/**/*.{ts,tsx,vue}'],
