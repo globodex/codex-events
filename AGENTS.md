@@ -298,6 +298,10 @@ creating new Vue components.
 
 ## Codex Events Validation
 
+Do not write tests for functions or code that has `cccc` cognitive complexity
+less than or equal to 5, unless they contain regular expressions, using
+[github.com/moznion/cccc](https://github.com/moznion/cccc).
+
 For any code changes, run validation before handoff and before committing:
 
 - `bun run lint`
