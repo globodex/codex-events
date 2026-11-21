@@ -228,6 +228,7 @@ export async function loadAccountEventPageShell(
   const serializedEvent = serializeAccountEvent(context.event, tracks, imageOptions)
   const event: AccountEventEntryEvent = {
     ...serializedEvent,
+    programItemId: null,
     address: canViewRestrictedDetails ? context.event.address : '',
     tracks: serializedEvent.tracks ?? [],
     discordServerUrl: canViewRestrictedDetails ? context.event.discordServerUrl : null,

@@ -73,6 +73,7 @@ export interface AccountEventEntryEvent {
   slug: string
   description: string
   agendaItems: AccountEventEntryAgendaItem[]
+  programItemId: string | null
   tracks: AccountEventEntryTrack[]
   backgroundImageUrl: string | null
   backgroundImageRevision: number
@@ -324,6 +325,7 @@ const accountEventEntryEventSchema = z.object({
   slug: z.string(),
   description: z.string(),
   agendaItems: z.array(accountEventEntryAgendaItemSchema),
+  programItemId: z.string().nullable(),
   tracks: z.array(accountEventEntryTrackSchema),
   backgroundImageUrl: z.string().nullable(),
   backgroundImageRevision: z.number().int(),

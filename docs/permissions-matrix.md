@@ -157,6 +157,12 @@ Team permissions apply only to Hackathon events.
 | Leave team during `registration_open` or `submission_open` | No | No | Yes, only if at least one active team admin remains or the user is the last active member of a team with no active draft, submitted, or locked submission | Yes, only if at least one active team admin remains or the user is the last active member of a team with no active draft, submitted, or locked submission | No | No | No |
 | Leave team after submission closes | No | No | Yes, only if at least one active team admin remains and at least one active team member remains | Yes, only if at least one active team admin remains and at least one active team member remains | No | No | No |
 
+## Event Program Permissions
+
+- Public visitors and pending participants see the public agenda block. Confirmed participants can open the program and its floor plans before check-in.
+- Event admins and platform admins manage programs, floor plans and room areas. They can open the participant view while preparing the event.
+- Favorites are private to the confirmed participant who saved them.
+
 ## Event Image Permissions
 
 | Action | Public User | Event Admin | Platform Admin |

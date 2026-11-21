@@ -4,6 +4,7 @@ import { z } from 'zod'
 import type { AuthenticatedIdentityActor } from '#server/auth/actor'
 import type { AppDatabase } from '#server/database/client'
 import {
+  eventAgendaFavorites,
   eventRoleAssignments,
   mcpAccessTokens,
   platformDocuments,
@@ -645,6 +646,9 @@ export async function deletePlatformAccount(
     database
       .delete(talkProposals)
       .where(eq(talkProposals.userId, actor.userId)),
+    database
+      .delete(eventAgendaFavorites)
+      .where(eq(eventAgendaFavorites.userId, actor.userId)),
     buildAuditLogInsert(database, {
       actorUserId: actor.userId,
       entityType: 'user',

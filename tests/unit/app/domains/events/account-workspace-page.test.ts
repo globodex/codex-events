@@ -21,6 +21,7 @@ describe('account-event page contract boundary', () => {
       'workspace',
       'teams',
       'rosters',
+      'program',
       'gallery',
       'feedback',
       'certificates'

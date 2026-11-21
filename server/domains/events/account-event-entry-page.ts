@@ -37,6 +37,7 @@ import {
   serializeAdminEvent
 } from '#server/domains/events'
 import { hasEventPhotos } from '#server/domains/events/photos'
+import { findEventProgramItemId } from '#server/domains/events/program'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { getTeamCompetitionOutcome } from '#server/domains/outcomes'
 import { serializeSubmission } from '#server/domains/submissions'
@@ -489,9 +490,11 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
     const memberships = participantAccess.memberships
     const activeMembership = memberships.find(({ membership }) => membership.leftAt === null) ?? null
     const primaryMembership = activeMembership ?? memberships[0] ?? null
-    const [participation, credits] = await Promise.all([
+    const canViewProgram = context.authorization.isEventAdmin || application?.status === 'approved'
+    const [participation, credits, programItemId] = await Promise.all([
       loadParticipation(context, application, memberships),
-      loadCredits(context, application)
+      loadCredits(context, application),
+      canViewProgram ? findEventProgramItemId(context.database, event.id) : null
     ])
     const talkProposalResult = event.eventType === 'meetup' && event.talkProposalsEnabled
       ? await Promise.all([
@@ -519,6 +522,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
       || application?.status === 'approved'
     const accountEvent: AccountEventEntryEvent = {
       ...serializedEvent,
+      programItemId,
       address: canViewRestrictedDetails ? event.address : '',
       tracks: serializedEvent.tracks ?? [],
       discordServerUrl: canViewRestrictedDetails ? event.discordServerUrl : null,
