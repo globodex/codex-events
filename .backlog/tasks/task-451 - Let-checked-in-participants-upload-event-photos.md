@@ -4,6 +4,7 @@ title: Let checked-in participants upload event photos
 status: To Do
 assignee: []
 created_date: '2026-11-21T15:23:00Z'
+updated_date: '2026-11-21T23:43:00Z'
 labels:
   - build-day
 milestone: m-3
@@ -40,3 +41,9 @@ Participants need a way to contribute pictures to the event's existing gallery. 
 - [ ] #7 Auth and permissions changes follow the documented platform model
 - [ ] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Decision by Alex on 2026-11-22: participant photos appear in the event gallery in an "Uploaded by participants" section. They are not public by default. Staff and admins can hide them.
+<!-- SECTION:NOTES:END -->

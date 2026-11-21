@@ -4,6 +4,7 @@ title: Collect feedback for individual workshop sessions
 status: To Do
 assignee: []
 created_date: '2026-11-21T15:23:00Z'
+updated_date: '2026-11-21T23:43:00Z'
 labels:
   - build-day
 milestone: m-3
@@ -39,3 +40,9 @@ Organizers need to see how individual workshops went. The team still needs to ag
 - [ ] #7 Auth and permissions changes follow the documented platform model
 - [ ] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Decision by Alex on 2026-11-22: skipped for Build Day and archived.
+<!-- SECTION:NOTES:END -->

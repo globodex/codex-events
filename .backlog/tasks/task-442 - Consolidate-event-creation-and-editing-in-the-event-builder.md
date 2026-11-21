@@ -1,10 +1,10 @@
 ---
 id: TASK-442
 title: Consolidate event creation and editing in the event builder
-status: In Progress
+status: To Do
 assignee: []
 created_date: '2026-11-21T15:22:00Z'
-updated_date: '2026-11-21T15:41:00Z'
+updated_date: '2026-11-21T23:43:00Z'
 labels:
   - build-day
 milestone: m-3
@@ -51,4 +51,6 @@ Organizers currently maintain the same event through two editors, which makes be
 The build-day branch contains the first agenda timing refactor. Classic editor retirement and parity for remaining controls are still outstanding.
 
 Stack acceptance goal: deliver more Build Day features and make failures easier to recover from, while reducing the amount and complexity of production code. Review the stack against its base and count test deletions separately. A junior developer should be able to follow the main paths and understand why the code behaves as it does.
+
+Decision by Alex on 2026-11-22: the remaining work (moving the last controls into the builder and removing the old editor) waits until after the event on 28 November.
 <!-- SECTION:NOTES:END -->

@@ -4,7 +4,7 @@ title: Show the next participant step after check-in
 status: To Do
 assignee: []
 created_date: '2026-11-21T15:23:00Z'
-updated_date: '2026-11-21T23:21:00Z'
+updated_date: '2026-11-21T23:43:00Z'
 labels:
   - build-day
 milestone: m-3
@@ -42,3 +42,9 @@ A participant arriving at an event needs to see the next thing to do without bro
 - [ ] #7 Auth and permissions changes follow the documented platform model
 - [ ] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Decision by Alex on 2026-11-22: the questionnaire is a short list of questions written by the organizer in the event builder, like the existing call-for-talks questions. Answers are saved per participant and organizers can read them.
+<!-- SECTION:NOTES:END -->

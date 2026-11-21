@@ -4,6 +4,7 @@ title: Sync a private per-event Luma guest list and confirm registrations
 status: To Do
 assignee: []
 created_date: '2026-11-21T15:22:00Z'
+updated_date: '2026-11-21T23:43:00Z'
 labels:
   - build-day
 milestone: m-3
@@ -43,3 +44,9 @@ Build Day participants register with Luma before using Codex Events. Organizers 
 - [ ] #7 Auth and permissions changes follow the documented platform model
 - [ ] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Decision by Alex on 2026-11-22: the Luma guest list confirms registrations only for events that switch it on in their Luma connection. Other events with Luma keep the current flow, where organizers approve on Codex Events and the result is sent to Luma.
+<!-- SECTION:NOTES:END -->
