@@ -13,7 +13,8 @@ Feature: Gamified event builder creation flow
     And I move the last builder block up
     Then the builder balance score should be visible
     When I fill the builder basics for "BDD Builder Meetup"
-    And I submit the event builder
+    Then the builder description editor should match the color theme
+    When I submit the event builder
     Then I should land on the workspace settings tab for "bdd-builder-meetup"
     And the workspace settings should show the builder banner
     When I open the event in the builder from the workspace banner

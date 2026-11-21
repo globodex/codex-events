@@ -111,7 +111,7 @@ onBeforeUnmount(() => {
   --md-border-active-color: rgb(3 2 19 / 0.25);
 }
 
-.event-markdown-editor :deep(.md-editor-dark) {
+.event-markdown-editor :deep(.md-editor[data-theme='dark']) {
   --md-color: var(--text-highlighted);
   --md-hover-color: var(--text-highlighted);
   --md-bk-color: #111111;

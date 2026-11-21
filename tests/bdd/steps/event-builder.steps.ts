@@ -180,6 +180,18 @@ Then('the builder should hydrate {int} agenda blocks', async ({ page }, expected
   await expect(page.locator('[data-builder-block-row]')).toHaveCount(expectedCount)
 })
 
+Then('the builder description editor should match the color theme', async ({ page }) => {
+  const editor = page.getByTestId('event-builder-description').locator('.md-editor')
+
+  await page.emulateMedia({ colorScheme: 'light' })
+  await expect(editor).toHaveCSS('background-color', 'rgb(255, 255, 255)')
+  await page.getByRole('button', { name: 'Theme: system. Switch to dark.' }).click()
+  await expect(editor).toHaveCSS('background-color', 'rgb(17, 17, 17)')
+  await expect(editor.locator('.md-editor-preview').getByText('meetup', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Theme: dark. Switch to light.' }).click()
+  await expect(editor).toHaveCSS('background-color', 'rgb(255, 255, 255)')
+})
+
 Then('the builder should retain the saved rich basics', async ({ page }) => {
   await expect(page.getByTestId('event-builder-description').getByRole('textbox')).toContainText('A **meetup** assembled with the event builder for BDD coverage.')
   await expect(page.getByTestId('event-builder-country')).toHaveValue('Austria')
