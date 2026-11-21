@@ -84,6 +84,7 @@ Key characteristics:
 - When an event has no event-specific background image, event detail backgrounds use the platform default event background image when one is configured, even if the event has a banner image.
 - Event cards can present the event banner before the effective background image.
 - Each event can define structured agenda items for public schedule display and admin editing. Agenda items can carry an optional builder block annotation used by the gamified event builder; the annotation is organizer-facing metadata and never appears in public payloads.
+- In the event builder, moving an agenda block changes its scheduled time. Each block keeps its duration, and the spacing between schedule positions stays in place.
 - Each event records its creation flow (`classic` or `builder`). Builder-created events open the event builder as their default editor while remaining fully editable in the classic form; the flow marker routes editors only and never changes how event data is interpreted.
 - Each event persists an Event Balance Score (0–100) with a meter breakdown, computed by a deterministic shared scoring engine from the event's own configuration (agenda pacing, energy, variety, return-intent signals, and quality checkpoints). The score is recomputed on every create and update for all events, is advisory guidance for organizers (it never blocks any action), and is visible to event admins and platform admins only.
 - Each event can be marked as an in-person event.

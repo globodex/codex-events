@@ -2,7 +2,7 @@
 import type { EventBuilderBlockInstance, EventBuilderScheduleEntry } from '~/domains/events/builder'
 import { eventBuilderBlockDefinitions } from '#shared/domains/events/builder-blocks'
 import { getScaledBlockEnergyDelta, getScaledBlockFocusCost } from '#shared/domains/events/builder-scoring'
-import { eventBuilderBlockIcons } from '~/domains/events/builder'
+import { eventBuilderBlockIcons, getBlockDurationMinutes } from '~/domains/events/builder'
 import { formatLocalTime } from '~/lib/date-formatting'
 import AdminBuilderDurationStepper from '~/components/admin/builder/molecules/AdminBuilderDurationStepper.vue'
 
@@ -32,22 +32,24 @@ function parseDial(value: string | number | undefined, fallback: number) {
 }
 
 const definition = computed(() => eventBuilderBlockDefinitions[props.block.type])
+const durationMinutes = computed(() => getBlockDurationMinutes(props.block))
 
 const timeRange = computed(() => {
-  if (!props.schedule?.startsAt || !props.schedule.endsAt) {
+  if (!props.schedule?.startsAt) {
     return ''
   }
 
-  return `${formatLocalTime(props.schedule.startsAt)} – ${formatLocalTime(props.schedule.endsAt)}`
+  const start = formatLocalTime(props.schedule.startsAt)
+  return props.schedule.endsAt ? `${start} – ${formatLocalTime(props.schedule.endsAt)}` : start
 })
 
 const scaledFocus = computed(() =>
-  Math.round(getScaledBlockFocusCost(definition.value, props.block.durationMinutes)))
+  Math.round(getScaledBlockFocusCost(definition.value, durationMinutes.value)))
 
 const focusLabel = computed(() => scaledFocus.value === 0 ? '±0' : `−${scaledFocus.value}`)
 
 const scaledEnergy = computed(() =>
-  Math.round(getScaledBlockEnergyDelta(definition.value, props.block.durationMinutes)))
+  Math.round(getScaledBlockEnergyDelta(definition.value, durationMinutes.value)))
 
 const energyLabel = computed(() => {
   if (scaledEnergy.value === 0) {
@@ -58,7 +60,7 @@ const energyLabel = computed(() => {
 })
 
 const durationModel = computed({
-  get: () => props.block.durationMinutes,
+  get: () => durationMinutes.value,
   set: value => emit('updateDuration', props.block.id, value)
 })
 </script>

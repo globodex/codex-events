@@ -167,7 +167,6 @@ function onSubmit() {
           <AdminBuilderAgendaTrack
             :blocks="builder.state.blocks"
             :schedule="builder.schedule.value"
-            :non-sequential-warning="builder.state.hydratedNonSequential"
             :receiving="paletteDragActive"
             @reorder="(oldIndex, newIndex) => builder.reorderBlocks(oldIndex, newIndex)"
             @insert="(type, index) => builder.addBlock(type, index)"
@@ -236,7 +235,7 @@ function onSubmit() {
         :checklist="builder.checklist.value"
         :report="builder.report.value"
         :blocks="builder.state.blocks"
-        :event-starts-at="builder.state.eventStartsAt"
+        :schedule="builder.schedule.value"
         :can-submit="builder.canSubmit.value"
         :is-submitting="isSubmitting"
         :submit-error="submitError"

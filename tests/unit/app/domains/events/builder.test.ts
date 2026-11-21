@@ -142,11 +142,11 @@ describe('computeBlockSchedule', () => {
       { ...createBlockInstance('talk'), durationMinutes: 30 },
       { ...createBlockInstance('networking'), durationMinutes: 45 }
     ]
-    const schedule = computeBlockSchedule('2026-09-12T18:00', blocks)
+    const schedule = computeBlockSchedule('2026-09-12T18:00:00.000Z', blocks)
 
-    expect(schedule[0]).toMatchObject({ startsAt: '2026-09-12T18:00', endsAt: '2026-09-12T18:15' })
-    expect(schedule[1]).toMatchObject({ startsAt: '2026-09-12T18:15', endsAt: '2026-09-12T18:45' })
-    expect(schedule[2]).toMatchObject({ startsAt: '2026-09-12T18:45', endsAt: '2026-09-12T19:30' })
+    expect(schedule[0]).toMatchObject({ startsAt: '2026-09-12T18:00:00.000Z', endsAt: '2026-09-12T18:15:00.000Z' })
+    expect(schedule[1]).toMatchObject({ startsAt: '2026-09-12T18:15:00.000Z', endsAt: '2026-09-12T18:45:00.000Z' })
+    expect(schedule[2]).toMatchObject({ startsAt: '2026-09-12T18:45:00.000Z', endsAt: '2026-09-12T19:30:00.000Z' })
   })
 
   test('preserves an arbitrary directly entered duration in every following sequential time', () => {
@@ -155,18 +155,18 @@ describe('computeBlockSchedule', () => {
       { ...createBlockInstance('talk'), durationMinutes: 12 },
       { ...createBlockInstance('networking'), durationMinutes: 45 }
     ]
-    const schedule = computeBlockSchedule('2026-09-12T18:00', blocks)
+    const schedule = computeBlockSchedule('2026-09-12T18:00:00.000Z', blocks)
 
-    expect(schedule[0]).toMatchObject({ startsAt: '2026-09-12T18:00', endsAt: '2026-09-12T18:17' })
-    expect(schedule[1]).toMatchObject({ startsAt: '2026-09-12T18:17', endsAt: '2026-09-12T18:29' })
-    expect(schedule[2]).toMatchObject({ startsAt: '2026-09-12T18:29', endsAt: '2026-09-12T19:14' })
+    expect(schedule[0]).toMatchObject({ startsAt: '2026-09-12T18:00:00.000Z', endsAt: '2026-09-12T18:17:00.000Z' })
+    expect(schedule[1]).toMatchObject({ startsAt: '2026-09-12T18:17:00.000Z', endsAt: '2026-09-12T18:29:00.000Z' })
+    expect(schedule[2]).toMatchObject({ startsAt: '2026-09-12T18:29:00.000Z', endsAt: '2026-09-12T19:14:00.000Z' })
   })
 
   test('crosses midnight without breaking', () => {
     const blocks = [{ ...createBlockInstance('hacking'), durationMinutes: 180 }]
-    const schedule = computeBlockSchedule('2026-09-12T23:00', blocks)
+    const schedule = computeBlockSchedule('2026-09-12T23:00:00.000Z', blocks)
 
-    expect(schedule[0]!.endsAt).toBe('2026-09-13T02:00')
+    expect(schedule[0]!.endsAt).toBe('2026-09-13T02:00:00.000Z')
   })
 
   test('returns empty times without an event start', () => {
@@ -223,8 +223,7 @@ describe('createBuilderStateFromEvent', () => {
     expect(state.blocks).toHaveLength(2)
     expect(state.blocks[0]).toMatchObject({ type: 'talk', durationMinutes: 30, custom: false })
     expect(state.blocks[1]).toMatchObject({ type: 'custom', durationMinutes: 45, custom: true, title: 'Mystery Session' })
-    expect(state.hydratedNonSequential).toBe(false)
-    expect(state.eventStartsAt).not.toBe('')
+    expect(state.eventStartsAt).toBe('2026-09-12T18:00:00.000Z')
   })
 
   test('custom-block dials hydrate and round-trip back into the agenda payload', () => {
@@ -276,13 +275,13 @@ describe('createBuilderStateFromEvent', () => {
     expect(items[0]?.details).toBe('Doors at 17:30, talk starts sharp.')
   })
 
-  test('flags classic-tuned gaps as non-sequential', () => {
+  test('keeps exact agenda times across gaps in the edit payload', () => {
     const event = buildAgendaEvent({
       agendaItems: [
         {
           id: 'a1',
-          startsAt: '2026-09-12T18:00:00.000Z',
-          endsAt: '2026-09-12T18:30:00.000Z',
+          startsAt: '2026-09-12T18:00:07.452Z',
+          endsAt: '2026-09-12T18:30:44.880Z',
           title: 'Talk',
           details: null,
           displayOrder: 0,
@@ -300,7 +299,10 @@ describe('createBuilderStateFromEvent', () => {
       ]
     })
 
-    expect(createBuilderStateFromEvent(event).hydratedNonSequential).toBe(true)
+    const state = createBuilderStateFromEvent(event)
+    const patch = buildEventConfigurationPatch(toEventBuilderFormState(state), state.form.eventType)
+
+    expect(patch.agendaItems).toEqual(event.agendaItems)
   })
 
   test('keeps event and track Markdown plus an existing country unchanged in the edit payload', () => {
@@ -345,7 +347,9 @@ describe('createBuilderStateFromEvent', () => {
     const state = createBuilderStateFromEvent(event)
 
     expect(state.blocks[0]!.custom).toBe(true)
-    expect(state.hydratedNonSequential).toBe(true)
+    const patch = buildEventConfigurationPatch(toEventBuilderFormState(state), state.form.eventType)
+
+    expect(patch.agendaItems[0]?.endsAt).toBeNull()
   })
 })
 

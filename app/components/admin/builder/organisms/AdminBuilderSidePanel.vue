@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { EventBalanceResult } from '#shared/domains/events/builder-scoring'
-import type { EventBuilderBlockInstance, EventBuilderChecklistItem } from '~/domains/events/builder'
-import { addMinutesToLocalValue, getTotalAgendaDurationMinutes } from '~/domains/events/builder'
+import type { EventBuilderBlockInstance, EventBuilderChecklistItem, EventBuilderScheduleEntry } from '~/domains/events/builder'
+import { getTotalAgendaDurationMinutes } from '~/domains/events/builder'
 import { formatLocalTime } from '~/lib/date-formatting'
 import AdminBuilderChecklistRow from '~/components/admin/builder/molecules/AdminBuilderChecklistRow.vue'
 import AdminBuilderMeterRow from '~/components/admin/builder/molecules/AdminBuilderMeterRow.vue'
@@ -14,7 +14,7 @@ const props = defineProps<{
   checklist: EventBuilderChecklistItem[]
   report: EventBalanceResult
   blocks: EventBuilderBlockInstance[]
-  eventStartsAt: string
+  schedule: EventBuilderScheduleEntry[]
   canSubmit: boolean
   isSubmitting: boolean
   submitError: string
@@ -41,19 +41,25 @@ const totalDurationLabel = computed(() => {
   return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`
 })
 
-// Shown once the event start pins the agenda to a clock.
 const timeRangeLabel = computed(() => {
-  if (!props.eventStartsAt.trim() || props.blocks.length === 0) {
+  const firstStart = props.schedule[0]?.startsAt
+
+  if (!firstStart) {
     return ''
   }
 
-  const end = addMinutesToLocalValue(props.eventStartsAt, getTotalAgendaDurationMinutes(props.blocks))
+  let start = firstStart
+  let end = firstStart
 
-  if (!end) {
-    return ''
+  for (const entry of props.schedule) {
+    const endOrStart = entry.endsAt || entry.startsAt
+    if (entry.startsAt < start) start = entry.startsAt
+    if (endOrStart > end) end = endOrStart
   }
 
-  return `From ${formatLocalTime(props.eventStartsAt)} to ${formatLocalTime(end)}`
+  return start === end
+    ? `Starts at ${formatLocalTime(start)}`
+    : `From ${formatLocalTime(start)} to ${formatLocalTime(end)}`
 })
 
 const bandColor = computed(() => {
