@@ -1,3 +1,5 @@
+import { listAllPaginatedItems } from '~/lib/api'
+
 export interface McpAccessToken {
   id: string
   name: string
@@ -17,21 +19,20 @@ export interface McpAccessTokenPage {
   meta: { page: number, pageSize: number, total: number }
 }
 
-export async function listAccountMcpTokens(request: McpTokenRequester, page = 1, pageSize = 100) {
+export async function listAccountMcpTokens(request: McpTokenRequester, page = 1, pageSize = 100, signal?: AbortSignal) {
   return await request<McpAccessTokenPage>('/api/account/mcp-tokens', {
-    query: { page, pageSize }
+    query: { page, pageSize },
+    signal
   })
 }
 
-export async function listAllActiveAccountMcpTokens(request: McpTokenRequester) {
-  const tokens: McpAccessToken[] = []
-  let page = 1
-  while (true) {
-    const response = await listAccountMcpTokens(request, page)
-    tokens.push(...response.data.filter(token => token.revokedAt === null))
-    if (page * response.meta.pageSize >= response.meta.total || response.data.length === 0) return tokens
-    page += 1
-  }
+export async function listAllActiveAccountMcpTokens(request: McpTokenRequester, signal?: AbortSignal) {
+  const tokens = await listAllPaginatedItems(
+    (page, pageSize, pageSignal) => listAccountMcpTokens(request, page, pageSize, pageSignal),
+    100,
+    signal
+  )
+  return tokens.filter(token => token.revokedAt === null)
 }
 
 export async function createAccountMcpToken(request: McpTokenRequester, name: string) {

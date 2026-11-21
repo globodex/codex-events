@@ -3,26 +3,29 @@ import { normalizeApiError } from '~/lib/api'
 import type { McpAccessToken } from '~/domains/accounts/mcp-tokens'
 import { copyMcpCredential, createAccountMcpToken, listAllActiveAccountMcpTokens, revokeAccountMcpToken } from '~/domains/accounts/mcp-tokens'
 import { useApiClient } from '~/composables/useApiClient'
+import { useApiData } from '~/composables/useApiData'
 
-const tokens = ref<McpAccessToken[]>([])
 const name = ref('')
 const credential = ref('')
 const createdTokenName = ref('')
 const pending = ref(false)
-const errorMessage = ref('')
+const actionErrorMessage = shallowRef('')
 const copied = ref(false)
 const serverUrlCopied = ref(false)
 const revokingId = ref<string | null>(null)
 const apiFetch = useApiClient()
 const serverUrl = new URL('/mcp', useRequestURL()).toString()
-
-async function loadTokens() {
-  tokens.value = await listAllActiveAccountMcpTokens(apiFetch)
-}
+const { data: tokens, error: loadError, refresh } = useApiData(
+  'account-mcp-tokens',
+  ({ apiFetch, signal }) => listAllActiveAccountMcpTokens(apiFetch, signal),
+  { server: false, default: () => [] }
+)
+const errorMessage = computed(() => actionErrorMessage.value
+  || (loadError.value ? normalizeApiError(loadError.value).message : ''))
 
 async function createToken() {
   pending.value = true
-  errorMessage.value = ''
+  actionErrorMessage.value = ''
   copied.value = false
   credential.value = ''
 
@@ -31,9 +34,9 @@ async function createToken() {
     credential.value = created.credential
     createdTokenName.value = created.token.name
     name.value = ''
-    await loadTokens()
+    await refresh()
   } catch (error) {
-    errorMessage.value = normalizeApiError(error).message
+    actionErrorMessage.value = normalizeApiError(error).message
   } finally {
     pending.value = false
   }
@@ -65,12 +68,12 @@ async function revokeToken(token: McpAccessToken) {
   }
 
   revokingId.value = token.id
-  errorMessage.value = ''
+  actionErrorMessage.value = ''
   try {
     await revokeAccountMcpToken(apiFetch, token.id)
-    await loadTokens()
+    await refresh()
   } catch (error) {
-    errorMessage.value = normalizeApiError(error).message
+    actionErrorMessage.value = normalizeApiError(error).message
   } finally {
     revokingId.value = null
   }
@@ -84,14 +87,6 @@ function formatDate(value: string | null) {
     hour12: true
   }).format(new Date(value))
 }
-
-onMounted(async () => {
-  try {
-    await loadTokens()
-  } catch (error) {
-    errorMessage.value = normalizeApiError(error).message
-  }
-})
 </script>
 
 <template>

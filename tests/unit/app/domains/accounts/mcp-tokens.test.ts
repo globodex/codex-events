@@ -25,7 +25,7 @@ describe('account MCP token panel actions', () => {
     const clipboard = { writeText: vi.fn(async () => undefined) }
 
     expect(await listAccountMcpTokens(request)).toEqual({ data: [token], meta: { page: 1, pageSize: 100, total: 1 } })
-    expect(request).toHaveBeenCalledWith('/api/account/mcp-tokens', { query: { page: 1, pageSize: 100 } })
+    expect(request).toHaveBeenCalledWith('/api/account/mcp-tokens', { query: { page: 1, pageSize: 100 }, signal: undefined })
     expect(await createAccountMcpToken(request, 'Codex')).toEqual({ token, credential: 'ce_mcp_secret' })
     await copyMcpCredential(clipboard, 'ce_mcp_secret')
     expect(clipboard.writeText).toHaveBeenCalledWith('ce_mcp_secret')

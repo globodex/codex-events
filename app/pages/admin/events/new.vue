@@ -15,7 +15,7 @@ definePageMeta({
   middleware: ['require-event-creator']
 })
 
-const workspace = useAdminWorkspace({ loadEvents: false })
+const session = useSessionActor()
 const apiFetch = useApiClient()
 const toast = useToast()
 
@@ -38,7 +38,7 @@ async function createEvent(form: EventFormState) {
       color: 'success'
     })
 
-    await workspace.refreshRoot()
+    await session.refresh()
     await navigateTo(`/account/events/${response.data.slug}?tab=settings`)
   } catch (error) {
     const apiError = normalizeApiError(error)
@@ -63,11 +63,11 @@ useSeoMeta({
     />
 
     <AppAlert
-      v-if="workspace.session.error.value"
+      v-if="session.error.value"
       color="error"
       variant="soft"
       title="Unable to load session"
-      :description="workspace.session.error.value.message"
+      :description="session.error.value.message"
     />
 
     <template v-else>

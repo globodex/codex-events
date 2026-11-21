@@ -4,7 +4,7 @@ import type { ApiDataResponse } from '~/lib/api'
 import { buildAccountRegisterHref } from '#shared/domains/accounts/auth-navigation'
 import { normalizeApiError } from '~/lib/api'
 import { useApiClient } from '~/composables/useApiClient'
-import { useApiFetch } from '~/composables/useProtectedApiFetch'
+import { useApiResponse } from '~/composables/useApiData'
 
 type SimplifiedClaimState = {
   status: 'claimed'
@@ -59,15 +59,11 @@ if (actorStatus.value !== 'pending' && !accountReady.value) {
   await navigateTo(buildAccountRegisterHref(returnTo.value), { replace: true })
 }
 
-const { data, error, status, refresh } = await useApiFetch<ApiDataResponse<SimplifiedClaimState>>(
+const { data: claimState, error, status, refresh } = await useApiResponse<SimplifiedClaimState>(
+  () => `simplified-claim:${slug.value}`,
   () => `/api/events/slug/${slug.value}/simplified-claim`,
-  {
-    key: `simplified-claim:${slug.value}`,
-    watch: [slug],
-    immediate: accountReady.value
-  }
+  { enabled: accountReady }
 )
-const claimState = computed(() => data.value?.data ?? null)
 const lumaEmail = shallowRef('')
 const isInteractive = shallowRef(false)
 const isRedeeming = shallowRef(false)
@@ -110,7 +106,7 @@ async function redeem() {
       method: 'POST',
       body: { lumaEmail: email }
     })
-    data.value = { data: { ...response.data, eventName: claimState.value!.eventName } }
+    claimState.value = { ...response.data, eventName: claimState.value!.eventName }
     await redirectToCoupon(response.data.redirectUrl)
   } catch (caught) {
     redeemError.value = normalizeApiError(caught).message

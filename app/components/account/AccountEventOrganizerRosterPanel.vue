@@ -2,9 +2,9 @@
 import type { ApiListResponse } from '~/lib/api'
 import type { EventRoleUserSummary } from '~/domains/events/access'
 
-import { buildApiCacheKey, getApiSubjectKey } from '~/lib/api'
+import { getApiSubjectKey } from '~/lib/api'
 import { useApiClient } from '~/composables/useApiClient'
-import { useApiFetch } from '~/composables/useProtectedApiFetch'
+import { useApiResponse } from '~/composables/useApiData'
 import { useSessionActor } from '~/composables/useSessionActor'
 
 const actor = useSessionActor().actor
@@ -14,10 +14,7 @@ const subjectKey = computed(() => getApiSubjectKey(
   actor.value.isAuthenticated ? actor.value.sessionUser.sub : null
 ))
 const apiFetch = useApiClient()
-const currentOrganizers = useApiFetch<ApiListResponse<EventRoleUserSummary>>('/api/event-organizers', {
-  key: () => buildApiCacheKey('event-organizers', subjectKey.value),
-  watch: [subjectKey]
-})
+const currentOrganizers = useApiResponse<EventRoleUserSummary[]>('event-organizers', '/api/event-organizers')
 
 const {
   mutationError,
@@ -56,7 +53,7 @@ const {
   )
 })
 
-const currentEventOrganizers = computed(() => currentOrganizers.data.value?.data ?? [])
+const currentEventOrganizers = computed(() => currentOrganizers.data.value ?? [])
 const currentEventOrganizerCount = computed(() => currentEventOrganizers.value.length)
 const candidateRows = computed(() =>
   candidateUsers.value.filter(user => appliedCandidateSearch.value.length > 0 || !user.isEventOrganizer)
