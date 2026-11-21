@@ -60,6 +60,7 @@ const measurements = new WeakMap<Page, Measurement>()
 
 const tabLabels: Record<string, string> = {
   overview: 'Overview',
+  details: 'Details',
   operations: 'Operations',
   participants: 'Participants',
   submissions: 'Submissions',
@@ -311,12 +312,13 @@ When('I warm and measure the account event overview for event slug {string} as {
   })
 })
 
-When('I warm and measure the account event SPA flow for event slug {string} as {string} through tab {string} with page family {string}', async ({ page }, slug: string, persona: string, tab: string, pageFamily: string) => {
+When('I warm and measure the account event SPA flow for event slug {string} as {string} from tab {string} through tab {string} with page family {string}', async ({ page }, slug: string, persona: string, entryTab: string, tab: string, pageFamily: string) => {
   const personaKey = parsePersonaKey(persona)
+  const entryTabLabel = tabLabels[entryTab]
   const tabLabel = tabLabels[tab]
 
-  if (!tabLabel) {
-    throw new Error(`Unknown account event tab label: ${tab}`)
+  if (!entryTabLabel || !tabLabel) {
+    throw new Error(`Unknown account event tab: ${!entryTabLabel ? entryTab : tab}`)
   }
 
   await signInAs(personaKey, page)
@@ -326,14 +328,14 @@ When('I warm and measure the account event SPA flow for event slug {string} as {
   const capture = capturePageTopology(page)
   const selectedPath = selectedEventReadPath(slug, pageFamily)
 
-  await page.goto(`/account/events/${encodeURIComponent(slug)}?tab=overview`, {
+  await page.goto(`/account/events/${encodeURIComponent(slug)}?tab=${entryTab}`, {
     waitUntil: 'domcontentloaded'
   })
   capture.markShell()
   const entryRead = await capture.waitForCompletedPath(entryPath)
   capture.markCritical(entryPath)
   assertJsonApiRecord(capture, entryRead, 'SPA account event entry read', 'entry')
-  await waitForAccountEventTab(page, 'Overview')
+  await waitForAccountEventTab(page, entryTabLabel)
 
   await assertActiveAccountEventTab(page, tabLabel).click()
   const selectedRead = await capture.waitForCompletedPath(selectedPath)
@@ -344,8 +346,8 @@ When('I warm and measure the account event SPA flow for event slug {string} as {
   }
   await waitForAccountEventTab(page, tabLabel)
 
-  await assertActiveAccountEventTab(page, 'Overview').click()
-  await waitForAccountEventTab(page, 'Overview')
+  await assertActiveAccountEventTab(page, entryTabLabel).click()
+  await waitForAccountEventTab(page, entryTabLabel)
   capture.markUsable()
   await finishCapture(capture)
 

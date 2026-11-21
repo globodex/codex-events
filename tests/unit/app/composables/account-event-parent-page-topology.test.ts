@@ -78,7 +78,7 @@ describe('account event parent page request topology', () => {
     expect(pageSource).toContain('const isDirectNonEntryNavigation = computed(() =>')
     const prizesRequestSource = pageSource.slice(
       pageSource.indexOf('const prizesPageRequest'),
-      pageSource.indexOf('const entryPage =')
+      pageSource.indexOf('const prizesPage =')
     )
     expect(prizesRequestSource).toContain('query: prizesPageQuery')
     expect(pageSource).toContain('const initialPageFamily = resolveInitialAccountEventPageFamily({')
@@ -87,7 +87,7 @@ describe('account event parent page request topology', () => {
     expect(pageSource).toContain('query: pageState.queryForPage(\'participants\')')
     expect(pageSource).toContain('query: pageState.queryForPage(\'operations\')')
     expect(pageSource).toContain('pageState.applySelectedPageState')
-    expect(pageSource).toContain('immediate: false')
+    expect(pageSource).toContain('enabled: shouldLoadParticipantsPage')
     expect(pageSource).toContain('const participantsPage = computed(() => participantsPageRequest.data.value?.page ?? null)')
     expect(pageSource).toContain(':participants-page="participantsPage"')
     expect(pageSource).not.toContain('selectedParticipantsResponse?.visibility.canManage')
@@ -123,7 +123,7 @@ describe('account event parent page request topology', () => {
     expect(talkControlSource).not.toContain('useApiClient')
     expect(talkControlSource).not.toContain('onMounted')
     expect(simplifiedClaimingPanelSource).toContain('initialStatus: AccountEventSimplifiedClaimingStatus')
-    expect(simplifiedClaimingPanelSource).not.toContain('useApiFetch')
+    expect(simplifiedClaimingPanelSource).not.toMatch(/useApi(?:Data|Response)/)
     expect(simplifiedClaimingPanelSource).not.toContain('statusUrl')
     expect(configFormSource).toContain('initialSimplifiedClaimingStatus')
     expect(configFormSource).toContain('hasExistingTalkProposal')

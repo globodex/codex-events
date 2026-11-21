@@ -22,8 +22,8 @@ describe('account-event entry and prizes contracts', () => {
   test('uses the shared page request and removes the old entry/prizes fan-out callers', () => {
     expect(entryPageSource).toContain('useAccountEventPageRequest<AccountEventEntryPage>(slug, \'entry\', {')
     expect(entryPageSource).toContain('useAccountEventPageRequest<AccountEventPrizesPage>(slug, \'prizes\'')
-    expect(entryPageSource).toContain('immediate: false')
-    expect(entryPageSource).toContain('prizesPageRequest.abort()')
+    expect(entryPageSource).toContain('enabled: () => !isDirectNonEntryNavigation.value')
+    expect(entryPageSource).toContain('enabled: () => activeSection.value === \'prizes\'')
     expect(entryPageSource).not.toContain('/api/events/slug/')
     expect(entryPageSource).not.toContain('/api/account/events\'')
     expect(entryPageSource).not.toContain('/api/events/participation')

@@ -208,7 +208,6 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  settingsRequest.abort()
   window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 

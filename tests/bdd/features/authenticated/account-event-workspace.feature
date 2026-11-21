@@ -60,12 +60,16 @@ Feature: Account event workspace browser topology
     And the measured account event topology should include a generous local timing budget
     And the browser topology should not request runtime CDN scripts
 
-  Scenario: SPA tab changes reuse the account event bootstrap and entry state
-    Given the saved "event_admin" local session state exists for account topology
-    When I warm and measure the account event SPA flow for event slug "operations-fixture-event" as "event_admin" through tab "operations" with page family "operations"
+  Scenario Outline: SPA tab changes reuse the account event bootstrap and entry state
+    When I warm and measure the account event SPA flow for event slug "operations-fixture-event" as "<persona>" from tab "<entry>" through tab "<tab>" with page family "<family>"
     Then the SPA event topology should reuse its session and entry state
     And the measured account event topology should include a generous local timing budget
     And the browser topology should not request runtime CDN scripts
+
+    Examples:
+      | persona        | entry    | tab        | family     |
+      | event_admin    | overview | operations | operations |
+      | platform_admin | details  | gallery    | gallery    |
 
   Scenario Outline: global account workspaces use one critical read
     Given the saved "<persona>" local session state exists for account topology

@@ -52,7 +52,7 @@ describe('local editor and sortable loading boundaries', () => {
     expect(builderPageSource).toContain('useAccountEventPageRequest<AccountEventSettingsPage>')
     expect(builderPageSource).not.toContain('useApiResponse')
     expect(builderPageSource).not.toContain('/terms/current')
-    expect(builderPageSource).toContain('settingsRequest.abort()')
+    expect(builderPageSource).not.toContain('settingsRequest.abort()')
     expect(settingsPanelSource).not.toContain('unpkg')
   })
 })
