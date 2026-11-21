@@ -25,11 +25,6 @@
       "skillPath": "plugins/auth0/skills/auth0-nuxt/SKILL.md",
       "computedHash": "7f3e0e05e8d8198c1ed14e3db0868e4b191bb16ece2c604114d340e0be6bd90b"
     },
-    "backlog-technical-project-manager": {
-      "source": "MrLesk/Backlog.md",
-      "sourceType": "github",
-      "computedHash": "dede31d281d1bb78609df2bc21320096d1fe284560fcbac323ce0be66e3b03a3"
-    },
     "cloudflare": {
       "source": "cloudflare/skills",
       "sourceType": "github",
