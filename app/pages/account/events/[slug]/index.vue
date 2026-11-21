@@ -189,6 +189,19 @@ const selectedPageError = shallowRef<unknown | null>(null)
 const event = computed<AccountWorkspaceEvent | null>(() =>
   entryPage.value?.event ?? pageShell.value?.event ?? null
 )
+const programLink = computed(() => {
+  const itemId = entryPage.value?.event.programItemId
+  const item = itemId && event.value?.agendaItems.find(item => item.id === itemId)
+  if (!item) {
+    return undefined
+  }
+
+  return {
+    itemId: item.id,
+    title: item.title,
+    href: `/account/events/${encodeURIComponent(slug.value)}/program`
+  }
+})
 const accessRecord = shallowRef<AccountEventAccessRecord | null>(null)
 const participationRecord = shallowRef<AccountEventEntryParticipation | null>(null)
 const participantCreditOffers = shallowRef<AccountEventEntryParticipantCreditOffer[]>([])
@@ -1402,6 +1415,13 @@ useSeoMeta({
 
         <EventOverviewPanel :description="event.description" />
 
+        <AppButton
+          v-if="programLink"
+          :to="programLink.href"
+          :label="programLink.title"
+          trailing-icon="i-lucide-arrow-right"
+        />
+
         <section
           v-if="showTrackSelectionOverviewPrompt"
           class="rounded-xl !border !border-sky-500/20 !bg-sky-500/[0.08] px-5 py-5 !shadow-[0_12px_32px_-28px_rgba(2,132,199,0.55)] !backdrop-blur-xl dark:!border-sky-300/25 dark:!bg-sky-300/[0.08]"
@@ -1722,7 +1742,10 @@ useSeoMeta({
           @select-track="selectParticipantTrack"
         />
 
-        <LazyEventAgendaPanel :agenda-items="event.agendaItems" />
+        <LazyEventAgendaPanel
+          :agenda-items="event.agendaItems"
+          :program="programLink"
+        />
 
         <LazyAccountEventAdminSettingsPanel
           v-if="tabAccess.showAgendaConfigurationInDetails"

@@ -2,11 +2,14 @@
 import type { ApiDataResponse } from '~/lib/api'
 import type { EventRecord, TermsDocument } from '~/domains/events/records'
 import type { AccountEventSettingsPage } from '#shared/domains/events/account-event-settings-page'
+import type { AdminEventProgram, EventFloorPlan, EventProgram } from '#shared/domains/events/program'
 
 import { normalizeApiError } from '~/lib/api'
 import { getTermsVersionPublishErrorMessage } from '~/domains/events/admin-event'
+import { buildAccountEventPageCacheKey } from '~/domains/events/account-workspace-page'
 import AdminBuilderWorkspace from '~/components/admin/builder/AdminBuilderWorkspace.vue'
 import { useApiClient } from '~/composables/useApiClient'
+import { useApiResponse } from '~/composables/useApiData'
 import { useAccountEventPageRequest } from '~/composables/useAccountEventPageRequest'
 
 definePageMeta({
@@ -25,6 +28,86 @@ const currentWinnerTerms = computed(() => settingsPage.value?.terms.winner.curre
 const initialSimplifiedClaimingStatus = computed(() => settingsPage.value?.simplifiedClaiming ?? null)
 const creditOffers = computed(() => settingsPage.value?.credits ?? [])
 const hasExistingTalkProposal = computed(() => settingsPage.value?.talkProposals.hasExistingProposal ?? false)
+
+const AdminBuilderProgramEditor = defineAsyncComponent(() =>
+  import('~/components/admin/builder/organisms/AdminBuilderProgramEditor.vue')
+)
+const isProgramOpen = shallowRef(false)
+const isProgramDirty = shallowRef(false)
+const isProgramSaving = shallowRef(false)
+const programSaveError = shallowRef('')
+const programDisclosure = useTemplateRef<HTMLDetailsElement>('programDisclosure')
+const programPath = computed(() => `/api/events/${encodeURIComponent(currentEvent.value?.id ?? '')}/program`)
+const programRequest = useApiResponse<AdminEventProgram>(
+  programPath,
+  programPath,
+  { enabled: () => Boolean(currentEvent.value) && isProgramOpen.value, server: false }
+)
+const { protectedKey } = useAuthorizationCache()
+const requestOwner = useProtectedRequestOwner()
+const adminProgramCacheKey = protectedKey(programPath)
+
+function syncProgramDisclosure() {
+  isProgramOpen.value = programDisclosure.value?.open ?? false
+}
+
+watch(programDisclosure, syncProgramDisclosure)
+
+function clearAgendaReads(slug: string, includeParent: boolean) {
+  const reads = [buildAccountEventPageCacheKey(slug, 'program')]
+  if (includeParent) {
+    reads.push(
+      buildAccountEventPageCacheKey(slug, 'entry'),
+      buildAccountEventPageCacheKey(slug, 'entry', { includeAdminEventConfiguration: true })
+    )
+  }
+
+  const keys = reads.map(read => protectedKey(read).value)
+  keys.forEach(key => requestOwner.invalidate(key))
+  clearNuxtData(keys)
+}
+
+function updateFloorPlan(plan: EventFloorPlan) {
+  const data = programRequest.data.value
+  if (!data) {
+    return
+  }
+
+  const floorPlans = data.floorPlans.some(current => current.id === plan.id)
+    ? data.floorPlans.map(current => current.id === plan.id ? plan : current)
+    : [...data.floorPlans, plan]
+  programRequest.data.value = { ...data, floorPlans }
+  clearAgendaReads(eventSlug.value, false)
+}
+
+async function writeProgram(program: EventProgram | null) {
+  if (isProgramSaving.value) {
+    return
+  }
+
+  const key = adminProgramCacheKey.value
+  const request = program ? { method: 'PUT', body: program } as const : { method: 'DELETE' } as const
+  isProgramSaving.value = true
+  programSaveError.value = ''
+
+  try {
+    const { data } = await apiFetch<ApiDataResponse<AdminEventProgram>>(programPath.value, request)
+    const current = programRequest.data.value
+    if (adminProgramCacheKey.value !== key || !current) {
+      return
+    }
+
+    clearAgendaReads(eventSlug.value, current.program?.agendaItemId !== data.program?.agendaItemId)
+    programRequest.data.value = { ...current, program: data.program }
+    toast.add({ title: program ? 'Parallel agenda saved' : 'Parallel agenda removed', color: 'success' })
+  } catch (error) {
+    if (adminProgramCacheKey.value === key) {
+      programSaveError.value = normalizeApiError(error).message
+    }
+  } finally {
+    isProgramSaving.value = false
+  }
+}
 
 const builder = useEventBuilder({
   mode: 'edit',
@@ -49,6 +132,7 @@ async function saveEvent() {
       method: 'PATCH',
       body: builder.buildPatchBody()
     })
+    clearAgendaReads(event.slug, true)
 
     toast.add({
       title: 'Event updated',
@@ -190,15 +274,16 @@ async function saveTerms(documentType: TermsDocument['documentType'], content: s
   }
 }
 
+const hasUnsavedChanges = computed(() => builder.isDirty.value || isProgramDirty.value)
+
 onBeforeRouteLeave(() => {
-  if (builder.isDirty.value
-    && !window.confirm('Leave the builder? Unsaved changes will be lost.')) {
+  if (hasUnsavedChanges.value && !window.confirm('Leave the builder? Unsaved changes will be lost.')) {
     return false
   }
 })
 
 function handleBeforeUnload(event: BeforeUnloadEvent) {
-  if (builder.isDirty.value) {
+  if (hasUnsavedChanges.value) {
     event.preventDefault()
   }
 }
@@ -209,6 +294,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  programRequest.clear()
 })
 
 useSeoMeta({
@@ -257,6 +343,63 @@ useSeoMeta({
       @remove-banner-image="removeEventImage('banner')"
       @save-terms="saveTerms"
       @updated="settingsRequest.refresh"
-    />
+    >
+      <template #agenda>
+        <details
+          ref="programDisclosure"
+          class="group"
+          @toggle="syncProgramDisclosure"
+        >
+          <summary
+            class="inline-flex h-9 cursor-pointer list-none items-center gap-2 rounded-xl border border-default px-4 text-sm font-medium text-highlighted hover:bg-default focus-visible:ring-2 focus-visible:ring-ring/60 [&::-webkit-details-marker]:hidden"
+          >
+            Parallel agenda
+            <AppIcon
+              name="i-lucide-chevron-down"
+              class="size-4 group-open:rotate-180"
+            />
+          </summary>
+
+          <div class="mt-4">
+            <AppAlert
+              v-if="programRequest.error.value"
+              color="error"
+              title="Unable to load the parallel agenda"
+              :description="normalizeApiError(programRequest.error.value).message"
+            >
+              <AppButton
+                color="neutral"
+                size="sm"
+                class="mt-2"
+                @click="programRequest.refresh()"
+              >
+                Retry
+              </AppButton>
+            </AppAlert>
+            <AdminBuilderProgramEditor
+              v-else-if="programRequest.data.value"
+              :key="currentEvent.id"
+              :event-id="currentEvent.id"
+              :agenda-items="currentEvent.agendaItems"
+              :program="programRequest.data.value.program"
+              :floor-plans="programRequest.data.value.floorPlans"
+              :saving="isProgramSaving"
+              :save-error="programSaveError"
+              @save="writeProgram"
+              @remove="writeProgram(null)"
+              @floor-updated="updateFloorPlan"
+              @dirty-change="isProgramDirty = $event"
+            />
+            <p
+              v-else
+              class="text-sm text-muted"
+              role="status"
+            >
+              Loading parallel agenda…
+            </p>
+          </div>
+        </details>
+      </template>
+    </AdminBuilderWorkspace>
   </AppContainer>
 </template>

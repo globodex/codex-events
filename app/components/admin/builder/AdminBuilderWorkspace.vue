@@ -180,6 +180,8 @@ function onSubmit() {
             @update-energy-delta="(id, value) => builder.setBlockEnergyDelta(id, value)"
           />
 
+          <slot name="agenda" />
+
           <div
             aria-hidden="true"
             class="border-t border-black/5 dark:border-white/[0.05]"

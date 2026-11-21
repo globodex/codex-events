@@ -50,7 +50,7 @@ describe('local editor and sortable loading boundaries', () => {
     expect(settingsPanelSource).not.toContain('useAdminEventSettingsWorkspace')
     expect(settingsPanelSource).not.toContain('workspace.refreshWorkspace')
     expect(builderPageSource).toContain('useAccountEventPageRequest<AccountEventSettingsPage>')
-    expect(builderPageSource).not.toContain('useApiResponse')
+    expect(builderPageSource).toContain('enabled: () => Boolean(currentEvent.value) && isProgramOpen.value')
     expect(builderPageSource).not.toContain('/terms/current')
     expect(builderPageSource).not.toContain('settingsRequest.abort()')
     expect(settingsPanelSource).not.toContain('unpkg')

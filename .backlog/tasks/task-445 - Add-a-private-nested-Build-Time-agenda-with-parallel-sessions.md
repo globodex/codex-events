@@ -1,9 +1,10 @@
 ---
 id: TASK-445
 title: Add a private nested Build Time agenda with parallel sessions
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-11-21T15:22:00Z'
+updated_date: '2026-11-21T16:54:00Z'
 labels:
   - build-day
 milestone: m-3
@@ -24,11 +25,11 @@ The public needs a simple day outline. A confirmed participant needs the actual 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The public day agenda shows Build Time as one entry without its private sessions or room details.
-- [ ] #2 Confirmed participants can open Build Time before check-in. Pending participants see the public agenda.
-- [ ] #3 An event admin can schedule sessions in parallel tracks with independent times and gaps.
-- [ ] #4 A session has a stable identity and displays its time and assigned room when configured.
-- [ ] #5 The editor and protected read work for other events and are configurable per event.
+- [x] #1 The public day agenda shows Build Time as one entry without its private sessions or room details.
+- [x] #2 Confirmed participants can open Build Time before check-in. Pending participants see the public agenda.
+- [x] #3 An event admin can schedule sessions in parallel tracks with independent times and gaps.
+- [x] #4 A session has a stable identity and displays its time and assigned room when configured.
+- [x] #5 The editor and protected read work for other events and are configurable per event.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -42,3 +43,9 @@ The public needs a simple day outline. A confirmed participant needs the actual 
 - [ ] #7 Auth and permissions changes follow the documented platform model
 - [ ] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+The existing event builder attaches named tracks and timed sessions to one public block. Confirmed participants can open the private program from Overview or Details before check-in. Sessions preserve their offsets when the public block moves. The private timeline reuses the public EventAgendaPanel time formatting and uses separate track columns to show concurrent sessions and gaps.
+<!-- SECTION:FINAL_SUMMARY:END -->
