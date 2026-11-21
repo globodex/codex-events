@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { EventFloorPlan, ProgramRoom } from '#shared/domains/events/program'
-import { floorPlanRoomAreaSchema } from '#shared/domains/events/program'
+import { floorPlanRoomAreaSchema, programRoomSchema } from '#shared/domains/events/program'
 import type { ApiDataResponse } from '~/lib/api'
 import { normalizeApiError } from '~/lib/api'
 import AdminBuilderFloorPlanMap from '~/components/admin/builder/molecules/AdminBuilderFloorPlanMap.vue'
 
 type RoomArea = ProgramRoom['area']
+type RoutePoint = NonNullable<ProgramRoom['route']>[number]
 type DraftRoom = Omit<ProgramRoom, 'area'> & { area: Partial<RoomArea> }
 
 const props = defineProps<{
@@ -22,15 +23,24 @@ const areaFields = [
   { key: 'width', label: 'Width (%)' },
   { key: 'height', label: 'Height (%)' }
 ] as const
+const routeAxes = [
+  { key: 'x', label: 'left (%)' },
+  { key: 'y', label: 'top (%)' }
+] as const
 
 const apiFetch = useApiClient()
 const toast = useToast()
 const formId = useId()
 const imageInput = useTemplateRef<HTMLInputElement>('imageInput')
 const name = shallowRef(props.plan.name)
-const rooms = ref<DraftRoom[]>(props.plan.rooms.map(room => ({ ...room, area: { ...room.area } })))
+const rooms = ref<DraftRoom[]>(props.plan.rooms.map(room => ({
+  ...room,
+  area: { ...room.area },
+  route: room.route?.map(point => ({ ...point }))
+})))
 const activeRoomId = shallowRef<string | null>(rooms.value[0]?.id ?? null)
 const marking = shallowRef(false)
+const drawing = shallowRef(false)
 const pending = shallowRef<'metadata' | 'image' | null>(null)
 const error = shallowRef('')
 const activeRoom = computed(() => rooms.value.find(room => room.id === activeRoomId.value))
@@ -42,6 +52,18 @@ const markedRooms = computed(() => rooms.value.flatMap((room) => {
 
 function selectRoom(id: string | null) {
   activeRoomId.value = id
+  marking.value = false
+  drawing.value = false
+}
+
+// Marking a room and drawing its route both use clicks on the plan, so only one can be on.
+function toggleMarking() {
+  marking.value = !marking.value
+  drawing.value = false
+}
+
+function toggleDrawing() {
+  drawing.value = !drawing.value
   marking.value = false
 }
 
@@ -76,6 +98,35 @@ function updatePercent(key: keyof RoomArea, value: string | number | undefined) 
   }
 }
 
+function addRoutePoint(point: RoutePoint = { x: 0.5, y: 0.5 }) {
+  const room = activeRoom.value
+  if (room) {
+    room.route = [...(room.route ?? []), point]
+  }
+}
+
+function updateRoutePoint(index: number, axis: keyof RoutePoint, value: string | number | undefined) {
+  const point = activeRoom.value?.route?.[index]
+  if (point) {
+    point[axis] = value === undefined || value === '' ? Number.NaN : Number(value) / 100
+  }
+}
+
+function undoRoutePoint() {
+  const room = activeRoom.value
+  if (room) {
+    room.route = room.route?.slice(0, -1)
+  }
+}
+
+function removeRoute() {
+  const room = activeRoom.value
+  if (room) {
+    room.route = undefined
+    drawing.value = false
+  }
+}
+
 function toPercent(value: number | undefined) {
   return value === undefined ? undefined : Number((value * 100).toFixed(3))
 }
@@ -90,6 +141,7 @@ async function updatePlan(
   const replacing = operation === 'image'
 
   marking.value = false
+  drawing.value = false
   pending.value = operation
   error.value = ''
   try {
@@ -119,10 +171,18 @@ async function savePlan() {
     return
   }
 
-  await updatePlan('metadata', {
-    name: name.value.trim(),
-    rooms: markedRooms.value.map(room => ({ ...room, name: room.name.trim() }))
-  })
+  // A room without route points is saved without a route.
+  const savedRooms = markedRooms.value.map(room => ({
+    ...room,
+    name: room.name.trim(),
+    route: room.route?.length ? room.route : undefined
+  }))
+  if (savedRooms.some(room => !programRoomSchema.shape.route.safeParse(room.route).success)) {
+    error.value = 'A route needs at least two points on the plan.'
+    return
+  }
+
+  await updatePlan('metadata', { name: name.value.trim(), rooms: savedRooms })
 }
 
 async function replaceImage(event: Event) {
@@ -241,7 +301,7 @@ async function replaceImage(event: Event) {
                 icon="i-lucide-scan"
                 :aria-pressed="marking"
                 :label="marking ? 'Cancel marking' : 'Mark room'"
-                @click="marking = !marking"
+                @click="toggleMarking"
               />
               <AppButton
                 color="error"
@@ -249,6 +309,34 @@ async function replaceImage(event: Event) {
                 size="sm"
                 label="Remove room"
                 @click="removeRoom"
+              />
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <AppButton
+                color="neutral"
+                variant="outline"
+                size="sm"
+                icon="i-lucide-route"
+                :aria-pressed="drawing"
+                :label="drawing ? 'Finish route' : 'Draw route'"
+                @click="toggleDrawing"
+              />
+              <AppButton
+                v-if="drawing && activeRoom.route?.length"
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                label="Undo point"
+                @click="undoRoutePoint"
+              />
+              <AppButton
+                v-if="activeRoom.route?.length"
+                color="error"
+                variant="ghost"
+                size="sm"
+                label="Remove route"
+                @click="removeRoute"
               />
             </div>
 
@@ -275,17 +363,49 @@ async function replaceImage(event: Event) {
                   />
                 </AppFormField>
               </div>
+              <div
+                v-for="(point, index) in activeRoom.route"
+                :key="index"
+                class="mt-2 grid grid-cols-2 gap-2"
+              >
+                <AppFormField
+                  v-for="axis in routeAxes"
+                  :key="axis.key"
+                  :name="`${formId}-route-${index}-${axis.key}`"
+                  :label="`Point ${index + 1} ${axis.label}`"
+                >
+                  <AppInput
+                    :id="`${formId}-route-${index}-${axis.key}`"
+                    :model-value="toPercent(point[axis.key])"
+                    type="number"
+                    size="sm"
+                    min="0"
+                    max="100"
+                    step="any"
+                    @update:model-value="updateRoutePoint(index, axis.key, $event)"
+                  />
+                </AppFormField>
+              </div>
+              <AppButton
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                icon="i-lucide-plus"
+                label="Add route point"
+                class="mt-2"
+                @click="addRoutePoint()"
+              />
             </details>
           </div>
         </div>
 
         <div class="min-w-0 space-y-2 xl:col-start-1 xl:row-start-1">
           <p
-            v-if="marking"
+            v-if="marking || drawing"
             class="text-sm text-muted"
             role="status"
           >
-            Drag across the room on the plan.
+            {{ marking ? 'Drag across the room on the plan.' : 'Click each turn on the way, from the entrance to the room.' }}
           </p>
           <AdminBuilderFloorPlanMap
             :image-url="plan.imageUrl"
@@ -293,7 +413,10 @@ async function replaceImage(event: Event) {
             :rooms="markedRooms"
             :active-room-id="activeRoomId"
             :marking="marking"
+            :route="activeRoom?.route ?? []"
+            :drawing="drawing"
             @marked="markRoom"
+            @route-point="addRoutePoint"
           />
         </div>
       </div>

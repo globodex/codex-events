@@ -38,6 +38,10 @@ type Story = StoryObj<typeof meta>
 export const NoRoomSelected: Story = {}
 
 export const HighlightedRoom: Story = {
+  args: { selectedRoom: buildDayGroundFloor.rooms[1]! }
+}
+
+export const RouteToRoom: Story = {
   args: { selectedRoom: buildDayGroundFloor.rooms[0]! }
 }
 

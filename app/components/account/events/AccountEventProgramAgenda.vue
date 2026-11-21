@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useIntervalFn, useNow } from '@vueuse/core'
+
 import type { ParticipantEventProgram, ProgramSession } from '#shared/domains/events/program'
 
 import AccountEventProgramFloorPlan from '~/components/account/events/AccountEventProgramFloorPlan.vue'
@@ -10,7 +12,9 @@ const props = defineProps<{
 
 const selectedSessionId = shallowRef<string | null>(null)
 const mapSelection = shallowRef<{ floorPlanId: string, roomId: string | null } | null>(null)
-const details = useTemplateRef<HTMLElement>('details')
+const mapPanel = useTemplateRef<HTMLElement>('mapPanel')
+// The timeline uses the current time to mark the running and the next session.
+const now = useNow({ scheduler: callback => useIntervalFn(callback, 30_000) })
 
 const hasSessions = computed(() => props.program.tracks.some(track => track.sessions.length > 0))
 const selectedSession = computed(() => props.program.tracks.flatMap(track => track.sessions)
@@ -24,15 +28,22 @@ const selectedPlan = computed(() => {
 })
 const selectedRoom = computed(() => selectedPlan.value?.rooms
   .find(room => room.id === selectedLocation.value?.roomId) ?? null)
-const hasDetails = computed(() => Boolean(selectedPlan.value || selectedSession.value?.details))
 
 async function selectSession(session: ProgramSession) {
   mapSelection.value = null
   selectedSessionId.value = session.id
-  if (!window.matchMedia('(min-width: 64rem)').matches && (session.room || session.details)) {
-    await nextTick()
-    details.value?.focus({ preventScroll: true })
-    details.value?.scrollIntoView({ block: 'start' })
+  if (!session.room) {
+    return
+  }
+
+  await nextTick()
+  if (window.matchMedia('(min-width: 64rem)').matches) {
+    // The map is beside the sessions: scroll just enough to show the whole map.
+    mapPanel.value?.scrollIntoView({ block: 'nearest' })
+  } else {
+    // The map is below the sessions: move to it.
+    mapPanel.value?.focus({ preventScroll: true })
+    mapPanel.value?.scrollIntoView({ block: 'start' })
   }
 }
 
@@ -52,40 +63,39 @@ function returnToSession() {
 <template>
   <div
     class="grid items-start gap-4 lg:gap-6"
-    :class="hasDetails ? 'lg:grid-cols-[clamp(16rem,29%,22rem)_minmax(0,1fr)]' : ''"
+    :class="selectedPlan ? 'lg:grid-cols-[clamp(17rem,36%,26rem)_minmax(0,1fr)]' : ''"
   >
     <section
-      class="min-w-0 lg:row-start-1 lg:self-stretch"
+      class="min-w-0"
       aria-label="Sessions"
     >
       <AccountEventProgramTimeline
         v-if="hasSessions"
-        class="lg:h-full"
         :tracks="program.tracks"
         :floor-plans="program.floorPlans"
         :starts-at="program.agendaItem.startsAt"
         :ends-at="program.agendaItem.endsAt"
         :selected-session-id="selectedSessionId"
+        :now="now.getTime()"
         @select="selectSession"
       />
       <p
         v-else
-        class="rounded-xl border border-default p-4 text-sm text-muted lg:h-full"
+        class="rounded-xl border border-default p-4 text-sm text-muted"
       >
         No sessions scheduled.
       </p>
     </section>
 
     <aside
-      v-if="hasDetails"
-      ref="details"
-      class="flex min-w-0 scroll-mt-4 flex-col gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-ring lg:col-start-2 lg:row-start-1 lg:grid lg:gap-6 lg:self-stretch"
-      :class="selectedPlan && selectedSession?.details ? 'lg:row-span-2 lg:grid-rows-subgrid' : ''"
+      v-if="selectedPlan"
+      ref="mapPanel"
+      class="flex min-w-0 scroll-my-4 flex-col gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-ring lg:sticky lg:top-4"
       tabindex="-1"
-      aria-label="Session details"
+      aria-label="Map"
     >
       <AppButton
-        v-if="selectedSession?.room || selectedSession?.details"
+        v-if="selectedSession?.room"
         icon="i-lucide-arrow-up"
         label="Back to session"
         color="neutral"
@@ -93,20 +103,7 @@ function returnToSession() {
         class="self-start lg:hidden"
         @click="returnToSession"
       />
-      <div
-        v-if="selectedSession?.details"
-        class="space-y-1 border-b border-default pb-3 lg:border-b-0 lg:border-t lg:pb-0 lg:pt-3"
-      >
-        <h2 class="text-base font-semibold text-highlighted">
-          {{ selectedSession.title }}
-        </h2>
-        <p class="whitespace-pre-wrap break-words text-sm text-muted">
-          {{ selectedSession.details }}
-        </p>
-      </div>
       <AccountEventProgramFloorPlan
-        v-if="selectedPlan"
-        class="lg:order-first"
         :plan="selectedPlan"
         :floors="program.floorPlans"
         :selected-room="selectedRoom"

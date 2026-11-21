@@ -18,3 +18,12 @@ Feature: Parallel event agenda
     Given the event has two parallel sessions with rooms on "Editing floor"
     When I replace the "Editing floor" image while editing a track
     Then I can save the track edit in the event builder
+
+  Scenario: A confirmed participant follows the route an organizer drew to a room
+    Given the event has two parallel sessions with rooms on "Route floor"
+    When I draw a route to "Makers Room" on "Route floor" in the event builder
+    And I open the Agenda tab 5 minutes into Build Time
+    Then both sessions should start next in 10 minutes
+    When I open the Agenda tab 20 minutes into Build Time
+    Then the build session should be running with 25 minutes left
+    And the map should show the route to "Makers Room" only for the build session

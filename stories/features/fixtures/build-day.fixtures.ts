@@ -9,7 +9,8 @@ export const buildDayGroundFloor: EventFloorPlan = {
   rooms: [{
     id: 'main-hall',
     name: 'Main Hall',
-    area: { x: 0.1, y: 0.1, width: 0.42, height: 0.4 }
+    area: { x: 0.1, y: 0.1, width: 0.42, height: 0.4 },
+    route: [{ x: 0.5, y: 0.82 }, { x: 0.5, y: 0.62 }, { x: 0.31, y: 0.62 }, { x: 0.31, y: 0.48 }]
   }, {
     id: 'studio',
     name: 'Studio',

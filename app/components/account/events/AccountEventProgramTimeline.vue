@@ -3,6 +3,7 @@ import type { EventFloorPlan, ProgramSession, ProgramTrack } from '#shared/domai
 
 import AccountEventProgramSession from '~/components/account/events/AccountEventProgramSession.vue'
 import { formatEventTime, getAgendaItemPresentation } from '~/domains/events/presentation'
+import { formatMinutes, getSessionPhase, type SessionPhase } from '~/domains/events/program-timeline'
 
 const props = defineProps<{
   tracks: ProgramTrack[]
@@ -10,38 +11,51 @@ const props = defineProps<{
   startsAt: string
   endsAt: string
   selectedSessionId: string | null
+  /** The current time in milliseconds. */
+  now: number
 }>()
 
 defineEmits<{
   select: [session: ProgramSession]
 }>()
 
+const minuteMs = 60_000
 const baseTime = computed(() => Date.parse(props.startsAt))
-const hasParallelTracks = computed(() => props.tracks.length > 1)
+const programMinutes = computed(() => (Date.parse(props.endsAt) - baseTime.value) / minuteMs)
+
+// Minutes since the program started, like the session times. Negative before the start.
+const nowMinutes = computed(() => (props.now - baseTime.value) / minuteMs)
+// "Now" and "Next" appear from one hour before the program starts until it ends.
+const isLive = computed(() => nowMinutes.value >= -60 && nowMinutes.value < programMinutes.value)
 
 function atOffset(minutes: number) {
-  return new Date(baseTime.value + minutes * 60_000).toISOString()
+  return new Date(baseTime.value + minutes * minuteMs).toISOString()
 }
 
-const trackSessions = computed(() => props.tracks.flatMap((track, column) =>
-  track.sessions.map(session => ({ session, column: column + 2 }))
+// Column 1 holds the times and column 2 the rail, so the first track is column 3.
+const trackSessions = computed(() => props.tracks.flatMap((track, index) =>
+  track.sessions.map(session => ({ session, column: index + 3 }))
 ).sort((left, right) => left.session.startsAfterMinutes - right.session.startsAfterMinutes || left.column - right.column))
 
-const boundaries = computed(() => {
-  if (!hasParallelTracks.value) return []
+const nextStart = computed(() => Math.min(...trackSessions.value
+  .map(({ session }) => session.startsAfterMinutes)
+  .filter(start => start > nowMinutes.value)))
 
+// Every moment a session starts or ends. Each boundary opens one grid row.
+const boundaries = computed(() => {
   const starts = new Set(trackSessions.value.map(({ session }) => session.startsAfterMinutes))
   const offsets = new Set(starts)
   for (const { session } of trackSessions.value) {
     offsets.add(session.startsAfterMinutes + session.durationMinutes)
   }
   offsets.add(0)
-  offsets.add((Date.parse(props.endsAt) - baseTime.value) / 60_000)
+  offsets.add(programMinutes.value)
 
   const sortedOffsets = [...offsets].sort((left, right) => left - right)
   return sortedOffsets.map(offset => ({
     offset,
     hasSession: starts.has(offset),
+    hasStarted: isLive.value && offset <= nowMinutes.value,
     label: starts.has(offset) || offset === 0 || offset === sortedOffsets.at(-1)
       ? formatEventTime(atOffset(offset))
       : null
@@ -49,37 +63,62 @@ const boundaries = computed(() => {
 })
 
 const gridStyle = computed(() => {
+  // Longer sessions get taller rows. A row grows when a selected session shows its details.
   const rowSizes = boundaries.value.slice(0, -1).map(({ offset, hasSession }, index) => {
     const duration = boundaries.value[index + 1]!.offset - offset
-    return `${Math.max(hasSession ? 106 : 22, Math.min(duration * 1.5, 152))}px`
+    return `minmax(${Math.max(hasSession ? 72 : 16, Math.min(duration * 1.2, 150))}px, auto)`
   })
 
   return {
-    gridTemplateColumns: `3.125rem repeat(${props.tracks.length}, minmax(8.75rem, 1fr))`,
+    gridTemplateColumns: `4rem 1.25rem repeat(${props.tracks.length}, minmax(9.5rem, 1fr))`,
     gridTemplateRows: `auto ${rowSizes.join(' ')} auto`
   }
 })
 
+// The dot on the rail that marks the current time, placed inside the row that contains it.
+// It moves from this row's time dot to the next row's time dot, which both sit 1.3125rem below their row top.
+const nowMarker = computed(() => {
+  const index = isLive.value ? boundaries.value.findLastIndex(({ offset }) => offset <= nowMinutes.value) : -1
+  const start = boundaries.value[index]
+  const end = boundaries.value[index + 1]
+  if (!start || !end) {
+    return null
+  }
+
+  const progress = (nowMinutes.value - start.offset) / (end.offset - start.offset)
+  return { row: index + 2, top: `calc(${progress * 100}% + 1.3125rem)` }
+})
+
+function phaseLabel(phase: SessionPhase, session: ProgramSession) {
+  if (phase === 'now') {
+    return `Now · ${formatMinutes(session.startsAfterMinutes + session.durationMinutes - nowMinutes.value)} left`
+  }
+  if (phase === 'next') {
+    return `Next · in ${formatMinutes(session.startsAfterMinutes - nowMinutes.value)}`
+  }
+  return undefined
+}
+
 const placements = computed(() => {
-  const rows = hasParallelTracks.value
-    ? new Map(boundaries.value.map(({ offset }, index) => [offset, index + 2]))
-    : null
+  const rows = new Map(boundaries.value.map(({ offset }, index) => [offset, index + 2]))
   const rooms = new Map(props.floorPlans.flatMap(plan =>
     plan.rooms.map(room => [`${plan.id}/${room.id}`, room.name] as const)
   ))
 
   return trackSessions.value.map(({ session, column }) => {
-    const startsAt = atOffset(session.startsAfterMinutes)
     const end = session.startsAfterMinutes + session.durationMinutes
-    const endsAt = atOffset(end)
+    const phase = isLive.value ? getSessionPhase(session, nowMinutes.value, nextStart.value) : 'later'
 
     return {
       session,
-      timeLabel: getAgendaItemPresentation({ startsAt, endsAt }, false).timeLabel,
+      phase,
+      phaseLabel: phaseLabel(phase, session),
+      timeLabel: getAgendaItemPresentation({
+        startsAt: atOffset(session.startsAfterMinutes),
+        endsAt: atOffset(end)
+      }, false).timeLabel,
       roomName: session.room ? rooms.get(`${session.room.floorPlanId}/${session.room.roomId}`) : undefined,
-      style: rows
-        ? { gridColumn: column, gridRow: `${rows.get(session.startsAfterMinutes)} / ${rows.get(end)}` }
-        : undefined
+      style: { gridColumn: column, gridRow: `${rows.get(session.startsAfterMinutes)} / ${rows.get(end)}` }
     }
   })
 })
@@ -87,45 +126,67 @@ const placements = computed(() => {
 
 <template>
   <div
-    class="overflow-x-auto rounded-xl border border-default focus-visible:outline-2 focus-visible:outline-ring"
+    class="overflow-x-auto rounded-xl focus-visible:outline-2 focus-visible:outline-ring"
     data-testid="program-timeline"
     role="region"
     aria-label="Agenda timeline"
     tabindex="0"
   >
     <div
-      class="isolate grid min-h-full"
-      :style="hasParallelTracks ? gridStyle : undefined"
+      class="isolate grid"
+      :style="gridStyle"
     >
-      <template v-if="hasParallelTracks">
-        <div class="sticky left-0 z-20 border-b border-default bg-elevated" />
+      <template v-if="tracks.length > 1">
         <h2
-          v-for="track in tracks"
+          v-for="(track, index) in tracks"
           :key="track.id"
-          class="border-b border-l border-default bg-elevated px-2 py-2.5 text-sm font-semibold text-highlighted"
+          class="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted"
+          :style="{ gridColumn: index + 3, gridRow: 1 }"
         >
           {{ track.name }}
         </h2>
       </template>
 
+      <div
+        class="mx-auto w-px bg-accented"
+        style="grid-column: 2; grid-row: 2 / -1"
+        aria-hidden="true"
+      />
+
       <template
         v-for="(boundary, index) in boundaries"
         :key="boundary.offset"
       >
-        <div
+        <time
           v-if="boundary.label"
-          class="sticky left-0 z-10 border-t border-default/65 bg-default p-1.5 text-right text-[10px] font-medium tabular-nums leading-tight text-muted"
+          :datetime="atOffset(boundary.offset)"
+          class="sticky left-0 z-10 bg-bg pr-1 pt-3.5 text-right text-xs font-medium tabular-nums leading-tight"
+          :class="boundary.hasSession ? 'text-highlighted' : 'text-muted'"
           :style="{ gridColumn: 1, gridRow: index + 2 }"
         >
-          <time :datetime="atOffset(boundary.offset)">{{ boundary.label }}</time>
-        </div>
-        <div
+          {{ boundary.label }}
+        </time>
+        <span
           v-if="boundary.label"
-          class="border-t border-default/65"
-          :style="{ gridColumn: '2 / -1', gridRow: index + 2 }"
+          class="z-10 mx-auto mt-4 size-2.5 rounded-full border-2"
+          :class="boundary.hasStarted ? 'border-highlighted bg-highlighted' : 'border-dimmed bg-bg'"
+          :style="{ gridColumn: 2, gridRow: index + 2 }"
           aria-hidden="true"
         />
       </template>
+
+      <div
+        v-if="nowMarker"
+        class="pointer-events-none relative z-20"
+        :style="{ gridColumn: 2, gridRow: nowMarker.row }"
+        data-testid="program-now-marker"
+        aria-hidden="true"
+      >
+        <span
+          class="absolute left-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-success ring-4 ring-success/25"
+          :style="{ top: nowMarker.top }"
+        />
+      </div>
 
       <AccountEventProgramSession
         v-for="entry in placements"
@@ -134,6 +195,8 @@ const placements = computed(() => {
         :time-label="entry.timeLabel"
         :room-name="entry.roomName"
         :selected="entry.session.id === selectedSessionId"
+        :phase="entry.phase"
+        :phase-label="entry.phaseLabel"
         :style="entry.style"
         @select="$emit('select', $event)"
       />

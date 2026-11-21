@@ -36,7 +36,8 @@ const publicBlock = {
 const room = {
   id: 'seminar_room',
   name: 'Seminar Room',
-  area: { x: 0.25, y: 0.1, width: 0.25, height: 0.2 }
+  area: { x: 0.25, y: 0.1, width: 0.25, height: 0.2 },
+  route: [{ x: 0.05, y: 0.9 }, { x: 0.05, y: 0.2 }, { x: 0.3, y: 0.2 }]
 }
 const firstSession = {
   id: 'first_session',
@@ -252,6 +253,8 @@ describe('event program routes', () => {
     missingRoomProgram.tracks[0]!.sessions[0]!.room = { floorPlanId: floor.id, roomId: 'unknown_room' }
     expect((await harness.request(programPath, json('PUT', missingRoomProgram))).status).toBe(409)
     expect((await harness.request(floorPath, json('PUT', { name: floor.name, rooms: [] }))).status).toBe(409)
+    const onePointRoute = { ...room, route: room.route.slice(0, 1) }
+    expect((await harness.request(floorPath, json('PUT', { name: floor.name, rooms: [onePointRoute] }))).status).toBe(400)
 
     const shorterBlock = { ...publicBlock, endsAt: '2026-11-28T11:00:00.000Z' }
     expect((await harness.request(eventPath, json('PATCH', { agendaItems: [shorterBlock] }))).status).toBe(409)

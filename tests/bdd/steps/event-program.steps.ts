@@ -1,4 +1,4 @@
-import { expect, type APIRequestContext, type Request } from '@playwright/test'
+import { expect, type APIRequestContext, type Page, type Request } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import type { EventFloorPlan, EventProgram, ProgramRoom } from '../../../shared/domains/events/program'
@@ -34,6 +34,22 @@ const png = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADUlEQVQImWNgYGBgAAAABQABh6FO1AAAAABJRU5ErkJggg==',
   'base64'
 )
+
+async function openParallelAgendaInBuilder(page: Page) {
+  await signInAs('platform_admin', page)
+  await page.goto(`/admin/events/builder/${eventSlug}`)
+  await page.waitForFunction(() =>
+    typeof window.useNuxtApp === 'function' && window.useNuxtApp().isHydrating === false
+  )
+  const summary = page.locator('summary').filter({ hasText: 'Parallel agenda' })
+  await summary.click()
+  await expect(summary.locator('..')).toHaveAttribute('open', '')
+}
+
+function builderFloor(page: Page, floorName: string) {
+  return page.getByTestId('event-builder-floor-plans').locator('details')
+    .filter({ has: page.getByText(floorName, { exact: true }) })
+}
 
 async function uploadFloorPlan(api: APIRequestContext, name: string, rooms: ProgramRoom[]) {
   const upload = await api.post(`${eventPath}/floor-plans`, {
@@ -147,7 +163,7 @@ Then('the floor plan should highlight the selected room', async ({ page }) => {
 
   await page.setViewportSize({ width: 390, height: 844 })
   await page.getByTestId(`program-session-${designSessionId}`).click()
-  await expect(page.getByRole('complementary', { name: 'Session details' })).toBeFocused()
+  await expect(page.getByRole('complementary', { name: 'Map' })).toBeFocused()
   await expect(plan.getByTestId('program-room-highlight')).toHaveAttribute('style', /left: 50%/u)
 })
 
@@ -208,18 +224,10 @@ When('I reload the Agenda tab', async ({ page }) => {
 })
 
 When('I replace the {string} image while editing a track', async ({ page }, floorName: string) => {
-  await signInAs('platform_admin', page)
-  await page.goto(`/admin/events/builder/${eventSlug}`)
-  await page.waitForFunction(() =>
-    typeof window.useNuxtApp === 'function' && window.useNuxtApp().isHydrating === false
-  )
-  const summary = page.locator('summary').filter({ hasText: 'Parallel agenda' })
-  await summary.click()
-  await expect(summary.locator('..')).toHaveAttribute('open', '')
+  await openParallelAgendaInBuilder(page)
   const track = page.getByRole('region', { name: 'Build track' }).getByLabel('Track name')
   await track.fill('Updated build track')
-  const floor = page.getByTestId('event-builder-floor-plans').locator('details')
-    .filter({ has: page.getByText(floorName, { exact: true }) })
+  const floor = builderFloor(page, floorName)
   const [replacement] = await Promise.all([
     page.waitForResponse((response) => {
       const path = new URL(response.url()).pathname
@@ -242,4 +250,54 @@ Then('I can save the track edit in the event builder', async ({ page }) => {
   expect(saved.ok(), `Program save returned HTTP ${saved.status()}`).toBe(true)
   const { data }: { data: { program: EventProgram } } = await saved.json()
   expect(data.program.tracks[0]?.name).toBe('Updated build track')
+})
+
+When('I draw a route to {string} on {string} in the event builder', async ({ page }, roomName: string, floorName: string) => {
+  await openParallelAgendaInBuilder(page)
+  const floor = builderFloor(page, floorName)
+  if (await floor.getAttribute('open') === null) {
+    await floor.locator('summary').first().click()
+  }
+  await floor.getByRole('button', { name: roomName, exact: true }).click()
+  await floor.getByRole('button', { name: 'Draw route' }).click()
+  const map = floor.getByTestId('admin-floor-plan-map')
+  const { width, height } = (await map.boundingBox())!
+  for (const [x, y] of [[0.05, 0.9], [0.05, 0.2], [0.2, 0.2]] as const) {
+    await map.click({ position: { x: width * x, y: height * y } })
+  }
+  const [saved] = await Promise.all([
+    page.waitForResponse(response => new URL(response.url()).pathname.startsWith(`${eventPath}/floor-plans/`)
+      && response.request().method() === 'PUT'),
+    floor.getByRole('button', { name: 'Save floor plan' }).click()
+  ])
+  expect(saved.ok(), `Floor plan save returned HTTP ${saved.status()}`).toBe(true)
+  const { data }: { data: EventFloorPlan } = await saved.json()
+  expect(data.rooms.find(room => room.name === roomName)?.route).toHaveLength(3)
+})
+
+When('I open the Agenda tab {int} minutes into Build Time', async ({ page }, minutes: number) => {
+  await signInAs('regular_user', page)
+  await page.clock.setFixedTime(new Date(Date.parse(agendaItem.startsAt) + minutes * 60_000))
+  await page.goto(agendaTabPath)
+  await expect(page.getByRole('region', { name: 'Agenda timeline' })).toBeVisible()
+})
+
+Then('both sessions should start next in {int} minutes', async ({ page }, minutes: number) => {
+  for (const sessionId of [buildSessionId, designSessionId]) {
+    await expect(page.getByTestId(`program-session-${sessionId}`)).toContainText(`Next · in ${minutes}m`)
+  }
+})
+
+Then('the build session should be running with {int} minutes left', async ({ page }, minutes: number) => {
+  await expect(page.getByTestId(`program-session-${buildSessionId}`)).toContainText(`Now · ${minutes}m left`)
+  await expect(page.getByTestId('program-now-marker')).toBeVisible()
+})
+
+Then('the map should show the route to {string} only for the build session', async ({ page }, roomName: string) => {
+  const plan = page.getByTestId('program-floor-plan')
+  await page.getByTestId(`program-session-${buildSessionId}`).click()
+  await expect(plan.getByRole('img', { name: `Route to ${roomName}`, exact: true })).toBeVisible()
+
+  await page.getByTestId(`program-session-${designSessionId}`).click()
+  await expect(plan.getByTestId('program-room-route')).toHaveCount(0)
 })

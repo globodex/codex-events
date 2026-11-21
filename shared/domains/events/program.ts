@@ -14,10 +14,14 @@ export const floorPlanRoomAreaSchema = z.object({
   x + width <= 1 + Number.EPSILON && y + height <= 1 + Number.EPSILON,
 { message: 'Keep the room area inside the floor plan.' })
 
+const floorPlanPointSchema = z.object({ x: coordinate, y: coordinate })
+
 export const programRoomSchema = z.object({
   id,
   name,
-  area: floorPlanRoomAreaSchema
+  area: floorPlanRoomAreaSchema,
+  // The way to the room, as points on the floor plan image from the starting point to the room.
+  route: z.array(floorPlanPointSchema).min(2).max(40).optional()
 })
 
 export const eventFloorPlanMetadataSchema = z.object({
