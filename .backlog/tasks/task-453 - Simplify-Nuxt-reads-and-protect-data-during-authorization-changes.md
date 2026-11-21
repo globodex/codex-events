@@ -1,10 +1,10 @@
 ---
 id: TASK-453
 title: Simplify Nuxt reads and protect data during authorization changes
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-21T15:23:00Z'
-updated_date: '2026-11-21T15:51:00Z'
+updated_date: '2026-11-21T23:21:00Z'
 labels:
   - build-day
 milestone: m-3
@@ -30,15 +30,15 @@ The site has overlapping wrappers and manual request orchestration. Align reads 
 - [x] #3 Use one shared protected read path and one bootstrap wait. Preserve D1 bookmark handling, request ownership and explicit refresh after writes.
 - [x] #4 Independent public reads run concurrently while preserving server rendering, cache behavior and tab visibility.
 - [x] #5 Audit the remaining page and action reads for avoidable fan-out, stale responses and duplicate loads. Record any separately scoped changes.
-- [ ] #6 Review changes in a small GitHub PR stack with behavior checks at the appropriate layer.
+- [x] #6 Review changes in a small GitHub PR stack with behavior checks at the appropriate layer.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [ ] #1 Canonical docs were updated or confirmed unchanged
 - [ ] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
+- [x] #3 Relevant validation commands pass
+- [x] #4 Tests were added or updated when behavior changed
 - [ ] #5 Test gaps are documented when automation is not practical
 - [ ] #6 Config and developer workflow docs were updated when setup changed
 - [ ] #7 Auth and permissions changes follow the documented platform model
@@ -54,3 +54,11 @@ Keep registration-entry request consolidation with TASK-448. The public workspac
 
 Draft PRs #6 through #10 cover authorization changes, active tabs, shared protected reads, team workspace reads, and public page reads. The stack passed lint, type checking, 725 unit tests, 508 integration tests, and 102 browser scenarios. Nuxt 4.6.4 and Vite 8.3.8 are already locked. Account tabs use Nuxt reactive request gating. The installed Vue 3.5 compiler emits virtual DOM for Vapor-tagged components. Nuxt Vapor support is opt-in for components and pages with a compatible Vue release.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Protected data is cleared and pending reads are canceled when the authorization changes. Account tabs load only the active page, protected reads share one path, team workspaces reuse loaded data, and independent public reads run in parallel.
+
+The work was reviewed as pull requests 6 to 10 and merged into main on 2026-11-21. The test workflow passed on the merge commit 09fd27ac and on e6a38c7d, including lint, type checking, unit, integration and browser checks and the test deployment. Registration-entry request consolidation stays with TASK-448.
+<!-- SECTION:FINAL_SUMMARY:END -->

@@ -4,6 +4,7 @@ title: Show the next participant step after check-in
 status: To Do
 assignee: []
 created_date: '2026-11-21T15:23:00Z'
+updated_date: '2026-11-21T23:21:00Z'
 labels:
   - build-day
 milestone: m-3
@@ -23,7 +24,7 @@ A participant arriving at an event needs to see the next thing to do without bro
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A confirmed participant can browse and save workshop sessions before check-in.
+- [ ] #1 A confirmed participant can browse the agenda sessions before check-in.
 - [ ] #2 After check-in the account page presents the event questionnaire when configured and tracks completion.
 - [ ] #3 Events can omit the questionnaire. The account page then opens the available activities directly after check-in.
 - [ ] #4 The account page shows one clear next action and keeps participant-facing text brief.
