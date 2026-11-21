@@ -144,6 +144,7 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()],
     optimizeDeps: {
       include: [
+        '@internationalized/date',
         '@vue/devtools-core',
         '@vue/devtools-kit',
         'lucide-vue-next',
@@ -156,7 +157,14 @@ export default defineNuxtConfig({
         'vee-validate',
         '@vee-validate/zod',
         'zod',
-        'markdown-it'
+        'markdown-it',
+        'qrcode-generator',
+        'sortablejs',
+        'highlight.js/lib/common',
+        'md-editor-v3',
+        'prettier/plugins/markdown',
+        'prettier/standalone',
+        'screenfull'
       ]
     }
   },

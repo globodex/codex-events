@@ -152,6 +152,9 @@ Then('only the saved session should appear', async ({ page }) => {
 When('I replace the {string} image while editing a track', async ({ page }, floorName: string) => {
   await signInAs('platform_admin', page)
   await page.goto('/admin/events/builder/participant-approved-fixture-event')
+  await page.waitForFunction(() =>
+    typeof window.useNuxtApp === 'function' && window.useNuxtApp().isHydrating === false
+  )
   const summary = page.locator('summary').filter({ hasText: 'Parallel agenda' })
   await summary.click()
   await expect(summary.locator('..')).toHaveAttribute('open', '')
