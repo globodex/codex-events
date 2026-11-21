@@ -380,6 +380,7 @@ environment, Auth0 tenant, persona credentials, or authentication secrets.
 GitHub Pages publishes the [committed Groma map](https://globodex.github.io/codex-events/architecture/auto/).
 PRs from this repository that target `main` request a comparison automatically.
 The publishing workflow reads both revisions from Git and posts the before-and-after map to the PR.
+Each published preview has a stable URL at `/pr-<number>/architecture/auto/`.
 This workflow uses GitHub Pages separately from the Cloudflare application deployments.
 
 For a reviewed fork PR or to retry a preview, run **Groma architecture** on `main` with the PR number.
