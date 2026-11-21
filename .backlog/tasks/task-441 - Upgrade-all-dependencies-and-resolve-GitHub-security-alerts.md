@@ -1,11 +1,11 @@
 ---
 id: TASK-441
 title: Upgrade all dependencies and resolve GitHub security alerts
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-11-05T11:31:00Z'
-updated_date: '2026-11-05T12:38:00Z'
+updated_date: '2026-11-21T13:15:00Z'
 labels: []
 dependencies: []
 priority: high
@@ -23,7 +23,7 @@ Alex requested the latest stable package releases, fixes for breaking changes, a
 <!-- AC:BEGIN -->
 - [x] #1 All direct dependencies and the pinned Bun and CI actions use the latest stable releases, with any unavoidable exception explained.
 - [x] #2 Breaking changes are fixed and required lint, typecheck, unit, integration, browser, and production build checks pass.
-- [ ] #3 Dependency audit and GitHub security checks have no unresolved findings after the fixes are pushed.
+- [x] #3 Dependency audit and GitHub security checks have no unresolved findings after the fixes are pushed.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -69,4 +69,12 @@ CI and test deployment for 97de770f passed, with all GitHub security alert categ
 Static HarfBuzz loading now renders a valid 1200x630 certificate PNG under local workerd using the production build and the real isolated D1 fixtures. The build-time transform targets Satori 0.63.2’s bundled loader, rejects missing patch sites, imports hb.wasm statically, and replaces dynamic callback compilation with the precompiled vi free callback used by this renderer. Added three unit checks covering callback pointer forwarding, transformation of the installed bundle, and rejection of unsupported loader changes.
 
 Final static-HarfBuzz validation passes: lint, typecheck, all 1177 unit tests (179 files), all 508 integration tests, all 102 browser scenarios, the Cloudflare production build, and git diff --check. Production local workerd returns a valid 1200x630 certificate PNG. Ready to push the runtime fix and verify the deployed certificate plus GitHub scans.
+
+The 2026-11-21 refresh in 751bbd7d updated 16 of 52 direct packages, compatible indirect dependencies, and the Bun pin to 1.4.5. The current Vue type checker, ESLint integration, and schema generator require the JavaScript compiler API in TypeScript 6.0.3. The upstream import lint plugin supports minimatch 11, so the local patch was removed and its regression test still checks both module formats. The h3 version 1 pin applies to Nuxt and Auth0, and the development tools that require version 2 use it.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+The compatible update passed a frozen install, lint, type checking, 1,177 unit tests, 508 integration tests, 102 browser scenarios, and the Cloudflare build. The built Worker rendered a certificate PNG and returned the expected private cache headers for unauthenticated sessions. Bun audit reported zero vulnerabilities, and GitHub reported zero open Dependabot, code scanning, and secret scanning alerts. The Linux checks, test deployment, and CodeQL passed for 751bbd7d. [Test workflow](https://github.com/globodex/codex-events/actions/runs/44906924753) · [CodeQL](https://github.com/globodex/codex-events/actions/runs/44906924872)
+<!-- SECTION:FINAL_SUMMARY:END -->
