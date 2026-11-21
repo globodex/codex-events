@@ -57,19 +57,16 @@ const sortHandleAttributes = computed(() => ({
       :actions-class="actionsClass"
     >
       <template #controls>
-        <button
-          type="button"
-          class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+        <AppButton
+          color="neutral"
+          variant="outline"
+          icon="i-lucide-arrow-up"
           :aria-label="moveUpLabel"
           :data-testid="moveUpTestId"
           :disabled="moveUpDisabled"
+          class="w-9 rounded-lg px-0"
           @click="emit('moveUp')"
-        >
-          <AppIcon
-            name="i-lucide-arrow-up"
-            class="size-4"
-          />
-        </button>
+        />
 
         <button
           type="button"
@@ -84,19 +81,16 @@ const sortHandleAttributes = computed(() => ({
           />
         </button>
 
-        <button
-          type="button"
-          class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+        <AppButton
+          color="neutral"
+          variant="outline"
+          icon="i-lucide-arrow-down"
           :aria-label="moveDownLabel"
           :data-testid="moveDownTestId"
           :disabled="moveDownDisabled"
+          class="w-9 rounded-lg px-0"
           @click="emit('moveDown')"
-        >
-          <AppIcon
-            name="i-lucide-arrow-down"
-            class="size-4"
-          />
-        </button>
+        />
       </template>
 
       <slot />

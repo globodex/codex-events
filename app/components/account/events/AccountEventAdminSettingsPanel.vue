@@ -1379,18 +1379,15 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
 
                   <AdminEditorRowShell>
                     <template #controls>
-                      <button
-                        type="button"
-                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                      <AppButton
+                        color="neutral"
+                        variant="outline"
+                        icon="i-lucide-arrow-up"
+                        class="w-9 rounded-lg px-0"
                         :aria-label="`Move ${getCriterionEdit(criterion).name || `criterion ${index + 1}`} up`"
                         :disabled="index === 0"
                         @click="moveCriterion(criterion.id, -1)"
-                      >
-                        <AppIcon
-                          name="i-lucide-arrow-up"
-                          class="size-4"
-                        />
-                      </button>
+                      />
 
                       <button
                         type="button"
@@ -1404,18 +1401,15 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         />
                       </button>
 
-                      <button
-                        type="button"
-                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                      <AppButton
+                        color="neutral"
+                        variant="outline"
+                        icon="i-lucide-arrow-down"
+                        class="w-9 rounded-lg px-0"
                         :aria-label="`Move ${getCriterionEdit(criterion).name || `criterion ${index + 1}`} down`"
                         :disabled="index === orderedCriteria.length - 1"
                         @click="moveCriterion(criterion.id, 1)"
-                      >
-                        <AppIcon
-                          name="i-lucide-arrow-down"
-                          class="size-4"
-                        />
-                      </button>
+                      />
                     </template>
 
                     <div class="grid grid-cols-1 gap-2.5">
@@ -1475,17 +1469,14 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                     </div>
 
                     <template #actions>
-                      <button
-                        type="button"
-                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-red-400/50 hover:text-red-600 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-red-400/40 dark:hover:text-red-300"
+                      <AppButton
+                        color="error"
+                        variant="outline"
+                        icon="i-lucide-trash-2"
+                        class="w-9 rounded-lg px-0"
                         :aria-label="`Delete ${getCriterionEdit(criterion).name || `criterion ${index + 1}`}`"
                         @click="removeCriterion(criterion.id)"
-                      >
-                        <AppIcon
-                          name="i-lucide-trash-2"
-                          class="size-4"
-                        />
-                      </button>
+                      />
                     </template>
                   </AdminEditorRowShell>
                 </div>
@@ -1574,18 +1565,15 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                     columns-class="sm:grid-cols-[4.25rem_minmax(0,1fr)_4.25rem]"
                   >
                     <template #controls>
-                      <button
-                        type="button"
-                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                      <AppButton
+                        color="neutral"
+                        variant="outline"
+                        icon="i-lucide-arrow-up"
+                        class="w-9 rounded-lg px-0"
                         :aria-label="`Move ${getPrizeEdit(prize).name || `prize ${index + 1}`} up`"
                         :disabled="index === 0"
                         @click="movePrize(prize.id, -1)"
-                      >
-                        <AppIcon
-                          name="i-lucide-arrow-up"
-                          class="size-4"
-                        />
-                      </button>
+                      />
 
                       <button
                         type="button"
@@ -1599,18 +1587,15 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         />
                       </button>
 
-                      <button
-                        type="button"
-                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                      <AppButton
+                        color="neutral"
+                        variant="outline"
+                        icon="i-lucide-arrow-down"
+                        class="w-9 rounded-lg px-0"
                         :aria-label="`Move ${getPrizeEdit(prize).name || `prize ${index + 1}`} down`"
                         :disabled="index === orderedPrizes.length - 1"
                         @click="movePrize(prize.id, 1)"
-                      >
-                        <AppIcon
-                          name="i-lucide-arrow-down"
-                          class="size-4"
-                        />
-                      </button>
+                      />
                     </template>
 
                     <div class="grid grid-cols-1 gap-2.5">
@@ -1706,17 +1691,14 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                     </div>
 
                     <template #actions>
-                      <button
-                        type="button"
-                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-red-400/50 hover:text-red-600 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-red-400/40 dark:hover:text-red-300"
+                      <AppButton
+                        color="error"
+                        variant="outline"
+                        icon="i-lucide-trash-2"
+                        class="w-9 rounded-lg px-0"
                         :aria-label="`Delete ${getPrizeEdit(prize).name || `prize ${index + 1}`}`"
                         @click="removePrize(prize.id)"
-                      >
-                        <AppIcon
-                          name="i-lucide-trash-2"
-                          class="size-4"
-                        />
-                      </button>
+                      />
                     </template>
                   </AdminEditorRowShell>
                 </div>

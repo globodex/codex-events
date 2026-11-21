@@ -132,14 +132,12 @@ async function importCheckIns() {
     </div>
     <AppButton
       v-else
-      type="button"
       color="neutral"
       variant="outline"
+      label="Connect Luma"
       :disabled="saving"
       @click="editing = true"
-    >
-      Connect Luma
-    </AppButton>
+    />
 
     <AppAlert
       v-if="hasSavedCredentials && event?.lumaWebhookStatus !== 'configured'"

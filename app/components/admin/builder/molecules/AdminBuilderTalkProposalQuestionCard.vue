@@ -101,18 +101,16 @@ function removeOption(optionIndex: number) {
           </AppSelect>
         </AppFormField>
 
-        <button
-          type="button"
+        <AppButton
+          color="error"
+          variant="ghost"
+          size="sm"
+          icon="i-lucide-trash-2"
           :aria-label="`Remove question ${props.index + 1}`"
           :disabled="props.locked"
-          class="inline-flex size-8 items-center justify-center rounded-lg text-muted transition hover:bg-rose-500/10 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-40"
+          class="w-8 px-0 text-muted hover:text-error"
           @click="emit('remove')"
-        >
-          <AppIcon
-            name="i-lucide-trash-2"
-            class="size-4"
-          />
-        </button>
+        />
       </div>
 
       <AppCheckbox
@@ -139,18 +137,16 @@ function removeOption(optionIndex: number) {
             size="sm"
             @update:model-value="updateOption(optionIndex, $event)"
           />
-          <button
-            type="button"
+          <AppButton
+            color="error"
+            variant="ghost"
+            size="sm"
+            icon="i-lucide-x"
             :aria-label="`Remove choice ${optionIndex + 1}`"
             :disabled="props.locked || props.question.options.length <= 2"
-            class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-rose-500/10 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-40"
+            class="w-8 px-0 text-muted hover:text-error"
             @click="removeOption(optionIndex)"
-          >
-            <AppIcon
-              name="i-lucide-x"
-              class="size-3.5"
-            />
-          </button>
+          />
         </div>
         <AppButton
           size="xs"

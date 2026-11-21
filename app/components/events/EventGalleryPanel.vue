@@ -328,23 +328,15 @@ onBeforeUnmount(() => {
         class="flex flex-col gap-4"
       >
         <div class="flex min-w-0 flex-wrap items-center gap-2">
-          <button
+          <AppFilterButton
             v-for="option in filterOptions"
             :key="option.value"
-            type="button"
-            class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
-            :class="activeFilter === option.value ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
+            :pressed="activeFilter === option.value"
+            :count="option.count"
             @click="activeFilter = option.value"
           >
-            <span>{{ option.label }}</span>
-            <span
-              v-if="typeof option.count === 'number'"
-              class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-              :class="activeFilter === option.value ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
-            >
-              {{ option.count }}
-            </span>
-          </button>
+            {{ option.label }}
+          </AppFilterButton>
         </div>
       </div>
 

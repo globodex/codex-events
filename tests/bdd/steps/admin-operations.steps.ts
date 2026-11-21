@@ -22,15 +22,6 @@ function formatParticipantViewLabel(status: string) {
   }
 }
 
-function decisionButtonActiveClass(decision: 'approve' | 'reject') {
-  return decision === 'approve' ? 'bg-success/12' : 'bg-error/12'
-}
-
-async function isDecisionButtonActive(button: ReturnType<Page['getByTestId']>, decision: 'approve' | 'reject') {
-  const className = await button.getAttribute('class')
-  return className?.includes(decisionButtonActiveClass(decision)) ?? false
-}
-
 function getCurrentEventSlug(page: Page) {
   const segments = new URL(page.url()).pathname.split('/').filter(Boolean)
   return segments[segments.indexOf('events') + 1] ?? ''
@@ -159,6 +150,19 @@ Then('I should see the admin application {string} with status {string}', async (
   await waitForAdminApplication(page, applicationId)
 })
 
+async function saveStagedAdminApplicationDecisions(page: Page) {
+  const saveButton = page.getByTestId('admin-application-save-decisions')
+  await expect(saveButton).toBeEnabled()
+  const [response] = await Promise.all([
+    page.waitForResponse(response =>
+      response.request().method() === 'POST'
+      && new URL(response.url()).pathname.endsWith('/applications/actions/apply-staged-decisions')
+    ),
+    saveButton.click()
+  ])
+  expect(response.ok(), `Apply staged decisions returned HTTP ${response.status()}`).toBe(true)
+}
+
 When('I approve the admin application {string}', async ({ page }, applicationId: string) => {
   const application = await waitForAdminApplication(page, applicationId)
   const approveButton = application.getByTestId(`admin-application-approve-${applicationId}`)
@@ -167,22 +171,13 @@ When('I approve the admin application {string}', async ({ page }, applicationId:
   await expect(approveButton).toBeInViewport()
   await expect(approveButton).toBeEnabled()
 
-  if (!(await isDecisionButtonActive(approveButton, 'approve'))) {
+  if ((await approveButton.getAttribute('aria-pressed')) !== 'true') {
     await approveButton.click()
   }
 
-  await expect.poll(async () => await isDecisionButtonActive(approveButton, 'approve')).toBe(true)
+  await expect(approveButton).toHaveAttribute('aria-pressed', 'true')
   await waitForStagedApplicationDecision(page, applicationId, 'approved')
-  await expect(page.getByTestId('admin-application-save-decisions')).toBeEnabled()
-
-  await Promise.all([
-    page.waitForResponse(response =>
-      response.url().includes(`/api/events/`)
-      && response.url().includes('/applications/actions/apply-staged-decisions')
-      && response.ok()
-    ),
-    page.getByTestId('admin-application-save-decisions').click()
-  ])
+  await saveStagedAdminApplicationDecisions(page)
 })
 
 When('I reject the admin application {string}', async ({ page }, applicationId: string) => {
@@ -191,23 +186,14 @@ When('I reject the admin application {string}', async ({ page }, applicationId: 
 
   await expect(rejectButton).toBeEnabled()
 
-  if (!(await isDecisionButtonActive(rejectButton, 'reject'))) {
+  if ((await rejectButton.getAttribute('aria-pressed')) !== 'true') {
     await rejectButton.focus()
     await rejectButton.press('Enter')
   }
 
-  await expect.poll(async () => await isDecisionButtonActive(rejectButton, 'reject')).toBe(true)
+  await expect(rejectButton).toHaveAttribute('aria-pressed', 'true')
   await waitForStagedApplicationDecision(page, applicationId, 'rejected')
-  await expect(page.getByTestId('admin-application-save-decisions')).toBeEnabled()
-
-  await Promise.all([
-    page.waitForResponse(response =>
-      response.url().includes(`/api/events/`)
-      && response.url().includes('/applications/actions/apply-staged-decisions')
-      && response.ok()
-    ),
-    page.getByTestId('admin-application-save-decisions').click()
-  ])
+  await saveStagedAdminApplicationDecisions(page)
 })
 
 Then('I should see the admin team {string} with submission status {string}', async ({ page }, teamId: string, status: string) => {

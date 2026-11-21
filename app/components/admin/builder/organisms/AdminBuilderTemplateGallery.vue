@@ -150,17 +150,15 @@ const previewColumns = computed(() => {
         >
           Agenda score {{ selectedProjection.score }} · {{ selectedProjection.band.label }}
         </AppBadge>
-        <button
-          type="button"
+        <AppButton
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          icon="i-lucide-x"
           aria-label="Close template preview"
-          class="ml-auto inline-flex size-7 items-center justify-center rounded-lg text-muted transition hover:bg-black/5 hover:text-highlighted dark:hover:bg-white/[0.06]"
+          class="ml-auto w-7 px-0 rounded-lg"
           @click="selectedId = null"
-        >
-          <AppIcon
-            name="i-lucide-x"
-            class="size-4"
-          />
-        </button>
+        />
       </div>
 
       <div class="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">

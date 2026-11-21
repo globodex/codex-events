@@ -139,14 +139,13 @@ function remove() {
         />
 
         <AppButton
+          label="Add track"
           icon="i-lucide-plus"
           variant="outline"
           color="neutral"
           :disabled="saving"
           @click="addTrack"
-        >
-          Add track
-        </AppButton>
+        />
       </template>
 
       <AppAlert

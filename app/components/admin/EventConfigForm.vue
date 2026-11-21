@@ -920,18 +920,15 @@ const submitConfigForm = handleSubmit(() => {
               >
                 <AdminEditorRowShell>
                   <template #controls>
-                    <button
-                      type="button"
-                      class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                    <AppButton
+                      color="neutral"
+                      variant="outline"
+                      icon="i-lucide-arrow-up"
                       :aria-label="`Move ${track.name || `track ${index + 1}`} up`"
                       :disabled="index === 0"
+                      class="w-9 rounded-lg px-0"
                       @click="moveTrack(track.id, -1)"
-                    >
-                      <AppIcon
-                        name="i-lucide-arrow-up"
-                        class="size-4"
-                      />
-                    </button>
+                    />
 
                     <button
                       type="button"
@@ -945,18 +942,15 @@ const submitConfigForm = handleSubmit(() => {
                       />
                     </button>
 
-                    <button
-                      type="button"
-                      class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                    <AppButton
+                      color="neutral"
+                      variant="outline"
+                      icon="i-lucide-arrow-down"
                       :aria-label="`Move ${track.name || `track ${index + 1}`} down`"
                       :disabled="index === form.tracks.length - 1"
+                      class="w-9 rounded-lg px-0"
                       @click="moveTrack(track.id, 1)"
-                    >
-                      <AppIcon
-                        name="i-lucide-arrow-down"
-                        class="size-4"
-                      />
-                    </button>
+                    />
                   </template>
 
                   <div class="grid grid-cols-1 gap-3">
@@ -1086,43 +1080,37 @@ const submitConfigForm = handleSubmit(() => {
                             </span>
 
                             <div class="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                              <AppButton
+                                color="neutral"
+                                variant="outline"
+                                size="sm"
+                                icon="i-lucide-arrow-up"
                                 :aria-label="`Move ${resource.title || `resource ${resourceIndex + 1}`} up`"
                                 :disabled="resourceIndex === 0"
+                                class="w-8 px-0"
                                 @click="moveTrackResource(track, resource.id, -1)"
-                              >
-                                <AppIcon
-                                  name="i-lucide-arrow-up"
-                                  class="size-3.5"
-                                />
-                              </button>
+                              />
 
-                              <button
-                                type="button"
-                                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                              <AppButton
+                                color="neutral"
+                                variant="outline"
+                                size="sm"
+                                icon="i-lucide-arrow-down"
                                 :aria-label="`Move ${resource.title || `resource ${resourceIndex + 1}`} down`"
                                 :disabled="resourceIndex === track.resources.length - 1"
+                                class="w-8 px-0"
                                 @click="moveTrackResource(track, resource.id, 1)"
-                              >
-                                <AppIcon
-                                  name="i-lucide-arrow-down"
-                                  class="size-3.5"
-                                />
-                              </button>
+                              />
 
-                              <button
-                                type="button"
-                                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-red-400/50 hover:text-red-600 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-red-400/40 dark:hover:text-red-300"
+                              <AppButton
+                                color="neutral"
+                                variant="outline"
+                                size="sm"
+                                icon="i-lucide-trash-2"
                                 :aria-label="`Delete ${resource.title || `resource ${resourceIndex + 1}`}`"
+                                class="w-8 px-0 hover:border-error/50 hover:text-error"
                                 @click="removeTrackResource(track, resource.id)"
-                              >
-                                <AppIcon
-                                  name="i-lucide-trash-2"
-                                  class="size-3.5"
-                                />
-                              </button>
+                              />
                             </div>
                           </div>
 
@@ -1162,17 +1150,14 @@ const submitConfigForm = handleSubmit(() => {
                   </div>
 
                   <template #actions>
-                    <button
-                      type="button"
-                      class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-red-400/50 hover:text-red-600 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-red-400/40 dark:hover:text-red-300"
+                    <AppButton
+                      color="neutral"
+                      variant="outline"
+                      icon="i-lucide-trash-2"
                       :aria-label="`Delete ${track.name || `track ${index + 1}`}`"
+                      class="w-9 rounded-lg px-0 hover:border-error/50 hover:text-error"
                       @click="removeTrack(track.id)"
-                    >
-                      <AppIcon
-                        name="i-lucide-trash-2"
-                        class="size-4"
-                      />
-                    </button>
+                    />
                   </template>
                 </AdminEditorRowShell>
               </article>
@@ -1232,18 +1217,15 @@ const submitConfigForm = handleSubmit(() => {
 
                 <AdminEditorRowShell>
                   <template #controls>
-                    <button
-                      type="button"
-                      class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                    <AppButton
+                      color="neutral"
+                      variant="outline"
+                      icon="i-lucide-arrow-up"
                       :aria-label="`Move ${item.title || `agenda item ${index + 1}`} up`"
                       :disabled="index === 0"
+                      class="w-9 rounded-lg px-0"
                       @click="moveAgendaItem(item.id, -1)"
-                    >
-                      <AppIcon
-                        name="i-lucide-arrow-up"
-                        class="size-4"
-                      />
-                    </button>
+                    />
 
                     <button
                       type="button"
@@ -1257,18 +1239,15 @@ const submitConfigForm = handleSubmit(() => {
                       />
                     </button>
 
-                    <button
-                      type="button"
-                      class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                    <AppButton
+                      color="neutral"
+                      variant="outline"
+                      icon="i-lucide-arrow-down"
                       :aria-label="`Move ${item.title || `agenda item ${index + 1}`} down`"
                       :disabled="index === form.agendaItems.length - 1"
+                      class="w-9 rounded-lg px-0"
                       @click="moveAgendaItem(item.id, 1)"
-                    >
-                      <AppIcon
-                        name="i-lucide-arrow-down"
-                        class="size-4"
-                      />
-                    </button>
+                    />
                   </template>
 
                   <div class="grid grid-cols-1 gap-3">
@@ -1314,17 +1293,14 @@ const submitConfigForm = handleSubmit(() => {
                   </div>
 
                   <template #actions>
-                    <button
-                      type="button"
-                      class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-red-400/50 hover:text-red-600 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-red-400/40 dark:hover:text-red-300"
+                    <AppButton
+                      color="neutral"
+                      variant="outline"
+                      icon="i-lucide-trash-2"
                       :aria-label="`Delete ${item.title || `agenda item ${index + 1}`}`"
+                      class="w-9 rounded-lg px-0 hover:border-error/50 hover:text-error"
                       @click="removeAgendaItem(item.id)"
-                    >
-                      <AppIcon
-                        name="i-lucide-trash-2"
-                        class="size-4"
-                      />
-                    </button>
+                    />
                   </template>
                 </AdminEditorRowShell>
               </article>

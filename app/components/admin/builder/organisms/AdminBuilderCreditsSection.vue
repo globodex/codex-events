@@ -8,6 +8,7 @@ import type {
 } from '#shared/domains/events/account-event-settings-page'
 import SimplifiedGiveawaysManager from '~/components/account/events/organisms/SimplifiedGiveawaysManager.vue'
 import AccountEventSimplifiedClaimingPanel from '~/components/account/events/AccountEventSimplifiedClaimingPanel.vue'
+import AdminBuilderChoiceCard from '~/components/admin/builder/molecules/AdminBuilderChoiceCard.vue'
 import AdminBuilderRegularCreditsManager from './AdminBuilderRegularCreditsManager.vue'
 
 const stagedCredits = defineModel<StagedCredit[]>('stagedCredits', { default: () => [] })
@@ -57,49 +58,23 @@ function selectMethod(method: 'regular' | 'simplified') {
       role="radiogroup"
       aria-label="Credits claiming method"
     >
-      <button
-        type="button"
+      <AdminBuilderChoiceCard
         role="radio"
-        :aria-checked="!isSimplified"
+        label="Regular claiming"
+        description="Approved participants sign in and claim one value from each offer."
+        :checked="!isSimplified"
         :disabled="claimingLocked"
-        class="relative rounded-xl border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-        :class="!isSimplified
-          ? 'border-black/25 bg-white/95 dark:border-white/[0.28] dark:bg-[#181818]'
-          : 'border-black/8 bg-white/88 text-toned hover:border-black/20 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]'"
         @click="selectMethod('regular')"
-      >
-        <AppIcon
-          v-if="!isSimplified"
-          name="i-lucide-circle-check-big"
-          class="absolute right-3 top-3 size-4 text-emerald-500"
-        />
-        <span class="block pr-6 text-sm font-semibold text-highlighted">Regular claiming</span>
-        <span class="block text-[11px] text-dimmed">
-          Approved participants sign in and claim one value from each offer.
-        </span>
-      </button>
+      />
 
-      <button
-        type="button"
+      <AdminBuilderChoiceCard
         role="radio"
-        :aria-checked="isSimplified"
+        label="Simplified claiming"
+        description="Eligible attendees scan a QR and confirm their email."
+        :checked="isSimplified"
         :disabled="!canChooseSimplified && !isSimplified"
-        class="relative rounded-xl border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-        :class="isSimplified
-          ? 'border-black/25 bg-white/95 dark:border-white/[0.28] dark:bg-[#181818]'
-          : 'border-black/8 bg-white/88 text-toned hover:border-black/20 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]'"
         @click="selectMethod('simplified')"
-      >
-        <AppIcon
-          v-if="isSimplified"
-          name="i-lucide-circle-check-big"
-          class="absolute right-3 top-3 size-4 text-emerald-500"
-        />
-        <span class="block pr-6 text-sm font-semibold text-highlighted">Simplified claiming</span>
-        <span class="block text-[11px] text-dimmed">
-          Eligible attendees scan a QR and confirm their email.
-        </span>
-      </button>
+      />
     </div>
 
     <AppAlert

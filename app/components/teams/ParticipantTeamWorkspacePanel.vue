@@ -71,21 +71,6 @@ function isActionPending(actionKey: string) {
   return props.pendingActionKey === actionKey
 }
 
-function getDecisionButtonClass(tone: 'approve' | 'reject', isActive: boolean) {
-  const baseClass = 'inline-flex w-full items-center justify-between rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-45'
-
-  if (isActive) {
-    switch (tone) {
-      case 'approve':
-        return `${baseClass} border-success/30 bg-success/12 text-success hover:bg-success/16`
-      case 'reject':
-        return `${baseClass} border-error/30 bg-error/12 text-error hover:bg-error/16`
-    }
-  }
-
-  return `${baseClass} border-black/8 bg-transparent text-toned hover:border-black/20 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.18] dark:hover:text-white`
-}
-
 function getUserProfileLinks(user?: TeamUserSummary | null) {
   const links: Array<{
     key: 'github' | 'linkedin' | 'x'
@@ -834,45 +819,29 @@ function handleJoinActionClick() {
                   v-if="request.status === 'pending'"
                   class="grid gap-2 shrink-0 sm:min-w-44"
                 >
-                  <button
-                    type="button"
-                    :class="getDecisionButtonClass('approve', pendingActionKey === `approve-join-request:${request.id}`)"
-                    :disabled="pendingActionKey !== null && pendingActionKey !== `approve-join-request:${request.id}`"
+                  <AppButton
+                    :color="isActionPending(`approve-join-request:${request.id}`) ? 'success' : 'neutral'"
+                    variant="soft"
+                    icon="i-lucide-thumbs-up"
+                    label="Approve"
+                    class="w-full flex-row-reverse justify-between"
+                    :loading="isActionPending(`approve-join-request:${request.id}`)"
+                    :disabled="pendingActionKey !== null"
                     :data-testid="`participant-team-approve-request-${request.id}`"
                     @click="emit('approveRequest', request.id)"
-                  >
-                    <span>Approve</span>
-                    <AppIcon
-                      v-if="pendingActionKey === `approve-join-request:${request.id}`"
-                      name="i-lucide-loader-circle"
-                      class="size-4 animate-spin"
-                    />
-                    <AppIcon
-                      v-else
-                      name="i-lucide-thumbs-up"
-                      class="size-4"
-                    />
-                  </button>
+                  />
 
-                  <button
-                    type="button"
-                    :class="getDecisionButtonClass('reject', pendingActionKey === `reject-join-request:${request.id}`)"
-                    :disabled="pendingActionKey !== null && pendingActionKey !== `reject-join-request:${request.id}`"
+                  <AppButton
+                    :color="isActionPending(`reject-join-request:${request.id}`) ? 'error' : 'neutral'"
+                    variant="soft"
+                    icon="i-lucide-thumbs-down"
+                    label="Reject"
+                    class="w-full flex-row-reverse justify-between"
+                    :loading="isActionPending(`reject-join-request:${request.id}`)"
+                    :disabled="pendingActionKey !== null"
                     :data-testid="`participant-team-reject-request-${request.id}`"
                     @click="emit('rejectRequest', request.id)"
-                  >
-                    <span>Reject</span>
-                    <AppIcon
-                      v-if="pendingActionKey === `reject-join-request:${request.id}`"
-                      name="i-lucide-loader-circle"
-                      class="size-4 animate-spin"
-                    />
-                    <AppIcon
-                      v-else
-                      name="i-lucide-thumbs-down"
-                      class="size-4"
-                    />
-                  </button>
+                  />
                 </div>
               </div>
             </article>

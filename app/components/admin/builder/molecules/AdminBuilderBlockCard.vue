@@ -164,49 +164,49 @@ const durationModel = computed({
         </template>
       </span>
 
-      <button
-        type="button"
+      <AppButton
+        color="neutral"
+        variant="ghost"
+        size="xs"
+        icon="i-lucide-copy"
         :aria-label="`Duplicate ${block.title}`"
         title="Duplicate this block"
         :data-testid="`event-builder-clone-block-${block.id}`"
-        class="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-black/5 hover:text-highlighted dark:hover:bg-white/[0.06]"
+        class="w-7 rounded-lg px-0"
         @click="emit('clone', block.id)"
-      >
-        <AppIcon
-          name="i-lucide-copy"
-          class="size-3.5"
-        />
-      </button>
+      />
 
-      <button
-        type="button"
+      <AppButton
+        color="neutral"
+        variant="ghost"
+        size="xs"
         :aria-expanded="detailsOpen"
         :aria-label="hasDetails ? `Edit the description of ${block.title}` : `Add a description to ${block.title}`"
         :title="hasDetails ? 'Edit description' : 'Add description'"
         :data-testid="`event-builder-block-details-toggle-${block.id}`"
-        class="inline-flex size-7 shrink-0 items-center justify-center rounded-lg transition hover:bg-black/5 hover:text-highlighted dark:hover:bg-white/[0.06]"
-        :class="hasDetails ? 'text-highlighted' : 'text-muted'"
+        class="w-7 rounded-lg px-0"
+        :class="{ 'text-highlighted': hasDetails }"
         @click="detailsOpen = !detailsOpen"
       >
-        <AppIcon
-          name="i-lucide-chevron-down"
-          class="size-4 transition-transform"
-          :class="detailsOpen ? 'rotate-180' : ''"
-        />
-      </button>
+        <template #leading>
+          <AppIcon
+            name="i-lucide-chevron-down"
+            class="transition-transform"
+            :class="{ 'rotate-180': detailsOpen }"
+          />
+        </template>
+      </AppButton>
 
-      <button
-        type="button"
+      <AppButton
+        color="error"
+        variant="ghost"
+        size="xs"
+        icon="i-lucide-trash-2"
         :aria-label="`Remove ${block.title}`"
         :data-testid="`event-builder-remove-block-${block.id}`"
-        class="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-rose-500/10 hover:text-rose-500"
+        class="w-7 rounded-lg px-0 text-muted hover:text-error"
         @click="emit('remove', block.id)"
-      >
-        <AppIcon
-          name="i-lucide-trash-2"
-          class="size-4"
-        />
-      </button>
+      />
     </div>
 
     <div

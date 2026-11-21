@@ -301,9 +301,10 @@ useSeoMeta({
               </div>
 
               <div class="flex flex-wrap items-center gap-4">
-                <button
-                  type="button"
-                  class="group relative rounded-full transition-opacity hover:opacity-95"
+                <AppButton
+                  color="neutral"
+                  variant="ghost"
+                  class="group relative h-auto rounded-full p-0 transition-opacity hover:bg-transparent hover:opacity-95 disabled:opacity-100 dark:hover:bg-transparent"
                   :disabled="profileIconState.uploadPending"
                   aria-label="Edit profile icon"
                   @click="promptProfileIconUpload"
@@ -324,7 +325,7 @@ useSeoMeta({
                       :class="profileIconState.uploadPending ? 'animate-spin' : ''"
                     />
                   </span>
-                </button>
+                </AppButton>
 
                 <div class="space-y-3">
                   <input
@@ -412,9 +413,10 @@ useSeoMeta({
           v-if="!isPlatformAccountUnavailable"
           class="space-y-4"
         >
-          <button
-            type="button"
-            class="inline-flex w-full border-b border-error/20 pb-3 text-left"
+          <AppButton
+            color="error"
+            variant="ghost"
+            class="h-auto w-full justify-start rounded-none border-b border-error/20 px-0 pt-0 pb-3 text-left hover:bg-transparent dark:hover:bg-transparent"
             :aria-expanded="isDangerZoneExpanded"
             @click="isDangerZoneExpanded = !isDangerZoneExpanded"
           >
@@ -426,7 +428,7 @@ useSeoMeta({
                 :class="isDangerZoneExpanded ? 'rotate-180' : ''"
               />
             </span>
-          </button>
+          </AppButton>
 
           <div
             v-if="isDangerZoneExpanded"

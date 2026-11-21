@@ -408,33 +408,6 @@ function getFailedLumaSyncParticipantMeta(application: AdminApplicationRecord) {
   }
 }
 
-function getDecisionButtonClass(tone: 'approve' | 'approve_team' | 'reject' | 'withdraw' | 'undo', isActive: boolean) {
-  const baseClass = 'inline-flex w-full items-center justify-between rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-45'
-
-  if (isActive) {
-    switch (tone) {
-      case 'approve':
-        return `${baseClass} border-success/30 bg-success/12 text-success hover:bg-success/16`
-      case 'approve_team':
-        return `${baseClass} border-success/35 bg-success/16 text-success hover:bg-success/20`
-      case 'reject':
-        return `${baseClass} border-error/30 bg-error/12 text-error hover:bg-error/16`
-      case 'withdraw':
-        return `${baseClass} border-warning/30 bg-warning/12 text-warning hover:bg-warning/16`
-    }
-  }
-
-  if (tone === 'withdraw') {
-    return `${baseClass} border-warning/20 bg-transparent text-warning hover:border-warning/40 hover:bg-warning/8 dark:border-warning/25 dark:hover:border-warning/50`
-  }
-
-  if (tone === 'undo') {
-    return `${baseClass} border-black/10 bg-white/60 text-highlighted hover:border-black/20 hover:bg-white dark:border-white/[0.10] dark:bg-white/[0.04] dark:hover:border-white/[0.20] dark:hover:bg-white/[0.08]`
-  }
-
-  return `${baseClass} border-black/8 bg-transparent text-toned hover:border-black/20 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.18] dark:hover:text-white`
-}
-
 function getAdminWithdrawalAvailability(application: AdminApplicationRecord) {
   return application.adminWithdrawal ?? {
     isAllowed: false,
@@ -666,20 +639,18 @@ const emptyState = computed(() => {
               </p>
             </div>
 
-            <button
-              type="button"
+            <AppButton
+              color="warning"
+              variant="outline"
+              size="sm"
+              :label="failedLumaSyncAlertToggleLabel"
+              :trailing-icon="isFailedLumaSyncAlertExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
               data-testid="failed-luma-sync-alert-toggle"
               :aria-expanded="isFailedLumaSyncAlertExpanded"
               aria-controls="failed-luma-sync-alert-panel"
-              class="inline-flex shrink-0 items-center gap-2 self-start rounded-full border border-current/20 px-3 py-1.5 text-sm font-medium text-current transition hover:bg-current/10"
+              class="shrink-0 self-start"
               @click="toggleFailedLumaSyncAlertExpanded"
-            >
-              <span>{{ failedLumaSyncAlertToggleLabel }}</span>
-              <AppIcon
-                :name="isFailedLumaSyncAlertExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                class="size-4"
-              />
-            </button>
+            />
           </div>
 
           <div
@@ -767,15 +738,13 @@ const emptyState = computed(() => {
             class="min-w-0 flex-1 md:min-w-[28rem]"
           />
 
-          <button
+          <AppButton
             v-if="showApprovedAttendance"
-            type="button"
+            :color="checkedInOnly ? 'success' : 'neutral'"
+            :variant="checkedInOnly ? 'soft' : 'outline'"
             data-testid="admin-approved-checked-in-filter"
             :aria-pressed="checkedInOnly"
-            class="inline-flex h-[46px] min-w-max shrink-0 items-center justify-center gap-2 rounded-lg border px-3 py-0 text-sm font-medium transition"
-            :class="checkedInOnly
-              ? 'border-success/30 bg-success/12 text-success hover:bg-success/16'
-              : 'border-black/8 bg-transparent text-toned hover:border-black/20 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.18] dark:hover:text-white'"
+            class="h-[46px] min-w-max shrink-0 rounded-lg"
             @click="checkedInOnly = !checkedInOnly"
           >
             <span
@@ -790,45 +759,33 @@ const emptyState = computed(() => {
               />
             </span>
             <span>Checked in</span>
-          </button>
+          </AppButton>
 
           <div
             v-if="showTrackFilter"
             class="flex w-full max-w-full flex-wrap items-center gap-2 rounded-xl border border-black/8 bg-black/4 p-1 dark:border-white/[0.08] dark:bg-white/[0.04]"
             aria-label="Approved participant track filter"
           >
-            <button
-              type="button"
+            <AppFilterButton
               data-testid="admin-approved-track-filter-all"
-              class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-2 text-[13px] transition-colors sm:grow-0 sm:basis-auto"
-              :class="!hasTrackFilter ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
+              :pressed="!hasTrackFilter"
+              :count="approvedTrackAllCount"
+              class="py-2 sm:min-w-max sm:justify-between"
               @click="selectTrackFilter(allSelectedTrackFilterValue)"
             >
-              <span>All</span>
-              <span
-                class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-                :class="!hasTrackFilter ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
-              >
-                {{ approvedTrackAllCount }}
-              </span>
-            </button>
-            <button
+              All
+            </AppFilterButton>
+            <AppFilterButton
               v-for="track in approvedTrackFilterOptions"
               :key="track.id"
-              type="button"
               :data-testid="`admin-approved-track-filter-${track.id}`"
-              class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-2 text-[13px] transition-colors sm:grow-0 sm:basis-auto"
-              :class="activeSelectedTrackId === track.id ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
+              :pressed="activeSelectedTrackId === track.id"
+              :count="track.count"
+              class="py-2 sm:min-w-max sm:justify-between"
               @click="selectTrackFilter(track.filterValue)"
             >
               <span class="truncate">{{ track.name }}</span>
-              <span
-                class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-                :class="activeSelectedTrackId === track.id ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
-              >
-                {{ track.count }}
-              </span>
-            </button>
+            </AppFilterButton>
           </div>
 
           <label
@@ -1060,14 +1017,15 @@ const emptyState = computed(() => {
                         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                           Proof links
                         </p>
-                        <button
+                        <AppButton
                           v-if="shouldShowProofOfExecutionToggle(applicant)"
-                          type="button"
-                          class="shrink-0 text-[12px] font-medium text-highlighted transition-colors hover:text-toned dark:text-white dark:hover:text-[#D9D9D9]"
+                          color="neutral"
+                          variant="ghost"
+                          size="xs"
                           @click="toggleApplicationSection(getApplicationSectionKey(applicant.application.id, 'proof'))"
                         >
                           {{ isApplicationSectionExpanded(getApplicationSectionKey(applicant.application.id, 'proof')) ? 'Show less' : `Show all ${getProofOfExecutionLinks(applicant).length}` }}
-                        </button>
+                        </AppButton>
                       </div>
                       <div class="space-y-1.5">
                         <a
@@ -1098,14 +1056,15 @@ const emptyState = computed(() => {
                         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                           Why this event
                         </p>
-                        <button
+                        <AppButton
                           v-if="shouldShowWhyThisEventToggle(applicant)"
-                          type="button"
-                          class="shrink-0 text-[12px] font-medium text-highlighted transition-colors hover:text-toned dark:text-white dark:hover:text-[#D9D9D9]"
+                          color="neutral"
+                          variant="ghost"
+                          size="xs"
                           @click="toggleApplicationSection(getApplicationSectionKey(applicant.application.id, 'motivation'))"
                         >
                           {{ isApplicationSectionExpanded(getApplicationSectionKey(applicant.application.id, 'motivation')) ? 'Show less' : 'Show more' }}
-                        </button>
+                        </AppButton>
                       </div>
                       <p class="mt-2 whitespace-pre-line text-sm leading-6 text-toned">
                         {{ getVisibleWhyThisEvent(applicant) }}
@@ -1132,122 +1091,73 @@ const emptyState = computed(() => {
                     {{ getAdminWithdrawalAvailability(applicant.application).reason }}
                   </p>
 
-                  <button
+                  <AppButton
                     v-if="view === 'applications' && applicant.application.status === 'submitted'"
-                    type="button"
+                    :color="hasAdminApplicationReviewApplicantApprovalSelected(applicant, group) ? 'success' : 'neutral'"
+                    :aria-pressed="hasAdminApplicationReviewApplicantApprovalSelected(applicant, group)"
+                    variant="soft"
+                    icon="i-lucide-thumbs-up"
+                    label="Approve"
+                    class="w-full flex-row-reverse justify-between"
                     :data-testid="`admin-application-approve-${applicant.application.id}`"
-                    :class="getDecisionButtonClass('approve', hasAdminApplicationReviewApplicantApprovalSelected(applicant, group))"
-                    :disabled="pendingActionKey !== null && pendingActionKey !== stageDecisionActionKey(applicant.application.id, 'approved')"
+                    :loading="pendingActionKey === stageDecisionActionKey(applicant.application.id, 'approved')"
+                    :disabled="pendingActionKey !== null"
                     @click="emit('approve', applicant.application)"
-                  >
-                    <span>Approve</span>
-                    <AppIcon
-                      v-if="pendingActionKey === stageDecisionActionKey(applicant.application.id, 'approved')"
-                      name="i-lucide-loader-circle"
-                      class="size-4 animate-spin"
-                    />
-                    <AppIcon
-                      v-else
-                      name="i-lucide-thumbs-up"
-                      class="size-4"
-                    />
-                  </button>
+                  />
 
-                  <button
+                  <AppButton
                     v-if="view === 'applications' && applicant.application.status === 'submitted' && canApproveAdminApplicationReviewGroup(group)"
-                    type="button"
+                    :color="hasAdminApplicationReviewGroupApprovalSelected(group) ? 'success' : 'neutral'"
+                    :aria-pressed="hasAdminApplicationReviewGroupApprovalSelected(group)"
+                    variant="soft"
+                    icon="i-lucide-users-round"
+                    label="Approve Team"
+                    class="w-full flex-row-reverse justify-between"
                     :data-testid="`admin-application-approve-team-${applicant.application.id}`"
-                    :class="getDecisionButtonClass('approve_team', hasAdminApplicationReviewGroupApprovalSelected(group))"
-                    :disabled="pendingActionKey !== null && pendingActionKey !== stageGroupApprovalActionKey(group)"
+                    :loading="pendingActionKey === stageGroupApprovalActionKey(group)"
+                    :disabled="pendingActionKey !== null"
                     @click="emit('approveTeam', group.applicants.map(groupApplicant => groupApplicant.application))"
-                  >
-                    <span>Approve Team</span>
-                    <span
-                      v-if="pendingActionKey === stageGroupApprovalActionKey(group)"
-                      class="flex items-center gap-1"
-                    >
-                      <AppIcon
-                        name="i-lucide-loader-circle"
-                        class="size-4 animate-spin"
-                      />
-                    </span>
-                    <span
-                      v-else
-                      class="flex items-center gap-1"
-                    >
-                      <AppIcon
-                        name="i-lucide-thumbs-up"
-                        class="size-4"
-                      />
-                      <AppIcon
-                        name="i-lucide-thumbs-up"
-                        class="size-4"
-                      />
-                    </span>
-                  </button>
+                  />
 
-                  <button
+                  <AppButton
                     v-if="view === 'applications' && applicant.application.status === 'submitted'"
-                    type="button"
+                    :color="hasApplicantRejectionSelected(applicant) ? 'error' : 'neutral'"
+                    :aria-pressed="hasApplicantRejectionSelected(applicant)"
+                    variant="soft"
+                    icon="i-lucide-thumbs-down"
+                    label="Reject"
+                    class="w-full flex-row-reverse justify-between"
                     :data-testid="`admin-application-reject-${applicant.application.id}`"
-                    :class="getDecisionButtonClass('reject', hasApplicantRejectionSelected(applicant))"
-                    :disabled="pendingActionKey !== null && pendingActionKey !== stageDecisionActionKey(applicant.application.id, 'rejected')"
+                    :loading="pendingActionKey === stageDecisionActionKey(applicant.application.id, 'rejected')"
+                    :disabled="pendingActionKey !== null"
                     @click="emit('reject', applicant.application)"
-                  >
-                    <span>Reject</span>
-                    <AppIcon
-                      v-if="pendingActionKey === stageDecisionActionKey(applicant.application.id, 'rejected')"
-                      name="i-lucide-loader-circle"
-                      class="size-4 animate-spin"
-                    />
-                    <AppIcon
-                      v-else
-                      name="i-lucide-thumbs-down"
-                      class="size-4"
-                    />
-                  </button>
+                  />
 
-                  <button
+                  <AppButton
                     v-if="shouldShowWithdrawAction(applicant.application)"
-                    type="button"
+                    color="warning"
+                    variant="outline"
+                    icon="i-lucide-undo-2"
+                    label="Withdraw"
+                    class="w-full flex-row-reverse justify-between"
                     :data-testid="`admin-application-withdraw-${applicant.application.id}`"
-                    :class="getDecisionButtonClass('withdraw', false)"
-                    :disabled="!getAdminWithdrawalAvailability(applicant.application).isAllowed || (pendingActionKey !== null && pendingActionKey !== `withdraw:${applicant.application.id}`)"
+                    :loading="pendingActionKey === `withdraw:${applicant.application.id}`"
+                    :disabled="!getAdminWithdrawalAvailability(applicant.application).isAllowed || pendingActionKey !== null"
                     @click="emit('withdraw', applicant.application)"
-                  >
-                    <span>Withdraw</span>
-                    <AppIcon
-                      v-if="pendingActionKey === `withdraw:${applicant.application.id}`"
-                      name="i-lucide-loader-circle"
-                      class="size-4 animate-spin"
-                    />
-                    <AppIcon
-                      v-else
-                      name="i-lucide-undo-2"
-                      class="size-4"
-                    />
-                  </button>
+                  />
 
-                  <button
+                  <AppButton
                     v-if="shouldShowUndoWithdrawalAction(applicant.application)"
-                    type="button"
+                    color="neutral"
+                    variant="outline"
+                    icon="i-lucide-rotate-ccw"
+                    label="Undo"
+                    class="w-full flex-row-reverse justify-between"
                     :data-testid="`admin-application-undo-withdrawal-${applicant.application.id}`"
-                    :class="getDecisionButtonClass('undo', false)"
-                    :disabled="pendingActionKey !== null && pendingActionKey !== `undo-withdrawal:${applicant.application.id}`"
+                    :loading="pendingActionKey === `undo-withdrawal:${applicant.application.id}`"
+                    :disabled="pendingActionKey !== null"
                     @click="emit('undoWithdrawal', applicant.application)"
-                  >
-                    <span>Undo</span>
-                    <AppIcon
-                      v-if="pendingActionKey === `undo-withdrawal:${applicant.application.id}`"
-                      name="i-lucide-loader-circle"
-                      class="size-4 animate-spin"
-                    />
-                    <AppIcon
-                      v-else
-                      name="i-lucide-rotate-ccw"
-                      class="size-4"
-                    />
-                  </button>
+                  />
                 </div>
               </article>
               <article

@@ -638,22 +638,16 @@ async function markIneligible() {
                 role="radiogroup"
                 aria-label="Pitch score"
               >
-                <button
+                <AppRatingOption
                   v-for="score in scoreOptions"
                   :key="score"
-                  type="button"
-                  role="radio"
-                  :aria-checked="pitchDraft.score === String(score)"
+                  :checked="pitchDraft.score === String(score)"
                   :disabled="actionState.pendingAction === 'complete' || actionState.pendingAction === 'start' || (!allowPitchVoteInputWhenReadonly && rubricReadonly)"
                   :data-testid="`judge-pitch-score-option-${score}`"
-                  class="rounded-lg border px-0 py-2 text-center text-[11px] font-semibold tabular-nums transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:text-xs"
-                  :class="pitchDraft.score === String(score)
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-black/8 bg-black/20 text-muted hover:border-black/14 hover:bg-white/5 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.14] dark:hover:text-white'"
                   @click="updatePitchScore(score)"
                 >
                   {{ score }}
-                </button>
+                </AppRatingOption>
               </div>
 
               <div class="flex items-center justify-between gap-3 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted sm:text-xs">

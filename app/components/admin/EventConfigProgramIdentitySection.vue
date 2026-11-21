@@ -188,32 +188,25 @@ function promptBannerImageUpload() {
             class="absolute inset-0 flex items-center justify-center gap-2 bg-black/45 transition-opacity"
             :class="props.backgroundImageUploadPending ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'"
           >
-            <button
-              type="button"
-              class="inline-flex size-9 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="props.backgroundImageUploadPending"
+            <AppButton
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-pencil"
+              :loading="props.backgroundImageUploadPending"
               :aria-label="managedBackgroundImageUrl ? 'Replace background image' : 'Upload background image'"
+              class="w-9 rounded-full bg-white/15 px-0 text-white hover:bg-white/25 hover:text-white focus-visible:ring-white/80"
               @click="promptBackgroundImageUpload"
-            >
-              <AppIcon
-                :name="props.backgroundImageUploadPending ? 'i-lucide-loader-circle' : 'i-lucide-pencil'"
-                class="size-4"
-                :class="props.backgroundImageUploadPending ? 'animate-spin' : ''"
-              />
-            </button>
-            <button
+            />
+            <AppButton
               v-if="managedBackgroundImageUrl"
-              type="button"
-              class="inline-flex size-9 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-error/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-not-allowed disabled:opacity-60"
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-trash-2"
               :disabled="props.backgroundImageUploadPending"
               aria-label="Remove uploaded background"
+              class="w-9 rounded-full bg-white/15 px-0 text-white hover:bg-error/80 hover:text-white focus-visible:ring-white/80"
               @click="emit('removeBackgroundImage')"
-            >
-              <AppIcon
-                name="i-lucide-trash-2"
-                class="size-4"
-              />
-            </button>
+            />
           </div>
         </div>
 
@@ -281,32 +274,25 @@ function promptBannerImageUpload() {
             class="absolute inset-0 flex items-center justify-center gap-2 bg-black/45 transition-opacity"
             :class="props.bannerImageUploadPending ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'"
           >
-            <button
-              type="button"
-              class="inline-flex size-9 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="props.bannerImageUploadPending"
+            <AppButton
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-pencil"
+              :loading="props.bannerImageUploadPending"
               :aria-label="managedBannerImageUrl ? 'Replace banner image' : 'Upload banner image'"
+              class="w-9 rounded-full bg-white/15 px-0 text-white hover:bg-white/25 hover:text-white focus-visible:ring-white/80"
               @click="promptBannerImageUpload"
-            >
-              <AppIcon
-                :name="props.bannerImageUploadPending ? 'i-lucide-loader-circle' : 'i-lucide-pencil'"
-                class="size-4"
-                :class="props.bannerImageUploadPending ? 'animate-spin' : ''"
-              />
-            </button>
-            <button
+            />
+            <AppButton
               v-if="managedBannerImageUrl"
-              type="button"
-              class="inline-flex size-9 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-error/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-not-allowed disabled:opacity-60"
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-trash-2"
               :disabled="props.bannerImageUploadPending"
               aria-label="Remove uploaded banner"
+              class="w-9 rounded-full bg-white/15 px-0 text-white hover:bg-error/80 hover:text-white focus-visible:ring-white/80"
               @click="emit('removeBannerImage')"
-            >
-              <AppIcon
-                name="i-lucide-trash-2"
-                class="size-4"
-              />
-            </button>
+            />
           </div>
         </div>
 

@@ -149,41 +149,28 @@ async function submitFeedback() {
                   </h3>
                 </div>
 
-                <button
-                  type="button"
-                  role="radio"
-                  :aria-checked="ratings[question.id] === eventFeedbackNotApplicableValue"
-                  class="shrink-0 rounded-lg border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:text-xs"
-                  :class="ratings[question.id] === eventFeedbackNotApplicableValue
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : isQuestionMissing(question.id)
-                      ? 'border-error/45 bg-black/20 text-error hover:border-error/55 hover:bg-white/5 hover:text-error dark:border-error/50 dark:hover:border-error/60'
-                    : 'border-black/8 bg-black/20 text-muted hover:border-black/14 hover:bg-white/5 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.14] dark:hover:text-white'"
+                <AppRatingOption
+                  :checked="ratings[question.id] === eventFeedbackNotApplicableValue"
+                  :invalid="isQuestionMissing(question.id)"
                   :disabled="isSubmitting"
+                  class="shrink-0 px-3 uppercase tracking-[0.14em]"
                   @click="updateRating(question.id, eventFeedbackNotApplicableValue)"
                 >
                   {{ eventFeedbackNotApplicableLabel }}
-                </button>
+                </AppRatingOption>
               </div>
 
               <div class="grid grid-cols-5 gap-1.5">
-                <button
+                <AppRatingOption
                   v-for="score in eventFeedbackRatingValues"
                   :key="score"
-                  type="button"
-                  role="radio"
-                  :aria-checked="ratings[question.id] === score"
-                  class="rounded-lg border px-0 py-2 text-center text-[11px] font-semibold tabular-nums transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:text-xs"
-                  :class="ratings[question.id] === score
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : isQuestionMissing(question.id)
-                      ? 'border-error/45 bg-black/20 text-error hover:border-error/55 hover:bg-white/5 hover:text-error dark:border-error/50 dark:hover:border-error/60'
-                    : 'border-black/8 bg-black/20 text-muted hover:border-black/14 hover:bg-white/5 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.14] dark:hover:text-white'"
+                  :checked="ratings[question.id] === score"
+                  :invalid="isQuestionMissing(question.id)"
                   :disabled="isSubmitting"
                   @click="updateRating(question.id, score)"
                 >
                   {{ score }}
-                </button>
+                </AppRatingOption>
               </div>
             </div>
 

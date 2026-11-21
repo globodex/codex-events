@@ -110,6 +110,13 @@ const withdrawnParticipantSummaryValue = computed(() =>
   formatParticipantMetricValue(participantStatusSummary.value.withdrawnCount)
 )
 
+const participantFilters = computed(() => [
+  { id: 'applications', label: 'New', count: submittedParticipantSummaryValue.value },
+  { id: 'approved', label: 'Approved', count: approvedParticipantSummaryValue.value },
+  { id: 'rejected', label: 'Rejected', count: rejectedParticipantSummaryValue.value },
+  { id: 'withdrawn', label: 'Withdrawn', count: withdrawnParticipantSummaryValue.value }
+] as const)
+
 const participantsLimitSummary = computed(() =>
   getParticipantsLimitSummary(participantRosterApplications.value, props.participantsLimit)
 )
@@ -125,10 +132,6 @@ const participantSummaryGridClass = computed(() => {
 
   return ''
 })
-
-function selectParticipantView(nextView: AdminApplicationReviewView) {
-  participantView.value = nextView
-}
 </script>
 
 <template>
@@ -206,58 +209,15 @@ function selectParticipantView(nextView: AdminApplicationReviewView) {
 
     <div class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex flex-col gap-4 rounded-xl p-2">
       <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <button
-          class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
-          :class="participantView === 'applications' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
-          @click="selectParticipantView('applications')"
+        <AppFilterButton
+          v-for="filter in participantFilters"
+          :key="filter.id"
+          :pressed="participantView === filter.id"
+          :count="filter.count"
+          @click="participantView = filter.id"
         >
-          <span>New</span>
-          <span
-            class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-            :class="participantView === 'applications' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
-          >
-            {{ submittedParticipantSummaryValue }}
-          </span>
-        </button>
-        <button
-          class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
-          :class="participantView === 'approved' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
-          @click="selectParticipantView('approved')"
-        >
-          <span>Approved</span>
-          <span
-            class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-            :class="participantView === 'approved' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
-          >
-            {{ approvedParticipantSummaryValue }}
-          </span>
-        </button>
-        <button
-          class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
-          :class="participantView === 'rejected' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
-          @click="selectParticipantView('rejected')"
-        >
-          <span>Rejected</span>
-          <span
-            class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-            :class="participantView === 'rejected' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
-          >
-            {{ rejectedParticipantSummaryValue }}
-          </span>
-        </button>
-        <button
-          class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
-          :class="participantView === 'withdrawn' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
-          @click="selectParticipantView('withdrawn')"
-        >
-          <span>Withdrawn</span>
-          <span
-            class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-            :class="participantView === 'withdrawn' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
-          >
-            {{ withdrawnParticipantSummaryValue }}
-          </span>
-        </button>
+          {{ filter.label }}
+        </AppFilterButton>
       </div>
     </div>
 

@@ -48,6 +48,11 @@ const attendanceFilters = [
   { id: 'not_checked_in', label: 'Not checked in' }
 ] as const
 
+const checkInDecisions = [
+  { status: 'joined', label: 'Joined', icon: 'i-lucide-check', color: 'success' },
+  { status: 'not_joined', label: 'Not joined', icon: 'i-lucide-x', color: 'error' }
+] as const
+
 type AttendanceFilter = (typeof attendanceFilters)[number]['id']
 
 const activeAttendanceFilter = ref<AttendanceFilter>('all')
@@ -273,18 +278,6 @@ function isCertificateRevocationActionDisabled(application: AdminApplicationReco
   return pendingActionKey.value.length > 0 && !isCertificateRevocationActionPending(application, revoked)
 }
 
-function getCertificateDecisionButtonClass(status: ApplicationCheckInOverrideStatus, isActive: boolean) {
-  const baseClass = 'inline-flex w-full items-center justify-between rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-45'
-
-  if (isActive) {
-    return status === 'joined'
-      ? `${baseClass} border-success/30 bg-success/12 text-success hover:bg-success/16`
-      : `${baseClass} border-error/30 bg-error/12 text-error hover:bg-error/16`
-  }
-
-  return `${baseClass} border-black/8 bg-transparent text-toned hover:border-black/20 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.18] dark:hover:text-white`
-}
-
 function getParticipantIdentityLabel(application: AdminApplicationRecord) {
   if (application.user?.displayName && application.user?.email && application.user.displayName !== application.user.email) {
     return `${application.user.displayName} - ${application.user.email}`
@@ -345,25 +338,16 @@ function formatCheckedInTimestamp(application: AdminApplicationRecord) {
       <section class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex flex-col gap-4 rounded-xl p-2">
         <div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div class="flex min-w-0 flex-wrap items-center gap-2">
-            <button
+            <AppFilterButton
               v-for="filter in attendanceFilterTabs"
               :key="filter.id"
-              type="button"
-              class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
-              :class="activeAttendanceFilter === filter.id
-                ? 'bg-black text-white font-medium dark:bg-white dark:text-black'
-                : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
+              :pressed="activeAttendanceFilter === filter.id"
+              :count="filter.count"
               :data-testid="`certificates-filter-${filter.id}`"
               @click="activeAttendanceFilter = filter.id"
             >
-              <span>{{ filter.label }}</span>
-              <span
-                class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-                :class="activeAttendanceFilter === filter.id ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
-              >
-                {{ filter.count }}
-              </span>
-            </button>
+              {{ filter.label }}
+            </AppFilterButton>
           </div>
 
           <div class="flex shrink-0 flex-col gap-2 sm:items-end">
@@ -506,44 +490,30 @@ function formatCheckedInTimestamp(application: AdminApplicationRecord) {
             </div>
 
             <div class="grid gap-2 self-center xl:pl-2">
-              <button
-                type="button"
-                :class="getCertificateDecisionButtonClass('joined', application.checkInOverrideStatus === 'joined')"
-                :disabled="isCheckInActionDisabled(application, 'joined')"
-                :data-testid="`certificates-mark-joined-${application.userId}`"
-                @click="overrideCheckIn(application, 'joined')"
+              <AppButton
+                v-for="decision in checkInDecisions"
+                :key="decision.status"
+                :color="application.checkInOverrideStatus === decision.status ? decision.color : 'neutral'"
+                :variant="application.checkInOverrideStatus === decision.status ? 'soft' : 'outline'"
+                :label="decision.label"
+                :disabled="isCheckInActionDisabled(application, decision.status)"
+                :aria-pressed="application.checkInOverrideStatus === decision.status"
+                :data-testid="`certificates-mark-${decision.status.replace('_', '-')}-${application.userId}`"
+                class="w-full justify-between px-3"
+                @click="overrideCheckIn(application, decision.status)"
               >
-                <span>Joined</span>
-                <AppIcon
-                  v-if="isCheckInActionPending(application, 'joined')"
-                  name="i-lucide-loader-circle"
-                  class="size-4 animate-spin"
-                />
-                <AppIcon
-                  v-else
-                  name="i-lucide-check"
-                  class="size-4"
-                />
-              </button>
-              <button
-                type="button"
-                :class="getCertificateDecisionButtonClass('not_joined', application.checkInOverrideStatus === 'not_joined')"
-                :disabled="isCheckInActionDisabled(application, 'not_joined')"
-                :data-testid="`certificates-mark-not-joined-${application.userId}`"
-                @click="overrideCheckIn(application, 'not_joined')"
-              >
-                <span>Not joined</span>
-                <AppIcon
-                  v-if="isCheckInActionPending(application, 'not_joined')"
-                  name="i-lucide-loader-circle"
-                  class="size-4 animate-spin"
-                />
-                <AppIcon
-                  v-else
-                  name="i-lucide-x"
-                  class="size-4"
-                />
-              </button>
+                <template #trailing>
+                  <AppIcon
+                    v-if="isCheckInActionPending(application, decision.status)"
+                    name="i-lucide-loader-circle"
+                    class="animate-spin"
+                  />
+                  <AppIcon
+                    v-else
+                    :name="decision.icon"
+                  />
+                </template>
+              </AppButton>
               <AppButton
                 v-if="canViewCertificate(application)"
                 color="neutral"

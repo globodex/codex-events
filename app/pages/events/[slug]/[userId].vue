@@ -252,64 +252,62 @@ useHead({
         </NuxtLink>
 
         <div class="flex items-center gap-2 sm:gap-3">
-          <button
-            type="button"
-            class="certificate-action-button"
+          <AppButton
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-link"
+            class="certificate-action-button h-auto"
             data-testid="certificate-copy-link"
             aria-label="Copy certificate link"
             title="Copy link"
             @click="copyCertificateLink"
           >
-            <AppIcon
-              name="i-lucide-link"
-              class="size-4"
-            />
             <span class="hidden sm:inline">Copy link</span>
-          </button>
+          </AppButton>
 
-          <a
-            :href="`${certificateApiBasePath}/certificate.pdf${previewSearch}`"
-            class="certificate-action-button"
+          <AppButton
+            :to="`${certificateApiBasePath}/certificate.pdf${previewSearch}`"
+            external
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-file-text"
+            class="certificate-action-button h-auto"
             data-testid="certificate-download-pdf"
             aria-label="Download certificate PDF"
             title="PDF"
           >
-            <AppIcon
-              name="i-lucide-file-text"
-              class="size-4"
-            />
             <span class="hidden sm:inline">PDF</span>
-          </a>
+          </AppButton>
 
-          <a
-            :href="`${certificateApiBasePath}/certificate.png${previewSearch ? `${previewSearch}&download=1` : '?download=1'}`"
-            class="certificate-action-button"
+          <AppButton
+            :to="`${certificateApiBasePath}/certificate.png${previewSearch ? `${previewSearch}&download=1` : '?download=1'}`"
+            external
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-image"
+            class="certificate-action-button h-auto"
             data-testid="certificate-download-image"
             aria-label="Download certificate image"
             title="Image"
           >
-            <AppIcon
-              name="i-lucide-image"
-              class="size-4"
-            />
             <span class="hidden sm:inline">Image</span>
-          </a>
+          </AppButton>
 
-          <a
-            :href="linkedInAddToProfileUrl"
-            class="certificate-action-button"
+          <AppButton
+            :to="linkedInAddToProfileUrl"
+            external
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-linkedin"
+            class="certificate-action-button h-auto"
             data-testid="certificate-add-linkedin"
             aria-label="Add certificate to LinkedIn profile"
             title="Add to LinkedIn"
             target="_blank"
             rel="noopener noreferrer"
           >
-            <AppIcon
-              name="i-lucide-linkedin"
-              class="size-4"
-            />
             <span class="hidden sm:inline">Add to LinkedIn</span>
-          </a>
+          </AppButton>
         </div>
       </div>
 

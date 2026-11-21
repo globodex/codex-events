@@ -1171,19 +1171,16 @@ useSeoMeta({
             role="tablist"
             class="account-event-tab-list flex items-center gap-5 overflow-x-auto"
           >
-            <NuxtLink
+            <AppSectionTab
               v-for="tab in visibleTabs"
               :id="`account-tab-${tab.id}`"
               :key="tab.id"
               :to="tab.to"
-              role="tab"
-              :aria-selected="activeSection === tab.id"
+              :selected="activeSection === tab.id"
               :aria-controls="`account-tab-panel-${tab.id}`"
-              class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
-              :class="activeSection === tab.id ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
             >
               {{ tab.label }}
-            </NuxtLink>
+            </AppSectionTab>
           </nav>
         </div>
       </AppContainer>
