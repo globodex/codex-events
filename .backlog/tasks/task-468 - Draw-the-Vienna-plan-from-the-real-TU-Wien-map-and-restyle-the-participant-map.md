@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-11-22T12:06:00Z'
-updated_date: '2026-11-22T12:57:00Z'
+updated_date: '2026-11-22T13:00:00Z'
 labels:
   - build-day
 milestone: m-3
@@ -64,6 +64,8 @@ Participant map: the selected room is filled with the primary color and its name
 Closest analog: the existing AccountEventProgramFloorPlan and AdminBuilderFloorPlan molecules were extended; no new component.
 Vienna preview: one plan 'TU Wien · Ground floor', drawn from the TUW Maps pictures in MrLesk/codex-build-vienna (floor-plans/wegweiser-route-*.pdf) with a script outside the repository: overlays removed, both pictures merged, walls and rooms redrawn in the site's neutral colors, transparent outside, soft fade where the building goes on to the west, street names Karlsplatz, Karlsgasse, Paniglgasse. Rooms: Main entrance, Check-in (at the finish flag, behind the wing door in front of room 03), U1-1 to U1-7, Catering (the two small rooms between U1-2 and U1-3, as on the first map), WC, Main room, Paniglgasse entrance. Routes: Karlsplatz main entrance to the Main room past check-in, main entrance to check-in, Paniglgasse entrance to check-in.
 Decision by Alex on 2026-11-22: one map only. A first attempt with two plans (way in, event rooms) and a centered narrow map was rejected ('who said I want different dropdowns and the map moved to the right').
+
+After Alex's review of the single plan (2026-11-22, 'this is much better'): the preview agenda's opening item is split so check-in is obvious. 'Doors open and check-in' (09:30, 30 min) links to Check-in and shows the route from the Karlsplatz main entrance; 'Setup help and kickoff' (10:00, 40 min) links to the Main room, whose route now starts at check-in. This is event content in the local preview, not code.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
