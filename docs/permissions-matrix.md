@@ -271,10 +271,10 @@ Event challenge permissions apply to every event type.
 | Action | Approved User | Staff | Event Admin | Platform Admin |
 | --- | --- | --- | --- | --- |
 | Write, order, publish, and remove challenges | No | No | Yes | Yes |
-| Read published challenges in the account event workspace | Yes, after finishing the check-in flow | Yes | Yes | Yes |
+| Read published challenges in the account event workspace | Yes | Yes | Yes | Yes |
 | Read draft challenges | No | No | Yes, in the event builder | Yes, in the event builder |
 
-No other actor receives challenge content. This includes a user with a submitted, rejected, or withdrawn application, an approved participant who has not finished the check-in flow, and a judge without an approved application.
+No other actor receives challenge content. This includes a user with a submitted, rejected, or withdrawn application and a judge without an approved application.
 
 ## Event Photo Gallery
 
@@ -345,7 +345,7 @@ required-document changes take effect on the next MCP request.
 - Event admins and platform admins can view event-wide operational data.
 - The completed published-projects section includes only opted-in locked non-winning submissions and remains visually separate from the winners section.
 - The participant-facing teams directory remains visible to workspace users after team formation closes, but join actions remain state-gated.
-- Published event challenges are visible to staff, event admins, platform admins, and approved participants who finished the check-in flow. Draft challenges are visible only to event admins and platform admins.
+- Published event challenges are visible to staff, event admins, platform admins, and approved participants. Draft challenges are visible only to event admins and platform admins.
 - Approved participants and event staff can view only their own claimed credit values.
 - Event admins and platform admins can view credit inventory and claim records for their events.
 - Event feedback results are visible only to judges, staff, event admins, and platform admins.

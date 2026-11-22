@@ -808,21 +808,22 @@ const detailsTabHref = computed(() => `/account/events/${slug.value}?tab=details
 const agendaHref = computed(() => availableTabs.value.includes('program')
   ? `/account/events/${slug.value}?tab=program`
   : detailsTabHref.value)
-// What a checked-in participant can open, in the order the next-step card lists it.
-// Add one entry here for every new activity.
+// What a participant can open at the event, in the order the next-step card lists it.
+// The card shows every entry after check-in, and the entries that are open before check-in
+// already while the participant still has to check in. Add one entry here for every new activity.
 const participantActivities = computed(() => {
-  const activities = [{ label: 'Agenda', to: agendaHref.value }]
+  const activities = [{ label: 'Agenda', to: agendaHref.value, openBeforeCheckIn: true }]
 
   if (availableTabs.value.includes('credits')) {
-    activities.push({ label: 'Credits', to: `/account/events/${slug.value}?tab=credits` })
+    activities.push({ label: 'Credits', to: `/account/events/${slug.value}?tab=credits`, openBeforeCheckIn: false })
   }
 
   if (availableTabs.value.includes('challenges')) {
-    activities.push({ label: 'Challenges', to: `/account/events/${slug.value}?tab=challenges` })
+    activities.push({ label: 'Challenges', to: `/account/events/${slug.value}?tab=challenges`, openBeforeCheckIn: true })
   }
 
   if (availableTabs.value.includes('gallery')) {
-    activities.push({ label: 'Photos', to: `/account/events/${slug.value}?tab=gallery` })
+    activities.push({ label: 'Photos', to: `/account/events/${slug.value}?tab=gallery`, openBeforeCheckIn: false })
   }
 
   return activities
@@ -1277,7 +1278,6 @@ useSeoMeta({
           :event-id="event.id"
           :settings="checkInFlowSettings"
           :progress="checkInFlowProgress"
-          :agenda-href="agendaHref"
           :activities="participantActivities"
           :refresh-page="refreshAccountEvent"
         />

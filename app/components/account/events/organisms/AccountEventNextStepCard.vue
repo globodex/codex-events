@@ -20,9 +20,11 @@ const props = defineProps<{
   eventId: string
   settings: CheckInFlowSettings
   progress: CheckInFlowProgress
-  agendaHref: string
-  /** What a checked-in participant can open, in the order shown. */
-  activities: Array<{ label: string, to: string }>
+  /**
+   * What the participant can open at the event, in the order shown. An activity that is open
+   * before check-in is also listed while the participant still has to check in.
+   */
+  activities: Array<{ label: string, to: string, openBeforeCheckIn: boolean }>
   /** Reads the page data again. The page does not notice a check-in by itself. */
   refreshPage: () => Promise<unknown>
 }>()
@@ -36,6 +38,8 @@ const nextStep = computed<'check-in' | 'questionnaire' | 'activities'>(() => {
 
   return hasParticipantFinishedCheckInFlow(props.progress, props.settings) ? 'activities' : 'questionnaire'
 })
+
+const activitiesBeforeCheckIn = computed(() => props.activities.filter(activity => activity.openBeforeCheckIn))
 
 const isReloading = ref(false)
 // True once the participant asked for a reload. If the card still shows the check-in step
@@ -119,12 +123,14 @@ async function sendAnswers() {
           I've checked in
         </AppButton>
         <AppButton
-          :to="agendaHref"
+          v-for="activity in activitiesBeforeCheckIn"
+          :key="activity.to"
+          :to="activity.to"
           color="neutral"
           variant="ghost"
           trailing-icon="i-lucide-arrow-right"
         >
-          View the agenda
+          {{ activity.label }}
         </AppButton>
       </div>
     </div>

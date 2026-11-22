@@ -290,11 +290,10 @@ state.
 - Challenge coverage includes saving a challenge list for every event type,
   a list with too many challenges, a link that is not `https`, a challenge
   without a title, and refusal for staff, judges, and participants; the event
-  page content for a confirmed participant before check-in, with an open
-  questionnaire, and after finishing the check-in flow, where it holds the
-  published challenges only and needs no credit claim; an event with its
-  check-in flow off; an event with only draft challenges; event staff, event
-  admins, and judges; a pending registration and a user without a
+  page content for a confirmed participant before check-in and after
+  finishing the check-in flow, where it holds the published challenges only
+  and needs no credit claim; an event with only draft challenges; event
+  staff, event admins, and judges; a pending registration and a user without a
   registration; the direct-link event shell; and the admin event of the
   settings page and of the event page, which carries drafts for the event
   builder. Unit tests cover the builder checklist lines for an unfinished
@@ -302,8 +301,8 @@ state.
   save that sends neither challenges nor the check-in flow settings, which
   only the event builder edits. Browser scenarios run on dedicated fixture
   events and cover an organizer publishing a challenge in the event builder,
-  a participant opening Challenges from the next step, and a participant
-  without the Challenges tab before check-in.
+  and a participant opening Challenges from the next step after check-in
+  and before check-in.
 - Participant photo coverage includes an upload before check-in, with an open
   questionnaire, after finishing the check-in flow without a credit claim, in
   an event without a questionnaire, with the check-in flow off, with

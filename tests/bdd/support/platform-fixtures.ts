@@ -1339,8 +1339,8 @@ function buildFixtureSql(personas: StablePersona[]) {
     // Two Build events for the challenge scenarios. The old created_at keeps them at the end of
     // the public event list.
     // 1. Check-in flow on, no questions, one published challenge and one draft. The regular user
-    //    is confirmed and checked in, so they read the challenges. The judge persona is confirmed
-    //    and not checked in, so they have no Challenges tab.
+    //    is confirmed and checked in. The judge persona is confirmed and not checked in. Both
+    //    read the published challenge.
     // 2. No challenges, with the agenda block the event builder needs before it saves. The event
     //    admin persona manages it and publishes a challenge there.
     `insert into events (
@@ -1349,7 +1349,7 @@ function buildFixtureSql(personas: StablePersona[]) {
       agenda_items_json, check_in_flow_enabled, challenges_json,
       created_by_user_id, created_at, updated_at
     ) values
-      (${sqlLiteral(fixtureChallengesEventId)}, 'build', 'Challenges Fixture Build', 'challenges-fixture-event', 'Build fixture for reading challenges after check-in.', 'Vienna', 'Austria', 'Fixture Venue', '2020-01-01T00:00:00.000Z', '2030-01-01T00:00:00.000Z', 'registration_open', 1, '[]', 1, ${sqlLiteral(JSON.stringify(fixtureChallenges))}, ${sqlLiteral(eventAdminId)}, '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z'),
+      (${sqlLiteral(fixtureChallengesEventId)}, 'build', 'Challenges Fixture Build', 'challenges-fixture-event', 'Build fixture for reading challenges.', 'Vienna', 'Austria', 'Fixture Venue', '2020-01-01T00:00:00.000Z', '2030-01-01T00:00:00.000Z', 'registration_open', 1, '[]', 1, ${sqlLiteral(JSON.stringify(fixtureChallenges))}, ${sqlLiteral(eventAdminId)}, '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z'),
       (${sqlLiteral(fixtureChallengesBuilderEventId)}, 'build', 'Challenges Builder Fixture Build', 'challenges-builder-fixture-event', 'Build fixture for publishing a challenge in the event builder.', 'Vienna', 'Austria', 'Fixture Venue', '2020-01-01T00:00:00.000Z', '2030-01-01T00:00:00.000Z', 'registration_open', 1, ${sqlLiteral(JSON.stringify(fixtureCheckInFlowAgendaItems))}, 0, '[]', ${sqlLiteral(eventAdminId)}, '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z')`,
     `insert into event_role_assignments (
       id, event_id, user_id, role, is_in_judge_pool, created_at

@@ -1,6 +1,5 @@
 import type { EventAuthorization } from '#server/auth/authorization'
 import type { events, userApplications } from '#server/database/schema'
-import { hasApplicationFinishedCheckInFlow } from '#server/domains/applications/check-in-flow'
 import { canReadEventChallenges, parseEventChallengesJson } from '#shared/domains/events/challenges'
 
 type EventRecord = typeof events.$inferSelect
@@ -27,8 +26,7 @@ export function listReadableEventChallenges(reader: {
   const mayRead = canReadEventChallenges({
     // A platform admin is an event admin of every event.
     isEventStaffOrAdmin: authorization.isEventAdmin || authorization.isStaff,
-    isApprovedParticipant: application?.status === 'approved',
-    hasFinishedCheckInFlow: application ? hasApplicationFinishedCheckInFlow(event, application) : false
+    isApprovedParticipant: application?.status === 'approved'
   })
 
   return mayRead

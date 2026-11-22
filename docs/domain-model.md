@@ -87,7 +87,7 @@ Key characteristics:
 - In the event builder, moving an agenda block changes its scheduled time. Each block keeps its duration, and the spacing between schedule positions stays in place.
 - An event can attach a private program to one public agenda block. The program has named parallel tracks with scheduled sessions. A track can have gaps, and sessions can run at the same time in different tracks. Moving the public block moves its sessions by the same amount. Shortening or removing the block requires keeping its program valid or removing the program first.
 - Confirmed participants can open the Agenda tab before check-in. While the program runs, the tab marks the session in progress with the time left and shows when the next session starts.
-- Each event can turn on a check-in flow. The account event overview then shows a confirmed participant one next step: check in at the entrance, then answer the event questionnaire when the event has one, then open the event's activities. The activities are the agenda and, when the participant can open them, the event credits, the event challenges, and the photo gallery. The check-in flow is off by default, and a completed event shows no next step.
+- Each event can turn on a check-in flow. The account event overview then shows a confirmed participant one next step: check in at the entrance, then answer the event questionnaire when the event has one, then open the event's activities. The activities are the agenda and, when the participant can open them, the event credits, the event challenges, and the photo gallery. While the participant still has to check in, the next step already links to the activities that are open before check-in: the agenda and the event challenges. The check-in flow is off by default, and a completed event shows no next step.
 - An event has a questionnaire when its check-in flow is on and it has at least one questionnaire question. The questionnaire holds up to 20 ordered custom questions with the question types and rules of Call for talks questions. Event admins and platform admins can change the questions at any time. Turning the check-in flow off keeps the stored questions.
 - Each event can offer challenges: practical tasks that participants work on during the event. See `EventChallenge`.
 - Each event can allow participant photos. Approved participants who finished the check-in flow can then add their own photos to the event photo gallery. Participant photos are off by default, and event admins and platform admins turn them on in the event builder. The setting does not depend on the check-in flow setting. See `EventPhoto`.
@@ -227,10 +227,10 @@ Rules:
 - A challenge is a draft or published. A new challenge is a draft.
 - Challenges are ordered for admin editing and participant display.
 - Event admins and platform admins write, order, publish, and remove challenges in the event builder at any time. Every challenge needs a title and instructions, also while it is a draft.
-- Published challenges appear in the Challenges tab of the account event workspace. Staff, event admins, and platform admins read them in every event. An approved participant reads them after finishing the check-in flow. In an event with its check-in flow off, that is as soon as the participant has effective attendance.
+- Published challenges appear in the Challenges tab of the account event workspace. Staff, event admins, and platform admins read them in every event. An approved participant reads them from the moment the application is approved, also before the event and without effective attendance.
 - The Challenges tab exists only for a person who can read the published challenges, and only when the event has at least one published challenge. Nobody else receives challenge content. Drafts appear only in the event builder.
 - Challenges are a list to read. The platform records nothing when a participant opens, picks, or completes a challenge.
-- Reading challenges does not depend on an event credit claim.
+- Reading challenges does not depend on the check-in flow or on an event credit claim.
 
 ### EventPhoto
 

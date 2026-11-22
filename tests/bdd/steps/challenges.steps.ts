@@ -73,9 +73,3 @@ Then('the challenge {string} should link to {string} at {string}', async ({ page
 Then('I should not see the challenge {string}', async ({ page }, title: string) => {
   await expect(page.getByRole('heading', { name: title })).toHaveCount(0)
 })
-
-Then('I should have no account event tab {string}', async ({ page }, tabLabel: string) => {
-  // The Details tab shows that the tab list has its data, so a missing tab is really missing.
-  await expect(page.getByRole('tab', { name: 'Details', exact: true })).toBeVisible()
-  await expect(page.getByRole('tab', { name: tabLabel, exact: true })).toHaveCount(0)
-})

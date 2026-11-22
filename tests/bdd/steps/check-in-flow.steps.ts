@@ -56,7 +56,7 @@ Then('my next step should be to check in at the entrance', async ({ page }) => {
 })
 
 When('I open the agenda from my next step', async ({ page }) => {
-  await nextStepCard(page).getByRole('link', { name: 'View the agenda' }).click()
+  await nextStepCard(page).getByRole('link', { name: 'Agenda' }).click()
 })
 
 Then('I should see the agenda session {string}', async ({ page }, sessionTitle: string) => {

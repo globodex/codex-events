@@ -1,6 +1,6 @@
 @task-450
 Feature: Event challenges
-  Organizers publish practical tasks for an event. A confirmed participant reads them after they finished their check-in.
+  Organizers publish practical tasks for an event. A confirmed participant reads them, also before the event.
 
   Scenario: Organizer adds and publishes a challenge in the event builder
     Given I open the event "challenges-builder-fixture-event" in the builder as its event admin
@@ -19,7 +19,8 @@ Feature: Event challenges
     And the challenge "Ship a Codex skill" should link to "Skill guide" at "https://example.com/skills"
     And I should not see the challenge "Unfinished idea"
 
-  Scenario: Participant who has not checked in has no Challenges tab
+  Scenario: Participant who has not checked in opens Challenges from the next step
     Given I open my event page of "challenges-fixture-event" as "judge"
     Then my next step should be to check in at the entrance
-    And I should have no account event tab "Challenges"
+    When I open the activity "Challenges" from my next step
+    Then I should see the challenge "Ship a Codex skill" with the instructions "Write one skill and share it with your table."

@@ -77,7 +77,8 @@ export function parseEventChallengesJson(value: string) {
  * Who may read the published challenges of an event. This is the only owner of that rule.
  *
  * - Event staff, event admins and platform admins read them in every event.
- * - A participant reads them with a confirmed registration, after finishing the check-in flow.
+ * - A participant reads them with a confirmed registration. They do not have to be checked in,
+ *   so they can get ready before the event.
  *
  * Nobody reads a draft through this rule. Drafts are shown in the event builder only.
  */
@@ -86,9 +87,6 @@ export function canReadEventChallenges(reader: {
   isEventStaffOrAdmin: boolean
   /** The person has a confirmed (approved) registration of the event. */
   isApprovedParticipant: boolean
-  /** What the check-in flow rule says about this person (`hasParticipantFinishedCheckInFlow`). */
-  hasFinishedCheckInFlow: boolean
 }) {
-  return reader.isEventStaffOrAdmin
-    || (reader.isApprovedParticipant && reader.hasFinishedCheckInFlow)
+  return reader.isEventStaffOrAdmin || reader.isApprovedParticipant
 }

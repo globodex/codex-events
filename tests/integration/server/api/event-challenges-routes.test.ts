@@ -315,23 +315,9 @@ describe('TASK-450 event challenges', () => {
   })
 
   describe('what the event page gives a confirmed participant', () => {
-    test('before check-in: no Challenges tab and no challenge', async () => {
+    test('before check-in: the published challenges in their order, without a credit claim', async () => {
       const harness = await createContext()
       await addApplication(harness)
-
-      expect(await readChallengesOnEventPage(harness, 'participant')).toEqual(noChallenges)
-    })
-
-    test('after check-in with an open questionnaire: no Challenges tab and no challenge', async () => {
-      const harness = await createContext()
-      await addCheckedInApplication(harness)
-
-      expect(await readChallengesOnEventPage(harness, 'participant')).toEqual(noChallenges)
-    })
-
-    test('after the questionnaire: the published challenges in their order, without a credit claim', async () => {
-      const harness = await createContext()
-      await addCheckedInApplication(harness, completedQuestionnaire)
 
       expect(await readChallengesOnEventPage(harness, 'participant')).toEqual(allPublishedChallenges)
       // The participant never claimed the credit of the event.
@@ -339,23 +325,9 @@ describe('TASK-450 event challenges', () => {
       expect(code!.claimedByUserId).toBeNull()
     })
 
-    test('an event without questions: the published challenges right after check-in', async () => {
-      const harness = await createContext({ questionnaireQuestionsJson: '[]' })
-      await addCheckedInApplication(harness)
-
-      expect(await readChallengesOnEventPage(harness, 'participant')).toEqual(allPublishedChallenges)
-    })
-
-    test('an event with the check-in flow off: no challenge before check-in', async () => {
-      const harness = await createContext({ checkInFlowEnabled: false })
-      await addApplication(harness)
-
-      expect(await readChallengesOnEventPage(harness, 'participant')).toEqual(noChallenges)
-    })
-
-    test('an event with the check-in flow off: the published challenges after check-in', async () => {
-      const harness = await createContext({ checkInFlowEnabled: false })
-      await addCheckedInApplication(harness)
+    test('after finishing the check-in flow: the same published challenges', async () => {
+      const harness = await createContext()
+      await addCheckedInApplication(harness, completedQuestionnaire)
 
       expect(await readChallengesOnEventPage(harness, 'participant')).toEqual(allPublishedChallenges)
     })
@@ -418,16 +390,16 @@ describe('TASK-450 event challenges', () => {
       }
     }
 
-    test('lists the Challenges tab for a participant who finished the check-in flow', async () => {
+    test('lists the Challenges tab for a confirmed participant who is not checked in', async () => {
       const harness = await createContext()
-      await addCheckedInApplication(harness, completedQuestionnaire)
+      await addApplication(harness)
 
       expect((await readDirectLinkResponse(harness, 'participant')).tabs).toContain('challenges')
     })
 
-    test('has no Challenges tab and no challenge for a participant who has not finished', async () => {
+    test('has no Challenges tab and no challenge for a participant whose registration is not confirmed', async () => {
       const harness = await createContext()
-      await addCheckedInApplication(harness)
+      await addApplication(harness, { status: 'submitted' })
 
       const { tabs, text } = await readDirectLinkResponse(harness, 'participant')
 

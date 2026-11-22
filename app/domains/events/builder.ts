@@ -818,7 +818,7 @@ export const eventBuilderSettingsGroupDefinitions: readonly EventBuilderSettings
     id: 'challenges',
     icon: 'i-lucide-target',
     title: 'Challenges',
-    description: 'Practical tasks for participants. They read published challenges after check-in.',
+    description: 'Practical tasks for participants. Confirmed participants can read the published ones.',
     appliesTo: allTypes,
     parity: false,
     // Challenges are saved with an event update, so the group needs an existing event.

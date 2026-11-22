@@ -82,7 +82,7 @@ You run three kinds of event from the same platform. Every event shares the same
 | **Approvals and decision emails** | Review applications with staged approve/reject decisions or automatic approval, and notify participants of the outcome by email. |
 | **Attendance and Luma sync** | Mark events in person, gate the venue address and Discord link to approved participants, let event staff check in participants at the entrance, and optionally verify Luma guests, confirm registrations from the Luma guest list, and sync check-ins. |
 | **Guided arrival** | Optionally show confirmed participants their next step on the event page: check in at the entrance, answer a short questionnaire written by the organizer, then open the event's activities. Staff and admins read the answers in the participant list. |
-| **Event challenges** | Publish practical tasks with instructions and resource links for an event. Participants read them on their event page after they finish their check-in. |
+| **Event challenges** | Publish practical tasks with instructions and resource links for an event. Confirmed participants read them on their event page, also before the event. |
 | **Event credits** | Offer redeemable credits — such as API or tooling credits — to approved participants from uploaded inventory. |
 | **Galleries and feedback** | Share a private event gallery, let checked-in participants add their own photos, publish selected photos, and collect anonymous post-event feedback. |
 | **Explicit roles and audit** | Platform admins, event admins, event organizers, and staff are separate actors with scoped permissions and an audit trail. |
