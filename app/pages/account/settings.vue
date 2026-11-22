@@ -199,14 +199,9 @@ useSeoMeta({
       <AppContainer class="max-w-none pb-0 pt-2 sm:pt-3">
         <div class="space-y-2 pb-4">
           <div class="flex flex-wrap items-end justify-between gap-4">
-            <div class="space-y-2">
-              <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
-                Profile settings
-              </h1>
-              <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-                Update the profile details used across your event participation and keep your account information current.
-              </p>
-            </div>
+            <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
+              Profile settings
+            </h1>
             <div
               v-if="accountEmail"
               class="flex max-w-full items-center gap-2 rounded-lg border border-black/8 bg-[#F7F7F8] px-4 py-3 dark:border-white/[0.08] dark:bg-[#171717]"
