@@ -299,9 +299,12 @@ creating new Vue components.
 
 ## Codex Events Validation
 
-Do not write tests for functions or code that has `cccc` cognitive complexity
-less than or equal to 5, unless they contain regular expressions, using
-[github.com/moznion/cccc](https://github.com/moznion/cccc).
+Before adding a unit test for a single function, run `cccc --pretty <source-file>`
+and read that function's `cognitive` score. If the score is **5 or lower**, skip
+the unit test unless the behavior being tested depends on a regular expression.
+In every case, identify a specific wrong result that existing tests would miss.
+Tests of a supported flow may exercise functions of any score.
+[cccc documentation](https://github.com/moznion/cccc#usage)
 
 For any code changes, run validation before handoff and before committing:
 
@@ -312,6 +315,11 @@ For any code changes, run validation before handoff and before committing:
 Run `bun run test:integration` and `bun run test:bdd` when the change touches
 server integrations, Auth0-backed flows, browser workflows, or other behavior
 covered by those suites.
+
+After the required code checks pass, use the `codehygiene` skill to review the
+files changed by the task. Focus on findings in the lines you changed. Apply
+suggestions that make the code easier to follow and preserve its behavior.
+[Code Hygiene instructions](https://github.com/brianbell-x/codehygiene#use)
 
 For docs-only changes, run `git diff --check`. Report any validation command
 that cannot be run and why.
