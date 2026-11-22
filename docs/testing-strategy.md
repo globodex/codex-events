@@ -106,7 +106,7 @@ BDD and the local load runner use four stable personas defined in source:
 | --- | --- | --- |
 | `platform_admin` | `platform-admin@bdd.codex-events.test` | Platform admin |
 | `event_admin` | `event-admin@bdd.codex-events.test` | Event admin for fixture events |
-| `judge` | `judge@bdd.codex-events.test` | Judge for fixture events; event staff for the staff check-in fixture event; confirmed participant of the check-in flow fixture event |
+| `judge` | `judge@bdd.codex-events.test` | Judge for fixture events; event staff for the staff check-in fixture event; confirmed participant of the check-in flow fixture event and the two credit claim fixture events |
 | `regular_user` | `regular-user@bdd.codex-events.test` | No administrative role |
 
 Each identity subject has the form:
@@ -278,6 +278,15 @@ state.
   Browser scenarios run on dedicated fixture events and cover the three next
   steps of a participant, the answers in the admin participant list, and the
   event builder setting.
+- Credit claim coverage for the check-in flow includes a refused claim before
+  check-in and with an open questionnaire, an accepted claim after the
+  questionnaire and right after check-in in an event without a questionnaire,
+  unchanged claims in an event with the check-in flow off, event staff
+  claiming without the check-in flow, a claimed value that stays visible to a
+  participant who has not finished the check-in flow, and the last value of
+  an offer. Browser scenarios run on dedicated fixture events and cover a
+  claim opened from the next step, the Credits tab of a participant who has
+  not finished the check-in flow, and an offer with no credits left.
 
 Structured operation coverage uses a fresh generated-schema module and an
 instrumented `z.fromJSONSchema` constructor. It verifies that module import

@@ -118,6 +118,10 @@ Then('my next step should still list the activity {string} after I reload the pa
   await expectActivity(page, activity)
 })
 
+When('I open the activity {string} from my next step', async ({ page }, activity: string) => {
+  await nextStepCard(page).getByRole('link', { name: activity }).click()
+})
+
 // This step signs the browser in as the event admin, so it has to be the last step of a scenario.
 Then('the event admin should read my answer {string} in the participant list', async ({ page }, answer: string) => {
   await signInAs(eventAdminPersona, page)

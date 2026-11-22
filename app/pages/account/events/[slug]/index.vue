@@ -41,6 +41,8 @@ import {
 import type { EventParticipationRankSummary } from '~/domains/events/participation'
 import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
 import type { CheckInFlowProgress, CheckInFlowSettings } from '#shared/domains/applications/check-in-flow'
+import { hasParticipantFinishedCheckInFlow } from '#shared/domains/applications/check-in-flow'
+import { resolveEventCreditClaimAccess } from '#shared/domains/credits/claim-access'
 import { buildEventCertificatePath } from '#shared/domains/events/certificates'
 import type {
   ParticipantApiDataResponse,
@@ -434,7 +436,6 @@ async function setCertificateGenerationDisabled(disabled: boolean) {
     isCertificateVisibilityPending.value = false
   }
 }
-const canClaimCredits = computed(() => applicationStatus.value === 'approved' || hasStaffCreditAccess.value)
 const tabAccess = computed(() => entryPage.value?.tabVisibility ?? pageShell.value?.tabVisibility ?? {
   availableTabs: ['overview'] as AccountEventWorkspaceTab[],
   showPrizeConfiguration: false,
@@ -871,6 +872,16 @@ const showNextStepCard = computed(() =>
   && applicationStatus.value === 'approved'
   && event.value?.state !== 'completed'
 )
+// What the credit claim rule says about this person. It decides what the Credits tab offers.
+const creditClaimAccess = computed(() => resolveEventCreditClaimAccess({
+  isEventStaff: hasStaffCreditAccess.value,
+  isApprovedParticipant: applicationStatus.value === 'approved',
+  checkInFlowEnabled: checkInFlowSettings.value.checkInFlowEnabled,
+  hasFinishedCheckInFlow: hasParticipantFinishedCheckInFlow(checkInFlowProgress.value, checkInFlowSettings.value)
+}))
+// Where the Credits tab sends a participant who has to finish the check-in flow first: the
+// overview, while it shows the next-step card.
+const creditsNextStepHref = computed(() => showNextStepCard.value ? `/account/events/${slug.value}` : null)
 const lumaSyncStatus = computed(() => participantApplication.value?.lumaSyncStatus ?? null)
 const showLumaSyncNotice = computed(() =>
   participantApplication.value?.status === 'approved'
@@ -1698,7 +1709,8 @@ useSeoMeta({
         <LazyAccountEventCreditsPanel
           :event-id="event.id"
           :can-manage="canAdmin"
-          :can-claim="canClaimCredits"
+          :claim-access="creditClaimAccess"
+          :next-step-href="creditsNextStepHref"
           :participant-credits="participantCreditOffers"
           :admin-credits="adminCreditOffers"
           @updated="refreshAccountEvent"

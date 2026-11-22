@@ -678,7 +678,7 @@ Rules:
 - Each credit code belongs to exactly one credit offer.
 - A credit code stores one redeemable value, which can be a code or a URL.
 - A credit code is either unclaimed or permanently assigned to one claiming user.
-- Only approved participants and event staff can claim event credits.
+- Only approved participants and event staff can claim event credits. In an event with its check-in flow on, an approved participant can claim only after finishing the check-in flow.
 - A claiming user can claim at most one credit code from a given credit offer.
 - Claiming a credit code permanently reveals that assigned value to the claiming user on later visits.
 - A simplified claim links each assigned code or HTTPS link to the same `EventAttendeeEligibility`. The normal manual claim operation is unavailable.
@@ -818,8 +818,12 @@ Judging applies only to Hackathon events.
 - Event credits do not depend on winner announcement or prize-redemption workflow.
 - Event admins and platform admins can manage event credits for any event type.
 - Only approved participants and event staff can claim event credits.
+- In an event with its check-in flow on, an approved participant can claim credits only after finishing the check-in flow. Until then the Credits tab shows no claim action. While an offer still has a value for the participant to claim, the tab points to the overview with the participant's next step. Event staff can claim in every event without the check-in flow. In an event with its check-in flow off, every approved participant can claim.
 - Approved participants and event staff see event credits in the account event workspace only when uploaded credit inventory exists for the event.
 - A claiming user can claim at most one uploaded value from each credit offer.
+- A claiming user keeps seeing the values they claimed. This includes an approved participant who has not finished the check-in flow.
+- Claiming credits is optional. No other event activity depends on a credit claim.
+- When every uploaded value of an offer is claimed, the offer shows that no credits are left and nobody else can claim from it. Participants continue with the other event activities.
 - Simplified-only offers remain hidden from normal participant and admin Credits views. Event admins manage giveaway names, Markdown email instructions, code or link inventory, the redirect choice, approved attendee roster, redemption URL, and QR in Settings. The displayed and copied redemption link and both QR formats use the full public URL, including scheme and domain. The builder preserves its existing sidebar and Luma controls; Preview email opens a dialog with sample values. Authenticated attendees use `/events/:slug/redeem`.
 - For a first simplified claim, the page prefills the account's saved Luma email when available and waits for the participant to confirm or edit it before redemption. The claim verifies the entered normalized email against attendee eligibility, consumes that email once, approves the application, records attendance, and atomically assigns one available value from each giveaway. Exhausted giveaways are skipped. One receipt to the account email includes all assigned values: links appear as claim links and codes as selectable text, each with its giveaway instructions. The participant is redirected to the assigned value from the selected redirect giveaway. If that giveaway is exhausted, the page confirms the claim without redirecting. If all giveaways are exhausted, no claim is made. Repeated claims keep the original values and do not queue another receipt.
 

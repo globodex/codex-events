@@ -3,6 +3,7 @@ import { formatEventDate, formatEventTime } from '~/domains/events/presentation'
 import type {
   EventCreditApiDataResponse
 } from '~/domains/credits'
+import type { EventCreditClaimAccess } from '#shared/domains/credits/claim-access'
 import type {
   AccountEventEntryAdminCreditOffer,
   AccountEventEntryParticipantCreditOffer
@@ -17,7 +18,10 @@ import { useApiClient } from '~/composables/useApiClient'
 const props = defineProps<{
   eventId: string
   canManage: boolean
-  canClaim: boolean
+  /** What the credit claim rule says about the person who looks at this panel. */
+  claimAccess: EventCreditClaimAccess
+  /** The page that shows the participant's next step. Null when no page shows one. */
+  nextStepHref: string | null
   participantCredits: AccountEventEntryParticipantCreditOffer[]
   adminCredits: AccountEventEntryAdminCreditOffer[]
 }>()
@@ -216,6 +220,18 @@ function isParticipantOfferExpanded(offerId: string) {
 function isClaimedCodeRevealed(codeId: string) {
   return revealedClaimedCodeIds.value.has(codeId)
 }
+
+// What a participant reads on an offer without a free code. "No credits left" is only true for
+// an offer that had codes; an offer without uploaded codes can still get some.
+function describeOfferWithoutFreeCode(offer: ParticipantEventCreditOffer) {
+  return offer.totalCount > 0 ? 'No credits left' : 'Not available'
+}
+
+// True when an offer that the participant has not claimed still has a free code. Only then is
+// there something to claim, so only then does the note about finishing the check-in make sense.
+const hasOfferToClaim = computed(() =>
+  participantCredits.value.some(offer => !offer.claimedCode && offer.availableCount > 0)
+)
 
 function toggleInventoryExpanded(offerId: string) {
   const nextExpandedInventoryOfferIds = new Set(expandedInventoryOfferIds.value)
@@ -448,7 +464,6 @@ async function claimOffer(offerId: string) {
     participantCredits.value = participantCredits.value.map(offer =>
       offer.id === offerId ? response.data : offer
     )
-    emit('updated')
 
     toast.add({
       title: 'Credit claimed',
@@ -458,6 +473,9 @@ async function claimOffer(offerId: string) {
   } catch (error) {
     claimErrorById[offerId] = normalizeEventCreditApiError(error).message
   } finally {
+    // Read the page again after a refused claim too: the page was out of date, for example
+    // because another participant took the last code a moment earlier.
+    emit('updated')
     claimPendingById[offerId] = false
   }
 }
@@ -966,7 +984,7 @@ async function copyCreditValue(value: string) {
     </AppCard>
 
     <AppCard
-      v-if="props.canClaim"
+      v-if="props.claimAccess !== 'cannot_claim'"
       class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
       :ui="{ body: 'p-5' }"
     >
@@ -1010,6 +1028,29 @@ async function copyCreditValue(value: string) {
           v-else
           class="grid gap-4"
         >
+          <AppAlert
+            v-if="props.claimAccess === 'must_finish_check_in_flow' && hasOfferToClaim"
+            data-testid="participant-credits-finish-check-in"
+            color="neutral"
+            variant="soft"
+            class="block"
+          >
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <p class="font-semibold text-highlighted">
+                Finish your check-in to claim credits
+              </p>
+              <AppButton
+                v-if="props.nextStepHref"
+                :to="props.nextStepHref"
+                color="neutral"
+                variant="solid"
+                trailing-icon="i-lucide-arrow-right"
+              >
+                See your next step
+              </AppButton>
+            </div>
+          </AppAlert>
+
           <article
             v-for="offer in participantCredits"
             :key="offer.id"
@@ -1040,7 +1081,7 @@ async function copyCreditValue(value: string) {
                       :color="offer.availableCount > 0 ? 'success' : 'neutral'"
                       variant="soft"
                     >
-                      {{ offer.availableCount > 0 ? 'Available' : 'Not available' }}
+                      {{ offer.availableCount > 0 ? 'Available' : describeOfferWithoutFreeCode(offer) }}
                     </AppBadge>
                   </div>
 
@@ -1148,12 +1189,11 @@ async function copyCreditValue(value: string) {
                     v-else-if="offer.availableCount === 0"
                     color="neutral"
                     variant="soft"
-                    title="Not available"
-                    description="This offer can't be redeemed right now."
+                    :title="describeOfferWithoutFreeCode(offer)"
                   />
 
                   <div
-                    v-else
+                    v-else-if="props.claimAccess === 'can_claim'"
                     class="mt-auto"
                   >
                     <AppButton

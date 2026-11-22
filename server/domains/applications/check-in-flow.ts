@@ -1,16 +1,47 @@
 import { and, eq, isNull } from 'drizzle-orm'
 
 import type { AppDatabase } from '#server/database/client'
+import type { events } from '#server/database/schema'
 import { userApplications } from '#server/database/schema'
+import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
 import {
+  hasParticipantFinishedCheckInFlow,
   questionnaireAnswerRecordsSchema,
   type QuestionnaireAnswerRecord
 } from '#shared/domains/applications/check-in-flow'
 import {
   getEmptyCustomQuestionAnswerValue,
+  parseCustomQuestionsJson,
   type CustomQuestionAnswer,
   type CustomQuestionDefinition
 } from '#shared/domains/events/custom-questions'
+
+type EventRecord = typeof events.$inferSelect
+type ApplicationRecord = typeof userApplications.$inferSelect
+
+/**
+ * True when a registration has finished the check-in flow of its event: the participant is
+ * checked in, and completed the event questionnaire when the event has one.
+ *
+ * Server code that opens something after check-in asks this function. It reads the stored event
+ * and registration and applies the one shared rule, `hasParticipantFinishedCheckInFlow`.
+ *
+ * An event with its check-in flow off has no questionnaire, so there this is true as soon as the
+ * participant is checked in. A feature that must not wait for check-in in such an event reads
+ * `event.checkInFlowEnabled` first.
+ */
+export function hasApplicationFinishedCheckInFlow(event: EventRecord, application: ApplicationRecord) {
+  return hasParticipantFinishedCheckInFlow(
+    {
+      isCheckedIn: isApplicationEffectivelyCheckedIn(application),
+      questionnaireCompletedAt: application.questionnaireCompletedAt
+    },
+    {
+      checkInFlowEnabled: event.checkInFlowEnabled,
+      questionnaireQuestions: parseCustomQuestionsJson(event.questionnaireQuestionsJson)
+    }
+  )
+}
 
 /**
  * Builds what is stored when a participant completes the questionnaire: one record per question,

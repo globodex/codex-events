@@ -350,7 +350,7 @@ An event with its check-in flow on gives every `approved` application one of thr
 - `questionnaire open`
   The participant has effective attendance, the event has a questionnaire, and the participant has not completed it. The account event overview shows the questions.
 - `finished`
-  The participant has effective attendance and has completed the questionnaire, or the event has no questionnaire. The account event overview lists the event's activities.
+  The participant has effective attendance and has completed the questionnaire, or the event has no questionnaire. The account event overview lists the event's activities, and the participant can claim event credits.
 
 Position changes:
 
@@ -573,6 +573,7 @@ Behavior:
 
 - Event credits are independent from winner prizes and do not require `winners_announced`.
 - Approved participants can claim at most one uploaded value from each event credit offer while inventory remains available.
+- In an event with its check-in flow on, an approved participant can claim only in the `finished` position of the check-in flow. Event staff can claim without it.
 - A simplified-claiming Meetup accepts redemption only during its open registration window. The first claim waits for the participant to confirm or edit the prefilled saved Luma email. A matching eligible attendee added by Luma check-in or approved CSV import moves an absent or submitted application to `approved`, assigns one available code or HTTPS link from each giveaway, records attendance in one transaction, and queues one receipt with all assigned credits to the participant's account email.
 - Exhausted giveaways are skipped. If all are exhausted, no claim or application change occurs. If the selected redirect giveaway is exhausted, the page confirms the claim and the receipt contains the remaining assigned credits. New giveaways and refills do not change previous claims.
 - A configured redemption page identifies an ended registration window as closed. Disabled or incomplete setup remains unavailable without exposing organizer configuration to participants.

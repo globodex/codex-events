@@ -42,7 +42,8 @@ const meta = {
   args: {
     eventId: 'build-day',
     canManage: false,
-    canClaim: true,
+    claimAccess: 'can_claim',
+    nextStepHref: '/account/events/build-day',
     participantCredits: [claimableOffer, claimedOffer, exhaustedOffer],
     adminCredits: []
   }
@@ -56,6 +57,17 @@ export const AvailableAndClaimed: Story = {
     docs: {
       description: {
         story: 'Expand each offer to inspect the buttons. The claimed offer has a fictional code to reveal and copy.'
+      }
+    }
+  }
+}
+
+export const CheckInNotFinished: Story = {
+  args: { claimAccess: 'must_finish_check_in_flow' },
+  parameters: {
+    docs: {
+      description: {
+        story: 'A confirmed participant who has to finish the check-in first. No offer has a claim button; the claimed code stays visible.'
       }
     }
   }

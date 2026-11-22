@@ -28,7 +28,11 @@ export const applicationOperation = defineStructuredRouteOperation({
   effect: 'read'
 }, async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
-  const { actor, database, canClaimCredits } = await requireEventCreditsViewAccess(h3Event, eventId)
+  const { actor, database, claimAccess } = await requireEventCreditsViewAccess(h3Event, eventId)
+  // Confirmed participants and event staff get their own claimed code with each offer, even
+  // while they still have to finish the check-in flow. An event admin who is neither gets the
+  // offers without a claimed code.
+  const claimantUserId = claimAccess === 'cannot_claim' ? null : actor.platformUser.id
   const offers: EventCreditOfferRecord[] = await listEventCreditOffers(database, eventId)
   const codes: EventCreditCodeRecord[] = await listEventCreditCodesForEvent(database, eventId)
   const codesByOfferId = new Map<string, EventCreditCodeRecord[]>()
@@ -43,7 +47,7 @@ export const applicationOperation = defineStructuredRouteOperation({
     offers.map(offer => serializeParticipantEventCreditOffer(
       offer,
       codesByOfferId.get(offer.id) ?? [],
-      canClaimCredits ? actor.platformUser.id : null
+      claimantUserId
     )),
     {
       total: offers.length

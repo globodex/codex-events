@@ -6,11 +6,19 @@ import { z } from 'zod'
 import { resolveEventAuthorization } from '#server/auth/authorization'
 import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
+import type { events } from '#server/database/schema'
 import { eventCreditCodes, eventCreditOffers, userApplications, users } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
+import { hasApplicationFinishedCheckInFlow } from '#server/domains/applications/check-in-flow'
 import { getVisibleEventOrThrow, routeIdParamsSchema } from '#server/domains/events'
 import { assertGuard } from '#server/domains/lifecycle-guard'
+import {
+  resolveEventCreditClaimAccess,
+  type EventCreditClaimAccess
+} from '#shared/domains/credits/claim-access'
 
+type EventRecord = typeof events.$inferSelect
+type ApplicationRecord = typeof userApplications.$inferSelect
 type EventCreditOfferRecord = typeof eventCreditOffers.$inferSelect
 type EventCreditCodeRecord = typeof eventCreditCodes.$inferSelect
 type UserRecord = typeof users.$inferSelect
@@ -232,15 +240,41 @@ async function getApprovedUserApplication(
   })
 }
 
+/**
+ * Answers the credit claim rule for one person from the stored event and registration.
+ *
+ * Every server path that lists or claims credits asks this function, so the rule is decided in
+ * one place: `resolveEventCreditClaimAccess`.
+ */
+export function getEventCreditClaimAccess(input: {
+  event: EventRecord
+  isEventStaff: boolean
+  /** The person's registration of this event in any status, when they have one. */
+  application: ApplicationRecord | null | undefined
+}): EventCreditClaimAccess {
+  const { event, application } = input
+
+  return resolveEventCreditClaimAccess({
+    isEventStaff: input.isEventStaff,
+    isApprovedParticipant: application?.status === 'approved',
+    checkInFlowEnabled: event.checkInFlowEnabled,
+    hasFinishedCheckInFlow: application ? hasApplicationFinishedCheckInFlow(event, application) : false
+  })
+}
+
 export async function requireEventCreditsViewAccess(h3Event: H3Event, eventId: string) {
   const actor = await requirePlatformActor(h3Event)
   const database = getDatabase(h3Event)
   const event = await getVisibleEventOrThrow(h3Event, eventId)
   const authorization = await resolveEventAuthorization(h3Event, eventId)
   const approvedApplication = await getApprovedUserApplication(database, eventId, actor.platformUser.id)
-  const canClaimCredits = Boolean(approvedApplication) || authorization.isStaff
+  const claimAccess = getEventCreditClaimAccess({
+    event,
+    isEventStaff: authorization.isStaff,
+    application: approvedApplication
+  })
 
-  if (!authorization.isEventAdmin && !canClaimCredits) {
+  if (!authorization.isEventAdmin && claimAccess === 'cannot_claim') {
     throw new ApiError({
       statusCode: 403,
       code: 'event_credit_access_denied',
@@ -258,7 +292,7 @@ export async function requireEventCreditsViewAccess(h3Event: H3Event, eventId: s
     event,
     authorization,
     approvedApplication,
-    canClaimCredits
+    claimAccess
   }
 }
 
@@ -269,8 +303,13 @@ export async function requireEventCreditClaimAccess(h3Event: H3Event, eventId: s
   const offer = await getEventCreditOfferOrThrow(database, eventId, creditId)
   const authorization = await resolveEventAuthorization(h3Event, eventId)
   const approvedApplication = await getApprovedUserApplication(database, eventId, actor.platformUser.id)
+  const claimAccess = getEventCreditClaimAccess({
+    event,
+    isEventStaff: authorization.isStaff,
+    application: approvedApplication
+  })
 
-  if (!approvedApplication && !authorization.isStaff) {
+  if (claimAccess === 'cannot_claim') {
     throw new ApiError({
       statusCode: 403,
       code: 'event_credit_claim_denied',
@@ -279,6 +318,18 @@ export async function requireEventCreditClaimAccess(h3Event: H3Event, eventId: s
         eventId,
         creditId,
         userId: actor.platformUser.id
+      }
+    })
+  }
+
+  if (claimAccess === 'must_finish_check_in_flow') {
+    throw new ApiError({
+      statusCode: 409,
+      code: 'event_credit_check_in_flow_unfinished',
+      message: 'Finish your check-in on the event page before you claim credits.',
+      details: {
+        eventId,
+        creditId
       }
     })
   }

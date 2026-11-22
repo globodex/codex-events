@@ -51,6 +51,8 @@ const fixtureCheckInFlowAgendaItems = [
 const fixtureCheckInFlowProgramTracks = [
   { id: 'main-room', name: 'Main room', sessions: [{ id: 'kickoff', title: 'Kickoff', details: null, startsAfterMinutes: 0, durationMinutes: 30, room: null }] }
 ]
+const fixtureCreditClaimEventId = 'event_e2e_credit_claim_fixture'
+const fixtureCreditSoldOutEventId = 'event_e2e_credit_sold_out_fixture'
 const fixtureParticipantTeamCreateEventId = 'event_e2e_participant_team_create_fixture'
 const fixtureParticipantTeamJoinEventId = 'event_e2e_participant_team_join_fixture'
 const fixtureParticipantTeamSoloEventId = 'event_e2e_participant_team_solo_fixture'
@@ -1287,6 +1289,38 @@ function buildFixtureSql(personas: StablePersona[]) {
       ('offer_check_in_flow_no_questions_fixture', ${sqlLiteral(fixtureCheckInFlowNoQuestionsEventId)}, 'Codex event credit', 'Credit for confirmed participants.', 1, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into event_credit_codes (id, credit_offer_id, value, created_at) values
       ('code_check_in_flow_no_questions_fixture', 'offer_check_in_flow_no_questions_fixture', 'BDD-CHECK-IN-FLOW-CREDIT', ${sqlLiteral(fixtureTimestamp)})`,
+    // Two Build events for the credit claim scenarios. Both have the check-in flow on, no
+    // questions, and one credit offer. The old created_at keeps them at the end of the public
+    // event list.
+    // 1. Two codes that nobody has claimed. The regular user is confirmed and checked in, so
+    //    they can claim. The judge persona is confirmed and not checked in, so they cannot yet.
+    // 2. One code that another participant has claimed, so no credits are left. The regular user
+    //    is confirmed and checked in. The judge persona is confirmed and not checked in.
+    `insert into events (
+      id, event_type, name, slug, description, city, country, address,
+      registration_opens_at, registration_closes_at, state, max_team_members,
+      agenda_items_json, check_in_flow_enabled, questionnaire_questions_json,
+      created_by_user_id, created_at, updated_at
+    ) values
+      (${sqlLiteral(fixtureCreditClaimEventId)}, 'build', 'Credit Claim Fixture Build', 'credit-claim-fixture-event', 'Build fixture for claiming credits after check-in.', 'Vienna', 'Austria', 'Fixture Venue', '2020-01-01T00:00:00.000Z', '2030-01-01T00:00:00.000Z', 'registration_open', 1, '[]', 1, '[]', ${sqlLiteral(eventAdminId)}, '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z'),
+      (${sqlLiteral(fixtureCreditSoldOutEventId)}, 'build', 'Credit Sold Out Fixture Build', 'credit-sold-out-fixture-event', 'Build fixture for an event with no credits left.', 'Vienna', 'Austria', 'Fixture Venue', '2020-01-01T00:00:00.000Z', '2030-01-01T00:00:00.000Z', 'registration_open', 1, '[]', 1, '[]', ${sqlLiteral(eventAdminId)}, '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z')`,
+    `insert into user_applications (
+      id, event_id, user_id, status, submitted_at, checked_in_at, check_in_source, created_at, updated_at
+    ) values
+      ('application_credit_claim_fixture_regular_user', ${sqlLiteral(fixtureCreditClaimEventId)}, ${sqlLiteral(regularUserId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, 'staff', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('application_credit_claim_fixture_judge', ${sqlLiteral(fixtureCreditClaimEventId)}, ${sqlLiteral(judgeId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, null, null, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('application_credit_sold_out_fixture_regular_user', ${sqlLiteral(fixtureCreditSoldOutEventId)}, ${sqlLiteral(regularUserId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, 'staff', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('application_credit_sold_out_fixture_judge', ${sqlLiteral(fixtureCreditSoldOutEventId)}, ${sqlLiteral(judgeId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, null, null, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('application_credit_sold_out_fixture_other_participant', ${sqlLiteral(fixtureCreditSoldOutEventId)}, ${sqlLiteral(judgingParticipantTwoId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, 'staff', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
+    `insert into event_credit_offers (
+      id, event_id, name, description, display_order, created_at, updated_at
+    ) values
+      ('offer_credit_claim_fixture', ${sqlLiteral(fixtureCreditClaimEventId)}, 'Codex event credit', 'Credit for checked-in participants.', 1, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('offer_credit_sold_out_fixture', ${sqlLiteral(fixtureCreditSoldOutEventId)}, 'Codex event credit', 'Credit for checked-in participants.', 1, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
+    `insert into event_credit_codes (id, credit_offer_id, value, claimed_by_user_id, claimed_at, created_at) values
+      ('code_credit_claim_fixture_1', 'offer_credit_claim_fixture', 'BDD-CREDIT-CLAIM-1', null, null, ${sqlLiteral(fixtureTimestamp)}),
+      ('code_credit_claim_fixture_2', 'offer_credit_claim_fixture', 'BDD-CREDIT-CLAIM-2', null, null, ${sqlLiteral(fixtureTimestamp)}),
+      ('code_credit_sold_out_fixture', 'offer_credit_sold_out_fixture', 'BDD-CREDIT-SOLD-OUT', ${sqlLiteral(judgingParticipantTwoId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into event_terms_documents (
       id, event_id, document_type, version, title, content, published_at, created_at
     ) values

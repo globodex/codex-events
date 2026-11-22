@@ -251,7 +251,7 @@ Event credit permissions apply to every event type.
 | Action | Approved User | Staff | Event Admin | Platform Admin |
 | --- | --- | --- | --- | --- |
 | View event credits in the account event workspace | Yes, when uploaded inventory exists | Yes, when uploaded inventory exists | Yes | Yes |
-| Claim an available credit from an offer | Yes | Yes | No | No |
+| Claim an available credit from an offer | Yes; in an event with its check-in flow on, only after finishing the check-in flow | Yes | No | No |
 | View own claimed credit values | Yes | Yes | No | No |
 | View credit inventory and claim records | No | No | Yes | Yes |
 | Create or update credit offers | No | No | Yes | Yes |

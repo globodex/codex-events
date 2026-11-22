@@ -23,6 +23,7 @@ import {
   users
 } from '#server/database/schema'
 import {
+  getEventCreditClaimAccess,
   listEventCreditCodesForEvent,
   listEventCreditOffers,
   serializeAdminEventCreditOffer,
@@ -266,8 +267,14 @@ async function loadCredits(
   context: AccountEventPageContext,
   application: ApplicationRecord | null
 ) {
-  const canClaimCredits = application?.status === 'approved' || context.authorization.isStaff
-  const [offers, codes] = canClaimCredits || context.authorization.isEventAdmin
+  // Confirmed participants and event staff get the participant offers with their own claimed
+  // codes, also while they still have to finish the check-in flow before they can claim.
+  const seesParticipantCredits = getEventCreditClaimAccess({
+    event: context.event,
+    isEventStaff: context.authorization.isStaff,
+    application
+  }) !== 'cannot_claim'
+  const [offers, codes] = seesParticipantCredits || context.authorization.isEventAdmin
     ? await Promise.all([
         listEventCreditOffers(context.database, context.event.id),
         listEventCreditCodesForEvent(context.database, context.event.id)
@@ -281,7 +288,7 @@ async function loadCredits(
     codesByOfferId.set(code.creditOfferId, existing)
   }
 
-  const participantCredits: AccountEventEntryParticipantCreditOffer[] = canClaimCredits
+  const participantCredits: AccountEventEntryParticipantCreditOffer[] = seesParticipantCredits
     ? (offers as EventCreditOfferRecord[]).map(offer => serializeParticipantEventCreditOffer(
         offer,
         codesByOfferId.get(offer.id) ?? [],
