@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Page, type Route } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import {
@@ -10,6 +10,50 @@ import { signInAs } from '../support/session-state.ts'
 
 const { When, Then } = createBdd()
 const judgeWorkspaceEventSlug = 'e2e-judge-workspace-fixture-event'
+
+const pendingJudgeInboxes = new WeakMap<Page, Promise<Route>>()
+
+When('I open the judge dashboard with a delayed inbox response', async ({ page }) => {
+  await signInAs('judge', page)
+  const held = Promise.withResolvers<Route>()
+  pendingJudgeInboxes.set(page, held.promise)
+  await page.route('**/api/account/judging', held.resolve)
+  await page.goto('/account/judging', { waitUntil: 'domcontentloaded' })
+})
+
+Then('the judge dashboard should show {string} without assignment results', async ({ page }, message: string) => {
+  await expect(page.getByText(message, { exact: true })).toBeVisible()
+  await expect(page.getByText('Active assignments', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('No judge assignments yet')).toHaveCount(0)
+})
+
+When('the judge inbox request fails', async ({ page }) => {
+  const route = await pendingJudgeInboxes.get(page)
+  if (!route) throw new Error('No judge inbox request is pending.')
+  await route.fulfill({ status: 503, json: { message: 'Judge inbox unavailable' } })
+})
+
+const directAssignmentReads = new WeakMap<Page, string[]>()
+
+When('I open the fixture blind assignment from its saved link', async ({ page }) => {
+  await signInAs('judge', page)
+  const reads: string[] = []
+  directAssignmentReads.set(page, reads)
+  page.on('request', (request) => {
+    const { pathname } = new URL(request.url())
+    if (request.method() === 'GET' && (pathname === '/api/session' || pathname.startsWith('/api/account/'))) {
+      reads.push(pathname)
+    }
+  })
+  await page.goto(`/account/events/${judgeWorkspaceEventSlug}?tab=judging&assignment=${platformFixtureIds.judgeWorkspaceAssignmentId}`)
+})
+
+Then('the assignment should load with one session read and one assignment read', async ({ page }) => {
+  expect(directAssignmentReads.get(page)).toEqual([
+    '/api/session',
+    `/api/account/events/${judgeWorkspaceEventSlug}/judging/assignments/${platformFixtureIds.judgeWorkspaceAssignmentId}`
+  ])
+})
 
 async function waitForJudgeWorkspaceInbox(page: Page) {
   await expect(page.getByText('Active assignments', { exact: true })).toBeVisible({ timeout: 15_000 })

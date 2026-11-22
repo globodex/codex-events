@@ -33,3 +33,16 @@ Feature: Public event discovery
   Scenario: Signed-in public event detail keeps the signed-out HTML payload
     When I compare the signed-out and signed-in public event documents for the fixture event
     Then the signed-in public event payload should match the signed-out payload
+
+  Scenario Outline: Event registration is available before the account menu is ready
+    Given I open the fixture event as a "<visitor>" with the session response held
+    Then the public event document should remain publicly cacheable
+    And the event offers registration without showing account controls before the session is known
+    When the held session check "<outcome>"
+    Then the event header shows "<control>" after one session check and the registration link stays the same
+
+    Examples:
+      | visitor          | outcome  | control                    |
+      | returning member | succeeds | Open profile menu          |
+      | guest            | succeeds | Sign in                    |
+      | returning member | fails    | Retry loading account menu |

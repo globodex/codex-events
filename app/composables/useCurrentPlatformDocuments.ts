@@ -14,18 +14,16 @@ interface CurrentPlatformDocuments {
 }
 
 export function useCurrentPlatformDocuments() {
-  const request = useApiResponse<CurrentPlatformDocuments | null>(
+  const request = useApiResponse<CurrentPlatformDocuments>(
     'current-platform-documents',
     '/api/platform-documents/current',
     {
-      cacheScope: 'public',
-      default: () => null
+      cacheScope: 'public'
     }
   )
 
   return {
     ...request,
-    documents: computed(() => request.data.value ?? null),
     privacyPolicyDocument: computed(() => request.data.value?.privacy_policy ?? null),
     platformTermsDocument: computed(() => request.data.value?.platform_terms ?? null)
   }

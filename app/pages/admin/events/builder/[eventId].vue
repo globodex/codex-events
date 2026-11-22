@@ -136,6 +136,7 @@ async function saveEvent() {
 
   submitError.value = ''
   isSubmitting.value = true
+  const submittedSnapshot = builder.draftSnapshot.value
 
   try {
     await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}`, {
@@ -143,6 +144,10 @@ async function saveEvent() {
       body: builder.buildPatchBody()
     })
     clearAgendaReads(event.slug, true)
+    if (currentEvent.value?.id !== event.id) {
+      return
+    }
+    builder.markSaved(submittedSnapshot)
 
     toast.add({
       title: 'Event updated',
@@ -151,7 +156,6 @@ async function saveEvent() {
     })
 
     await settingsRequest.refresh()
-    builder.resetBaseline()
   } catch (error) {
     submitError.value = normalizeApiError(error).message
   } finally {

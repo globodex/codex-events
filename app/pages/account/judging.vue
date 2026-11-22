@@ -1,52 +1,28 @@
 <script setup lang="ts">
 import AccountEventDashboardList from '~/components/account/AccountEventDashboardList.vue'
 import { formatEventLocation, getEventDashboardTeamSizeMetaItems } from '~/domains/events/presentation'
-import type { JudgeDashboardAssignmentSummary } from '~/domains/judging/workspace'
-
-import {
-  filterExplicitJudgeEvents,
-  getJudgeEventDashboardCopy
-} from '~/domains/judging/workspace'
+import type { AccountJudgeInboxPage } from '#shared/domains/events/account-event-judging-page'
+import { getJudgeEventDashboardCopy } from '~/domains/judging/workspace'
 
 definePageMeta({
   middleware: ['require-judge-dashboard']
 })
 
-const workspace = useJudgeWorkspace()
-
-const explicitJudgeEvents = computed(() =>
-  filterExplicitJudgeEvents(workspace.events.data.value ?? [], workspace.actor.value)
-)
-const assignmentSummaryByEventId = computed(() => {
-  const summaryByEventId = new Map<string, JudgeDashboardAssignmentSummary>()
-
-  for (const group of workspace.inboxGroups.value) {
-    summaryByEventId.set(group.event.id, {
-      total: group.assignments.length,
-      inReview: group.assignments.filter(assignment => assignment.status === 'judge_started').length,
-      ready: group.assignments.filter(assignment => assignment.status === 'assigned').length,
-      ineligible: group.assignments.filter(assignment => assignment.ineligibilityStatus === 'ineligible').length,
-      blind: group.assignments.filter(assignment => assignment.reviewStage === 'blind_review').length,
-      pitch: group.assignments.filter(assignment => assignment.reviewStage === 'pitch_review').length
-    })
-  }
-
-  return summaryByEventId
-})
-
-const assignmentCount = computed(() =>
-  workspace.inboxGroups.value.reduce((total, group) => total + group.assignments.length, 0)
-)
-const inProgressCount = computed(() =>
-  workspace.inboxGroups.value.reduce(
-    (total, group) => total + group.assignments.filter(assignment => assignment.status === 'judge_started').length,
-    0
-  )
+const { data: inbox, error } = useApiResponse<AccountJudgeInboxPage>(
+  'judge-workspace-inbox',
+  '/api/account/judging',
+  { server: false }
 )
 const listItems = computed(() =>
-  explicitJudgeEvents.value.map((event) => {
-    const summary = assignmentSummaryByEventId.value.get(event.id)
-    const dashboardCopy = getJudgeEventDashboardCopy(event, summary)
+  (inbox.value?.groups ?? []).map(({ event, assignments }) => {
+    const dashboardCopy = getJudgeEventDashboardCopy(event, {
+      total: assignments.length,
+      inReview: assignments.filter(assignment => assignment.status === 'judge_started').length,
+      ready: assignments.filter(assignment => assignment.status === 'assigned').length,
+      ineligible: assignments.filter(assignment => assignment.ineligibilityStatus === 'ineligible').length,
+      blind: assignments.filter(assignment => assignment.reviewStage === 'blind_review').length,
+      pitch: assignments.filter(assignment => assignment.reviewStage === 'pitch_review').length
+    })
 
     return {
       id: event.id,
@@ -94,15 +70,15 @@ useSeoMeta({
 
     <AppContainer class="max-w-none space-y-6 pt-6">
       <AppAlert
-        v-if="workspace.error.value"
+        v-if="error"
         color="error"
         variant="soft"
         title="Judge dashboard unavailable"
-        :description="workspace.error.value.message"
+        :description="error.message"
       />
 
       <AppAlert
-        v-else-if="workspace.status.value === 'pending'"
+        v-else-if="!inbox"
         color="neutral"
         variant="soft"
         title="Loading judge dashboard"
@@ -116,7 +92,7 @@ useSeoMeta({
               Judge events
             </p>
             <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
-              {{ explicitJudgeEvents.length }}
+              {{ inbox.groups.length }}
             </p>
           </div>
 
@@ -125,7 +101,7 @@ useSeoMeta({
               Active assignments
             </p>
             <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
-              {{ assignmentCount }}
+              {{ inbox.assignmentCount }}
             </p>
           </div>
 
@@ -134,7 +110,7 @@ useSeoMeta({
               In review
             </p>
             <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
-              {{ inProgressCount }}
+              {{ inbox.inProgressCount }}
             </p>
           </div>
         </section>

@@ -3,18 +3,9 @@ import type {
   AccountEventEntryAccess,
   AccountEventEntryEvent,
   AccountEventEntryPage,
-  AccountEventEntryParticipantCreditOffer,
-  AccountEventEntryParticipation,
-  AccountEventEntryRankSummary,
-  AccountEventEntryTalkProposal,
-  AccountEventEntryTalkProposalReview
+  AccountEventEntryParticipation
 } from '#shared/domains/events/account-event-entry-page'
-import type {
-  AccountEventPrizesPage,
-  AccountEventPrize,
-  AccountEventPublishedProject,
-  AccountEventWinner
-} from '#shared/domains/events/account-event-prizes-page'
+import type { AccountEventPrizesPage } from '#shared/domains/events/account-event-prizes-page'
 import type { AccountEventCertificatesPage } from '#shared/domains/events/account-event-certificates-page'
 import type { AccountEventFeedbackPage } from '#shared/domains/events/account-event-feedback-page'
 import type { AccountEventGalleryPage } from '#shared/domains/events/account-event-gallery-page'
@@ -142,7 +133,7 @@ type AccountEventAccessRecord = AccountEventEntryAccess
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
-const { actor, refresh: refreshActor } = useAccountLifecycleActor()
+const { actor, refresh: refreshActor } = useAccountBootstrap()
 
 if (!slug.value) {
   throw createError({
@@ -199,40 +190,19 @@ const prizesPageQuery = computed(() => ({
 const entryPage = computed(() => entryPageRequest.data.value?.page ?? null)
 const pageShell = pageState.pageShell
 const pageVisibility = shallowRef<AccountEventPageVisibility | null>(null)
-const selectedPagePending = ref(false)
-const selectedPageError = shallowRef<unknown | null>(null)
 const event = computed<AccountWorkspaceEvent | null>(() =>
   entryPage.value?.event ?? pageShell.value?.event ?? null
 )
 const accessRecord = shallowRef<AccountEventAccessRecord | null>(null)
 const participationRecord = shallowRef<AccountEventEntryParticipation | null>(null)
-// The credit offers that this person can claim or already claimed. The Overview tab shows them.
-const participantCreditOffers = shallowRef<AccountEventEntryParticipantCreditOffer[]>([])
+const participantCreditOffers = computed(() => entryPage.value?.participantCredits ?? [])
+const talkProposal = computed(() => entryPage.value?.talkProposal ?? null)
+const talkProposalReviews = computed(() => entryPage.value?.talkProposalReviews ?? [])
 const hasRetainedTalkProposal = ref(false)
-const talkProposal = shallowRef<AccountEventEntryTalkProposal | null>(null)
-const talkProposalReviews = shallowRef<AccountEventEntryTalkProposalReview[]>([])
-const participantRank = shallowRef<AccountEventEntryRankSummary | null>(null)
-const isEntryPending = computed(() => entryPageRequest.pending.value || selectedPagePending.value)
-const entryError = computed(() => entryPageRequest.error.value ?? selectedPageError.value)
 watch([entryPage, pageShell], ([page, shell]) => {
-  if (!page) {
-    accessRecord.value = shell?.access ?? null
-    participationRecord.value = null
-    participantCreditOffers.value = []
-    hasRetainedTalkProposal.value = false
-    talkProposal.value = null
-    talkProposalReviews.value = []
-    participantRank.value = null
-    return
-  }
-
-  accessRecord.value = page.access
-  participationRecord.value = page.participation
-  participantCreditOffers.value = page.participantCredits
-  hasRetainedTalkProposal.value = Boolean(page.talkProposal)
-  talkProposal.value = page.talkProposal
-  talkProposalReviews.value = page.talkProposalReviews
-  participantRank.value = page.participantRank
+  accessRecord.value = page?.access ?? shell?.access ?? null
+  participationRecord.value = page?.participation ?? null
+  hasRetainedTalkProposal.value = Boolean(page?.talkProposal)
 }, { immediate: true })
 const isWithdrawApplicationPending = ref(false)
 const withdrawApplicationErrorMessage = ref('')
@@ -248,7 +218,7 @@ const canJudge = computed(() => {
   const currentEvent = event.value
 
   return pageVisibility.value?.canJudge
-    ?? (currentEvent && actor.value.kind === 'platform_user'
+    ?? (currentEvent && actor.value?.kind === 'platform_user'
       ? hasEventJudgingAccess(actor.value, currentEvent.id)
       : false)
 })
@@ -257,7 +227,7 @@ const canAdmin = computed(() => {
 
   return entryPageRequest.data.value?.visibility.canManage
     ?? pageVisibility.value?.canManage
-    ?? (currentEvent && actor.value.kind === 'platform_user'
+    ?? (currentEvent && actor.value?.kind === 'platform_user'
       ? hasEventAdminAccess(actor.value, currentEvent.id)
       : false)
 })
@@ -265,7 +235,7 @@ const canViewParticipantsAndTeams = computed(() => {
   const currentEvent = event.value
 
   return pageVisibility.value?.canViewParticipantsAndTeams
-    ?? (currentEvent && actor.value.kind === 'platform_user'
+    ?? (currentEvent && actor.value?.kind === 'platform_user'
       ? hasEventParticipantVisibilityAccess(actor.value, currentEvent.id)
       : false)
 })
@@ -296,7 +266,7 @@ const applicationStatus = computed(() =>
   entryPage.value?.applicationStatus ?? participationRecord.value?.application?.status ?? accessRecord.value?.applicationStatus ?? null
 )
 const currentEventRole = computed(() => {
-  if (actor.value.kind !== 'platform_user' || !event.value) {
+  if (actor.value?.kind !== 'platform_user' || !event.value) {
     return null
   }
 
@@ -317,7 +287,7 @@ const accountTrackViewerMode = computed<'participant' | 'all-staff' | 'track-sta
   return currentStaffTrackId.value ? 'track-staff' : 'all-staff'
 })
 const accountLumaEmail = computed(() =>
-  actor.value.kind === 'platform_user'
+  actor.value?.kind === 'platform_user'
     ? actor.value.platformUser.lumaEmail ?? ''
     : ''
 )
@@ -331,7 +301,7 @@ watch(accountLumaEmail, (nextEmail) => {
 const canManageParticipantCertificateGeneration = computed(() => {
   const application = participationRecord.value?.application
 
-  return actor.value.kind === 'platform_user'
+  return actor.value?.kind === 'platform_user'
     && event.value?.state === 'completed'
     && application?.status === 'approved'
     && application.isCheckedIn
@@ -365,7 +335,7 @@ const showSelectedBuildTrackOverviewNotice = computed(() =>
 )
 const participantCertificatePath = computed(() => {
   if (
-    actor.value.kind !== 'platform_user'
+    actor.value?.kind !== 'platform_user'
     || !canManageParticipantCertificateGeneration.value
     || isCertificateGenerationDisabled.value
   ) {
@@ -477,20 +447,11 @@ const prizesPageRequest = useAccountEventPageRequest<AccountEventPrizesPage>(slu
   query: prizesPageQuery
 })
 const prizesPage = computed(() => prizesPageRequest.data.value?.page ?? null)
-const prizes = computed<AccountEventPrize[]>(() => prizesPage.value?.prizes ?? [])
-const prizesPageIsLoading = computed(() => prizesPageRequest.pending.value)
-const prizesPageErrorMessage = computed(() => prizesPageRequest.error.value
-  ? normalizeParticipantApiError(prizesPageRequest.error.value).message
-  : '')
 const settingsPageRequest = useAccountEventPageRequest<AccountEventSettingsPage>(slug, 'settings', {
   enabled: () => activeSection.value === 'settings' && (isDirectNonEntryNavigation.value || canAdmin.value),
   query: pageState.queryForPage('settings')
 })
 const settingsPage = computed(() => settingsPageRequest.data.value?.page ?? null)
-const settingsPageIsLoading = computed(() => settingsPageRequest.pending.value)
-const settingsPageErrorMessage = computed(() => settingsPageRequest.error.value
-  ? normalizeParticipantApiError(settingsPageRequest.error.value).message
-  : '')
 const selectedTeamSlug = computed(() => normalizeTeamSlugQueryValue(route.query.team))
 const selectedJudgeAssignmentId = computed(() => normalizeJudgeAssignmentIdQueryValue(route.query.assignment))
 const workspacePageRequest = useAccountEventPageRequest<AccountEventWorkspacePage>(slug, 'workspace', {
@@ -582,16 +543,14 @@ const operationsPage = computed(() => operationsPageRequest.data.value?.page ?? 
 const submissionsPage = computed(() => submissionsPageRequest.data.value?.page ?? null)
 const judgingPage = computed(() => judgingPageRequest.data.value?.page ?? null)
 const assignmentPage = computed(() => assignmentPageRequest.data.value ?? null)
-const workspacePageIsLoading = computed(() => workspacePageRequest.pending.value)
-const feedbackPageIsLoading = computed(() => feedbackPageRequest.pending.value)
 // The gallery and the participant list show their loading state only while they have nothing to
 // show. A search, a refresh or "Load more" keeps the loaded content on screen until the new answer
 // arrives.
 const galleryPageIsLoading = computed(() =>
-  galleryPageRequest.pending.value && !galleryPage.value
+  galleryPageRequest.isLoading.value && !galleryPage.value
 )
 const participantsPageIsLoading = computed(() =>
-  participantsPageRequest.pending.value && !participantsPage.value
+  participantsPageRequest.isLoading.value && !participantsPage.value
 )
 const {
   isLoadingMore: isLoadingMoreParticipants,
@@ -603,105 +562,45 @@ const {
   isReading: participantsPageRequest.pending,
   serverRead: participantListRead
 })
-const certificatesPageIsLoading = computed(() => certificatesPageRequest.pending.value)
-const teamsPageIsLoading = computed(() => teamsPageRequest.pending.value)
-const operationsPageIsLoading = computed(() => operationsPageRequest.pending.value)
-const submissionsPageIsLoading = computed(() => submissionsPageRequest.pending.value)
-const judgingPageIsLoading = computed(() => judgingPageRequest.pending.value)
-const assignmentPageIsLoading = computed(() => assignmentPageRequest.pending.value)
-const workspacePageErrorMessage = computed(() => workspacePageRequest.error.value
-  ? normalizeParticipantApiError(workspacePageRequest.error.value).message
-  : '')
-const galleryPageErrorMessage = computed(() => galleryPageRequest.error.value
-  ? normalizeParticipantApiError(galleryPageRequest.error.value).message
-  : '')
-const feedbackPageErrorMessage = computed(() => feedbackPageRequest.error.value
-  ? normalizeParticipantApiError(feedbackPageRequest.error.value).message
-  : '')
-const participantsPageErrorMessage = computed(() => participantsPageRequest.error.value
-  ? normalizeParticipantApiError(participantsPageRequest.error.value).message
-  : '')
-const certificatesPageErrorMessage = computed(() => certificatesPageRequest.error.value
-  ? normalizeParticipantApiError(certificatesPageRequest.error.value).message
-  : '')
-const teamsPageErrorMessage = computed(() => teamsPageRequest.error.value
-  ? normalizeParticipantApiError(teamsPageRequest.error.value).message
-  : '')
-const operationsPageErrorMessage = computed(() => {
-  return operationsPageRequest.error.value
-    ? normalizeParticipantApiError(operationsPageRequest.error.value).message
-    : ''
-})
-const submissionsPageErrorMessage = computed(() => submissionsPageRequest.error.value
-  ? normalizeParticipantApiError(submissionsPageRequest.error.value).message
-  : '')
-const judgingPageErrorMessage = computed(() => judgingPageRequest.error.value
-  ? normalizeParticipantApiError(judgingPageRequest.error.value).message
-  : '')
-const assignmentPageErrorMessage = computed(() => assignmentPageRequest.error.value
-  ? normalizeParticipantApiError(assignmentPageRequest.error.value).message
-  : '')
 
 const rostersPageRequest = useAccountEventPageRequest<AccountEventRostersPage>(slug, 'rosters', {
   enabled: () => activeSection.value === 'judges' || activeSection.value === 'staff',
   query: pageState.queryForPage('rosters')
 })
 const rostersPage = computed(() => rostersPageRequest.data.value?.page ?? null)
-const rostersPageIsLoading = computed(() => rostersPageRequest.pending.value)
-const rostersPageErrorMessage = computed(() => rostersPageRequest.error.value
-  ? normalizeParticipantApiError(rostersPageRequest.error.value).message
-  : '')
-const selectedPageRequestState = computed(() => {
-  const request = (() => {
-    switch (requestedWorkspaceTab.value) {
-      case 'prizes': return prizesPageRequest
-      case 'workspace': return workspacePageRequest
-      case 'program': return programPageRequest
-      case 'gallery': return galleryPageRequest
-      case 'feedback': return feedbackPageRequest
-      case 'judges':
-      case 'staff': return rostersPageRequest
-      case 'participants': return participantsPageRequest
-      case 'certificates': return certificatesPageRequest
-      case 'teams': return teamsPageRequest
-      case 'submissions': return submissionsPageRequest
-      case 'judging': return judgingPageRequest
-      case 'operations': return operationsPageRequest
-      case 'settings': return settingsPageRequest
-      default: return null
-    }
-  })()
-
-  return request
-    ? {
-        data: request.data.value,
-        error: request.error.value,
-        pending: request.pending.value,
-        visibility: request.data.value?.visibility
-      }
-    : {
-        data: null,
-        error: null,
-        pending: false,
-        visibility: null
-      }
+const selectedPageRequest = computed(() => {
+  switch (requestedWorkspaceTab.value) {
+    case 'prizes': return prizesPageRequest
+    case 'workspace': return workspacePageRequest
+    case 'program': return programPageRequest
+    case 'gallery': return galleryPageRequest
+    case 'feedback': return feedbackPageRequest
+    case 'judges':
+    case 'staff': return rostersPageRequest
+    case 'participants': return participantsPageRequest
+    case 'certificates': return certificatesPageRequest
+    case 'teams': return teamsPageRequest
+    case 'submissions': return submissionsPageRequest
+    case 'judging': return judgingPageRequest
+    case 'operations': return operationsPageRequest
+    case 'settings': return settingsPageRequest
+    default: return null
+  }
+})
+const shellRequest = computed(() => {
+  if (shouldLoadAssignmentPage.value) return assignmentPageRequest
+  return isDirectNonEntryNavigation.value ? selectedPageRequest.value : entryPageRequest
 })
 watchEffect(() => {
-  const requestState = selectedPageRequestState.value
+  const selectedPage = selectedPageRequest.value?.data.value
 
   pageState.applySelectedPageState({
     entryPagePresent: Boolean(entryPage.value),
-    shell: requestState.data?.shell
+    shell: selectedPage?.shell
   })
-  pageVisibility.value = entryPageRequest.data.value?.visibility
-    ?? requestState.visibility
-    ?? null
-  selectedPagePending.value = !entryPage.value && requestState.pending
-  selectedPageError.value = !entryPage.value ? requestState.error : null
+  pageVisibility.value = entryPageRequest.data.value?.visibility ?? selectedPage?.visibility ?? null
 })
-const winners = computed<AccountEventWinner[]>(() => prizesPage.value?.winners ?? [])
-const publishedProjects = computed<AccountEventPublishedProject[]>(() => prizesPage.value?.publishedProjects ?? [])
-const participationRank = computed<EventParticipationRankSummary | null>(() => participantRank.value)
+const participationRank = computed<EventParticipationRankSummary | null>(() => entryPage.value?.participantRank ?? null)
 async function refreshAccountEvent() {
   if (activeSection.value === 'prizes') {
     await prizesPageRequest.refresh()
@@ -1259,8 +1158,21 @@ useSeoMeta({
     </section>
 
     <AppContainer class="relative z-10 max-w-none space-y-7 pt-6">
+      <AppAlert
+        v-if="getAccountEventPageForTab(activeSection) === 'entry' && entryPageRequest.error.value"
+        color="error"
+        title="Event workspace unavailable"
+        :description="entryPageRequest.errorMessage.value"
+      />
+      <p
+        v-else-if="getAccountEventPageForTab(activeSection) === 'entry' && !entryPage"
+        class="text-sm text-muted"
+        role="status"
+      >
+        Loading event…
+      </p>
       <section
-        v-if="activeSection === 'overview'"
+        v-else-if="activeSection === 'overview'"
         id="account-tab-panel-overview"
         role="tabpanel"
         aria-labelledby="account-tab-overview"
@@ -1711,8 +1623,8 @@ useSeoMeta({
         <LazyAccountEventParticipantWorkspacePanel
           :event="event"
           :page="workspacePage"
-          :is-loading="workspacePageIsLoading"
-          :load-error-message="workspacePageErrorMessage"
+          :is-loading="workspacePageRequest.isLoading.value"
+          :load-error-message="workspacePageRequest.errorMessage.value"
           :selected-track-id="selectedTrackId"
         />
       </section>
@@ -1724,34 +1636,46 @@ useSeoMeta({
         aria-labelledby="account-tab-prizes"
         class="space-y-8"
       >
-        <template v-if="event.state === 'completed'">
-          <LazyEventWinnersShowcase :winners="winners" />
+        <AppAlert
+          v-if="prizesPageRequest.error.value"
+          color="error"
+          title="Prizes unavailable"
+          :description="prizesPageRequest.errorMessage.value"
+        />
+        <template v-else-if="prizesPage">
+          <template v-if="event.state === 'completed'">
+            <LazyEventWinnersShowcase :winners="prizesPage.winners" />
+            <LazyEventPublishedProjectsShowcase
+              v-if="prizesPage.publishedProjects.length"
+              :projects="prizesPage.publishedProjects"
+            />
+          </template>
 
-          <LazyEventPublishedProjectsShowcase
-            v-if="publishedProjects.length > 0"
-            :projects="publishedProjects"
+          <LazyEventPrizeList
+            v-else
+            :prizes="prizesPage.prizes"
+          />
+
+          <LazyAccountEventAdminSettingsPanel
+            v-if="tabAccess.showPrizeConfiguration"
+            :event-id="workspaceEventId"
+            :event-data="prizesPage.adminSettingsEvent"
+            :prizes-data="prizesPage.prizes"
+            :can-manage="canAdmin"
+            :show-program-settings="false"
+            :show-terms-management="false"
+            :show-criteria-configuration="false"
+            :show-prize-configuration="true"
+            @updated="refreshAccountEvent"
           />
         </template>
-
-        <LazyEventPrizeList
+        <p
           v-else
-          :prizes="prizes"
-        />
-
-        <LazyAccountEventAdminSettingsPanel
-          v-if="tabAccess.showPrizeConfiguration"
-          :event-id="workspaceEventId"
-          :event-data="prizesPage?.adminSettingsEvent ?? null"
-          :prizes-data="prizesPage?.prizes ?? []"
-          :can-manage="canAdmin"
-          :is-loading="prizesPageIsLoading"
-          :load-error-message="prizesPageErrorMessage"
-          :show-program-settings="false"
-          :show-terms-management="false"
-          :show-criteria-configuration="false"
-          :show-prize-configuration="true"
-          @updated="refreshAccountEvent"
-        />
+          role="status"
+          class="text-sm text-muted"
+        >
+          Loading prizes…
+        </p>
       </section>
 
       <section
@@ -1764,7 +1688,7 @@ useSeoMeta({
           v-if="programPageRequest.error.value"
           color="error"
           title="Agenda unavailable"
-          :description="normalizeParticipantApiError(programPageRequest.error.value).message"
+          :description="programPageRequest.errorMessage.value"
         />
         <template v-else-if="programPage">
           <LazyAccountEventProgramAgenda
@@ -1818,7 +1742,7 @@ useSeoMeta({
           :page="galleryPage"
           :next-step-href="nextStepHref"
           :is-loading="galleryPageIsLoading"
-          :load-error-message="galleryPageErrorMessage"
+          :load-error-message="galleryPageRequest.errorMessage.value"
           @updated="galleryPageRequest.refresh"
         />
       </section>
@@ -1836,8 +1760,7 @@ useSeoMeta({
           title="Judges"
           description="Meet the people reviewing submissions for this event."
           :page="rostersPage"
-          :is-loading="rostersPageIsLoading"
-          :load-error-message="rostersPageErrorMessage"
+          :load-error-message="rostersPageRequest.errorMessage.value"
           :refresh-page="rostersPageRequest.refresh"
           :management-event-id="canAdmin ? workspaceEventId : null"
         />
@@ -1856,8 +1779,7 @@ useSeoMeta({
           title="Staff"
           description="Meet the people supporting this event behind the scenes."
           :page="rostersPage"
-          :is-loading="rostersPageIsLoading"
-          :load-error-message="rostersPageErrorMessage"
+          :load-error-message="rostersPageRequest.errorMessage.value"
           :refresh-page="rostersPageRequest.refresh"
           :tracks="event.tracks ?? []"
           :selected-track-id="selectedTrackId"
@@ -1872,8 +1794,7 @@ useSeoMeta({
           description="Admins can manage the internal workspace for this event. Promoting a judge or staff member keeps their current capability on the admin assignment."
           empty-assigned-message="No admins yet. Add an admin here when someone needs full event management access."
           :page="rostersPage"
-          :is-loading="rostersPageIsLoading"
-          :load-error-message="rostersPageErrorMessage"
+          :load-error-message="rostersPageRequest.errorMessage.value"
           :refresh-page="rostersPageRequest.refresh"
         />
       </section>
@@ -1889,8 +1810,8 @@ useSeoMeta({
           :event-id="workspaceEventId"
           :event-state="event.state"
           :page="feedbackPage"
-          :is-loading="feedbackPageIsLoading"
-          :load-error-message="feedbackPageErrorMessage"
+          :is-loading="feedbackPageRequest.isLoading.value"
+          :load-error-message="feedbackPageRequest.errorMessage.value"
         />
       </section>
 
@@ -1905,12 +1826,12 @@ useSeoMeta({
           :slug="slug"
           :selected-assignment-id="selectedJudgeAssignmentId"
           :page="judgingPage"
-          :is-loading="judgingPageIsLoading"
-          :load-error-message="judgingPageErrorMessage"
+          :is-loading="judgingPageRequest.isLoading.value"
+          :load-error-message="judgingPageRequest.errorMessage.value"
           :refresh-page="judgingPageRequest.refresh"
           :assignment-page="assignmentPage"
-          :assignment-page-is-loading="assignmentPageIsLoading"
-          :assignment-page-error-message="assignmentPageErrorMessage"
+          :assignment-page-is-loading="assignmentPageRequest.isLoading.value"
+          :assignment-page-error-message="assignmentPageRequest.errorMessage.value"
           :refresh-assignment-page="assignmentPageRequest.refresh"
         />
       </section>
@@ -1933,7 +1854,7 @@ useSeoMeta({
           :is-loading="participantsPageIsLoading"
           :is-searching-participants="isSearchingParticipants"
           :is-loading-more-participants="isLoadingMoreParticipants"
-          :load-error-message="participantsPageErrorMessage"
+          :load-error-message="participantsPageRequest.errorMessage.value"
           :refresh-page="participantsPageRequest.refresh"
           @load-more-participants="loadMoreParticipants"
         />
@@ -1946,7 +1867,7 @@ useSeoMeta({
           :is-loading="participantsPageIsLoading"
           :is-searching="isSearchingParticipants"
           :is-loading-more="isLoadingMoreParticipants"
-          :error-message="participantsPageErrorMessage"
+          :error-message="participantsPageRequest.errorMessage.value"
           :refresh-page="participantsPageRequest.refresh"
           @load-more="loadMoreParticipants"
         />
@@ -1964,8 +1885,8 @@ useSeoMeta({
           :event-id="workspaceEventId"
           :event-slug="slug"
           :page="certificatesPage"
-          :is-loading="certificatesPageIsLoading"
-          :load-error-message="certificatesPageErrorMessage"
+          :is-loading="certificatesPageRequest.isLoading.value"
+          :load-error-message="certificatesPageRequest.errorMessage.value"
         />
       </section>
 
@@ -1979,8 +1900,8 @@ useSeoMeta({
         <LazyAccountEventParticipantTeamPanel
           :event="event"
           :page="teamsPage"
-          :is-loading="teamsPageIsLoading"
-          :load-error-message="teamsPageErrorMessage"
+          :is-loading="teamsPageRequest.isLoading.value"
+          :load-error-message="teamsPageRequest.errorMessage.value"
           :selected-team-slug="selectedTeamSlug"
           :show-operational-team-states="canViewParticipantsAndTeams || canAdmin"
         />
@@ -1998,8 +1919,8 @@ useSeoMeta({
           section="submissions"
           :page="submissionsPage"
           :can-manage="canAdmin"
-          :is-loading="submissionsPageIsLoading"
-          :load-error-message="submissionsPageErrorMessage"
+          :is-loading="submissionsPageRequest.isLoading.value"
+          :load-error-message="submissionsPageRequest.errorMessage.value"
           :refresh-page="submissionsPageRequest.refresh"
         />
       </section>
@@ -2016,8 +1937,8 @@ useSeoMeta({
           section="operations"
           :page="operationsPage"
           :can-manage="canAdmin"
-          :is-loading="operationsPageIsLoading"
-          :load-error-message="operationsPageErrorMessage"
+          :is-loading="operationsPageRequest.isLoading.value"
+          :load-error-message="operationsPageRequest.errorMessage.value"
           :refresh-page="operationsPageRequest.refresh"
         />
       </section>
@@ -2033,8 +1954,8 @@ useSeoMeta({
           :event-id="workspaceEventId"
           :page="settingsPage"
           :can-manage="canAdmin"
-          :is-loading="settingsPageIsLoading"
-          :load-error-message="settingsPageErrorMessage"
+          :is-loading="settingsPageRequest.isLoading.value"
+          :load-error-message="settingsPageRequest.errorMessage.value"
           :show-terms-management="true"
           :show-criteria-configuration="true"
           :show-prize-configuration="false"
@@ -2043,17 +1964,30 @@ useSeoMeta({
       </section>
     </AppContainer>
   </div>
+  <AppContainer
+    v-else-if="shouldLoadAssignmentPage && assignmentPage"
+    class="max-w-none py-6"
+  >
+    <LazyJudgingOrganismsJudgeAssignmentWorkspacePanel
+      :key="assignmentPage.assignment.id"
+      :event-id="assignmentPage.event.id"
+      :event-slug="slug"
+      :assignment-id="assignmentPage.assignment.id"
+      :page="assignmentPage"
+      @updated="assignmentPageRequest.refresh()"
+    />
+  </AppContainer>
   <div
-    v-else-if="isEntryPending"
+    v-else-if="shellRequest?.isLoading.value"
     class="mx-auto max-w-3xl px-6 py-16 text-center text-sm text-muted"
   >
     Loading event…
   </div>
   <AppAlert
-    v-else-if="entryError"
+    v-else-if="shellRequest?.error.value"
     color="error"
     variant="soft"
     title="Event workspace unavailable"
-    :description="normalizeParticipantApiError(entryError).message"
+    :description="shellRequest.errorMessage.value"
   />
 </template>

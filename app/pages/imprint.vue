@@ -2,7 +2,6 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
-import type { PlatformLegalSettingsRecord } from '~/composables/usePlatformLegalSettings'
 import { cloneFormValues } from '~/utils/form-values'
 import { imprintContactFormSchema } from '~/domains/platform/legal-contact'
 
@@ -21,18 +20,7 @@ const contactState = reactive({
   error: ''
 })
 const { polite, assertive } = useAnnouncer()
-const {
-  data: settingsData,
-  status: settingsStatus
-} = await useApiResponse<PlatformLegalSettingsRecord | null>(
-  'current-platform-legal-settings',
-  '/api/platform-legal-settings/current',
-  {
-    cacheScope: 'public',
-    default: () => null
-  }
-)
-const settings = computed(() => settingsData.value ?? null)
+const { data: settings, status: settingsStatus } = await usePlatformLegalSettings()
 
 const {
   errors,
@@ -87,12 +75,6 @@ function resetContactFormState() {
 }
 
 const submitContactForm = handleSubmit(async (contactForm) => {
-  if (!settings.value) {
-    contactState.error = 'The contact form is not available until the platform operator configures legal contact details.'
-    assertive(contactState.error)
-    return
-  }
-
   contactState.pending = true
   contactState.success = ''
   contactState.error = ''
@@ -188,7 +170,14 @@ useSeoMeta({
 
     <AppContainer class="relative z-10 grid max-w-[68rem] gap-6 pb-10 pt-6 sm:pb-14 lg:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
       <AppAlert
-        v-if="settingsStatus === 'pending'"
+        v-if="settingsStatus === 'error'"
+        title="Unable to load legal notice"
+        color="error"
+        class="lg:col-span-2"
+      />
+
+      <AppAlert
+        v-else-if="settingsStatus !== 'success'"
         color="neutral"
         variant="soft"
         title="Loading legal notice"
@@ -238,7 +227,10 @@ useSeoMeta({
         </section>
       </div>
 
-      <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/92">
+      <section
+        v-if="settingsStatus === 'success'"
+        class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/92"
+      >
         <div class="space-y-4">
           <div class="space-y-2">
             <h2 class="text-lg font-semibold tracking-[-0.02em] text-highlighted dark:text-white">

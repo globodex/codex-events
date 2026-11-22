@@ -15,10 +15,10 @@ definePageMeta({
 const events = useUserEvents()
 
 const currentStaffEvents = computed(() =>
-  events.data.value.current
+  events.data.value?.current ?? []
 )
 const pastStaffEvents = computed(() =>
-  events.data.value.past
+  events.data.value?.past ?? []
 )
 const allStaffEvents = computed(() => [
   ...currentStaffEvents.value,

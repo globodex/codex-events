@@ -187,7 +187,7 @@ function handleSubmitProjectAttempt(event?: Event) {
     class="space-y-6"
   >
     <AppAlert
-      v-if="status === 'pending'"
+      v-if="status === 'idle' || status === 'pending'"
       color="neutral"
       variant="soft"
       title="Loading submission"
@@ -195,7 +195,7 @@ function handleSubmitProjectAttempt(event?: Event) {
     />
 
     <AppAlert
-      v-else-if="status === 'error' && errorMessage"
+      v-else-if="status === 'error'"
       color="error"
       variant="soft"
       title="Submission unavailable"

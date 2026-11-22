@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { computed, ref, toValue } from 'vue'
 
 const useApiResponse = vi.hoisted(() => vi.fn())
-const useSessionActor = vi.hoisted(() => vi.fn())
 const useAuthorizationCache = vi.hoisted(() => vi.fn())
 const pageRequestSource = readFileSync(
   new URL('../../../../app/composables/useAccountEventPageRequest.ts', import.meta.url),
@@ -12,10 +11,6 @@ const pageRequestSource = readFileSync(
 
 vi.mock('../../../../app/composables/useApiData', () => ({
   useApiResponse
-}))
-
-vi.mock('../../../../app/composables/useSessionActor', () => ({
-  useSessionActor
 }))
 
 vi.mock('../../../../app/composables/useAuthorizationCache', () => ({
@@ -32,11 +27,6 @@ describe('useAccountEventPageRequest', () => {
       pending: ref(false),
       refresh: vi.fn(),
       status: ref('idle')
-    })
-    useSessionActor.mockReset().mockReturnValue({
-      actor: ref({ kind: 'platform_user' }),
-      bootstrap: ref({ actor: { kind: 'platform_user' }, capabilities: {} }),
-      capabilities: ref({})
     })
     useAuthorizationCache.mockReset().mockReturnValue({
       authorizationGeneration: ref(3)

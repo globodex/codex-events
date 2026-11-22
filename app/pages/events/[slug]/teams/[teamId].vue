@@ -3,7 +3,6 @@ import type { AccountEventTeamsPage } from '#shared/domains/events/account-event
 
 import { LazyAccountEventsAccountEventParticipantTeamPanel as LazyAccountEventParticipantTeamPanel } from '#components'
 import { useAccountEventPageRequest } from '~/composables/useAccountEventPageRequest'
-import { normalizeApiError } from '~/lib/api'
 
 definePageMeta({
   middleware: ['require-platform-account']
@@ -28,7 +27,7 @@ const pageRequest = useAccountEventPageRequest<AccountEventTeamsPage>(slug, 'tea
 <template>
   <div class="space-y-6">
     <AppAlert
-      v-if="pageRequest.pending.value && !pageRequest.data.value"
+      v-if="pageRequest.isLoading.value"
       color="neutral"
       variant="soft"
       title="Loading team"
@@ -36,11 +35,11 @@ const pageRequest = useAccountEventPageRequest<AccountEventTeamsPage>(slug, 'tea
     />
 
     <AppAlert
-      v-else-if="pageRequest.error.value"
+      v-else-if="pageRequest.errorMessage.value"
       color="error"
       variant="soft"
       title="Team unavailable"
-      :description="normalizeApiError(pageRequest.error.value).message"
+      :description="pageRequest.errorMessage.value"
     />
 
     <LazyAccountEventParticipantTeamPanel
@@ -48,8 +47,6 @@ const pageRequest = useAccountEventPageRequest<AccountEventTeamsPage>(slug, 'tea
       :event="pageRequest.data.value.page.event"
       :page="pageRequest.data.value.page"
       :selected-team-slug="teamSlug"
-      :is-loading="pageRequest.pending.value"
-      :load-error-message="pageRequest.error.value ? normalizeApiError(pageRequest.error.value).message : ''"
     />
   </div>
 </template>

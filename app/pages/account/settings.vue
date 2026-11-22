@@ -11,7 +11,7 @@ definePageMeta({
 })
 
 const apiFetch = useApiClient()
-const { actor, status, refresh } = await useAccountLifecycleActor()
+const { actor, error, refresh } = useAccountBootstrap()
 
 const profileForm = reactive({
   firstName: '',
@@ -46,13 +46,15 @@ const deletionState = reactive({
 })
 const isDangerZoneExpanded = ref(false)
 
+let draftOwnerId: string | undefined
 watch(
   actor,
   (nextActor) => {
-    if (!nextActor?.hasPlatformAccount) {
+    if (!nextActor?.hasPlatformAccount || nextActor.platformUser.id === draftOwnerId) {
       return
     }
 
+    draftOwnerId = nextActor.platformUser.id
     profileForm.firstName = nextActor.platformUser.firstName
     profileForm.familyName = nextActor.platformUser.familyName
     profileForm.company = nextActor.platformUser.company ?? ''
@@ -77,18 +79,7 @@ async function saveProfile() {
   try {
     await apiFetch('/api/account', {
       method: 'PATCH',
-      body: {
-        firstName: profileForm.firstName,
-        familyName: profileForm.familyName,
-        company: profileForm.company,
-        bio: profileForm.bio,
-        xProfileUrl: profileForm.xProfileUrl,
-        linkedinProfileUrl: profileForm.linkedinProfileUrl,
-        githubProfileUrl: profileForm.githubProfileUrl,
-        chatgptEmail: profileForm.chatgptEmail,
-        openaiOrgId: profileForm.openaiOrgId,
-        lumaEmail: profileForm.lumaEmail
-      }
+      body: { ...profileForm }
     })
 
     await refresh()
@@ -122,7 +113,7 @@ const profileIconAlt = computed(() => {
     return fullName || actor.value.platformUser.displayName
   }
 
-  return actor.value.sessionUser?.name ?? 'User'
+  return actor.value?.sessionUser?.name ?? 'User'
 })
 
 async function uploadProfileIcon(event: Event) {
@@ -198,13 +189,8 @@ const accountEmail = computed(() => {
     return actor.value.platformUser.email
   }
 
-  return actor.value.isAuthenticated ? actor.value.sessionUser.email ?? '' : ''
+  return actor.value?.sessionUser?.email ?? ''
 })
-
-const isPlatformAccountUnavailable = computed(() =>
-  status.value !== 'pending' && actor.value?.kind !== 'platform_user'
-)
-const profileSubmitLabel = computed(() => 'Save')
 
 useSeoMeta({
   title: 'Profile Settings | Codex Events',
@@ -226,7 +212,10 @@ useSeoMeta({
                 Update the profile details used across your event participation and keep your account information current.
               </p>
             </div>
-            <div class="flex max-w-full items-center gap-2 rounded-lg border border-black/8 bg-[#F7F7F8] px-4 py-3 dark:border-white/[0.08] dark:bg-[#171717]">
+            <div
+              v-if="accountEmail"
+              class="flex max-w-full items-center gap-2 rounded-lg border border-black/8 bg-[#F7F7F8] px-4 py-3 dark:border-white/[0.08] dark:bg-[#171717]"
+            >
               <AppIcon
                 name="i-lucide-mail"
                 class="size-4 text-dimmed"
@@ -241,26 +230,34 @@ useSeoMeta({
     </section>
 
     <AppContainer class="max-w-none space-y-8 pt-6">
+      <AppAlert
+        v-if="error"
+        color="error"
+        variant="soft"
+        title="Unable to load profile settings"
+        :description="error.message"
+      />
+
       <div
-        v-if="status === 'pending'"
+        v-else-if="!actor"
         class="space-y-6"
       >
         <div class="h-64 rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111]" />
         <div class="h-64 rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111]" />
       </div>
 
+      <AppAlert
+        v-else-if="!actor.hasPlatformAccount"
+        color="warning"
+        variant="subtle"
+        title="Account provisioning is not complete"
+        description="Finish account registration on the dedicated account-registration screen before editing profile settings."
+      />
+
       <div
         v-else
         class="space-y-8"
       >
-        <AppAlert
-          v-if="isPlatformAccountUnavailable"
-          color="warning"
-          variant="subtle"
-          title="Account provisioning is not complete"
-          description="Finish account registration on the dedicated account-registration screen before editing profile settings."
-        />
-
         <section class="space-y-5">
           <AppAlert
             v-if="saveState.success"
@@ -284,7 +281,6 @@ useSeoMeta({
           />
 
           <div
-            v-if="!isPlatformAccountUnavailable"
             class="grid items-start gap-5 lg:grid-cols-[20rem_minmax(0,1fr)]"
           >
             <div
@@ -397,20 +393,18 @@ useSeoMeta({
           </div>
 
           <AccountSettingsProfileForm
-            v-if="!isPlatformAccountUnavailable"
             v-model="profileForm"
             :pending="saveState.pending"
             :error="saveState.error"
-            :submit-label="profileSubmitLabel"
+            submit-label="Save"
             :hide-profile-information="true"
             @submit="saveProfile"
           />
         </section>
 
-        <AccountMcpTokensPanel v-if="!isPlatformAccountUnavailable" />
+        <AccountMcpTokensPanel />
 
         <section
-          v-if="!isPlatformAccountUnavailable"
           class="space-y-4"
         >
           <AppButton

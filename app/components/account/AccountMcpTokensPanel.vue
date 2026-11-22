@@ -15,10 +15,10 @@ const serverUrlCopied = ref(false)
 const revokingId = ref<string | null>(null)
 const apiFetch = useApiClient()
 const serverUrl = new URL('/mcp', useRequestURL()).toString()
-const { data: tokens, error: loadError, refresh } = useApiData(
+const { data: tokens, status, error: loadError, refresh } = useApiData(
   'account-mcp-tokens',
   ({ apiFetch, signal }) => listAllActiveAccountMcpTokens(apiFetch, signal),
-  { server: false, default: () => [] }
+  { server: false }
 )
 const errorMessage = computed(() => actionErrorMessage.value
   || (loadError.value ? normalizeApiError(loadError.value).message : ''))
@@ -152,7 +152,17 @@ function formatDate(value: string | null) {
         </form>
       </div>
 
-      <div class="divide-y divide-black/8 border-y border-black/8 dark:divide-white/[0.08] dark:border-white/[0.08]">
+      <p
+        v-if="status === 'pending' || status === 'idle'"
+        class="py-6 text-sm text-muted"
+        role="status"
+      >
+        Loading access tokens
+      </p>
+      <div
+        v-else-if="status === 'success' && tokens"
+        class="divide-y divide-black/8 border-y border-black/8 dark:divide-white/[0.08] dark:border-white/[0.08]"
+      >
         <div
           v-for="token in tokens"
           :key="token.id"

@@ -45,8 +45,6 @@ const props = defineProps<{
   pendingActionKey?: string | null
   removalAvailabilityByUserId?: Record<string, TeamActionAvailability>
   joinRequests?: TeamJoinRequestRecord[]
-  joinRequestsStatus?: 'idle' | 'pending' | 'success' | 'error'
-  joinRequestsErrorMessage?: string
   showMembershipActions?: boolean
 }>()
 
@@ -742,23 +740,7 @@ function handleJoinActionClick() {
           </div>
 
           <AppAlert
-            v-if="joinRequestsErrorMessage"
-            color="error"
-            variant="soft"
-            title="Join requests unavailable"
-            :description="joinRequestsErrorMessage"
-          />
-
-          <AppAlert
-            v-else-if="joinRequestsStatus === 'pending'"
-            color="neutral"
-            variant="soft"
-            title="Loading join requests"
-            description="Pending join requests are still loading for this team."
-          />
-
-          <AppAlert
-            v-else-if="!isPersisted"
+            v-if="!isPersisted"
             color="neutral"
             variant="soft"
             title="No join requests yet"

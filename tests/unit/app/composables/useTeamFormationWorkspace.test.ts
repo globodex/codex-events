@@ -178,8 +178,9 @@ describe('useTeamFormationWorkspace', () => {
       error: ref(null),
       status: ref('success')
     }))
-    vi.stubGlobal('useAccountLifecycleActor', () => ({
+    vi.stubGlobal('useAccountBootstrap', () => ({
       actor,
+      error: ref(null),
       status: ref('success')
     }))
     vi.stubGlobal('$fetch', apiFetch)

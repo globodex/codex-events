@@ -6,7 +6,6 @@ import {
 } from '~/domains/events/presentation'
 import type {
   ParticipantApiDataResponse,
-  ParticipantApplicationTermsDocument,
   ParticipantCurrentTermsResponse,
   VisibleEventRecord
 } from '~/domains/applications/participant-application'
@@ -21,7 +20,6 @@ definePageMeta({
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
-const { actor: accountActor, status: accountActorStatus } = await useAccountLifecycleActor()
 
 if (!slug.value) {
   throw createError({
@@ -78,61 +76,21 @@ const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   : undefined)
 const detailSummary = computed(() => formatEventHeaderSummary(event.value))
 
-const accountActorCacheKey = computed(() => {
-  if (accountActor.value.kind !== 'platform_user') {
-    return accountActor.value.kind
-  }
-
-  return `${accountActor.value.platformUser.id}:${accountActor.value.hasAcceptedCurrentPlatformDocuments ? 'accepted' : 'unaccepted'}`
-})
-const applicationTermsState = await useApiData<{
-  currentApplicationTerms: ParticipantApplicationTermsDocument | null
-  workspaceErrorMessage: string
-}>(
-  () => `public-event-application-terms-document:${slug.value}:${accountActorCacheKey.value}`,
+const { data: terms, error, status } = await useApiData(
+  () => `public-event-application-terms-document:${slug.value}`,
   async ({ apiFetch, signal }) => {
-    if (accountActor.value.kind !== 'platform_user' || !accountActor.value.hasAcceptedCurrentPlatformDocuments) {
-      return {
-        currentApplicationTerms: null,
-        workspaceErrorMessage: ''
-      }
-    }
-
-    try {
-      const visibleEventResponse = await apiFetch<ParticipantApiDataResponse<VisibleEventRecord>>(
-        `/api/events/slug/${slug.value}`,
-        {
-          signal
-        }
-      )
-      const currentTermsResponse = await apiFetch<ParticipantApiDataResponse<ParticipantCurrentTermsResponse>>(
-        `/api/events/${visibleEventResponse.data.id}/terms/current`,
-        {
-          signal
-        }
-      )
-
-      return {
-        currentApplicationTerms: currentTermsResponse.data.application_terms,
-        workspaceErrorMessage: ''
-      }
-    } catch (error) {
-      return {
-        currentApplicationTerms: null,
-        workspaceErrorMessage: normalizeParticipantApiError(error).message
-      }
-    }
-  },
-  {
-    default: () => ({
-      currentApplicationTerms: null,
-      workspaceErrorMessage: ''
-    }),
-    watch: [slug, accountActorCacheKey]
+    const visibleEvent = await apiFetch<ParticipantApiDataResponse<VisibleEventRecord>>(
+      `/api/events/slug/${slug.value}`,
+      { signal }
+    )
+    const response = await apiFetch<ParticipantApiDataResponse<ParticipantCurrentTermsResponse>>(
+      `/api/events/${visibleEvent.data.id}/terms/current`,
+      { signal }
+    )
+    return response.data
   }
 )
-const currentApplicationTerms = computed(() => applicationTermsState.data.value.currentApplicationTerms)
-const workspaceErrorMessage = computed(() => applicationTermsState.data.value.workspaceErrorMessage)
+const currentApplicationTerms = computed(() => terms.value?.application_terms)
 
 const applicationTermsMarkdown = computed(() => {
   const content = currentApplicationTerms.value?.content?.trim() ?? ''
@@ -207,19 +165,18 @@ useSeoMeta({
 
     <AppContainer class="relative z-10 max-w-[68rem] space-y-6 pb-10 pt-6 sm:pb-14">
       <AppAlert
-        v-if="accountActorStatus === 'pending'"
+        v-if="status === 'idle' || status === 'pending'"
         color="neutral"
         variant="soft"
         title="Loading application terms"
-        description="Resolving your account and the current terms document."
       />
 
       <AppAlert
-        v-else-if="workspaceErrorMessage"
+        v-else-if="error"
         color="error"
         variant="soft"
         title="Application terms unavailable"
-        :description="workspaceErrorMessage"
+        :description="normalizeParticipantApiError(error).message"
       />
 
       <AppAlert

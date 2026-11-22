@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { AsyncDataRequestStatus } from '#app'
+import type { Ref } from 'vue'
 import type { ApiDataResponse } from '~/lib/api'
 import type { PlatformDocumentRecord } from '~/composables/useCurrentPlatformDocuments'
 
@@ -8,7 +10,7 @@ import { useApiClient } from '~/composables/useApiClient'
 const toast = useToast()
 const apiFetch = useApiClient()
 const {
-  settings,
+  data: settings,
   status: settingsStatus,
   error: settingsError,
   refresh: refreshSettings
@@ -21,57 +23,31 @@ const {
   refresh: refreshDocuments
 } = useCurrentPlatformDocuments()
 
-const legalSettingsForm = reactive({
-  supportEmail: '',
-  imprintContent: ''
-})
-const privacyPolicyDraft = ref('')
+function useTextDraft(status: Ref<AsyncDataRequestStatus>, saved: () => string | undefined) {
+  const edit = shallowRef<string>()
+  watch([status, saved], ([state, text]) => {
+    if (state === 'success' && text === edit.value) {
+      edit.value = undefined
+    }
+  })
+  return computed({
+    get: () => edit.value ?? saved() ?? '',
+    set: (value: string) => { edit.value = value }
+  })
+}
+
+const supportEmail = useTextDraft(settingsStatus, () => settings.value?.supportEmail)
+const imprintContent = useTextDraft(settingsStatus, () => settings.value?.imprintContent)
+const privacyPolicyDraft = useTextDraft(documentsStatus, () => privacyPolicyDocument.value?.content)
+const platformTermsDraft = useTextDraft(documentsStatus, () => platformTermsDocument.value?.content)
 const privacyPolicyTitle = ref('')
-const platformTermsDraft = ref('')
 const platformTermsTitle = ref('')
-const lastSyncedPrivacyPolicyContent = ref('')
-const lastSyncedPlatformTermsContent = ref('')
 const settingsMutation = reactive({
   pending: false,
   error: ''
 })
 const publishingDocumentType = ref<PlatformDocumentRecord['documentType'] | null>(null)
 const publishError = ref('')
-
-watch(settings, (nextSettings) => {
-  if (!nextSettings) {
-    return
-  }
-
-  legalSettingsForm.supportEmail = nextSettings.supportEmail
-  legalSettingsForm.imprintContent = nextSettings.imprintContent
-}, {
-  immediate: true
-})
-
-watch(privacyPolicyDocument, (document) => {
-  const nextContent = document?.content ?? ''
-
-  if (privacyPolicyDraft.value === lastSyncedPrivacyPolicyContent.value) {
-    privacyPolicyDraft.value = nextContent
-  }
-
-  lastSyncedPrivacyPolicyContent.value = nextContent
-}, {
-  immediate: true
-})
-
-watch(platformTermsDocument, (document) => {
-  const nextContent = document?.content ?? ''
-
-  if (platformTermsDraft.value === lastSyncedPlatformTermsContent.value) {
-    platformTermsDraft.value = nextContent
-  }
-
-  lastSyncedPlatformTermsContent.value = nextContent
-}, {
-  immediate: true
-})
 
 function formatTitle(documentType: PlatformDocumentRecord['documentType']) {
   const currentDocument = documentType === 'privacy_policy'
@@ -95,12 +71,6 @@ function getDocumentDraft(documentType: PlatformDocumentRecord['documentType']) 
     : platformTermsDraft.value
 }
 
-function getDocumentTitle(documentType: PlatformDocumentRecord['documentType']) {
-  return documentType === 'privacy_policy'
-    ? privacyPolicyTitle.value.trim() || formatTitle(documentType)
-    : platformTermsTitle.value.trim() || formatTitle(documentType)
-}
-
 async function saveLegalSettings() {
   settingsMutation.pending = true
   settingsMutation.error = ''
@@ -108,7 +78,7 @@ async function saveLegalSettings() {
   try {
     await apiFetch('/api/platform-legal-settings/current', {
       method: 'PATCH',
-      body: legalSettingsForm
+      body: { supportEmail: supportEmail.value, imprintContent: imprintContent.value }
     })
 
     await refreshSettings()
@@ -136,21 +106,21 @@ async function publishPlatformDocument(documentType: PlatformDocumentRecord['doc
     return
   }
 
+  const title = documentType === 'privacy_policy' ? privacyPolicyTitle : platformTermsTitle
+  const submittedTitle = title.value
   publishingDocumentType.value = documentType
 
   try {
     await apiFetch<ApiDataResponse<PlatformDocumentRecord>>(`/api/platform-documents/${documentType}/versions`, {
       method: 'POST',
       body: {
-        title: getDocumentTitle(documentType),
+        title: submittedTitle.trim() || formatTitle(documentType),
         content
       }
     })
 
-    if (documentType === 'privacy_policy') {
-      privacyPolicyTitle.value = ''
-    } else {
-      platformTermsTitle.value = ''
+    if (title.value === submittedTitle) {
+      title.value = ''
     }
 
     await refreshDocuments()
@@ -169,38 +139,6 @@ async function publishPlatformDocument(documentType: PlatformDocumentRecord['doc
 
 <template>
   <div class="space-y-6">
-    <AppAlert
-      v-if="settingsError"
-      color="error"
-      variant="soft"
-      title="Unable to load legal settings"
-      :description="settingsError.message"
-    />
-
-    <AppAlert
-      v-if="documentsError"
-      color="error"
-      variant="soft"
-      title="Unable to load platform documents"
-      :description="documentsError.message"
-    />
-
-    <AppAlert
-      v-if="!settings && settingsStatus !== 'pending'"
-      color="warning"
-      variant="soft"
-      title="Legal settings are not configured"
-      description="The public imprint and contact form remain unavailable until these settings are saved."
-    />
-
-    <AppAlert
-      v-if="(!privacyPolicyDocument || !platformTermsDocument) && documentsStatus !== 'pending'"
-      color="warning"
-      variant="soft"
-      title="Platform consent documents are incomplete"
-      description="Account registration and re-consent require current Privacy Policy and Platform Terms versions."
-    />
-
     <AppCard class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60">
       <template #header>
         <div class="space-y-1">
@@ -213,24 +151,41 @@ async function publishPlatformDocument(documentType: PlatformDocumentRecord['doc
         </div>
       </template>
 
+      <AppAlert
+        v-if="settingsError"
+        color="error"
+        title="Unable to load legal settings"
+        :description="settingsError.message"
+      />
+      <AppAlert
+        v-else-if="settingsStatus !== 'success'"
+        title="Loading legal settings"
+      />
       <form
+        v-else
         class="space-y-5"
         @submit.prevent="saveLegalSettings"
       >
+        <AppAlert
+          v-if="!settings"
+          color="warning"
+          title="Legal settings are not configured"
+          description="The public imprint and contact form remain unavailable until these settings are saved."
+        />
         <AppFormField
           name="platform-support-email"
           label="Support email"
           description="Receives messages from the public imprint contact form. Use an inbox monitored by the platform operator."
         >
           <AppInput
-            v-model="legalSettingsForm.supportEmail"
+            v-model="supportEmail"
             type="email"
             required
           />
         </AppFormField>
 
         <LazyAdminMarkdownEditorField
-          v-model="legalSettingsForm.imprintContent"
+          v-model="imprintContent"
           name="platform-imprint-content"
           editor-id="platform-imprint-content"
           label="Imprint content"
@@ -271,7 +226,26 @@ async function publishPlatformDocument(documentType: PlatformDocumentRecord['doc
         </div>
       </template>
 
-      <div class="space-y-6">
+      <AppAlert
+        v-if="documentsError"
+        color="error"
+        title="Unable to load platform documents"
+        :description="documentsError.message"
+      />
+      <AppAlert
+        v-else-if="documentsStatus !== 'success'"
+        title="Loading platform documents"
+      />
+      <div
+        v-else
+        class="space-y-6"
+      >
+        <AppAlert
+          v-if="!privacyPolicyDocument || !platformTermsDocument"
+          color="warning"
+          title="Platform consent documents are incomplete"
+          description="Account registration and re-consent require current Privacy Policy and Platform Terms versions."
+        />
         <AppAlert
           v-if="publishError"
           color="error"

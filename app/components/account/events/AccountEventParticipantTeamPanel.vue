@@ -50,9 +50,11 @@ const props = withDefaults(defineProps<{
 })
 
 const toast = useToast()
-const selectedTeamId = ref<string | null>(null)
-const selectedTeamStatus = ref<'idle' | 'pending' | 'success' | 'error'>('idle')
-const selectedTeamErrorMessage = ref('')
+const requestedTeamSlug = computed(() => props.selectedTeamSlug?.trim().toLowerCase())
+const selectedTeamId = computed(() => {
+  const team = props.page?.selectedTeam
+  return team && team.slug === requestedTeamSlug.value ? team.id : null
+})
 const directoryFilter = ref<TeamsDirectoryFilter>('all')
 
 const workspace = useTeamFormationWorkspace(
@@ -61,10 +63,6 @@ const workspace = useTeamFormationWorkspace(
     teamId: selectedTeamId,
     initialState: computed(() => props.page)
   }
-)
-
-const visibleTeamSlugs = computed(() =>
-  workspace.visibleTeams.value.map(team => team.slug).join(':')
 )
 
 function buildTeamsTabHref(teamSlug?: string | null) {
@@ -99,67 +97,15 @@ function mapDirectoryFilter(filter: TeamsDirectoryFilter) {
   }
 }
 
-function syncSelectedTeamId() {
-  const requestedTeamSlug = props.selectedTeamSlug?.trim().toLowerCase() ?? ''
-
-  selectedTeamErrorMessage.value = ''
-
-  if (!requestedTeamSlug) {
-    selectedTeamId.value = null
-    selectedTeamStatus.value = 'success'
-    return
-  }
-
-  if (!props.page) {
-    selectedTeamId.value = null
-    selectedTeamStatus.value = 'pending'
-    return
-  }
-
-  const pageSelectedTeam = props.page?.selectedTeam
-
-  if (pageSelectedTeam?.slug === requestedTeamSlug) {
-    selectedTeamId.value = pageSelectedTeam.id
-    selectedTeamStatus.value = 'success'
-    return
-  }
-
-  const matchingVisibleTeam = workspace.visibleTeams.value.find(team => team.slug === requestedTeamSlug)
-
-  if (matchingVisibleTeam) {
-    selectedTeamId.value = matchingVisibleTeam.id
-    selectedTeamStatus.value = 'success'
-    return
-  }
-
-  selectedTeamId.value = null
-  selectedTeamStatus.value = 'error'
-  selectedTeamErrorMessage.value = 'The selected team from this link is not available in this event.'
-}
-
-watch([
-  () => props.selectedTeamSlug ?? null,
-  () => props.page?.selectedTeam?.id ?? null,
-  visibleTeamSlugs
-], () => {
-  syncSelectedTeamId()
-}, {
-  immediate: true
-})
-
 watch(directoryFilter, async (nextFilter) => {
   await workspace.loadVisibleTeams(1, {
     filter: mapDirectoryFilter(nextFilter)
   })
 })
 
-const actor = computed(() => workspace.actor.value)
+const { actor } = workspace
 const ownApplicationStatus = computed(() => workspace.ownApplication.value?.status ?? null)
 const createTeamWorkspaceHref = computed(() => {
-  if (workspace.ownTeamStatus.value !== 'success') {
-    return null
-  }
-
   const createTeamAvailability = getCreateTeamAvailability(
     props.event,
     ownApplicationStatus.value,
@@ -212,15 +158,7 @@ const isActorLoading = computed(() =>
   workspace.actorStatus.value === 'idle' || workspace.actorStatus.value === 'pending'
 )
 const isDirectoryLoading = computed(() =>
-  props.isLoading
-  || !props.page
-  || (Boolean(actor.value && actor.value.kind === 'platform_user')
-    && (
-      workspace.ownApplicationStatus.value === 'idle'
-      || workspace.ownApplicationStatus.value === 'pending'
-      || workspace.visibleTeamsStatus.value === 'idle'
-      || workspace.visibleTeamsStatus.value === 'pending'
-    ))
+  workspace.visibleTeamsStatus.value === 'idle' || workspace.visibleTeamsStatus.value === 'pending'
 )
 const selectedTeamJoinAvailability = computed(() => {
   if (!selectedTeam.value) {
@@ -390,139 +328,97 @@ async function copySelectedTeamLink() {
     class="space-y-6"
   >
     <AppAlert
-      v-if="props.isLoading || (!props.page && !props.loadErrorMessage) || isActorLoading"
-      color="neutral"
-      variant="soft"
-      title="Loading team access"
-      description="Resolving your access to this event workspace."
-    />
-
-    <AppAlert
-      v-else-if="props.loadErrorMessage"
+      v-if="workspace.actorError.value || props.loadErrorMessage"
       color="error"
       variant="soft"
       title="Teams unavailable"
-      :description="props.loadErrorMessage"
+      :description="workspace.actorError.value?.message || props.loadErrorMessage"
+    />
+
+    <AppAlert
+      v-else-if="props.isLoading || !props.page || isActorLoading"
+      color="neutral"
+      variant="soft"
+      title="Loading team access"
+      description="Checking your access to teams for this event."
     />
 
     <template v-else-if="actor?.kind === 'platform_user'">
       <AppAlert
-        v-if="workspace.actorErrorMessage.value"
+        v-if="workspace.mutationError.value"
         color="error"
         variant="soft"
-        title="Unable to resolve team access"
-        :description="workspace.actorErrorMessage.value"
+        title="Team action failed"
+        :description="workspace.mutationError.value"
       />
 
       <AppAlert
-        v-else-if="workspace.visibleEventErrorMessage.value"
-        color="error"
+        v-if="requestedTeamSlug && !selectedTeamId"
+        color="warning"
         variant="soft"
-        title="Unable to resolve event access"
-        :description="workspace.visibleEventErrorMessage.value"
+        title="Selected team unavailable"
+        description="The selected team from this link is not available in this event."
       />
 
-      <AppAlert
-        v-else-if="!workspace.visibleEventId.value"
-        color="error"
-        variant="soft"
-        title="Teams unavailable"
-        description="The current event could not be resolved for team actions."
-      />
-
-      <AppAlert
-        v-else-if="workspace.ownApplicationErrorMessage.value"
-        color="error"
-        variant="soft"
-        title="Unable to resolve your application status"
-        :description="workspace.ownApplicationErrorMessage.value"
-      />
-
-      <template v-else>
-        <AppAlert
-          v-if="workspace.mutationError.value"
-          color="error"
-          variant="soft"
-          title="Team action failed"
-          :description="workspace.mutationError.value"
-        />
-
-        <AppAlert
-          v-if="selectedTeamStatus === 'pending'"
-          color="neutral"
-          variant="soft"
-          title="Loading selected team"
-          description="Resolving the team from the shared link."
-        />
-
-        <AppAlert
-          v-else-if="selectedTeamErrorMessage"
-          color="warning"
-          variant="soft"
-          title="Selected team unavailable"
-          :description="selectedTeamErrorMessage"
-        />
-
-        <div
-          v-if="selectedSharedTeam"
-          class="space-y-6"
+      <div
+        v-if="selectedSharedTeam"
+        class="space-y-6"
+      >
+        <NuxtLink
+          :to="sharedTeamBackHref"
+          class="inline-flex items-center gap-2 text-[13px] font-medium text-neutral-600 transition-colors hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white"
         >
-          <NuxtLink
-            :to="sharedTeamBackHref"
-            class="inline-flex items-center gap-2 text-[13px] font-medium text-neutral-600 transition-colors hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white"
-          >
-            <AppIcon
-              name="i-lucide-arrow-left"
-              class="size-4"
-            />
-            Back to teams
-          </NuxtLink>
-
-          <LazyParticipantTeamWorkspacePanel
-            :settings="{
-              name: selectedSharedTeam.name,
-              bio: selectedSharedTeam.bio ?? '',
-              isOpenToJoinRequests: selectedSharedTeam.isOpenToJoinRequests
-            }"
-            :team="selectedSharedTeam"
-            :event-state="props.event.state"
-            :max-team-members="props.event.maxTeamMembers"
-            :membership="selectedTeamMembership"
-            :can-manage-team="false"
-            :is-team-locked="props.event.state !== 'registration_open' && props.event.state !== 'submission_open'"
-            :join-availability="selectedTeamJoinAvailability"
-            :leave-availability="selectedTeamLeaveAvailability"
-            :pending-join-request-id="selectedTeamPendingJoinRequestId"
-            :pending-action-key="workspace.pendingActionKey.value"
-            :show-membership-actions="selectedTeamShowMembershipActions"
-            @copy-team-link="copySelectedTeamLink"
-            @request-join="requestToJoinTeam"
-            @cancel-join-request="cancelJoinRequest"
+          <AppIcon
+            name="i-lucide-arrow-left"
+            class="size-4"
           />
-        </div>
+          Back to teams
+        </NuxtLink>
 
-        <LazyParticipantTeamDirectoryPanel
-          v-else
-          v-model:directory-filter="directoryFilter"
-          :teams="visibleDirectoryEntries"
+        <LazyParticipantTeamWorkspacePanel
+          :settings="{
+            name: selectedSharedTeam.name,
+            bio: selectedSharedTeam.bio ?? '',
+            isOpenToJoinRequests: selectedSharedTeam.isOpenToJoinRequests
+          }"
+          :team="selectedSharedTeam"
+          :event-state="props.event.state"
           :max-team-members="props.event.maxTeamMembers"
-          :create-team-href="createTeamWorkspaceHref"
-          :own-team-workspace-href="ownTeamWorkspaceHref"
-          :total-teams="visibleDirectoryTotal"
-          :show-locked-status="showLockedTeamDirectoryStatus"
-          :show-operational-team-states="props.showOperationalTeamStates"
-          :filter-options="directoryFilterOptions"
-          :is-loading-teams="!isOpenToJoinDirectoryUnavailable && isDirectoryLoading"
-          :team-error-message="workspace.visibleTeamsErrorMessage.value"
-          :has-more-teams="hasMoreDirectoryTeams"
-          :is-loading-more-teams="workspace.isLoadingMoreVisibleTeams.value"
-          :load-more-teams-error-message="directoryLoadMoreErrorMessage"
+          :membership="selectedTeamMembership"
+          :can-manage-team="false"
+          :is-team-locked="props.event.state !== 'registration_open' && props.event.state !== 'submission_open'"
+          :join-availability="selectedTeamJoinAvailability"
+          :leave-availability="selectedTeamLeaveAvailability"
+          :pending-join-request-id="selectedTeamPendingJoinRequestId"
           :pending-action-key="workspace.pendingActionKey.value"
-          @join-team="requestToJoinTeam"
+          :show-membership-actions="selectedTeamShowMembershipActions"
+          @copy-team-link="copySelectedTeamLink"
+          @request-join="requestToJoinTeam"
           @cancel-join-request="cancelJoinRequest"
-          @load-more-teams="workspace.loadMoreVisibleTeams"
         />
-      </template>
+      </div>
+
+      <LazyParticipantTeamDirectoryPanel
+        v-else
+        v-model:directory-filter="directoryFilter"
+        :teams="visibleDirectoryEntries"
+        :max-team-members="props.event.maxTeamMembers"
+        :create-team-href="createTeamWorkspaceHref"
+        :own-team-workspace-href="ownTeamWorkspaceHref"
+        :total-teams="visibleDirectoryTotal"
+        :show-locked-status="showLockedTeamDirectoryStatus"
+        :show-operational-team-states="props.showOperationalTeamStates"
+        :filter-options="directoryFilterOptions"
+        :is-loading-teams="!isOpenToJoinDirectoryUnavailable && isDirectoryLoading"
+        :team-error-message="workspace.visibleTeamsErrorMessage.value"
+        :has-more-teams="hasMoreDirectoryTeams"
+        :is-loading-more-teams="workspace.isLoadingMoreVisibleTeams.value"
+        :load-more-teams-error-message="directoryLoadMoreErrorMessage"
+        :pending-action-key="workspace.pendingActionKey.value"
+        @join-team="requestToJoinTeam"
+        @cancel-join-request="cancelJoinRequest"
+        @load-more-teams="workspace.loadMoreVisibleTeams"
+      />
     </template>
 
     <AppAlert

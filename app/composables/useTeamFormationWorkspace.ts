@@ -12,7 +12,6 @@ import type {
   TeamDetailRecord,
   TeamJoinRequestRecord,
   TeamSummaryRecord,
-  TeamWorkspaceActor,
   TeamWorkspaceApiDataResponse,
   TeamWorkspaceApiListResponse
 } from '~/domains/teams/workspace'
@@ -86,7 +85,7 @@ export function useTeamFormationWorkspace(
   const { protectedKey } = useAuthorizationCache()
   const requestOwner = useProtectedRequestOwner()
   let workspaceGeneration = 0
-  const { actor, status: actorStatus } = useAccountLifecycleActor()
+  const { actor, error: actorError, status: actorStatus } = useAccountBootstrap()
   const resolvedEvent = computed(() => toValue(event))
   const resolvedTeamId = computed(() => {
     const teamId = toValue(options?.teamId ?? null)
@@ -96,17 +95,12 @@ export function useTeamFormationWorkspace(
     'team-workspace-remembered-pending-join-request-ids',
     () => ({})
   )
-  const typedActor = computed<TeamWorkspaceActor | null>(() => actor.value)
-  const actorUserId = computed(() => typedActor.value?.kind === 'platform_user' ? typedActor.value.platformUser.id : null)
-  const actorErrorMessage = computed(() => '')
+  const actorUserId = computed(() => actor.value?.kind === 'platform_user' ? actor.value.platformUser.id : null)
 
   const visibleEvent = computed(() => resolvedEvent.value)
   const visibleEventId = computed(() => resolvedEvent.value.id)
-  const visibleEventErrorMessage = computed(() => '')
 
   const ownApplication = ref<ParticipantApplicationRecord | null>(null)
-  const ownApplicationStatus = ref<LoadStatus>('idle')
-  const ownApplicationErrorMessage = ref('')
 
   const visibleTeams = ref<TeamSummaryRecord[]>([])
   const visibleTeamsStatus = ref<LoadStatus>('idle')
@@ -119,16 +113,12 @@ export function useTeamFormationWorkspace(
   const activeVisibleTeamsFilter = ref<VisibleTeamsFilter>({})
 
   const ownTeam = ref<TeamDetailRecord | null>(null)
-  const ownTeamStatus = ref<LoadStatus>('idle')
-  const ownTeamErrorMessage = ref('')
 
   const currentTeam = ref<TeamDetailRecord | null>(null)
   const currentTeamStatus = ref<LoadStatus>('idle')
   const currentTeamErrorMessage = ref('')
 
   const teamJoinRequests = ref<TeamJoinRequestRecord[]>([])
-  const teamJoinRequestsStatus = ref<LoadStatus>('idle')
-  const teamJoinRequestsErrorMessage = ref('')
 
   const pendingActionKey = ref<string | null>(null)
   const mutationError = ref('')
@@ -138,13 +128,10 @@ export function useTeamFormationWorkspace(
   function applyInitialState(state: TeamFormationInitialState | null) {
     if (!state) {
       ownApplication.value = null
-      ownApplicationStatus.value = 'idle'
       ownTeam.value = null
-      ownTeamStatus.value = 'idle'
       currentTeam.value = null
       currentTeamStatus.value = 'idle'
       teamJoinRequests.value = []
-      teamJoinRequestsStatus.value = 'idle'
       visibleTeams.value = []
       visibleTeamsStatus.value = 'idle'
       visibleTeamsTotal.value = 0
@@ -154,11 +141,7 @@ export function useTeamFormationWorkspace(
     }
 
     ownApplication.value = state.application as ParticipantApplicationRecord | null
-    ownApplicationStatus.value = 'success'
-    ownApplicationErrorMessage.value = ''
     ownTeam.value = state.ownTeam as TeamDetailRecord | null
-    ownTeamStatus.value = 'success'
-    ownTeamErrorMessage.value = ''
     const requestedTeamId = resolvedTeamId.value
     const initialCurrentTeam = requestedTeamId
       ? state.selectedTeam?.id === requestedTeamId ? state.selectedTeam : null
@@ -167,8 +150,6 @@ export function useTeamFormationWorkspace(
     currentTeamStatus.value = initialCurrentTeam || !requestedTeamId ? 'success' : 'idle'
     currentTeamErrorMessage.value = ''
     teamJoinRequests.value = state.joinRequests as TeamJoinRequestRecord[]
-    teamJoinRequestsStatus.value = 'success'
-    teamJoinRequestsErrorMessage.value = ''
 
     if (state.visibleTeams && state.visibleTeamsMeta) {
       visibleTeams.value = state.visibleTeams as TeamSummaryRecord[]
@@ -234,8 +215,6 @@ export function useTeamFormationWorkspace(
     currentTeamStatus.value = 'idle'
     currentTeamErrorMessage.value = ''
     teamJoinRequests.value = []
-    teamJoinRequestsStatus.value = 'idle'
-    teamJoinRequestsErrorMessage.value = ''
   }
 
   function isCurrentWorkspaceRequest(
@@ -280,7 +259,7 @@ export function useTeamFormationWorkspace(
   }) {
     const eventId = visibleEventId.value
     const userId = actorUserId.value
-    if (!eventId || !userId || typedActor.value?.kind !== 'platform_user') {
+    if (!eventId || !userId) {
       resetVisibleTeamsState()
       return
     }
@@ -379,7 +358,7 @@ export function useTeamFormationWorkspace(
     const eventId = visibleEventId.value
     const teamId = resolvedTeamId.value
     const userId = actorUserId.value
-    if (!eventId || !teamId || !userId || typedActor.value?.kind !== 'platform_user') {
+    if (!eventId || !teamId || !userId) {
       resetCurrentTeamState()
       return
     }
@@ -408,8 +387,6 @@ export function useTeamFormationWorkspace(
 
       if (getOwnTeamMembership(detail, userId)) {
         ownTeam.value = detail
-        ownTeamStatus.value = 'success'
-        ownTeamErrorMessage.value = ''
       }
     } catch (error) {
       if (isAbortError(error, signal)) {
@@ -477,8 +454,6 @@ export function useTeamFormationWorkspace(
       )
 
       ownTeam.value = response.data
-      ownTeamStatus.value = 'success'
-      ownTeamErrorMessage.value = ''
       currentTeam.value = response.data
       currentTeamStatus.value = 'success'
       currentTeamErrorMessage.value = ''
@@ -564,7 +539,6 @@ export function useTeamFormationWorkspace(
       currentTeam.value = response.data
       if (getOwnTeamMembership(response.data, actorUserId.value)) {
         ownTeam.value = response.data
-        ownTeamStatus.value = 'success'
       }
       visibleTeams.value = visibleTeams.value.map(team => team.id === response.data.id ? response.data : team)
       return response.data
@@ -593,7 +567,6 @@ export function useTeamFormationWorkspace(
       currentTeam.value = response.data
       if (getOwnTeamMembership(response.data, actorUserId.value)) {
         ownTeam.value = response.data
-        ownTeamStatus.value = 'success'
       }
       visibleTeams.value = visibleTeams.value.map(team => team.id === response.data.id ? response.data : team)
       return response.data
@@ -672,7 +645,6 @@ export function useTeamFormationWorkspace(
       currentTeam.value = null
       currentTeamStatus.value = 'success'
       ownTeam.value = null
-      ownTeamStatus.value = 'success'
       visibleTeams.value = visibleTeams.value.filter(team => team.id !== leavingTeamId)
       visibleTeamsTotal.value = Math.max(0, visibleTeamsTotal.value - 1)
       return response.data
@@ -777,8 +749,8 @@ export function useTeamFormationWorkspace(
   })
 
   return {
-    actor: typedActor,
-    actorErrorMessage,
+    actor,
+    actorError,
     actorStatus,
     currentTeam,
     currentTeamErrorMessage,
@@ -795,12 +767,8 @@ export function useTeamFormationWorkspace(
     loadMoreVisibleTeamsErrorMessage,
     mutationError,
     ownApplication,
-    ownApplicationErrorMessage,
-    ownApplicationStatus,
     ownTeam,
-    ownTeamErrorMessage,
     ownTeamMembership,
-    ownTeamStatus,
     pendingActionKey,
     rememberPendingJoinRequest,
     requestToJoinTeam,
@@ -813,20 +781,10 @@ export function useTeamFormationWorkspace(
     resolvedEvent,
     resolvedTeamId,
     teamJoinRequests,
-    teamJoinRequestsErrorMessage,
-    teamJoinRequestsStatus,
     updateCurrentTeamJoinPolicy,
     updateCurrentTeamProfile,
     visibleEvent,
-    visibleEventErrorMessage,
     visibleEventId,
-    visibleEventStatus: computed(() => {
-      if (actorStatus.value === 'idle' || actorStatus.value === 'pending') {
-        return actorStatus.value
-      }
-
-      return 'success'
-    }),
     visibleTeams,
     visibleTeamsErrorMessage,
     visibleTeamsFilterCounts,

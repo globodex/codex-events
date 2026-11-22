@@ -77,7 +77,7 @@ const createTeamErrors = reactive({
 })
 const createTeamSubmitCount = ref(0)
 
-const actor = computed(() => workspace.actor.value)
+const { actor } = workspace
 const ownApplicationStatus = computed(() => workspace.ownApplication.value?.status ?? null)
 const displayedTeam = computed(() => workspace.currentTeam.value ?? workspace.ownTeam.value)
 const displayedTeamMembership = computed(() =>
@@ -232,27 +232,10 @@ const showPublicVisibilityToggle = computed(() =>
 const submissionUnavailableDescription = computed(() => {
   return 'The current submission surface could not be resolved right now.'
 })
-const isWorkspaceLoading = computed(() => {
-  if (props.loadErrorMessage) {
-    return false
-  }
-
-  if (props.isLoading || !props.page) {
-    return true
-  }
-
-  if (workspace.actorStatus.value === 'idle' || workspace.actorStatus.value === 'pending') {
-    return true
-  }
-
-  if (!actor.value || actor.value.kind !== 'platform_user') {
-    return false
-  }
-
-  return workspace.ownApplicationStatus.value === 'idle'
-    || workspace.ownTeamStatus.value === 'idle'
-    || workspace.ownTeamStatus.value === 'pending'
-})
+const isWorkspaceLoading = computed(() =>
+  props.isLoading || !props.page
+  || workspace.actorStatus.value === 'idle' || workspace.actorStatus.value === 'pending'
+)
 
 function buildSubmissionInput() {
   return {
@@ -578,178 +561,108 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
     class="space-y-6"
   >
     <AppAlert
-      v-if="isWorkspaceLoading"
+      v-if="workspace.actorError.value || props.loadErrorMessage"
+      color="error"
+      variant="soft"
+      title="Workspace unavailable"
+      :description="workspace.actorError.value?.message || props.loadErrorMessage"
+    />
+
+    <AppAlert
+      v-else-if="isWorkspaceLoading"
       color="neutral"
       variant="soft"
       title="Loading workspace"
       description="Checking your team and submission access for this event."
     />
 
-    <AppAlert
-      v-else-if="props.loadErrorMessage"
-      color="error"
-      variant="soft"
-      title="Workspace unavailable"
-      :description="props.loadErrorMessage"
-    />
-
     <template v-else-if="actor?.kind === 'platform_user'">
       <AppAlert
-        v-if="workspace.actorErrorMessage.value"
+        v-if="workspace.mutationError.value"
         color="error"
         variant="soft"
-        title="Unable to resolve workspace access"
-        :description="workspace.actorErrorMessage.value"
+        title="Team action failed"
+        :description="workspace.mutationError.value"
       />
 
       <AppAlert
-        v-else-if="workspace.visibleEventErrorMessage.value"
-        color="error"
+        v-if="workspaceOutcomeNotice"
+        :color="workspaceOutcomeNotice.color"
         variant="soft"
-        title="Unable to resolve event access"
-        :description="workspace.visibleEventErrorMessage.value"
+        :title="workspaceOutcomeNotice.title"
+        :description="workspaceOutcomeNotice.description"
       />
 
-      <AppAlert
-        v-else-if="!workspace.visibleEventId.value"
-        color="error"
-        variant="soft"
-        title="Workspace unavailable"
-        description="The current event could not be resolved for participant actions."
+      <LazyAccountEventParticipationRankNotice
+        :event-state="props.event.state"
+        :team-name="displayedTeam?.name ?? null"
+        :rank-summary="props.page?.rank ?? null"
       />
 
-      <AppAlert
-        v-else-if="workspace.ownApplicationErrorMessage.value"
-        color="error"
-        variant="soft"
-        title="Unable to resolve your application status"
-        :description="workspace.ownApplicationErrorMessage.value"
-      />
-
-      <template v-else>
-        <AppAlert
-          v-if="workspace.mutationError.value"
-          color="error"
-          variant="soft"
-          title="Team action failed"
-          :description="workspace.mutationError.value"
-        />
-
-        <AppAlert
-          v-if="workspace.ownTeamErrorMessage.value"
-          color="warning"
-          variant="soft"
-          title="Current team membership unresolved"
-          :description="workspace.ownTeamErrorMessage.value"
-        />
-
-        <AppAlert
-          v-if="workspaceOutcomeNotice"
-          :color="workspaceOutcomeNotice.color"
-          variant="soft"
-          :title="workspaceOutcomeNotice.title"
-          :description="workspaceOutcomeNotice.description"
-        />
-
-        <LazyAccountEventParticipationRankNotice
+      <template v-if="displayedTeam">
+        <LazyParticipantTeamWorkspacePanel
+          v-model:settings="teamSettings"
+          :team="displayedTeam"
           :event-state="props.event.state"
-          :team-name="displayedTeam?.name ?? null"
-          :rank-summary="props.page?.rank ?? null"
+          :max-team-members="props.event.maxTeamMembers"
+          :membership="displayedTeamMembership"
+          :can-manage-team="canManageTeam"
+          :is-team-locked="props.event.state !== 'registration_open' && props.event.state !== 'submission_open'"
+          :join-availability="joinAvailability"
+          :join-policy-availability="joinPolicyAvailability"
+          :leave-availability="leaveAvailability"
+          :pending-action-key="workspace.pendingActionKey.value"
+          :removal-availability-by-user-id="removalAvailabilityByUserId"
+          :join-requests="workspace.teamJoinRequests.value"
+          :show-membership-actions="showMembershipActions"
+          @copy-team-link="copyCurrentTeamLink"
+          @submit-profile="submitTeamProfile"
+          @toggle-join-policy="toggleJoinPolicy"
+          @leave-team="leaveCurrentTeam"
+          @make-admin="makeMemberAdmin"
+          @remove-member="removeMember"
+          @approve-request="approveJoinRequest"
+          @reject-request="rejectJoinRequest"
         />
+      </template>
 
-        <template v-if="displayedTeam">
-          <LazyParticipantTeamWorkspacePanel
-            v-model:settings="teamSettings"
-            :team="displayedTeam"
-            :event-state="props.event.state"
-            :max-team-members="props.event.maxTeamMembers"
-            :membership="displayedTeamMembership"
-            :can-manage-team="canManageTeam"
-            :is-team-locked="props.event.state !== 'registration_open' && props.event.state !== 'submission_open'"
-            :join-availability="joinAvailability"
-            :join-policy-availability="joinPolicyAvailability"
-            :leave-availability="leaveAvailability"
-            :pending-action-key="workspace.pendingActionKey.value"
-            :removal-availability-by-user-id="removalAvailabilityByUserId"
-            :join-requests="workspace.teamJoinRequests.value"
-            :join-requests-status="workspace.teamJoinRequestsStatus.value"
-            :join-requests-error-message="workspace.teamJoinRequestsErrorMessage.value"
-            :show-membership-actions="showMembershipActions"
-            @copy-team-link="copyCurrentTeamLink"
-            @submit-profile="submitTeamProfile"
-            @toggle-join-policy="toggleJoinPolicy"
-            @leave-team="leaveCurrentTeam"
-            @make-admin="makeMemberAdmin"
-            @remove-member="removeMember"
-            @approve-request="approveJoinRequest"
-            @reject-request="rejectJoinRequest"
-          />
-        </template>
-
-        <section
-          v-else
-          class="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]"
-        >
-          <div class="space-y-6">
-            <AppCard
-              class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
-              :ui="{ body: 'p-5' }"
-            >
-              <div class="space-y-4">
-                <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
-                  <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                    Participate as solo
-                  </h2>
-                  <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                    Confirm solo participation now and keep the compact solo workspace until you decide to create or join a larger team.
-                  </p>
-                </div>
-
-                <p class="text-sm text-toned">
-                  {{ teamFormationAvailability.summary }}
+      <section
+        v-else
+        class="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]"
+      >
+        <div class="space-y-6">
+          <AppCard
+            class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
+            :ui="{ body: 'p-5' }"
+          >
+            <div class="space-y-4">
+              <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+                <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+                  Participate as solo
+                </h2>
+                <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                  Confirm solo participation now and keep the compact solo workspace until you decide to create or join a larger team.
                 </p>
-
-                <div>
-                  <AppButton
-                    color="neutral"
-                    variant="solid"
-                    class="bg-black text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-                    :loading="workspace.pendingActionKey.value === 'create-team'"
-                    :disabled="!createTeamAvailability.isAllowed || workspace.pendingActionKey.value === 'create-team'"
-                    @click="participateAsSolo"
-                  >
-                    Participate as solo
-                  </AppButton>
-                </div>
               </div>
-            </AppCard>
 
-            <AppCard
-              class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
-              :ui="{ body: 'p-5' }"
-            >
-              <div class="space-y-4">
-                <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
-                  <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                    Join a Team
-                  </h2>
-                  <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                    Browse available teams and send a join request from the Teams tab.
-                  </p>
-                </div>
+              <p class="text-sm text-toned">
+                {{ teamFormationAvailability.summary }}
+              </p>
 
+              <div>
                 <AppButton
-                  :to="teamsTabHref"
                   color="neutral"
                   variant="solid"
-                  trailing-icon="i-lucide-arrow-up-right"
                   class="bg-black text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                  :loading="workspace.pendingActionKey.value === 'create-team'"
+                  :disabled="!createTeamAvailability.isAllowed || workspace.pendingActionKey.value === 'create-team'"
+                  @click="participateAsSolo"
                 >
-                  Open Teams
+                  Participate as solo
                 </AppButton>
               </div>
-            </AppCard>
-          </div>
+            </div>
+          </AppCard>
 
           <AppCard
             class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
@@ -758,160 +671,186 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
             <div class="space-y-4">
               <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
                 <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                  Create a team
+                  Join a Team
                 </h2>
                 <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                  Start a regular team now and decide whether to accept join requests from other participants.
+                  Browse available teams and send a join request from the Teams tab.
                 </p>
               </div>
 
-              <p
-                v-if="!createTeamAvailability.isAllowed && createTeamAvailability.reason"
-                class="text-sm text-muted"
+              <AppButton
+                :to="teamsTabHref"
+                color="neutral"
+                variant="solid"
+                trailing-icon="i-lucide-arrow-up-right"
+                class="bg-black text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
               >
-                {{ createTeamAvailability.reason }}
-              </p>
-
-              <form
-                class="grid gap-4"
-                @submit.prevent="submitCreateTeamForm"
-              >
-                <AppFormField
-                  label="Team name"
-                  name="participant-create-team-name"
-                >
-                  <AppInput
-                    id="participant-create-team-name"
-                    v-model="createTeamForm.name"
-                    name="participant-create-team-name"
-                    size="xl"
-                    :class="createTeamSubmitCount > 0 && createTeamErrors.name ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
-                    :disabled="workspace.pendingActionKey.value === 'create-team'"
-                  />
-                  <p
-                    v-if="createTeamSubmitCount > 0 && createTeamErrors.name"
-                    class="text-xs text-error"
-                  >
-                    {{ createTeamErrors.name }}
-                  </p>
-                </AppFormField>
-
-                <AppFormField
-                  label="Team bio"
-                  name="participant-create-team-bio"
-                >
-                  <AppTextarea
-                    id="participant-create-team-bio"
-                    v-model="createTeamForm.bio"
-                    name="participant-create-team-bio"
-                    rows="4"
-                    :class="createTeamSubmitCount > 0 && createTeamErrors.bio ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-                    :disabled="workspace.pendingActionKey.value === 'create-team'"
-                  />
-                  <p
-                    v-if="createTeamSubmitCount > 0 && createTeamErrors.bio"
-                    class="text-xs text-error"
-                  >
-                    {{ createTeamErrors.bio }}
-                  </p>
-                </AppFormField>
-
-                <div class="flex items-center gap-3">
-                  <UiSwitch
-                    id="participant-create-team-open-initial"
-                    v-model="createTeamForm.isOpenToJoinRequests"
-                    :disabled="workspace.pendingActionKey.value === 'create-team'"
-                  />
-                  <label
-                    for="participant-create-team-open-initial"
-                    class="text-sm font-medium text-toned"
-                  >
-                    {{ createTeamForm.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
-                  </label>
-                </div>
-
-                <div>
-                  <AppButton
-                    type="submit"
-                    color="primary"
-                    :loading="workspace.pendingActionKey.value === 'create-team'"
-                    :disabled="!createTeamAvailability.isAllowed || workspace.pendingActionKey.value === 'create-team'"
-                  >
-                    Create team
-                  </AppButton>
-                </div>
-              </form>
+                Open Teams
+              </AppButton>
             </div>
           </AppCard>
-        </section>
+        </div>
 
-        <section
-          v-if="showSubmissionSection"
-          data-testid="account-event-submission-panel"
-          class="space-y-6"
+        <AppCard
+          class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
+          :ui="{ body: 'p-5' }"
         >
-          <AppCountdownCard
-            v-if="showClosedSubmissionCountdown"
-            title="Submission window not open yet"
-            description="You can prepare your team during registration. Submission details open once the event enters the submission phase."
-            :target-at="submissionOpensAt"
-            target-label="Submission opens at"
-            countdown-label="Submission opens in"
-            waiting-title="Scheduled opening time reached"
-            waiting-description="The scheduled opening time has passed. Submission actions appear once organizers open the submission phase."
-            post-target-state="waiting"
-            tone="info"
-            :show-seconds="true"
-            class="rounded-xl"
-          />
-
-          <LazyParticipantTeamSubmissionPanel
-            v-else-if="canViewSubmission && displayedTeam"
-            v-model:form="submissionForm"
-            :team-id="displayedTeam.id"
-            :event-state="props.event.state"
-            :tracks="props.event.tracks ?? []"
-            :submission-requirements="{
-              requireSubmissionSummary: props.event.requireSubmissionSummary,
-              requireSubmissionRepositoryUrl: props.event.requireSubmissionRepositoryUrl,
-              requireSubmissionDemoUrl: props.event.requireSubmissionDemoUrl
-            }"
-            :submission="submissionWorkspace.currentSubmission.value"
-            status="success"
-            :mutation-error="submissionWorkspace.mutationError.value"
-            :can-manage-submission="canManageTeam"
-            :create-availability="createSubmissionAvailability"
-            :update-availability="updateSubmissionAvailability"
-            :submit-availability="submitSubmissionAvailability"
-            :withdraw-availability="withdrawSubmissionAvailability"
-            :public-visibility-availability="publicVisibilityAvailability"
-            :show-public-visibility-toggle="showPublicVisibilityToggle"
-            :pending-action-key="submissionWorkspace.pendingActionKey.value"
-            @create-draft="createSubmissionDraft"
-            @save-changes="saveSubmissionChanges"
-            @submit-project="submitProject"
-            @withdraw-submission="withdrawSubmission"
-            @toggle-public-visibility="toggleSubmissionPublicVisibility"
-          />
-
-          <AppCard
-            v-else
-            class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
-          >
-            <template #header>
-              <div class="space-y-1">
-                <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                  Project submission
-                </h2>
-              </div>
-            </template>
-
-            <div class="p-5 pt-0 text-sm text-toned">
-              {{ submissionUnavailableDescription }}
+          <div class="space-y-4">
+            <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+              <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+                Create a team
+              </h2>
+              <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                Start a regular team now and decide whether to accept join requests from other participants.
+              </p>
             </div>
-          </AppCard>
-        </section>
-      </template>
+
+            <p
+              v-if="!createTeamAvailability.isAllowed && createTeamAvailability.reason"
+              class="text-sm text-muted"
+            >
+              {{ createTeamAvailability.reason }}
+            </p>
+
+            <form
+              class="grid gap-4"
+              @submit.prevent="submitCreateTeamForm"
+            >
+              <AppFormField
+                label="Team name"
+                name="participant-create-team-name"
+              >
+                <AppInput
+                  id="participant-create-team-name"
+                  v-model="createTeamForm.name"
+                  name="participant-create-team-name"
+                  size="xl"
+                  :class="createTeamSubmitCount > 0 && createTeamErrors.name ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
+                  :disabled="workspace.pendingActionKey.value === 'create-team'"
+                />
+                <p
+                  v-if="createTeamSubmitCount > 0 && createTeamErrors.name"
+                  class="text-xs text-error"
+                >
+                  {{ createTeamErrors.name }}
+                </p>
+              </AppFormField>
+
+              <AppFormField
+                label="Team bio"
+                name="participant-create-team-bio"
+              >
+                <AppTextarea
+                  id="participant-create-team-bio"
+                  v-model="createTeamForm.bio"
+                  name="participant-create-team-bio"
+                  rows="4"
+                  :class="createTeamSubmitCount > 0 && createTeamErrors.bio ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
+                  :disabled="workspace.pendingActionKey.value === 'create-team'"
+                />
+                <p
+                  v-if="createTeamSubmitCount > 0 && createTeamErrors.bio"
+                  class="text-xs text-error"
+                >
+                  {{ createTeamErrors.bio }}
+                </p>
+              </AppFormField>
+
+              <div class="flex items-center gap-3">
+                <UiSwitch
+                  id="participant-create-team-open-initial"
+                  v-model="createTeamForm.isOpenToJoinRequests"
+                  :disabled="workspace.pendingActionKey.value === 'create-team'"
+                />
+                <label
+                  for="participant-create-team-open-initial"
+                  class="text-sm font-medium text-toned"
+                >
+                  {{ createTeamForm.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
+                </label>
+              </div>
+
+              <div>
+                <AppButton
+                  type="submit"
+                  color="primary"
+                  :loading="workspace.pendingActionKey.value === 'create-team'"
+                  :disabled="!createTeamAvailability.isAllowed || workspace.pendingActionKey.value === 'create-team'"
+                >
+                  Create team
+                </AppButton>
+              </div>
+            </form>
+          </div>
+        </AppCard>
+      </section>
+
+      <section
+        v-if="showSubmissionSection"
+        data-testid="account-event-submission-panel"
+        class="space-y-6"
+      >
+        <AppCountdownCard
+          v-if="showClosedSubmissionCountdown"
+          title="Submission window not open yet"
+          description="You can prepare your team during registration. Submission details open once the event enters the submission phase."
+          :target-at="submissionOpensAt"
+          target-label="Submission opens at"
+          countdown-label="Submission opens in"
+          waiting-title="Scheduled opening time reached"
+          waiting-description="The scheduled opening time has passed. Submission actions appear once organizers open the submission phase."
+          post-target-state="waiting"
+          tone="info"
+          :show-seconds="true"
+          class="rounded-xl"
+        />
+
+        <LazyParticipantTeamSubmissionPanel
+          v-else-if="canViewSubmission && displayedTeam"
+          v-model:form="submissionForm"
+          :team-id="displayedTeam.id"
+          :event-state="props.event.state"
+          :tracks="props.event.tracks ?? []"
+          :submission-requirements="{
+            requireSubmissionSummary: props.event.requireSubmissionSummary,
+            requireSubmissionRepositoryUrl: props.event.requireSubmissionRepositoryUrl,
+            requireSubmissionDemoUrl: props.event.requireSubmissionDemoUrl
+          }"
+          :submission="submissionWorkspace.currentSubmission.value"
+          status="success"
+          :mutation-error="submissionWorkspace.mutationError.value"
+          :can-manage-submission="canManageTeam"
+          :create-availability="createSubmissionAvailability"
+          :update-availability="updateSubmissionAvailability"
+          :submit-availability="submitSubmissionAvailability"
+          :withdraw-availability="withdrawSubmissionAvailability"
+          :public-visibility-availability="publicVisibilityAvailability"
+          :show-public-visibility-toggle="showPublicVisibilityToggle"
+          :pending-action-key="submissionWorkspace.pendingActionKey.value"
+          @create-draft="createSubmissionDraft"
+          @save-changes="saveSubmissionChanges"
+          @submit-project="submitProject"
+          @withdraw-submission="withdrawSubmission"
+          @toggle-public-visibility="toggleSubmissionPublicVisibility"
+        />
+
+        <AppCard
+          v-else
+          class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
+        >
+          <template #header>
+            <div class="space-y-1">
+              <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+                Project submission
+              </h2>
+            </div>
+          </template>
+
+          <div class="p-5 pt-0 text-sm text-toned">
+            {{ submissionUnavailableDescription }}
+          </div>
+        </AppCard>
+      </section>
     </template>
 
     <AppAlert

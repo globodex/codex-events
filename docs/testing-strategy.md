@@ -143,6 +143,8 @@ The BDD launcher creates a fresh local D1 database and uses a free loopback port
 Browser scenarios apply a persona's cookie to a Playwright context and
 exercise the visible application.
 
+Browser tests hold session and page requests open to check the controls and links visible before a response arrives. They also exercise failed reads and successful empty responses as separate cases. Public session tests check the initial HTML, the hydrated page while the request is held, and the final signed-in or guest controls.
+
 API scenarios create a Playwright request context with the same cookie.
 They do not mint alternate test tokens or bypass actor resolution.
 

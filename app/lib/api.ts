@@ -59,10 +59,6 @@ export async function listAllPaginatedItems<T>(
   return items
 }
 
-export function getApiSubjectKey(subject: string | null | undefined) {
-  return subject?.trim() || 'anonymous'
-}
-
 export function buildApiCacheKey(...parts: Array<string>) {
   return parts.join(':')
 }

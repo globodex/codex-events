@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ComputedRef } from 'vue'
 import type Sortable from 'sortablejs'
 
 import AccountEventAdminTermsCard from '~/components/account/events/AccountEventAdminTermsCard.vue'
@@ -515,24 +516,41 @@ async function initializePrizeSortable() {
   })
 }
 
-watch(criteria, (items) => {
+// Each editor keeps its draft until its own saved rows change. Refreshing other
+// settings can return new objects for exactly the same criteria and prizes.
+function watchSavedRows<T>(rows: ComputedRef<T[]>, resetDraft: (items: T[]) => void) {
+  let lastSnapshot: string | undefined
+  watch([currentEvent, rows], ([event, items]) => {
+    if (!event) {
+      return
+    }
+
+    const snapshot = JSON.stringify([event.id, items])
+    if (snapshot !== lastSnapshot) {
+      lastSnapshot = snapshot
+      resetDraft(items)
+    }
+  }, { immediate: true })
+
+  return () => {
+    lastSnapshot = undefined
+  }
+}
+
+const acceptNextCriteriaRead = watchSavedRows(criteria, (items) => {
   criteriaRows.value = items.map(criterion => ({ ...criterion }))
   replaceReactiveMap(
     criterionEdits,
     Object.fromEntries(items.map(criterion => [criterion.id, createCriterionEditState(criterion)]))
   )
-}, {
-  immediate: true
 })
 
-watch(prizes, (items) => {
+const acceptNextPrizeRead = watchSavedRows(prizes, (items) => {
   prizeRows.value = items.map(prize => ({ ...prize }))
   replaceReactiveMap(
     prizeEdits,
     Object.fromEntries(items.map(prize => [prize.id, createPrizeEditState(prize)]))
   )
-}, {
-  immediate: true
 })
 
 watch([orderedCriteria, () => props.showCriteriaConfiguration], async () => {
@@ -982,6 +1000,7 @@ async function saveCriteria() {
       color: 'success'
     })
     hasAttemptedCriteriaSave.value = false
+    acceptNextCriteriaRead()
     emit('updated')
   } catch (error) {
     criteriaMutationError.value = normalizeApiError(error).message
@@ -1039,6 +1058,7 @@ async function savePrizes() {
       description: 'The prize catalog has been updated.',
       color: 'success'
     })
+    acceptNextPrizeRead()
     emit('updated')
   } catch (error) {
     mutationError.value = normalizeApiError(error).message

@@ -16,13 +16,14 @@ definePageMeta({
   middleware: ['require-event-creator']
 })
 
-const session = useSessionActor()
+const session = useAccountBootstrap()
 const apiFetch = useApiClient()
 const toast = useToast()
 const builder = useEventBuilder({ mode: 'create' })
 
+const canCreateEvent = computed(() => session.status.value === 'success' && session.capabilities.value.canCreateEvent)
 const createEventWebMcpTool = computed<WebMcpTool | null>(() => {
-  if (!session.isReady.value || !session.capabilities.value.canCreateEvent) {
+  if (!canCreateEvent.value) {
     return null
   }
 
@@ -33,7 +34,7 @@ const createEventWebMcpTool = computed<WebMcpTool | null>(() => {
     inputSchema: createEventWebMcpJsonSchema,
     annotations: { readOnlyHint: false },
     execute: async (input, { signal }) => {
-      if (!session.isReady.value || !session.capabilities.value.canCreateEvent) {
+      if (!canCreateEvent.value) {
         throw new Error('Event creator access is no longer available.')
       }
 

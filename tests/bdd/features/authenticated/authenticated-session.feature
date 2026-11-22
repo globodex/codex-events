@@ -27,3 +27,7 @@ Feature: Authenticated session foundation
   Scenario: Platform settings keeps the two role rosters independent
     When I search for a candidate in the event organizer roster
     Then the platform admin roster should load its own list with an empty search
+
+  Scenario: Opening saved legal settings with a delayed response
+    When I open platform legal settings while the saved settings are loading
+    Then I can edit the support email only after its saved value appears

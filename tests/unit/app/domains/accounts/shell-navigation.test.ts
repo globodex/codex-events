@@ -14,23 +14,17 @@ describe('isShellNavigationLinkActive', () => {
     expect(isShellNavigationLinkActive('/account/judging', undefined, '/account')).toBe(false)
   })
 
-  test('maps account event detail tabs to the correct sidebar entry', () => {
-    expect(isShellNavigationLinkActive('/account/events/berlin', undefined, '/account')).toBe(true)
-    expect(isShellNavigationLinkActive('/account/events/berlin', 'overview', '/account')).toBe(true)
-    expect(isShellNavigationLinkActive('/account/events/berlin', 'gallery', '/account')).toBe(true)
-    expect(isShellNavigationLinkActive('/account/events/berlin', 'workspace', '/account')).toBe(true)
-    expect(isShellNavigationLinkActive('/account/events/berlin', 'teams', '/account')).toBe(true)
-    expect(isShellNavigationLinkActive('/account/events/berlin', 'prizes', '/account')).toBe(true)
-    expect(isShellNavigationLinkActive('/account/events/berlin', 'judging', '/account')).toBe(false)
-    expect(isShellNavigationLinkActive('/account/events/berlin', 'participants', '/account')).toBe(false)
-    expect(isShellNavigationLinkActive('/account/events/berlin', 'submissions', '/account')).toBe(false)
-    expect(isShellNavigationLinkActive('/account/events/berlin', 'operations', '/account')).toBe(false)
+  test('waits for event access before marking a dashboard active', () => {
+    const path = '/account/events/berlin'
 
-    expect(isShellNavigationLinkActive('/account/events/berlin', 'judging', '/account/judging')).toBe(true)
-    expect(isShellNavigationLinkActive('/account/events/berlin', 'participants', '/account/admin')).toBe(true)
-    expect(isShellNavigationLinkActive('/account/events/berlin', 'submissions', '/account/admin')).toBe(true)
-    expect(isShellNavigationLinkActive('/account/events/berlin', 'settings', '/account/admin')).toBe(true)
-    expect(isShellNavigationLinkActive('/account/events/berlin', 'operations', '/account/admin')).toBe(true)
+    expect(isShellNavigationLinkActive(path, 'overview', '/account')).toBe(false)
+    expect(isShellNavigationLinkActive(path, 'participants', '/account/admin')).toBe(false)
+    expect(isShellNavigationLinkActive(path, 'judging', '/account/judging')).toBe(false)
+
+    const participant = { accountEventNavigationMode: 'participant' } as const
+    expect(isShellNavigationLinkActive(path, 'overview', '/account', participant)).toBe(true)
+    expect(isShellNavigationLinkActive(path, 'judging', '/account', participant)).toBe(false)
+    expect(isShellNavigationLinkActive(path, 'judging', '/account/judging', participant)).toBe(true)
   })
 
   test('keeps the staff dashboard active for staff-accessible event detail routes', () => {
@@ -152,6 +146,6 @@ describe('isShellNavigationLinkActive', () => {
       } as never,
       currentEventId: 'event-1',
       currentPath: '/account/events/berlin'
-    })).toBe('participant')
+    })).toBeUndefined()
   })
 })

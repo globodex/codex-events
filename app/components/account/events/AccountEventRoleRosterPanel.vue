@@ -27,20 +27,14 @@ const props = withDefaults(defineProps<{
   description: string
   emptyAssignedMessage: string
   page: AccountEventRostersPage | null
-  isLoading?: boolean
   loadErrorMessage?: string
   refreshPage?: () => Promise<unknown> | unknown
 }>(), {
-  isLoading: false,
   loadErrorMessage: ''
 })
 
-const { actor } = useSessionActor()
+const { actor } = useAccountBootstrap()
 const apiFetch = useApiClient()
-const workspace = useEventRoleRosterWorkspace(toRef(props, 'eventId'), {
-  initialAssignments: computed(() => props.page?.roleAssignments as EventRoleAssignment[] | undefined),
-  refreshPage: props.refreshPage
-})
 const roleCandidatePageSize = 20
 
 const {
@@ -53,6 +47,7 @@ const {
   appliedCandidateSearch,
   candidateUsers,
   candidateUsersStatus,
+  showCandidateSkeletons,
   candidateUsersErrorMessage,
   isLoadingMoreCandidates,
   loadMoreCandidatesErrorMessage,
@@ -79,7 +74,7 @@ const {
   )
 })
 
-const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])
+const roleAssignments = computed(() => (props.page?.roleAssignments ?? []) as EventRoleAssignment[])
 const assignedRows = computed(() =>
   buildAssignedRoleRosterRows(roleAssignments.value, props.role)
 )
@@ -152,7 +147,7 @@ const roleBadgeLabels: Record<EventRoleRosterBadge, string> = {
   platform_admin: 'Platform admin'
 }
 const currentPlatformUserId = computed(() =>
-  actor.value.kind === 'platform_user' ? actor.value.platformUser.id : null
+  actor.value?.kind === 'platform_user' ? actor.value.platformUser.id : null
 )
 
 function getAssignmentActionKey(prefix: 'assign' | 'remove' | 'toggle', userId: string) {
@@ -287,7 +282,9 @@ async function runMutation(
     action,
     successTitle,
     successDescription,
-    afterSuccess: workspace.refreshRoleRoster
+    afterSuccess: async () => {
+      await props.refreshPage?.()
+    }
   })
 }
 
@@ -580,14 +577,23 @@ async function removeRoleAssignment(assignment: EventRoleAssignment) {
       />
 
       <AppAlert
-        v-if="props.loadErrorMessage || workspace.roleAssignments.error.value"
+        v-if="props.loadErrorMessage"
         color="error"
         variant="soft"
         title="Unable to load role assignments"
-        :description="props.loadErrorMessage || workspace.roleAssignments.error.value?.message || 'Role assignments could not be loaded right now.'"
+        :description="props.loadErrorMessage"
       />
 
-      <div class="space-y-4">
+      <AppAlert
+        v-else-if="!props.page"
+        color="neutral"
+        title="Loading role assignments"
+      />
+
+      <div
+        v-else
+        class="space-y-4"
+      >
         <div class="flex items-center justify-between gap-3">
           <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
             {{ currentAssignmentsTitle }}
@@ -757,7 +763,10 @@ async function removeRoleAssignment(assignment: EventRoleAssignment) {
         </p>
       </div>
 
-      <div class="space-y-4 border-t border-black/8 pt-5 dark:border-white/[0.08]">
+      <div
+        v-if="props.page && !props.loadErrorMessage"
+        class="space-y-4 border-t border-black/8 pt-5 dark:border-white/[0.08]"
+      >
         <div class="space-y-1">
           <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
             {{ addSectionTitle }}
@@ -793,7 +802,7 @@ async function removeRoleAssignment(assignment: EventRoleAssignment) {
           v-else
           class="grid gap-3"
         >
-          <template v-if="candidateUsersStatus === 'pending' && candidateUsers.length === 0">
+          <template v-if="showCandidateSkeletons">
             <AccountRosterUserRowSkeleton
               v-for="index in candidateSkeletonRowCount"
               :key="`candidate-skeleton-${index}`"
@@ -843,7 +852,7 @@ async function removeRoleAssignment(assignment: EventRoleAssignment) {
             </AccountRosterUserRow>
 
             <p
-              v-if="candidateRows.length === 0"
+              v-if="candidateUsersStatus === 'success' && candidateRows.length === 0"
               class="text-sm text-muted"
             >
               {{ emptyCandidateMessage }}

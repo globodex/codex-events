@@ -15,7 +15,7 @@ definePageMeta({
   middleware: ['require-event-creator']
 })
 
-const session = useSessionActor()
+const session = useAccountBootstrap()
 const apiFetch = useApiClient()
 const toast = useToast()
 

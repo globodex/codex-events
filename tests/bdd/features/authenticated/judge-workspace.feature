@@ -1,6 +1,17 @@
 Feature: TASK-4.7 judge workspace UI
   Authenticated judges can use the blind judge workspace without exposing team identity.
 
+  Scenario: The dashboard distinguishes unavailable assignments from an empty inbox
+    When I open the judge dashboard with a delayed inbox response
+    Then the judge dashboard should show "Loading judge dashboard" without assignment results
+    When the judge inbox request fails
+    Then the judge dashboard should show "Judge dashboard unavailable" without assignment results
+
+  Scenario: A judge opens a saved assignment link directly
+    When I open the fixture blind assignment from its saved link
+    Then I should see the blind assignment title "Workspace Project One"
+    And the assignment should load with one session read and one assignment read
+
   Scenario: Judge starts and completes a blind review from the workspace
     When I open the judge workspace with the saved "judge" session
     Then I should see the fixture blind workspace assignment card

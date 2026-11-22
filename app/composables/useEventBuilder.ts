@@ -1,5 +1,5 @@
 import { validateDraftCredits, draftCreditLimits, jsonByteLength, type StagedCredit } from '#shared/domains/credits/draft-credits'
-import type { MaybeRefOrGetter } from 'vue'
+import { computed, reactive, ref, shallowRef, toValue, watch, type MaybeRefOrGetter } from 'vue'
 
 import type { EventBuilderBlockType, EventBuilderEventType } from '#shared/domains/events/builder-blocks'
 import { getEventBuilderPaletteBlockTypes } from '#shared/domains/events/builder-blocks'
@@ -37,21 +37,19 @@ export interface UseEventBuilderOptions {
 export function useEventBuilder(options: UseEventBuilderOptions) {
   const state = reactive(createEmptyEventBuilderState())
   const justSubmitted = ref(false)
-  let baselineSnapshot = JSON.stringify(toValue(state))
+  const draftSnapshot = computed(() => JSON.stringify(state))
+  const savedSnapshot = shallowRef(draftSnapshot.value)
+  const isDirty = computed(() => !justSubmitted.value && draftSnapshot.value !== savedSnapshot.value)
 
-  function resetBaseline() {
-    baselineSnapshot = JSON.stringify(toValue(state))
-  }
-
-  function hydrateFromEvent(event: EventRecord) {
-    Object.assign(state, createBuilderStateFromEvent(event))
-    resetBaseline()
+  function markSaved(snapshot: string) {
+    savedSnapshot.value = snapshot
   }
 
   if (options.initialEvent) {
-    watch(() => toValue(options.initialEvent), (event) => {
-      if (event) {
-        hydrateFromEvent(event)
+    watch(() => toValue(options.initialEvent), (event, previous) => {
+      if (event && (event.id !== previous?.id || !isDirty.value)) {
+        Object.assign(state, createBuilderStateFromEvent(event))
+        markSaved(draftSnapshot.value)
       }
     }, { immediate: true })
   }
@@ -60,28 +58,6 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
   watch(() => state.form.name, (name) => {
     if (!state.slugEdited) {
       state.form.slug = createEventSlug(name)
-    }
-  })
-
-  // A chosen event start fills window fields with sane defaults. Fields keep
-  // following the derived value until the organizer edits them by hand, so a
-  // segmented start being typed digit by digit settles on the final defaults.
-  const derivedWindowDefaults: Record<string, string> = {}
-
-  watch(() => state.eventStartsAt, (eventStartsAt) => {
-    if (!eventStartsAt) {
-      return
-    }
-
-    const defaults = deriveScheduleDefaults(eventStartsAt, state.blocks, state.form.eventType)
-
-    for (const [field, value] of Object.entries(defaults)) {
-      const key = field as keyof typeof defaults
-
-      if (!state.form[key] || state.form[key] === derivedWindowDefaults[key]) {
-        state.form[key] = value as string
-        derivedWindowDefaults[key] = value as string
-      }
     }
   })
 
@@ -98,7 +74,6 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
   const settingsGroups = computed(() => getEventBuilderSettingsGroups(state.form.eventType, options.mode))
   const requiredApplicationFieldCount = computed(() => getRequiredApplicationFieldCount(state.form))
   const visibleApplicationFieldCount = computed(() => getVisibleApplicationFieldCount(state.form))
-  const isDirty = computed(() => !justSubmitted.value && JSON.stringify(state) !== baselineSnapshot)
 
   function addBlock(type: EventBuilderBlockType, index?: number) {
     const block = createBlockInstance(type)
@@ -222,8 +197,27 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
     state.slugEdited = true
   }
 
-  function setEventStartsAt(value: string) {
-    state.eventStartsAt = value
+  // A chosen event start fills window fields with sane defaults. Fields keep
+  // following the derived value until the organizer edits them by hand, so a
+  // segmented start being typed digit by digit settles on the final defaults.
+  const derivedWindowDefaults: Record<string, string> = {}
+
+  function setEventStartsAt(eventStartsAt: string) {
+    state.eventStartsAt = eventStartsAt
+    if (!eventStartsAt) {
+      return
+    }
+
+    const defaults = deriveScheduleDefaults(eventStartsAt, state.blocks, state.form.eventType)
+
+    for (const [field, value] of Object.entries(defaults)) {
+      const key = field as keyof typeof defaults
+
+      if (!state.form[key] || state.form[key] === derivedWindowDefaults[key]) {
+        state.form[key] = value as string
+        derivedWindowDefaults[key] = value as string
+      }
+    }
   }
 
   function markSubmitted() {
@@ -289,8 +283,8 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
     markSlugEdited,
     setEventStartsAt,
     markSubmitted,
-    hydrateFromEvent,
-    resetBaseline,
+    draftSnapshot,
+    markSaved,
     setStagedCredits,
     buildCreateBody,
     buildPatchBody

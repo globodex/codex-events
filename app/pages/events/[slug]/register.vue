@@ -10,7 +10,6 @@ import type {
   ParticipantApplicationRecord,
   ParticipantApiDataResponse,
   ParticipantCurrentTermsResponse,
-  ParticipantApplicationTermsDocument,
   ParticipantApplicationSubmittedTransition,
   ParticipantRegistrationTrackOption,
   VisibleEventRecord
@@ -51,7 +50,7 @@ definePageMeta({
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
 const apiFetch = useApiClient()
-const { actor: accountActor, status: accountActorStatus } = await useAccountLifecycleActor()
+const { actor: accountActor, error: accountError } = useAccountBootstrap()
 
 if (!slug.value) {
   throw createError({
@@ -103,29 +102,10 @@ const inPersonCommitmentDateLabel = computed(() =>
 )
 const isSavingProfile = ref(false)
 const profileSaveError = ref('')
-const hasExistingApplication = ref(false)
-const currentApplicationTerms = ref<ParticipantApplicationTermsDocument | null>(null)
-const workspaceErrorMessage = ref('')
 const submissionError = ref('')
 const isSubmitting = ref(false)
 const submissionTransition = ref<ParticipantApplicationSubmittedTransition | null>(null)
-const visibleEventId = ref<string | null>(null)
-const registrationTrackOptions = ref<ParticipantRegistrationTrackOption[]>([])
-const talkProposalQuestions = ref<NonNullable<VisibleEventRecord['talkProposalQuestions']>>([])
-const talkProposalQuestionsRevision = ref(0)
-
-function createDefaultRegistrationRouteState() {
-  return {
-    visibleEventId: null,
-    hasExistingApplication: false,
-    currentApplicationTerms: null,
-    trackOptions: [],
-    talkProposalQuestions: [],
-    talkProposalQuestionsRevision: 0,
-    workspaceErrorMessage: '',
-    redirectTo: null
-  }
-}
+const accountId = computed(() => accountActor.value?.platformUser?.id)
 
 function listRegistrationTrackOptions(event: VisibleEventRecord): ParticipantRegistrationTrackOption[] {
   return [...(event.tracks ?? [])]
@@ -140,7 +120,15 @@ function listRegistrationTrackOptions(event: VisibleEventRecord): ParticipantReg
     )
 }
 
-watch(() => accountActor.value, (actor) => {
+watch(accountId, (_id, previousId) => {
+  if (previousId) {
+    registrationDraft.value = createParticipantRegistrationDraft()
+    submissionTransition.value = null
+    submissionError.value = ''
+    profileSaveError.value = ''
+  }
+
+  const actor = accountActor.value
   if (actor?.kind !== 'platform_user') {
     return
   }
@@ -161,7 +149,7 @@ watch(() => accountActor.value, (actor) => {
   }))
 }, { immediate: true })
 
-watch(() => event.value.maxTeamMembers, (maxTeamMembers) => {
+watch([() => event.value.maxTeamMembers, accountId], ([maxTeamMembers]) => {
   const nextRows = createParticipantTeamMemberHintRows(maxTeamMembers)
   const previousRows = registrationDraft.value.teamMemberHints
 
@@ -171,136 +159,52 @@ watch(() => event.value.maxTeamMembers, (maxTeamMembers) => {
   }))
 }, { immediate: true })
 
-watch(() => currentApplicationTerms.value?.id ?? null, () => {
-  registrationDraft.value.termsAccepted = false
-})
-
 watch(() => event.value.inPersonEvent, (isInPersonEvent) => {
   if (!isInPersonEvent) {
     registrationDraft.value.inPersonAttendanceCommitment = false
   }
 }, { immediate: true })
 
-const accountActorCacheKey = computed(() => {
-  if (accountActor.value.kind !== 'platform_user') {
-    return accountActor.value.kind
-  }
-
-  return `${accountActor.value.platformUser.id}:${accountActor.value.hasAcceptedCurrentPlatformDocuments ? 'accepted' : 'unaccepted'}`
-})
-const registrationRouteState = await useApiData<{
-  visibleEventId: string | null
-  hasExistingApplication: boolean
-  currentApplicationTerms: ParticipantApplicationTermsDocument | null
-  trackOptions: ParticipantRegistrationTrackOption[]
-  talkProposalQuestions: NonNullable<VisibleEventRecord['talkProposalQuestions']>
-  talkProposalQuestionsRevision: number
-  workspaceErrorMessage: string
-  redirectTo: {
-    to: string
-    external?: boolean
-  } | null
-}>(
-  () => `public-event-register-state:${slug.value}:${accountActorCacheKey.value}:${registrationIntent.value ?? 'registration'}`,
+const registrationRouteState = await useApiData(
+  () => `public-event-register-state:${slug.value}`,
   async ({ apiFetch, signal }) => {
-    if (accountActor.value.kind !== 'platform_user' || !accountActor.value.hasAcceptedCurrentPlatformDocuments) {
-      return {
-        visibleEventId: null,
-        hasExistingApplication: false,
-        currentApplicationTerms: null,
-        trackOptions: [],
-        talkProposalQuestions: [],
-        talkProposalQuestionsRevision: 0,
-        workspaceErrorMessage: '',
-        redirectTo: null
-      }
+    const { data: visibleEvent } = await apiFetch<ParticipantApiDataResponse<VisibleEventRecord>>(
+      `/api/events/slug/${slug.value}`,
+      { signal }
+    )
+    const { data: existingApplication } = await apiFetch<ParticipantApiDataResponse<ParticipantApplicationRecord | null>>(
+      `/api/events/${visibleEvent.id}/applications/me`,
+      { signal }
+    )
+    const redirectTo = resolveParticipantRegistrationEntry({
+      eventSlug: slug.value,
+      eventState: event.value.state,
+      registrationOpensAt: event.value.registrationOpensAt,
+      registrationClosesAt: event.value.registrationClosesAt,
+      hasExistingApplication: Boolean(existingApplication),
+      registrationIntent: registrationIntent.value
+    })
+
+    if (redirectTo) {
+      return { redirectTo }
     }
 
-    try {
-      const visibleEventResponse = await apiFetch<ParticipantApiDataResponse<VisibleEventRecord>>(
-        `/api/events/slug/${slug.value}`,
-        {
-          signal
-        }
-      )
-      const resolvedVisibleEventId = visibleEventResponse.data.id
-      const ownApplicationResponse = await apiFetch<ParticipantApiDataResponse<ParticipantApplicationRecord | null>>(
-        `/api/events/${resolvedVisibleEventId}/applications/me`,
-        {
-          signal
-        }
-      )
-      const resolvedHasExistingApplication = Boolean(ownApplicationResponse.data)
-      const routeResolution = resolveParticipantRegistrationEntry({
-        actorKind: accountActor.value.kind,
-        hasAcceptedCurrentPlatformDocuments: accountActor.value.hasAcceptedCurrentPlatformDocuments,
-        eventSlug: slug.value,
-        eventState: event.value.state,
-        registrationOpensAt: event.value.registrationOpensAt,
-        registrationClosesAt: event.value.registrationClosesAt,
-        hasExistingApplication: resolvedHasExistingApplication,
-        registrationIntent: registrationIntent.value
-      })
-
-      if (routeResolution) {
-        return {
-          visibleEventId: resolvedVisibleEventId,
-          hasExistingApplication: resolvedHasExistingApplication,
-          currentApplicationTerms: null,
-          trackOptions: [],
-          talkProposalQuestions: [],
-          talkProposalQuestionsRevision: 0,
-          workspaceErrorMessage: '',
-          redirectTo: {
-            to: routeResolution.to,
-            external: routeResolution.external
-          }
-        }
-      }
-
-      const currentTermsResponse = await apiFetch<ParticipantApiDataResponse<ParticipantCurrentTermsResponse>>(
-        `/api/events/${resolvedVisibleEventId}/terms/current`,
-        {
-          signal
-        }
-      )
-
-      return {
-        visibleEventId: resolvedVisibleEventId,
-        hasExistingApplication: resolvedHasExistingApplication,
-        currentApplicationTerms: currentTermsResponse.data.application_terms,
-        trackOptions: listRegistrationTrackOptions(visibleEventResponse.data),
-        talkProposalQuestions: registrationIntent.value
-          ? (visibleEventResponse.data.talkProposalQuestions ?? [])
-          : [],
-        talkProposalQuestionsRevision: registrationIntent.value
-          ? (visibleEventResponse.data.talkProposalQuestionsRevision ?? 0)
-          : 0,
-        workspaceErrorMessage: '',
-        redirectTo: null
-      }
-    } catch (error) {
-      if (signal.aborted) {
-        return createDefaultRegistrationRouteState()
-      }
-
-      return {
-        visibleEventId: null,
-        hasExistingApplication: false,
-        currentApplicationTerms: null,
-        trackOptions: [],
-        talkProposalQuestions: [],
-        talkProposalQuestionsRevision: 0,
-        workspaceErrorMessage: normalizeParticipantApiError(error).message,
-        redirectTo: null
+    const { data: terms } = await apiFetch<ParticipantApiDataResponse<ParticipantCurrentTermsResponse>>(
+      `/api/events/${visibleEvent.id}/terms/current`,
+      { signal }
+    )
+    return {
+      form: {
+        eventId: visibleEvent.id,
+        terms: terms.application_terms,
+        tracks: listRegistrationTrackOptions(visibleEvent),
+        questions: visibleEvent.talkProposalQuestions ?? [],
+        questionSetRevision: visibleEvent.talkProposalQuestionsRevision ?? 0
       }
     }
   },
   {
-    default: createDefaultRegistrationRouteState,
     watch: [
-      slug,
-      accountActorCacheKey,
       computed(() => event.value.state),
       computed(() => event.value.registrationOpensAt),
       computed(() => event.value.registrationClosesAt),
@@ -308,40 +212,31 @@ const registrationRouteState = await useApiData<{
     ]
   }
 )
-
-const isRegistrationRouteStateLoading = computed(() =>
-  !submissionTransition.value
-  && (
-    registrationRouteState.status.value === 'idle'
-    || registrationRouteState.status.value === 'pending'
-  )
-)
-
-async function navigateToRegistrationRedirect(redirectTo: {
-  to: string
-  external?: boolean
-} | null) {
-  if (!redirectTo) {
-    return
-  }
-
-  await navigateTo(
-    redirectTo.to,
-    redirectTo.external ? { external: true } : undefined
-  )
+const redirectTo = computed(() => registrationRouteState.data.value?.redirectTo)
+if (redirectTo.value) {
+  await navigateTo(redirectTo.value)
 }
+watch(redirectTo, (to) => {
+  if (to) return navigateTo(to)
+})
 
-await navigateToRegistrationRedirect(registrationRouteState.data.value.redirectTo)
+const form = computed(() => registrationRouteState.data.value?.form)
+const currentApplicationTerms = computed(() => form.value?.terms ?? null)
+const registrationTrackOptions = computed(() => form.value?.tracks ?? [])
+const talkProposalQuestions = computed(() => form.value?.questions ?? [])
+const talkProposalQuestionsRevision = computed(() => form.value?.questionSetRevision ?? 0)
+const workspaceErrorMessage = computed(() => registrationRouteState.error.value
+  ? normalizeParticipantApiError(registrationRouteState.error.value).message
+  : '')
+const isRegistrationRouteStateLoading = computed(() => !submissionTransition.value && (
+  registrationRouteState.status.value === 'idle'
+  || registrationRouteState.status.value === 'pending'
+  || Boolean(redirectTo.value)
+))
 
-watch(() => registrationRouteState.data.value, (state) => {
-  visibleEventId.value = state.visibleEventId
-  hasExistingApplication.value = state.hasExistingApplication
-  currentApplicationTerms.value = state.currentApplicationTerms
-  registrationTrackOptions.value = state.trackOptions
-  talkProposalQuestions.value = state.talkProposalQuestions
-  talkProposalQuestionsRevision.value = state.talkProposalQuestionsRevision
-  workspaceErrorMessage.value = state.workspaceErrorMessage
-}, { immediate: true })
+watch(() => currentApplicationTerms.value?.id ?? null, () => {
+  registrationDraft.value.termsAccepted = false
+})
 
 watch(
   [isTalkProposalRegistration, talkProposalQuestions, talkProposalQuestionsRevision],
@@ -367,10 +262,6 @@ watch(registrationTrackOptions, (trackOptions) => {
   if (registrationDraft.value.selectedTrackId && !trackOptions.some(track => track.id === registrationDraft.value.selectedTrackId)) {
     registrationDraft.value.selectedTrackId = ''
   }
-})
-
-watch(() => registrationRouteState.data.value.redirectTo, async (redirectTo) => {
-  await navigateToRegistrationRedirect(redirectTo)
 })
 
 const registrationDefinition = computed(() => resolveParticipantRegistrationDefinition({
@@ -400,7 +291,7 @@ const participantSubmissionPolicy = computed(() =>
     eventState: event.value.state,
     registrationOpensAt: event.value.registrationOpensAt,
     registrationClosesAt: event.value.registrationClosesAt,
-    applicationStatus: hasExistingApplication.value ? 'submitted' : null,
+    applicationStatus: submissionTransition.value ? 'submitted' : null,
     missingRequiredProfileFieldCount: missingRequiredProfileFieldCount.value,
     hasCurrentApplicationTerms: Boolean(currentApplicationTerms.value),
     hasAcceptedCurrentTerms: registrationDraft.value.termsAccepted,
@@ -422,8 +313,8 @@ async function submitParticipantApplication() {
     return
   }
 
-  if (!visibleEventId.value) {
-    submissionError.value = 'The current event application route could not be resolved.'
+  const eventId = form.value?.eventId
+  if (!eventId) {
     return
   }
 
@@ -449,7 +340,7 @@ async function submitParticipantApplication() {
   }
 
   try {
-    await apiFetch(`/api/events/${visibleEventId.value}/applications`, {
+    await apiFetch(`/api/events/${eventId}/applications`, {
       method: 'POST',
       body: projectParticipantRegistrationApplicationPayload(registrationDefinition.value, registrationDraft.value)
     })
@@ -465,7 +356,6 @@ async function submitParticipantApplication() {
     talkProposalSubmitted: isTalkProposalRegistration.value
   })
 
-  hasExistingApplication.value = true
   submissionTransition.value = nextSubmissionTransition
   isSubmitting.value = false
   isSavingProfile.value = false
@@ -541,14 +431,14 @@ useSeoMeta({
 
     <AppContainer class="relative z-10 max-w-[68rem] space-y-8 pb-10 pt-6 sm:pb-14">
       <AppAlert
-        v-if="accountActorStatus === 'pending'"
-        color="neutral"
+        v-if="accountError"
+        color="error"
         variant="soft"
-        title="Loading account access"
-        description="Checking your account."
+        title="Unable to load your account"
+        :description="normalizeParticipantApiError(accountError).message"
       />
 
-      <template v-else-if="accountActor?.kind === 'platform_user'">
+      <template v-else-if="accountActor?.kind === 'platform_user' && accountActor.hasAcceptedCurrentPlatformDocuments">
         <ParticipantRegistrationForm
           v-model="registrationDraft"
           :definition="registrationDefinition"

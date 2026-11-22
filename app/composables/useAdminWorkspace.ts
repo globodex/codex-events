@@ -2,10 +2,10 @@ import type { EventRecord } from '~/domains/events/records'
 import { filterManageableEvents } from '~/domains/events/access'
 
 import { useApiResponse } from './useApiData'
-import { useSessionActor } from './useSessionActor'
+import { useAccountBootstrap } from './useAccountBootstrap'
 
 export function useAdminWorkspace() {
-  const session = useSessionActor()
+  const session = useAccountBootstrap()
   const actor = session.actor
   const events = useApiResponse<EventRecord[]>(
     'admin-workspace-events',

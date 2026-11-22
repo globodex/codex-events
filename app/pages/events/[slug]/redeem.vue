@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ApiDataResponse } from '~/lib/api'
 
-import { buildAccountRegisterHref } from '#shared/domains/accounts/auth-navigation'
 import { normalizeApiError } from '~/lib/api'
 import { useApiClient } from '~/composables/useApiClient'
 import { useApiResponse } from '~/composables/useApiData'
@@ -45,24 +44,14 @@ if (import.meta.server) {
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
 const apiFetch = useApiClient()
-const returnTo = computed(() => `/events/${slug.value}/redeem`)
-const { actor, status: actorStatus } = await useAccountLifecycleActor()
-const accountReady = computed(() =>
-  actor.value.kind === 'platform_user' && actor.value.hasAcceptedCurrentPlatformDocuments
-)
 
 if (!slug.value) {
   throw createError({ statusCode: 404, statusMessage: 'Event not found.' })
 }
 
-if (actorStatus.value !== 'pending' && !accountReady.value) {
-  await navigateTo(buildAccountRegisterHref(returnTo.value), { replace: true })
-}
-
-const { data: claimState, error, status, refresh } = await useApiResponse<SimplifiedClaimState>(
+const { data: claimState, error, status } = await useApiResponse<SimplifiedClaimState>(
   () => `simplified-claim:${slug.value}`,
-  () => `/api/events/slug/${slug.value}/simplified-claim`,
-  { enabled: accountReady }
+  () => `/api/events/slug/${slug.value}/simplified-claim`
 )
 const lumaEmail = shallowRef('')
 const isInteractive = shallowRef(false)
@@ -76,22 +65,22 @@ watch(claimState, (nextState) => {
   }
 }, { immediate: true })
 
-async function redirectToCoupon(url: string | null) {
-  if (!url) return
-  if (import.meta.client) {
-    window.location.replace(url)
-    return
-  }
-  await navigateTo(url, { external: true, replace: true })
+const couponUrl = computed(() => claimState.value?.status === 'claimed' ? claimState.value.redirectUrl : null)
+if (import.meta.server && couponUrl.value) {
+  await navigateTo(couponUrl.value, { external: true, replace: true })
 }
 
-if (claimState.value?.status === 'claimed') {
-  await redirectToCoupon(claimState.value.redirectUrl)
-}
+onMounted(() => {
+  isInteractive.value = true
+  watch(couponUrl, (url) => {
+    if (url) window.location.replace(url)
+  }, { immediate: true })
+})
 
 async function redeem() {
   const email = lumaEmail.value.trim()
-  if (!email || isRedeeming.value) {
+  const currentClaim = claimState.value
+  if (!email || isRedeeming.value || currentClaim?.status !== 'ready') {
     return
   }
 
@@ -106,21 +95,13 @@ async function redeem() {
       method: 'POST',
       body: { lumaEmail: email }
     })
-    claimState.value = { ...response.data, eventName: claimState.value!.eventName }
-    await redirectToCoupon(response.data.redirectUrl)
+    claimState.value = { ...response.data, eventName: currentClaim.eventName }
   } catch (caught) {
     redeemError.value = normalizeApiError(caught).message
   } finally {
     isRedeeming.value = false
   }
 }
-
-onMounted(async () => {
-  isInteractive.value = true
-  if (claimState.value?.status === 'claimed') {
-    await redirectToCoupon(claimState.value.redirectUrl)
-  }
-})
 </script>
 
 <template>
@@ -146,7 +127,7 @@ onMounted(async () => {
           :description="normalizeApiError(error).message"
         />
         <div
-          v-else-if="status === 'pending' || isRedeeming"
+          v-else-if="status === 'idle' || status === 'pending' || isRedeeming"
           class="grid justify-items-center gap-3 py-8 text-center"
         >
           <AppIcon
@@ -228,18 +209,6 @@ onMounted(async () => {
             </AppButton>
           </div>
         </form>
-        <div
-          v-else
-          class="flex justify-center"
-        >
-          <AppButton
-            color="neutral"
-            variant="outline"
-            @click="refresh"
-          >
-            Try again
-          </AppButton>
-        </div>
       </div>
     </AppCard>
   </main>

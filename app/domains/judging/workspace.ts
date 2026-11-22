@@ -127,11 +127,6 @@ export interface PitchJudgeAssignmentDetail extends BaseJudgeAssignmentDetail {
 
 export type JudgeAssignmentDetail = BlindJudgeAssignmentDetail | PitchJudgeAssignmentDetail
 
-export interface JudgeInboxGroup {
-  event: EventRecord
-  assignments: JudgeAssignmentDetail[]
-}
-
 export interface JudgeDashboardAssignmentSummary {
   total: number
   inReview: number
@@ -214,13 +209,6 @@ const judgeAssignmentStatusDescriptions: Record<JudgeAssignmentStatus, string> =
   skipped: 'This review was skipped and is no longer active.'
 }
 
-const judgeAssignmentStatusSortOrder: Record<JudgeAssignmentStatus, number> = {
-  judge_started: 0,
-  assigned: 1,
-  judge_completed: 2,
-  skipped: 3
-}
-
 const judgeReviewStageLabels: Record<JudgeReviewStage, string> = {
   blind_review: 'Blind review',
   pitch_review: 'Pitch review'
@@ -234,17 +222,6 @@ const ineligibilityLabels: Record<JudgeIneligibilityStatus, string> = {
 const ineligibilityColors: Record<JudgeIneligibilityStatus, 'neutral' | 'error' | 'success'> = {
   eligible: 'success',
   ineligible: 'error'
-}
-
-export function getJudgeWorkspaceSubjectKey(subject?: string | null) {
-  return subject?.trim() || 'anonymous'
-}
-
-export function buildJudgeWorkspaceCacheKey(...parts: Array<string | null | undefined>) {
-  return parts
-    .map(part => part?.trim())
-    .filter(Boolean)
-    .join(':')
 }
 
 export function isBlindJudgeAssignment(
@@ -328,23 +305,6 @@ export function filterReviewableEvents(
   return events.filter(event => reviewableEventIds.has(event.id))
 }
 
-export function filterExplicitJudgeEvents(
-  events: EventRecord[],
-  actor: SessionActor | null | undefined
-) {
-  if (!actor?.hasPlatformAccount) {
-    return []
-  }
-
-  const explicitJudgeEventIds = new Set(
-    actor.eventRoles
-      .filter(role => isEventRoleJudgingEnabled(role))
-      .map(role => role.eventId)
-  )
-
-  return events.filter(event => explicitJudgeEventIds.has(event.id))
-}
-
 export function filterAssignmentsForActor(
   assignments: JudgeAssignmentDetail[],
   actor: SessionActor | null | undefined
@@ -396,26 +356,6 @@ export async function listAllVisibleEvents(
   }
 
   return [...collectedEvents.values()]
-}
-
-export function sortJudgeAssignments(assignments: JudgeAssignmentDetail[]) {
-  return [...assignments].sort((left, right) => {
-    const leftPriority = judgeAssignmentStatusSortOrder[left.status]
-    const rightPriority = judgeAssignmentStatusSortOrder[right.status]
-
-    if (leftPriority !== rightPriority) {
-      return leftPriority - rightPriority
-    }
-
-    const leftTimestamp = left.startedAt ?? left.assignedAt
-    const rightTimestamp = right.startedAt ?? right.assignedAt
-
-    if (leftTimestamp !== rightTimestamp) {
-      return leftTimestamp.localeCompare(rightTimestamp)
-    }
-
-    return left.id.localeCompare(right.id)
-  })
 }
 
 export function formatJudgeAssignmentStatus(status: JudgeAssignmentStatus) {

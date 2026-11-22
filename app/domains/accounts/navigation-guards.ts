@@ -5,11 +5,11 @@ import type { EventScopedRole } from '~/domains/events/roles'
 import { buildAuthLoginHref } from '#shared/domains/accounts/auth-navigation'
 import type { ApiClient } from '~/composables/useApiClient'
 import { useApiClient } from '~/composables/useApiClient'
-import { useSessionActor } from '~/composables/useSessionActor'
+import { useAccountBootstrap } from '~/composables/useAccountBootstrap'
 import { resolveActorAppRedirect } from './auth-navigation'
 
 type PlatformSessionActor = Extract<SessionActor, { kind: 'platform_user' }>
-export type NavigationSessionBootstrap = Pick<ReturnType<typeof useSessionActor>, 'actor' | 'ensureLoaded'>
+export type NavigationSessionBootstrap = Pick<ReturnType<typeof useAccountBootstrap>, 'ensureLoaded'>
 export type RedirectNavigationResult = {
   redirectTo: string
   external?: boolean
@@ -43,10 +43,9 @@ export function shouldSkipServerAuthenticatedNavigation(path: string) {
 
 export async function ensureAuthenticatedActor(
   to: RouteLocationNormalized,
-  bootstrap: NavigationSessionBootstrap = useSessionActor()
+  bootstrap: NavigationSessionBootstrap = useAccountBootstrap()
 ): Promise<RedirectNavigationResult | AuthenticatedNavigationResult> {
-  await bootstrap.ensureLoaded()
-  const actor = bootstrap.actor.value
+  const actor = await bootstrap.ensureLoaded()
 
   if (!actor.isAuthenticated) {
     return {
@@ -70,7 +69,7 @@ export async function ensureAuthenticatedActor(
 
 export async function ensurePlatformAccountActor(
   to: RouteLocationNormalized,
-  bootstrap: NavigationSessionBootstrap = useSessionActor()
+  bootstrap: NavigationSessionBootstrap = useAccountBootstrap()
 ): Promise<RedirectNavigationResult | PlatformNavigationResult> {
   const resolvedSession = await ensureAuthenticatedActor(to, bootstrap)
 
@@ -91,7 +90,7 @@ export async function ensureAccountPageAccess(
   to: RouteLocationNormalized,
   hasAccess: (actor: PlatformSessionActor) => boolean,
   statusMessage = 'Unauthorized',
-  bootstrap: NavigationSessionBootstrap = useSessionActor()
+  bootstrap: NavigationSessionBootstrap = useAccountBootstrap()
 ) {
   const resolvedSession = await ensurePlatformAccountActor(to, bootstrap)
 
@@ -108,7 +107,7 @@ export async function ensureEventRoleForSlugRoute(
   to: RouteLocationNormalized,
   roles: EventScopedRole[],
   navigationFetch: ApiClient = getNavigationFetch(),
-  bootstrap: NavigationSessionBootstrap = useSessionActor()
+  bootstrap: NavigationSessionBootstrap = useAccountBootstrap()
 ) {
   const resolvedSession = await ensurePlatformAccountActor(to, bootstrap)
 

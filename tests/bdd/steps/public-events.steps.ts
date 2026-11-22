@@ -1,5 +1,7 @@
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
+import { assertExactPathCount, capturePageTopology } from '../support/account-event-workspace-topology.ts'
+import { holdBrowserGet } from '../support/hold-browser-get.ts'
 import { parsePersonaKey } from '../support/personas.ts'
 import { signInAs } from '../support/session-state.ts'
 
@@ -10,6 +12,11 @@ const publicEventDocumentPayloads = new WeakMap<Page, {
   signedIn: string
   signedOut: string
 }>()
+const eventSessionChecks = new WeakMap<Page, {
+  held: Awaited<ReturnType<typeof holdBrowserGet>>
+  capture: ReturnType<typeof capturePageTopology>
+}>()
+const fixtureRegistrationHref = '/events/e2e-fixture-event/register'
 
 async function waitForNuxtHydration(page: Page) {
   await page.waitForFunction(() =>
@@ -107,6 +114,57 @@ When('I load more public events', async ({ page }) => {
 
 Given('I am on the public event detail page for the fixture event', async ({ page }) => {
   await page.goto('/events/e2e-fixture-event')
+})
+
+Given('I open the fixture event as a {string} with the session response held', async ({ page }, visitor: string) => {
+  if (visitor === 'returning member') await signInAs('regular_user', page)
+  const sessionCheck = await holdBrowserGet(page, '/api/session')
+  eventSessionChecks.set(page, { held: sessionCheck, capture: capturePageTopology(page) })
+  const response = await page.goto('/events/e2e-fixture-event', { waitUntil: 'domcontentloaded' })
+  expect(response?.ok()).toBe(true)
+  publicEventDocumentHeaders.set(page, response!.headers())
+
+  const initial = await page.evaluate((html) => {
+    const document = new DOMParser().parseFromString(html, 'text/html')
+    const header = document.querySelector('header')!
+    return {
+      headerText: header.textContent,
+      profile: !!header.querySelector('[aria-label="Open profile menu"]'),
+      registerHref: document.querySelector('[data-testid="public-event-primary-action"]')?.getAttribute('href')
+    }
+  }, await response!.text())
+  expect(initial.headerText).not.toContain('Sign in')
+  expect(initial.profile).toBe(false)
+  expect(initial.registerHref).toBe(fixtureRegistrationHref)
+})
+
+Then('the event offers registration without showing account controls before the session is known', async ({ page }) => {
+  await eventSessionChecks.get(page)!.held.first
+  await waitForNuxtHydration(page)
+  const header = page.getByRole('banner')
+  await expect(header.getByRole('link', { name: 'Sign in' })).toHaveCount(0)
+  await expect(header.getByRole('button', { name: 'Open profile menu' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Register', exact: true })).toHaveAttribute('href', fixtureRegistrationHref)
+})
+
+When('the held session check {string}', async ({ page }, outcome: string) => {
+  const route = await eventSessionChecks.get(page)!.held.first
+  if (outcome === 'fails') {
+    await route.fulfill({ status: 503, json: { error: { code: 'unavailable', message: 'Session unavailable.' } } })
+  } else {
+    await route.continue()
+  }
+})
+
+Then('the event header shows {string} after one session check and the registration link stays the same', async ({ page }, control: string) => {
+  const header = page.getByRole('banner')
+  await expect(header.getByRole(control === 'Sign in' ? 'link' : 'button', { name: control, exact: true })).toBeVisible()
+  if (control !== 'Sign in') await expect(header.getByRole('link', { name: 'Sign in' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Register', exact: true })).toHaveAttribute('href', fixtureRegistrationHref)
+  const { capture } = eventSessionChecks.get(page)!
+  await capture.settle()
+  assertExactPathCount(capture, '/api/session', 1)
+  assertExactPathCount(capture, '/api/account/events', 0)
 })
 
 When('I open the public event detail page for the fixture event with the saved {string} session', async ({ page }, personaKey: string) => {

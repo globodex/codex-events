@@ -4,7 +4,6 @@ import type {
   PrizeRedemptionTask
 } from '~/domains/prize-redemptions'
 import type { AccountPrizeRedemptionsPage } from '#shared/domains/prize-redemptions/account-prize-redemptions-page'
-import type { ApiDataResponse } from '~/lib/api'
 
 import { normalizePrizeRedemptionApiError } from '~/domains/prize-redemptions'
 import {
@@ -13,36 +12,19 @@ import {
 } from '#shared/domains/prize-redemptions/account-prize-redemptions-page'
 import { useApiClient } from '~/composables/useApiClient'
 import { useAuthorizationCache } from '~/composables/useAuthorizationCache'
-import { useSessionActor } from '~/composables/useSessionActor'
+import { useApiResponse } from './useApiData'
 
 export function usePrizeRedemptionWorkspace() {
   const apiFetch = useApiClient()
-  const session = useSessionActor()
-  const actor = session.actor
   const authorizationCache = useAuthorizationCache()
-
-  const workspaceRequest = useApiData<AccountPrizeRedemptionsPage>(
+  const workspaceRequest = useApiResponse<AccountPrizeRedemptionsPage>(
     buildAccountPrizeRedemptionsPageCacheKey(),
-    async ({ apiFetch, signal }) => {
-      if (actor.value.kind !== 'platform_user') {
-        return { redemptions: [] }
-      }
-
-      const response = await apiFetch<ApiDataResponse<AccountPrizeRedemptionsPage>>(
-        accountPrizeRedemptionsPagePath,
-        { signal }
-      )
-
-      return response.data
-    },
-    {
-      default: () => ({ redemptions: [] }),
-      server: false
-    }
+    accountPrizeRedemptionsPagePath,
+    { server: false }
   )
 
   const tasks = computed<PrizeRedemptionTask[]>(() =>
-    workspaceRequest.data.value.redemptions
+    workspaceRequest.data.value?.redemptions ?? []
   )
 
   const recentlyRedeemed = ref<PrizeRedemptionRecord[]>([])
@@ -169,7 +151,7 @@ export function usePrizeRedemptionWorkspace() {
         ? normalizePrizeRedemptionApiError(workspaceRequest.error.value).message
         : ''
     ),
-    status: computed(() => workspaceRequest.status.value),
+    status: workspaceRequest.status,
     recentlyRedeemed,
     redeemPrize,
     refresh,

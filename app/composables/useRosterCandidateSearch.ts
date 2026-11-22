@@ -34,13 +34,16 @@ export function useRosterCandidateSearch<TCandidate extends { id: string }>(
   const protectedRequestOwner = useProtectedRequestOwner()
   const requests = useAbortableRequest()
   const isEnabled = computed(() => options.enabled === undefined || toValue(options.enabled))
-  const activeResetKey = computed(() => isEnabled.value ? toValue(options.resetKey) : null)
+  const activeResetKey = computed(() => {
+    const key = toValue(options.resetKey)
+    return isEnabled.value && key ? `${authorizationCache.authorizationGeneration.value}:${key}` : null
+  })
   const candidateSearchInput = shallowRef('')
   const appliedCandidateSearch = shallowRef('')
   const candidateUsers = shallowRef<TCandidate[]>([])
   const candidateUsersTotal = shallowRef(0)
   const currentCandidatePage = shallowRef(1)
-  const candidateUsersStatus = shallowRef<RosterCandidateLoadStatus>('pending')
+  const candidateUsersStatus = shallowRef<RosterCandidateLoadStatus>('idle')
   const candidateUsersErrorMessage = shallowRef('')
   const isLoadingMoreCandidates = shallowRef(false)
   const loadMoreCandidatesErrorMessage = shallowRef('')
@@ -224,6 +227,8 @@ export function useRosterCandidateSearch<TCandidate extends { id: string }>(
     appliedCandidateSearch,
     candidateUsers,
     candidateUsersStatus,
+    showCandidateSkeletons: computed(() => candidateUsers.value.length === 0
+      && (candidateUsersStatus.value === 'idle' || candidateUsersStatus.value === 'pending')),
     candidateUsersErrorMessage,
     isLoadingMoreCandidates,
     loadMoreCandidatesErrorMessage,

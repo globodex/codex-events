@@ -6,17 +6,15 @@ import { accountRegisterHref } from '#shared/domains/accounts/auth-navigation'
 
 const route = useRoute()
 const { currentAccountEventId } = useShellAccountEventPageContext()
-const { actor, accountEventNavigationMode, hasPlatformAccount, sidebarGroups } = useShellNavigation({
+const { actor, accountEventNavigationMode, sidebarGroups } = useShellNavigation({
   currentAccountEventId
 })
 
-const showWorkspaceSidebar = computed(() =>
-  hasPlatformAccount.value
-)
+const showWorkspaceSidebar = computed(() => actor.value?.kind === 'platform_user')
 const shouldLetPageBackgroundReachScrollbar = computed(() =>
   route.path.startsWith('/account/events/')
 )
-const showIdentityAlert = computed(() => actor.value.kind === 'authenticated_identity')
+const showIdentityAlert = computed(() => actor.value?.kind === 'authenticated_identity')
 </script>
 
 <template>

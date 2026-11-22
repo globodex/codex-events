@@ -14,7 +14,6 @@ import {
   buildSavedCriterionScoresPayload,
   createPitchScoreDraft,
   filterAssignmentsForActor,
-  filterExplicitJudgeEvents,
   filterReviewableEvents,
   getJudgeActionErrorMessage,
   getJudgeAssignmentInboxCardCopy,
@@ -262,36 +261,6 @@ describe('judging-workspace filters', () => {
     ]
 
     expect(filterReviewableEvents(events, actor).map(event => event.id)).toEqual([
-      'event-1',
-      'event-2'
-    ])
-  })
-
-  test('includes judge-enabled admin assignments in the judging workspace', () => {
-    const actor = createActor({
-      eventRoles: [
-        {
-          eventId: 'event-1',
-          role: 'judge',
-          isInJudgePool: true,
-          isStaff: false,
-          createdAt: '2026-03-01T00:00:00.000Z'
-        },
-        {
-          eventId: 'event-2',
-          role: 'event_admin',
-          isInJudgePool: true,
-          isStaff: true,
-          createdAt: '2026-03-01T00:00:00.000Z'
-        }
-      ]
-    })
-    const events = [
-      createEvent({ id: 'event-1' }),
-      createEvent({ id: 'event-2', slug: 'admin-event', name: 'Admin Event' })
-    ]
-
-    expect(filterExplicitJudgeEvents(events, actor).map(event => event.id)).toEqual([
       'event-1',
       'event-2'
     ])

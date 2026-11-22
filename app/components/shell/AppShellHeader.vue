@@ -3,27 +3,19 @@ import { buildAuthLoginHref } from '#shared/domains/accounts/auth-navigation'
 import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
 
 const route = useRoute()
-const { actor } = useSessionActor()
+const { actor, status, refresh } = useAccountBootstrap()
 
 const authEntryHref = computed(() => buildAuthLoginHref(route.fullPath || '/'))
-const isAuthenticated = computed(() => actor.value.isAuthenticated)
 const profileName = computed(() => {
-  if (actor.value.kind === 'platform_user') {
+  if (actor.value?.kind === 'platform_user') {
     return actor.value.platformUser.displayName
   }
 
-  return actor.value.sessionUser?.name ?? null
-})
-const profileEmail = computed(() => {
-  if (!actor.value.isAuthenticated) {
-    return null
-  }
-
-  return actor.value.sessionUser.email ?? null
+  return actor.value?.sessionUser?.name
 })
 
 const profileAvatarSrc = computed(() => {
-  if (actor.value.kind !== 'platform_user') {
+  if (actor.value?.kind !== 'platform_user') {
     return undefined
   }
 
@@ -65,23 +57,33 @@ const profileAvatarSrc = computed(() => {
       <div class="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
         <AppColorModeButton />
 
-        <AppUserMenu
-          v-if="isAuthenticated"
-          :name="profileName"
-          :email="profileEmail"
-          :avatar-src="profileAvatarSrc"
-          :avatar-alt="profileName"
-        />
-
-        <AppButton
-          v-if="!isAuthenticated"
-          :to="authEntryHref"
-          external
-          label="Sign in"
-          color="neutral"
-          variant="soft"
-          class="rounded-full"
-        />
+        <div class="flex h-9 min-w-20 items-center justify-end">
+          <AppUserMenu
+            v-if="status === 'success' && actor?.isAuthenticated"
+            :name="profileName"
+            :email="actor.sessionUser.email"
+            :avatar-src="profileAvatarSrc"
+            :avatar-alt="profileName"
+          />
+          <AppButton
+            v-else-if="status === 'success' && actor?.kind === 'anonymous'"
+            :to="authEntryHref"
+            external
+            label="Sign in"
+            color="neutral"
+            variant="soft"
+            class="rounded-full"
+          />
+          <AppButton
+            v-else-if="status === 'error'"
+            label="Retry"
+            aria-label="Retry loading account menu"
+            color="neutral"
+            variant="soft"
+            class="rounded-full"
+            @click="refresh()"
+          />
+        </div>
       </div>
     </div>
   </header>

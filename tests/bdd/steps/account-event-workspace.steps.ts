@@ -25,6 +25,7 @@ import {
   type AccountEventTopologyCapture,
   type TopologyRequestEvidence
 } from '../support/account-event-workspace-topology.ts'
+import { holdBrowserGet } from '../support/hold-browser-get.ts'
 import { parsePersonaKey } from '../support/personas.ts'
 import { signInAs } from '../support/session-state.ts'
 
@@ -386,6 +387,33 @@ When('I warm and measure the {string} global account workspace as {string}', asy
     workspace,
     criticalPath: surface.criticalPath
   })
+})
+
+const pendingEventJudgeReads = new WeakMap<Page, Awaited<ReturnType<typeof holdBrowserGet>>>()
+
+When('I open the Judging tab with its queue request held', async ({ page }) => {
+  await signInAs('judge', page)
+  const slug = 'e2e-judging-fixture-event'
+  await warmAccountEventSurface(page, slug, `/api/account/events/${slug}/entry`)
+  const read = await holdBrowserGet(page, `**/api/account/events/${slug}/judging*`)
+  pendingEventJudgeReads.set(page, read)
+  await assertActiveAccountEventTab(page, 'Judging').click()
+})
+
+Then('the Judging tab shows a loading state until the failed read reports an error', async ({ page }) => {
+  const read = pendingEventJudgeReads.get(page)!
+  const request = await read.first
+  const queue = page.getByRole('tabpanel', { name: 'Judging' })
+  try {
+    await expect(queue.getByText('Loading judging workspace')).toBeVisible()
+    await expect(queue.getByText('Judge access required')).toHaveCount(0)
+    await expect(queue.getByText('No active blind reviews for this event')).toHaveCount(0)
+  } finally {
+    await request.fulfill({ status: 503, json: { error: { code: 'unavailable', message: 'Could not load assignments.' } } })
+  }
+  await expect(queue.getByText('Judging workspace unavailable')).toBeVisible()
+  await expect(queue.getByText('No active blind reviews for this event')).toHaveCount(0)
+  expect(read.count()).toBe(1)
 })
 
 When('I cold-start the judging workspace while holding the account bootstrap response as {string}', async ({ page }, persona: string) => {

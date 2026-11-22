@@ -26,11 +26,12 @@ const returnTo = computed(() => normalizeAuthReturnTo(
   typeof route.query.returnTo === 'string' ? route.query.returnTo : null,
   accountDashboardHref
 ))
-const { actor, status, refresh } = useAccountLifecycleActor()
+const { actor, status, refresh, error: sessionError } = useAccountBootstrap()
 const {
   privacyPolicyDocument,
   platformTermsDocument,
-  status: documentsStatus
+  status: documentsStatus,
+  error: documentsError
 } = useCurrentPlatformDocuments()
 
 const platformLegalSettingsHref = '/account/platform-settings?tab=legal'
@@ -72,13 +73,13 @@ const linkingError = computed<ApiErrorShape | null>(() => {
 })
 
 const platformDocumentsUnavailable = computed(() =>
-  !privacyPolicyDocument.value || !platformTermsDocument.value
+  documentsStatus.value === 'success' && (!privacyPolicyDocument.value || !platformTermsDocument.value)
 )
 const canOpenLegalSettingsForSetup = computed(() =>
-  actor.value.kind === 'platform_user' && actor.value.isPlatformAdmin
+  actor.value?.kind === 'platform_user' && actor.value.isPlatformAdmin
 )
 const canCreateFirstPlatformAdminSetupAccount = computed(() =>
-  actor.value.kind === 'authenticated_identity'
+  actor.value?.kind === 'authenticated_identity'
   && actor.value.canCreateFirstPlatformAdminSetupAccount
 )
 const missingDocumentsCopy = computed(() => getAccountRegistrationMissingDocumentsCopy({
@@ -96,21 +97,21 @@ const isReadyToSubmit = computed(() =>
 const isSubmitLocked = computed(() =>
   submitState.pending || Boolean(registrationCompletedTransition.value)
 )
-const accountRegistrationIntro = computed(() => platformDocumentsUnavailable.value
+const accountRegistrationIntro = computed(() => actor.value && platformDocumentsUnavailable.value
   ? missingDocumentsCopy.value.intro
   : getAccountRegistrationIntro()
 )
 const identityEmailUnavailable = computed(() =>
-  actor.value.kind === 'authenticated_identity'
+  actor.value?.kind === 'authenticated_identity'
   && !actor.value.sessionUser.email?.trim()
 )
 const identityEmailUnverified = computed(() =>
-  actor.value.kind === 'authenticated_identity'
+  actor.value?.kind === 'authenticated_identity'
   && Boolean(actor.value.sessionUser.email?.trim())
   && actor.value.sessionUser.email_verified !== true
 )
 const identityEmailVerificationMessage = computed(() =>
-  actor.value.kind === 'authenticated_identity' && actor.value.sessionUser.email?.trim()
+  actor.value?.kind === 'authenticated_identity' && actor.value.sessionUser.email?.trim()
     ? getUnverifiedIdentityEmailMessage(actor.value.sessionUser.email.trim())
     : ''
 )
@@ -119,8 +120,8 @@ const accountRegistrationBlocked = computed(() =>
 )
 
 if (
-  status.value !== 'pending'
-  && actor.value.kind === 'platform_user'
+  status.value === 'success'
+  && actor.value?.kind === 'platform_user'
   && actor.value.hasAcceptedCurrentPlatformDocuments
   && !linkingError.value
 ) {
@@ -134,7 +135,7 @@ async function submitInitialPlatformSetupAccount() {
   }
 
   if (
-    actor.value.kind !== 'authenticated_identity'
+    actor.value?.kind !== 'authenticated_identity'
     || !canCreateFirstPlatformAdminSetupAccount.value
   ) {
     return
@@ -232,7 +233,7 @@ async function submitPlatformConsent() {
   submitState.pending = true
 
   try {
-    if (actor.value.kind === 'authenticated_identity') {
+    if (actor.value?.kind === 'authenticated_identity') {
       await apiFetch('/api/account/registration', {
         method: 'POST',
         body: {
@@ -241,7 +242,7 @@ async function submitPlatformConsent() {
           platformTermsDocumentId: platformTermsDocument.value.id
         }
       })
-    } else if (actor.value.kind === 'platform_user') {
+    } else if (actor.value?.kind === 'platform_user') {
       await Promise.all([
         apiFetch('/api/platform-document-acceptances', {
           method: 'POST',
@@ -334,7 +335,15 @@ useSeoMeta({
       </article>
 
       <AppAlert
-        v-else-if="status === 'pending' || documentsStatus === 'pending'"
+        v-else-if="sessionError || documentsError"
+        color="error"
+        variant="soft"
+        title="Unable to load account registration"
+        :description="(sessionError ?? documentsError)?.message"
+      />
+
+      <AppAlert
+        v-else-if="status !== 'success' || documentsStatus !== 'success'"
         color="neutral"
         variant="soft"
         title="Loading account registration"
@@ -401,7 +410,7 @@ useSeoMeta({
         />
 
         <AppAlert
-          v-if="actor.kind === 'platform_user' && !canOpenLegalSettingsForSetup"
+          v-if="actor?.kind === 'platform_user' && !canOpenLegalSettingsForSetup"
           color="warning"
           variant="soft"
           title="Platform admin setup required"

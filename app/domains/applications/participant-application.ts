@@ -12,7 +12,6 @@ import type {
   SessionUserIdentity
 } from '~/domains/accounts/session-actor'
 
-import { buildAccountRegisterHref, buildAuthLoginHref } from '#shared/domains/accounts/auth-navigation'
 import { normalizeApiError } from '~/lib/api'
 import {
   buildAnonymousSessionActor,
@@ -393,80 +392,21 @@ export function shouldShowPublicRegistrationEntry(
   return isEventRegistrationOpen(state, registrationOpensAt, registrationClosesAt, now)
 }
 
-export interface PublicEventPrimaryAction {
-  label: 'Register' | 'Open workspace'
-  to: string
-  external: boolean
-}
-
 export function resolvePublicEventPrimaryAction(options: {
-  actorKind: ParticipantActor['kind']
-  hasAcceptedCurrentPlatformDocuments?: boolean
   eventSlug: string
-  eventState: PublicEventState
-  registrationOpensAt: string
-  registrationClosesAt: string
+  registrationOpen: boolean
   hasEventWorkspaceAccess: boolean
-  registrationIntent?: 'talk-proposal'
-  now?: Date
-}): PublicEventPrimaryAction | null {
-  const registerHref = `/events/${options.eventSlug}/register${options.registrationIntent === 'talk-proposal' ? '?intent=talk-proposal' : ''}`
-  const registerCompletionHref = buildAccountRegisterHref(registerHref)
-
-  if (shouldShowPublicRegistrationEntry(
-    options.eventState,
-    options.registrationOpensAt,
-    options.registrationClosesAt,
-    options.now
-  )) {
-    if (options.actorKind === 'anonymous') {
-      return {
-        label: 'Register',
-        to: buildAuthLoginHref(registerCompletionHref),
-        external: true
-      }
-    }
-
-    if (
-      options.actorKind === 'authenticated_identity'
-      || !options.hasAcceptedCurrentPlatformDocuments
-    ) {
-      return {
-        label: 'Register',
-        to: registerCompletionHref,
-        external: false
-      }
-    }
-
-    return {
-      label: 'Register',
-      to: registerHref,
-      external: false
-    }
+}) {
+  if (options.registrationOpen) {
+    return { label: 'Register', to: `/events/${options.eventSlug}/register` }
   }
 
-  if (!options.hasEventWorkspaceAccess) {
-    return null
-  }
-
-  if (options.actorKind === 'platform_user' && !options.hasAcceptedCurrentPlatformDocuments) {
-    return {
-      label: 'Open workspace',
-      to: buildAccountRegisterHref(`/account/events/${options.eventSlug}`),
-      external: false
-    }
-  }
-
-  return {
-    label: 'Open workspace',
-    to: `/account/events/${options.eventSlug}`,
-    external: false
-  }
+  return options.hasEventWorkspaceAccess
+    ? { label: 'Open workspace', to: `/account/events/${options.eventSlug}` }
+    : null
 }
 
 export function resolveParticipantRegistrationEntry(options: {
-  actorKind: ParticipantActor['kind']
-  hasAcceptedCurrentPlatformDocuments?: boolean
   eventSlug: string
   eventState: PublicEventState
   registrationOpensAt: string
@@ -475,14 +415,8 @@ export function resolveParticipantRegistrationEntry(options: {
   registrationIntent?: 'talk-proposal'
   now?: Date
 }) {
-  const registerHref = `/events/${options.eventSlug}/register${options.registrationIntent === 'talk-proposal' ? '?intent=talk-proposal' : ''}`
-  const registerCompletionHref = buildAccountRegisterHref(registerHref)
-
   if (options.hasExistingApplication) {
-    return {
-      to: `/account/events/${options.eventSlug}${options.registrationIntent === 'talk-proposal' ? '?tab=call-for-talks' : ''}`,
-      external: false
-    }
+    return `/account/events/${options.eventSlug}${options.registrationIntent === 'talk-proposal' ? '?tab=call-for-talks' : ''}`
   }
 
   if (!shouldShowPublicRegistrationEntry(
@@ -491,27 +425,7 @@ export function resolveParticipantRegistrationEntry(options: {
     options.registrationClosesAt,
     options.now
   )) {
-    return {
-      to: `/events/${options.eventSlug}`,
-      external: false
-    }
-  }
-
-  if (options.actorKind === 'anonymous') {
-    return {
-      to: buildAuthLoginHref(registerCompletionHref),
-      external: true
-    }
-  }
-
-  if (
-    options.actorKind === 'authenticated_identity'
-    || !options.hasAcceptedCurrentPlatformDocuments
-  ) {
-    return {
-      to: registerCompletionHref,
-      external: false
-    }
+    return `/events/${options.eventSlug}`
   }
 
   return null

@@ -1,4 +1,6 @@
+import { spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
+import { resolve } from 'node:path'
 import { PassThrough } from 'node:stream'
 
 import { describe, expect, test, vi } from 'vitest'
@@ -77,6 +79,11 @@ function createSuccessfulSpawn(email: string | null) {
 }
 
 describe('Codex account authentication', () => {
+  test.each(['codex', 'codex.exe', 'codex.cmd'])('blocks the host %s executable in tests', (binary) => {
+    const missingExecutable = resolve(import.meta.dirname, 'nonexistent-bin', binary)
+    expect(() => spawn(missingExecutable, ['login'])).toThrow('Tests must use a fixture')
+  })
+
   test('runs Codex login and returns the app-server ChatGPT email', async () => {
     const {
       spawn,

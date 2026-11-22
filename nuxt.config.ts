@@ -30,7 +30,8 @@ export default defineNuxtConfig({
     '@nuxt/eslint',
     ['@auth0/auth0-nuxt', {
       mountRoutes: !localAuthFixtures && !storybook,
-      hydrateUser: !localAuthFixtures && !storybook,
+      hydrateUser: false,
+      ssrUser: false,
       routes: {
         login: '/auth/sdk/login',
         logout: '/auth/sdk/logout'

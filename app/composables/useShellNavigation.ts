@@ -1,18 +1,10 @@
-import type { ResolvedSessionActor } from '~/composables/useAccountBootstrap'
 import type { AccountEventPageResponse } from '~/domains/events/account-workspace-page'
 
-import { accountDashboardHref, buildAuthLoginHref } from '#shared/domains/accounts/auth-navigation'
-import {
-  isEventRoleJudgingEnabled,
-  isEventRoleStaffEnabled
-} from '~/domains/events/access'
 import {
   isAccountEventDetailPath,
   resolveShellAccountEventNavigationMode
 } from '~/domains/accounts/shell-navigation'
 import { buildAccountEventPageCacheKey } from '~/domains/events/account-workspace-page'
-
-export type ShellActor = ResolvedSessionActor
 
 export interface ShellNavigationOptions {
   currentAccountEventId?: MaybeRefOrGetter<string | null | undefined>
@@ -60,9 +52,7 @@ export function useShellAccountEventPageContext() {
 export function useShellNavigation(options: ShellNavigationOptions = {}) {
   const route = useRoute()
 
-  const returnTo = computed(() => route.fullPath || accountDashboardHref)
-  const authEntryHref = computed(() => buildAuthLoginHref(returnTo.value))
-  const { actor, capabilities, status, refresh } = useSessionActor()
+  const { actor, capabilities } = useAccountBootstrap()
   const currentAccountEventId = computed(() => {
     const eventId = options.currentAccountEventId === undefined
       ? ''
@@ -71,11 +61,6 @@ export function useShellNavigation(options: ShellNavigationOptions = {}) {
     return eventId || null
   })
 
-  const isResolvingActor = computed(() => status.value === 'pending')
-  const hasPlatformAccount = computed(() => actor.value.kind === 'platform_user')
-  const hasAdminAccess = computed(() => capabilities.value.canAccessAdminDashboard)
-  const hasStaffAccess = computed(() => capabilities.value.canAccessStaffDashboard)
-  const hasJudgeAccess = computed(() => capabilities.value.canAccessJudgeDashboard)
   const accountEventNavigationMode = computed(() =>
     resolveShellAccountEventNavigationMode({
       actor: actor.value,
@@ -84,42 +69,8 @@ export function useShellNavigation(options: ShellNavigationOptions = {}) {
     })
   )
 
-  const roleChips = computed(() => {
-    if (actor.value.kind === 'anonymous') {
-      return ['Public view']
-    }
-
-    if (actor.value.kind === 'authenticated_identity') {
-      return ['Platform account required']
-    }
-
-    const chips = ['Platform user']
-
-    if (actor.value.isPlatformAdmin) {
-      chips.push('Platform admin')
-    }
-
-    if (actor.value.isEventOrganizer) {
-      chips.push('Event organizer')
-    }
-
-    if (actor.value.eventRoles.some(role => role.role === 'event_admin')) {
-      chips.push('Event admin')
-    }
-
-    if (actor.value.eventRoles.some(role => isEventRoleStaffEnabled(role))) {
-      chips.push('Staff')
-    }
-
-    if (actor.value.eventRoles.some(role => isEventRoleJudgingEnabled(role))) {
-      chips.push('Judge')
-    }
-
-    return chips
-  })
-
   const sidebarGroups = computed<ShellNavigationGroup[]>(() => {
-    if (actor.value.kind !== 'platform_user') {
+    if (actor.value?.kind !== 'platform_user') {
       return []
     }
 
@@ -137,7 +88,7 @@ export function useShellNavigation(options: ShellNavigationOptions = {}) {
       icon: 'i-lucide-flag'
     }]
 
-    if (hasJudgeAccess.value) {
+    if (capabilities.value.canAccessJudgeDashboard) {
       items.push({
         id: 'judge-dashboard',
         label: 'Judge dashboard',
@@ -147,7 +98,7 @@ export function useShellNavigation(options: ShellNavigationOptions = {}) {
       })
     }
 
-    if (hasStaffAccess.value) {
+    if (capabilities.value.canAccessStaffDashboard) {
       items.push({
         id: 'staff-dashboard',
         label: 'Staff dashboard',
@@ -157,7 +108,7 @@ export function useShellNavigation(options: ShellNavigationOptions = {}) {
       })
     }
 
-    if (hasAdminAccess.value) {
+    if (capabilities.value.canAccessAdminDashboard) {
       items.push({
         id: 'admin-dashboard',
         label: 'Admin dashboard',
@@ -187,15 +138,7 @@ export function useShellNavigation(options: ShellNavigationOptions = {}) {
 
   return {
     actor,
-    hasAdminAccess,
-    hasJudgeAccess,
-    hasStaffAccess,
-    hasPlatformAccount,
-    isResolvingActor,
-    authEntryHref,
     accountEventNavigationMode,
-    refresh,
-    roleChips,
     sidebarGroups
   }
 }

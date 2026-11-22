@@ -8,7 +8,7 @@ import { useApiClient } from '~/composables/useApiClient'
 const toast = useToast()
 const apiFetch = useApiClient()
 const {
-  settings,
+  data: settings,
   status: settingsStatus,
   error: settingsError,
   refresh: refreshSettings
@@ -100,7 +100,14 @@ async function removeDefaultBackgroundImage() {
       :description="settingsError.message"
     />
 
-    <AppCard class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60">
+    <AppAlert
+      v-else-if="settingsStatus !== 'success'"
+      title="Loading event defaults"
+    />
+    <AppCard
+      v-else
+      class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
+    >
       <template #header>
         <div class="space-y-1">
           <h2 class="text-lg font-semibold text-highlighted">
@@ -129,7 +136,7 @@ async function removeDefaultBackgroundImage() {
         </div>
 
         <AppAlert
-          v-if="!defaultBackgroundImageUrl && settingsStatus !== 'pending'"
+          v-if="!defaultBackgroundImageUrl"
           color="neutral"
           variant="soft"
           title="No default event background"

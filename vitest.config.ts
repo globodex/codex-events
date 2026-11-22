@@ -14,6 +14,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    setupFiles: ['./tests/support/isolate-codex-auth.ts'],
     include: ['tests/unit/**/*.test.ts']
   }
 })

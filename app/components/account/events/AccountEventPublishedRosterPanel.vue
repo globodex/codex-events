@@ -36,7 +36,6 @@ const props = defineProps<{
   title: string
   description: string
   page: AccountEventRostersPage | null
-  isLoading?: boolean
   loadErrorMessage?: string
   refreshPage?: () => Promise<unknown> | unknown
   tracks?: PublishedEventStaffTrack[]
@@ -44,7 +43,7 @@ const props = defineProps<{
   managementEventId?: string | null
 }>()
 
-const { actor } = useSessionActor()
+const { actor } = useAccountBootstrap()
 const apiFetch = useApiClient()
 const roleCandidatePageSize = 20
 
@@ -81,6 +80,7 @@ const {
   appliedCandidateSearch,
   candidateUsers,
   candidateUsersStatus,
+  showCandidateSkeletons,
   candidateUsersErrorMessage,
   isLoadingMoreCandidates,
   loadMoreCandidatesErrorMessage,
@@ -160,7 +160,7 @@ const roleBadgeLabels: Record<EventRoleRosterBadge, string> = {
   platform_admin: 'Platform admin'
 }
 const currentPlatformUserId = computed(() =>
-  actor.value.kind === 'platform_user' ? actor.value.platformUser.id : null
+  actor.value?.kind === 'platform_user' ? actor.value.platformUser.id : null
 )
 
 function getMemberProfileIconHref(member: PublishedEventRosterMember) {
@@ -575,7 +575,7 @@ async function removePublishedRosterMember(userId: string) {
       />
 
       <AppAlert
-        v-if="props.isLoading && !props.page"
+        v-if="!props.page && !errorMessage"
         color="neutral"
         variant="soft"
         :title="props.role === 'judge' ? 'Loading judges' : 'Loading staff'"
@@ -888,7 +888,7 @@ async function removePublishedRosterMember(userId: string) {
             v-else
             class="grid gap-3"
           >
-            <template v-if="candidateUsersStatus === 'pending' && candidateUsers.length === 0">
+            <template v-if="showCandidateSkeletons">
               <AccountRosterUserRowSkeleton
                 v-for="index in candidateSkeletonRowCount"
                 :key="`candidate-skeleton-${index}`"
@@ -938,7 +938,7 @@ async function removePublishedRosterMember(userId: string) {
               </AccountRosterUserRow>
 
               <p
-                v-if="candidateRows.length === 0"
+                v-if="candidateUsersStatus === 'success' && candidateRows.length === 0"
                 class="text-sm text-muted"
               >
                 {{ emptyCandidateMessage }}

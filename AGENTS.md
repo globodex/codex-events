@@ -316,6 +316,8 @@ Run `bun run test:integration` and `bun run test:bdd` when the change touches
 server integrations, Auth0-backed flows, browser workflows, or other behavior
 covered by those suites.
 
+Use the isolated BDD fixture server for automated browser checks that exercise authentication. Keep automated tests independent of the developer’s Codex login and account.
+
 After the required code checks pass, use the `codehygiene` skill to review the
 files changed by the task. Focus on findings in the lines you changed. Apply
 suggestions that make the code easier to follow and preserve its behavior.
@@ -503,9 +505,3 @@ Do not edit Backlog task, draft, document, decision, or milestone markdown files
 
 </CRITICAL_INSTRUCTION>
 <!-- BACKLOG.MD GUIDELINES END -->
-
-<!-- groma:start -->
-## Groma
-
-This project uses Groma. Before you scan, inspect, or curate architecture, or change files for a Backlog task, run `groma agent-instructions` and read the guide it names for that job. When it reports a first scan, ask the user whether they want you to curate the architecture. Do not edit Groma-owned architecture files directly.
-<!-- groma:end -->

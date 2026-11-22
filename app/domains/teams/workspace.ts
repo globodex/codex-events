@@ -1,20 +1,11 @@
 import type { PublicEvent } from '~/domains/events/presentation'
 import type {
-  SessionActor,
-  SessionUserIdentity
-} from '~/domains/accounts/session-actor'
-import type {
   ApiDataResponse,
   ApiListResponse
 } from '~/lib/api'
 
-import {
-  buildAnonymousSessionActor,
-  buildAuthenticatedIdentitySessionActor
-} from '~/domains/accounts/session-actor'
 import { normalizeApiError } from '~/lib/api'
 
-export type TeamWorkspaceActor = SessionActor
 export type TeamWorkspaceApiDataResponse<T> = ApiDataResponse<T>
 export type TeamWorkspaceApiListResponse<T> = ApiListResponse<T>
 
@@ -133,21 +124,6 @@ export function getParticipantTeamDirectoryStatusBadge(
     color: team.isOpenToJoinRequests ? 'success' : 'neutral',
     label: team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests'
   }
-}
-
-export function createTeamWorkspaceFallbackActor(user: ReturnType<typeof useUser>['value']): TeamWorkspaceActor {
-  if (!user?.sub) {
-    return buildAnonymousSessionActor()
-  }
-
-  return buildAuthenticatedIdentitySessionActor({
-    sub: user.sub,
-    email: user.email ?? null,
-    email_verified: typeof user.email_verified === 'boolean' ? user.email_verified : null,
-    name: user.name ?? null,
-    nickname: user.nickname ?? null,
-    picture: user.picture ?? null
-  } satisfies SessionUserIdentity)
 }
 
 export function normalizeTeamWorkspaceApiError(error: unknown) {

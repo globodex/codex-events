@@ -8,19 +8,24 @@ export interface ShellNavigationMatchOptions {
   accountEventNavigationMode?: 'participant' | 'staff' | 'admin'
 }
 
-const accountEventAdminTabs = ['participants', 'submissions', 'operations', 'settings'] as const
+const dashboardPaths = {
+  admin: '/account/admin',
+  staff: '/account/staff',
+  participant: '/account',
+  judging: '/account/judging'
+} as const
 
 export function isAccountEventDetailPath(path: string) {
   return path.startsWith('/account/events/')
 }
 
 export function resolveShellAccountEventNavigationMode(options: {
-  actor: SessionActor
+  actor: SessionActor | null
   currentEventId?: string | null
   currentPath: string
-}): 'participant' | 'staff' | 'admin' {
-  if (!isAccountEventDetailPath(options.currentPath) || options.actor.kind !== 'platform_user') {
-    return 'participant'
+}): ShellNavigationMatchOptions['accountEventNavigationMode'] {
+  if (!isAccountEventDetailPath(options.currentPath) || options.actor?.kind !== 'platform_user') {
+    return undefined
   }
 
   if (options.actor.isPlatformAdmin) {
@@ -30,19 +35,15 @@ export function resolveShellAccountEventNavigationMode(options: {
   const currentEventId = options.currentEventId?.trim() ?? ''
 
   if (!currentEventId) {
-    return 'participant'
+    return undefined
   }
 
-  return options.actor.eventRoles.some(role =>
-    role.role === 'event_admin' && role.eventId === currentEventId
-  )
-    ? 'admin'
-    : options.actor.eventRoles.some(role =>
-      role.eventId === currentEventId
-      && isEventRoleStaffEnabled(role)
-    )
-      ? 'staff'
-      : 'participant'
+  const roles = options.actor.eventRoles.filter(role => role.eventId === currentEventId)
+  if (roles.some(role => role.role === 'event_admin')) {
+    return 'admin'
+  }
+
+  return roles.some(isEventRoleStaffEnabled) ? 'staff' : 'participant'
 }
 
 export function isShellNavigationLinkActive(
@@ -51,71 +52,18 @@ export function isShellNavigationLinkActive(
   targetPath: string,
   options: ShellNavigationMatchOptions = {}
 ) {
-  if (targetPath === '/') {
-    return currentPath === '/'
-  }
-
-  const normalizedTab = normalizeTabQueryValue(currentTab)
-  const accountEventUsesAdminNavigation = isAccountEventDetailPath(currentPath)
-    && options.accountEventNavigationMode === 'admin'
-  const accountEventUsesStaffNavigation = isAccountEventDetailPath(currentPath)
-    && options.accountEventNavigationMode === 'staff'
-  const accountEventUsesParticipantNavigation = isAccountEventDetailPath(currentPath)
-    && options.accountEventNavigationMode === 'participant'
-
-  if (targetPath === '/account') {
-    if (currentPath === '/account') {
-      return true
-    }
-
-    if (!isAccountEventDetailPath(currentPath)) {
+  if (isAccountEventDetailPath(currentPath)) {
+    const mode = options.accountEventNavigationMode
+    if (!mode) {
       return false
     }
 
-    if (accountEventUsesAdminNavigation) {
-      return false
-    }
-
-    if (accountEventUsesStaffNavigation) {
-      return false
-    }
-
-    if (accountEventUsesParticipantNavigation) {
-      return normalizedTab !== 'judging'
-    }
-
-    return normalizedTab !== 'judging' && !accountEventAdminTabs.includes(normalizedTab as (typeof accountEventAdminTabs)[number])
+    const viewingJudgingTab = mode !== 'admin' && normalizeTabQueryValue(currentTab) === 'judging'
+    return targetPath === dashboardPaths[viewingJudgingTab ? 'judging' : mode]
   }
 
-  if (targetPath === '/account/staff') {
-    return currentPath === '/account/staff'
-      || (isAccountEventDetailPath(currentPath)
-        && !accountEventUsesAdminNavigation
-        && accountEventUsesStaffNavigation
-        && normalizedTab !== 'judging')
-  }
-
-  if (targetPath === '/account/judging') {
-    return currentPath === '/account/judging'
-      || (isAccountEventDetailPath(currentPath)
-        && !accountEventUsesAdminNavigation
-        && normalizedTab === 'judging')
-  }
-
-  if (targetPath === '/account/admin') {
-    return currentPath === '/account/admin'
-      || (isAccountEventDetailPath(currentPath)
-        && (
-          accountEventUsesAdminNavigation
-          || (
-            !accountEventUsesParticipantNavigation
-            && accountEventAdminTabs.includes(normalizedTab as (typeof accountEventAdminTabs)[number])
-          )
-        ))
-  }
-
-  if (targetPath === '/account/platform-settings') {
-    return currentPath === '/account/platform-settings'
+  if (targetPath === '/account' || targetPath === '/') {
+    return currentPath === targetPath
   }
 
   return currentPath === targetPath || currentPath.startsWith(`${targetPath}/`)

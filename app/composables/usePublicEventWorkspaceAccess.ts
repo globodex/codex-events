@@ -1,6 +1,4 @@
-import type { SessionActor } from '~/domains/accounts/session-actor'
-
-import { useSessionActor } from '~/composables/useSessionActor'
+import { useAccountBootstrap } from '~/composables/useAccountBootstrap'
 
 interface AccountEventAccessRecord {
   slug: string
@@ -13,48 +11,32 @@ interface AccountEventsResponse {
   }
 }
 
-function buildActorCacheKey(actor: SessionActor) {
-  if (actor.kind !== 'platform_user') {
-    return actor.kind
-  }
-
-  return `${actor.platformUser.id}:${actor.hasAcceptedCurrentPlatformDocuments ? 'accepted' : 'unaccepted'}`
-}
-
-export function usePublicEventWorkspaceAccess(slug: MaybeRefOrGetter<string>) {
-  const session = useSessionActor()
-  const resolvedSlug = computed(() => toValue(slug))
-  const actorCacheKey = computed(() => buildActorCacheKey(session.actor.value))
-  const accessRequest = useApiData<boolean>(
-    () => `public-event-workspace-access:${resolvedSlug.value}:${actorCacheKey.value}`,
+export function usePublicEventWorkspaceAccess(slug: MaybeRefOrGetter<string>, needed: MaybeRefOrGetter<boolean>) {
+  const { actor, status } = useAccountBootstrap()
+  const canCheckAccess = computed(() =>
+    actor.value?.kind === 'platform_user' && actor.value.hasAcceptedCurrentPlatformDocuments
+  )
+  const access = useApiData<boolean>(
+    () => `public-event-workspace-access:${toValue(slug)}`,
     async ({ apiFetch, signal }) => {
-      if (session.actor.value.kind !== 'platform_user' || !session.actor.value.hasAcceptedCurrentPlatformDocuments) {
-        return false
-      }
-
-      try {
-        const accountEventsResponse = await apiFetch<AccountEventsResponse>('/api/account/events', {
-          signal
-        })
-        const accessibleEvents = [
-          ...accountEventsResponse.data.current,
-          ...accountEventsResponse.data.past
-        ]
-
-        return accessibleEvents.some(record => record.slug === resolvedSlug.value)
-      } catch {
-        return false
-      }
+      const eventSlug = toValue(slug)
+      const { data } = await apiFetch<AccountEventsResponse>('/api/account/events', { signal })
+      return data.current.some(event => event.slug === eventSlug)
+        || data.past.some(event => event.slug === eventSlug)
     },
     {
-      default: () => false,
-      server: false,
-      watch: [resolvedSlug, actorCacheKey]
+      enabled: () => toValue(needed) && status.value === 'success' && canCheckAccess.value,
+      server: false
     }
   )
 
-  return {
-    actor: session.actor,
-    hasEventWorkspaceAccess: computed(() => accessRequest.data.value)
-  }
+  return computed(() => {
+    if (!toValue(needed)) return 'unknown'
+    if (status.value === 'error') return 'error'
+    if (status.value !== 'success') return 'unknown'
+    if (!canCheckAccess.value) return 'denied'
+    if (access.status.value === 'error') return 'error'
+    if (access.status.value !== 'success') return 'unknown'
+    return access.data.value ? 'granted' : 'denied'
+  })
 }

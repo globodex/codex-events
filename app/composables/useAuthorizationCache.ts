@@ -64,8 +64,8 @@ export function useAuthorizationCache() {
     return computed(() => `${protectedAsyncDataKeyPrefix}${generation.value}:${toValue(key)}`)
   }
 
-  function syncAuthorization(actor: SessionActor, capabilities: AuthorizationCapabilities) {
-    const nextFingerprint = buildAuthorizationFingerprint(actor, capabilities)
+  function syncAuthorization(actor: SessionActor | null, capabilities: AuthorizationCapabilities) {
+    const nextFingerprint = actor && buildAuthorizationFingerprint(actor, capabilities)
 
     if (nextFingerprint === fingerprint.value) {
       return false

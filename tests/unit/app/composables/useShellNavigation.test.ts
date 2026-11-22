@@ -10,7 +10,7 @@ import {
 
 import { isShellNavigationLinkActive } from '../../../../app/domains/accounts/shell-navigation'
 
-const useSessionActor = vi.hoisted(() => vi.fn())
+const useAccountBootstrap = vi.hoisted(() => vi.fn())
 const useApiData = vi.hoisted(() => vi.fn())
 const authorizationGeneration = shallowRef(0)
 const payloadData = shallowReactive<Record<string, unknown>>({})
@@ -60,7 +60,7 @@ describe('useShellNavigation', () => {
 
   beforeEach(() => {
     vi.resetModules()
-    useSessionActor.mockReset()
+    useAccountBootstrap.mockReset()
     useApiData.mockReset()
     route.path = '/account/events/e2e-fixture-event'
     route.fullPath = '/account/events/e2e-fixture-event?tab=overview'
@@ -70,7 +70,7 @@ describe('useShellNavigation', () => {
     for (const key of Object.keys(payloadData)) {
       Reflect.deleteProperty(payloadData, key)
     }
-    useSessionActor.mockReturnValue({
+    useAccountBootstrap.mockReturnValue({
       actor,
       capabilities,
       status: shallowRef('success'),
@@ -86,7 +86,7 @@ describe('useShellNavigation', () => {
         `protected-api:${authorizationGeneration.value}:${toValue(key)}`
       )
     }))
-    vi.stubGlobal('useSessionActor', useSessionActor)
+    vi.stubGlobal('useAccountBootstrap', useAccountBootstrap)
     vi.stubGlobal('useApiData', useApiData)
   })
 
@@ -103,6 +103,7 @@ describe('useShellNavigation', () => {
     const navigation = useShellNavigation({ currentAccountEventId })
 
     expect(currentAccountEventId.value).toBeNull()
+    expect(navigation.accountEventNavigationMode.value).toBeUndefined()
     payloadData['protected-api:0:account-event-page:e2e-fixture-event:entry'] = {
       event: { id: 'event-1' }
     }
@@ -113,7 +114,7 @@ describe('useShellNavigation', () => {
     expect(isShellNavigationLinkActive(route.path, route.query.tab, '/account/admin', {
       accountEventNavigationMode: navigation.accountEventNavigationMode.value
     })).toBe(true)
-    expect(useSessionActor).toHaveBeenCalledOnce()
+    expect(useAccountBootstrap).toHaveBeenCalledOnce()
     expect(useApiData).not.toHaveBeenCalled()
 
     route.query.tab = 'settings'
@@ -121,7 +122,7 @@ describe('useShellNavigation', () => {
     await nextTick()
 
     expect(navigation.accountEventNavigationMode.value).toBe('admin')
-    expect(useSessionActor).toHaveBeenCalledOnce()
+    expect(useAccountBootstrap).toHaveBeenCalledOnce()
     expect(useApiData).not.toHaveBeenCalled()
 
     route.path = '/account/events/staff-fixture-event'
@@ -131,6 +132,7 @@ describe('useShellNavigation', () => {
     await nextTick()
 
     expect(currentAccountEventId.value).toBeNull()
+    expect(navigation.accountEventNavigationMode.value).toBeUndefined()
     payloadData['protected-api:0:account-event-page:staff-fixture-event:entry'] = {
       event: { id: 'event-2' }
     }
@@ -145,6 +147,7 @@ describe('useShellNavigation', () => {
     authorizationGeneration.value = 1
     await nextTick()
     expect(currentAccountEventId.value).toBeNull()
+    expect(navigation.accountEventNavigationMode.value).toBeUndefined()
 
     payloadData['protected-api:1:account-event-page:staff-fixture-event:entry'] = {
       event: { id: 'event-2' }
@@ -165,7 +168,7 @@ describe('useShellNavigation', () => {
       route.path = path
       route.fullPath = path
       await nextTick()
-      expect(useSessionActor).toHaveBeenCalledOnce()
+      expect(useAccountBootstrap).toHaveBeenCalledOnce()
       expect(useApiData).not.toHaveBeenCalled()
     }
   })

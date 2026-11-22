@@ -1,4 +1,7 @@
 import { describe, expect, test } from 'vitest'
+import { nextTick, shallowRef } from 'vue'
+
+import { useEventBuilder } from '../../../../../app/composables/useEventBuilder'
 
 import { getEventBuilderTemplates } from '../../../../../shared/domains/events/builder-templates'
 import {
@@ -85,6 +88,32 @@ function buildAgendaEvent(overrides: Partial<EventRecord> = {}): EventRecord {
     ...overrides
   }
 }
+
+test('preserves edits made before a settings refresh and during a save of the same event', async () => {
+  const initialEvent = shallowRef<EventRecord | null>(null)
+  const builder = useEventBuilder({ mode: 'edit', initialEvent })
+  const event = buildAgendaEvent()
+  initialEvent.value = event
+  await nextTick()
+
+  builder.state.form.name = 'Name sent to the server'
+  const submittedSnapshot = builder.draftSnapshot.value
+  initialEvent.value = { ...event }
+  await nextTick()
+  expect(builder.state.form.name).toBe('Name sent to the server')
+
+  builder.state.form.name = 'Newer local edit'
+  builder.markSaved(submittedSnapshot)
+  initialEvent.value = { ...event, name: 'Name sent to the server' }
+  await nextTick()
+  expect(builder.state.form.name).toBe('Newer local edit')
+  expect(builder.isDirty.value).toBe(true)
+
+  initialEvent.value = buildAgendaEvent({ id: 'another-event' })
+  await nextTick()
+  expect(builder.state.form.name).toBe('Test Meetup')
+  expect(builder.isDirty.value).toBe(false)
+})
 
 describe('parseEventBuilderDurationMinutes', () => {
   test('preserves directly entered integer minute values without snapping to the button grid', () => {

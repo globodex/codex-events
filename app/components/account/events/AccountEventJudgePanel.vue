@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { EventRecord } from '~/domains/events/records'
 import type {
   AccountEventJudgingPage,
   AccountJudgeAssignmentWorkspacePage
@@ -40,36 +39,7 @@ const emit = defineEmits<{
 }>()
 
 const selectedAssignmentId = computed(() => props.selectedAssignmentId?.trim() ?? '')
-const pageStatus = computed(() => {
-  if (props.isLoading) {
-    return 'pending'
-  }
-
-  if (props.loadErrorMessage) {
-    return 'error'
-  }
-
-  return props.page ? 'success' : 'idle'
-})
-const pageError = computed(() => props.loadErrorMessage
-  ? new Error(props.loadErrorMessage)
-  : null)
-const workspace = {
-  status: pageStatus,
-  error: pageError,
-  refreshWorkspace: () => props.refreshPage?.()
-}
-const currentEvent = computed(() =>
-  props.page?.event as unknown as EventRecord | null
-)
-const assignmentEvent = computed(() =>
-  props.assignmentPage?.event as unknown as EventRecord | null
-)
-const selectedEvent = computed(() =>
-  assignmentEvent.value
-  ?? currentEvent.value
-  ?? ({ id: props.eventId, slug: props.slug } as unknown as EventRecord)
-)
+const currentEvent = computed(() => props.page?.event)
 const assignments = computed(() =>
   (props.page?.assignments ?? []).map(assignment =>
     normalizeJudgeAssignmentDetail(assignment as unknown as JudgeAssignmentApiDetail)
@@ -119,7 +89,7 @@ async function refreshWorkspace() {
   if (selectedAssignmentId.value) {
     await props.refreshAssignmentPage?.()
   } else {
-    await workspace.refreshWorkspace()
+    await props.refreshPage?.()
   }
 
   emit('updated')
@@ -128,45 +98,36 @@ async function refreshWorkspace() {
 
 <template>
   <div class="space-y-6">
-    <AppAlert
-      v-if="workspace.error.value && !selectedAssignmentId"
-      color="error"
-      variant="soft"
-      title="Judging workspace unavailable"
-      :description="workspace.error.value.message"
+    <LazyJudgeAssignmentWorkspacePanel
+      v-if="selectedAssignmentId"
+      :key="selectedAssignmentId"
+      :event-id="props.eventId"
+      :event-slug="props.slug"
+      :assignment-id="selectedAssignmentId"
+      :next-review-href="nextQueuedReviewHref"
+      :page="props.assignmentPage"
+      :is-loading="props.assignmentPageIsLoading"
+      :load-error-message="props.assignmentPageErrorMessage"
+      @updated="refreshWorkspace"
     />
 
     <AppAlert
-      v-else-if="!selectedAssignmentId && workspace.status.value === 'pending' && !currentEvent"
+      v-else-if="props.loadErrorMessage"
+      color="error"
+      variant="soft"
+      title="Judging workspace unavailable"
+      :description="props.loadErrorMessage"
+    />
+
+    <AppAlert
+      v-else-if="props.isLoading || !currentEvent"
       color="neutral"
       variant="soft"
       title="Loading judging workspace"
       description="Fetching your blind-review queue for this event."
     />
 
-    <AppAlert
-      v-else-if="!selectedAssignmentId && !currentEvent"
-      color="warning"
-      variant="soft"
-      title="Judge access required"
-      description="This event is not currently assigned to you as a judge."
-    />
-
-    <template v-else-if="selectedAssignmentId">
-      <LazyJudgeAssignmentWorkspacePanel
-        :event-id="selectedEvent.id"
-        :event-slug="selectedEvent.slug"
-        :assignment-id="selectedAssignmentId"
-        :next-review-href="nextQueuedReviewHref"
-        :page="props.assignmentPage"
-        :is-loading="props.assignmentPageIsLoading"
-        :load-error-message="props.assignmentPageErrorMessage"
-        :refresh-page="props.refreshAssignmentPage"
-        @updated="refreshWorkspace"
-      />
-    </template>
-
-    <template v-else-if="currentEvent">
+    <template v-else>
       <section class="grid gap-4 sm:grid-cols-3">
         <div class="rounded-xl !border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 p-4">
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">

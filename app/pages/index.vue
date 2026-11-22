@@ -58,8 +58,8 @@ async function selectHomepageTab(nextTab: PublicHomepageTab) {
 }
 
 const [
-  { data: initialResponse, error },
-  { data: pastCountResponse }
+  { data: initialResponse, error: listError },
+  { data: pastCountResponse, error: countError }
 ] = await Promise.all([
   useFetch<PublicApiListResponse<PublicEvent>>('/api/public/events', {
     key: 'public-events-homepage:page-1',
@@ -80,10 +80,8 @@ const [
 
 events.value = initialResponse.value?.data ?? []
 total.value = initialResponse.value?.meta?.total ?? events.value.length
-const pastTotal = ref(
-  pastCountResponse.value?.meta?.total
-  ?? events.value.filter(event => event.state === 'completed').length
-)
+const pastTotal = computed(() => pastCountResponse.value?.meta?.total ?? 0)
+const error = computed(() => listError.value ?? countError.value)
 
 const hasMoreEvents = computed(() => events.value.length < total.value)
 const loadedEventCount = computed(() => events.value.length)

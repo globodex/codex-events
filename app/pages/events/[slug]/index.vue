@@ -31,7 +31,7 @@ import EventTracksPanel from '~/components/public/events/organisms/EventTracksPa
 import EventTimeline from '~/components/public/events/EventTimeline.vue'
 import EventWinnersShowcase from '~/components/public/events/EventWinnersShowcase.vue'
 import EventTalkProposalCallout from '~/components/public/events/EventTalkProposalCallout.vue'
-import { resolvePublicEventPrimaryAction } from '~/domains/applications/participant-application'
+import { resolvePublicEventPrimaryAction, shouldShowPublicRegistrationEntry } from '~/domains/applications/participant-application'
 import { isTalkProposalWindowOpen } from '~/domains/talk-proposals'
 import { usePublicEventWorkspaceAccess } from '~/composables/usePublicEventWorkspaceAccess'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
@@ -39,7 +39,8 @@ import type { WebMcpTool } from '~/composables/useWebMcpTool'
 import { useWebMcpTool } from '~/composables/useWebMcpTool'
 
 definePageMeta({
-  layout: 'public'
+  layout: 'public',
+  key: route => `${route.path}:${normalizeTabQueryValue(route.query.tracks) === 'full' ? 'full' : 'short'}`
 })
 
 defineRouteRules({
@@ -107,15 +108,25 @@ const eventDetailsWebMcpTool = computed<WebMcpTool>(() => ({
 useWebMcpTool(eventDetailsWebMcpTool)
 const isCompetitionEvent = computed(() => event.value.eventType === 'hackathon')
 const eventState = computed(() => event.value.state)
-const {
-  actor: accountActor,
-  hasEventWorkspaceAccess
-} = usePublicEventWorkspaceAccess(slug)
+const registrationOpen = computed(() => shouldShowPublicRegistrationEntry(
+  event.value.state, event.value.registrationOpensAt, event.value.registrationClosesAt
+))
+const talkProposalWindow = computed(() => {
+  const { eventType, talkProposalsEnabled, talkProposalOpensAt, talkProposalClosesAt } = event.value
+  if (eventType !== 'meetup' || !talkProposalsEnabled || !talkProposalOpensAt || !talkProposalClosesAt) {
+    return null
+  }
+
+  return Date.now() <= Date.parse(talkProposalClosesAt)
+    ? { opensAt: talkProposalOpensAt, closesAt: talkProposalClosesAt }
+    : null
+})
+const workspaceAccess = usePublicEventWorkspaceAccess(slug, () => !registrationOpen.value || !!talkProposalWindow.value)
 const [
-  { data: prizesData },
+  { data: prizesData, error: prizesError, status: prizesStatus },
   { data: winnersData, error: winnersError },
   { data: publishedProjectsData, error: publishedProjectsError },
-  { data: galleryPhotosData, error: galleryError }
+  { data: galleryPhotosData, error: galleryError, status: galleryStatus }
 ] = await Promise.all([
   useApiData<PublicPrize[]>(
     () => `public-event-prizes:${slug.value}:${isCompetitionEvent.value ? 'competition' : 'registration'}`,
@@ -180,17 +191,16 @@ const [
   })
 ])
 
-if (winnersError.value) {
-  throw winnersError.value
+const sectionError = computed(() =>
+  prizesError.value ?? winnersError.value ?? publishedProjectsError.value ?? galleryError.value
+)
+if (sectionError.value) {
+  throw sectionError.value
 }
 
-if (publishedProjectsError.value) {
-  throw publishedProjectsError.value
-}
-
-if (galleryError.value) {
-  throw galleryError.value
-}
+watch(sectionError, (error) => {
+  if (error) showError(error)
+})
 
 const prizes = computed(() => prizesData.value)
 const winners = computed(() => winnersData.value)
@@ -209,40 +219,23 @@ const detailSummary = computed(() => formatEventHeaderSummary(event.value))
 const eventTypeLabel = computed(() => formatEventTypeLabel(event.value.eventType))
 const primaryAction = computed(() =>
   resolvePublicEventPrimaryAction({
-    actorKind: accountActor.value.kind,
-    hasAcceptedCurrentPlatformDocuments: accountActor.value.hasAcceptedCurrentPlatformDocuments,
     eventSlug: slug.value,
-    eventState: event.value.state,
-    registrationOpensAt: event.value.registrationOpensAt,
-    registrationClosesAt: event.value.registrationClosesAt,
-    hasEventWorkspaceAccess: hasEventWorkspaceAccess.value
+    registrationOpen: registrationOpen.value,
+    hasEventWorkspaceAccess: workspaceAccess.value === 'granted'
   })
 )
-const showPrimaryAction = computed(() => Boolean(primaryAction.value))
-const primaryActionHref = computed(() => primaryAction.value?.to ?? '')
-const isPrimaryActionExternal = computed(() => primaryAction.value?.external ?? false)
-const primaryActionLabel = computed(() => primaryAction.value?.label ?? '')
-const talkProposalWorkspaceHref = computed(() => `/account/events/${slug.value}?tab=call-for-talks`)
-const talkProposalIsOpen = computed(() => isTalkProposalWindowOpen(
-  event.value.talkProposalOpensAt ?? null,
-  event.value.talkProposalClosesAt ?? null
-))
-const talkProposalRegistrationAction = computed(() => resolvePublicEventPrimaryAction({
-  actorKind: accountActor.value.kind,
-  hasAcceptedCurrentPlatformDocuments: accountActor.value.hasAcceptedCurrentPlatformDocuments,
-  eventSlug: slug.value,
-  eventState: event.value.state,
-  registrationOpensAt: event.value.registrationOpensAt,
-  registrationClosesAt: event.value.registrationClosesAt,
-  hasEventWorkspaceAccess: hasEventWorkspaceAccess.value,
-  registrationIntent: 'talk-proposal'
-}))
-const talkProposalAction = computed(() => hasEventWorkspaceAccess.value
-  ? { label: 'Open Talk proposal', to: talkProposalWorkspaceHref.value, external: false }
-  : talkProposalIsOpen.value && talkProposalRegistrationAction.value
-    ? { ...talkProposalRegistrationAction.value, label: 'Propose a talk' }
-    : primaryAction.value
-)
+const talkProposalAction = computed(() => {
+  if (workspaceAccess.value === 'granted') {
+    return { label: 'Open Talk proposal', to: `/account/events/${slug.value}?tab=call-for-talks` }
+  }
+  if (workspaceAccess.value !== 'denied' || !primaryAction.value) {
+    return null
+  }
+  if (isTalkProposalWindowOpen(event.value.talkProposalOpensAt ?? null, event.value.talkProposalClosesAt ?? null)) {
+    return { label: 'Propose a talk', to: `${primaryAction.value.to}?intent=talk-proposal` }
+  }
+  return primaryAction.value
+})
 const publicSectionTabs = ['overview', 'prizes', 'gallery'] as const
 type PublicSectionTab = (typeof publicSectionTabs)[number]
 const activePublicSection = computed<PublicSectionTab>(() =>
@@ -273,7 +266,7 @@ async function selectPublicSection(nextSection: PublicSectionTab) {
 }
 
 watchEffect(() => {
-  if (activePublicSection.value !== 'prizes' || hasPublishedPrizes.value || isWinnerRevealVisible.value) {
+  if (activePublicSection.value !== 'prizes' || prizesStatus.value !== 'success' || hasPublishedPrizes.value || isWinnerRevealVisible.value) {
     return
   }
 
@@ -288,7 +281,7 @@ watchEffect(() => {
 })
 
 watchEffect(() => {
-  if (activePublicSection.value !== 'gallery' || hasPublicGallery.value) {
+  if (activePublicSection.value !== 'gallery' || galleryStatus.value !== 'success' || hasPublicGallery.value) {
     return
   }
 
@@ -364,18 +357,17 @@ useSeoMeta({
               </div>
 
               <div
-                v-if="showPrimaryAction"
+                v-if="primaryAction"
                 class="shrink-0 pt-0.5"
               >
                 <AppButton
                   data-testid="public-event-primary-action"
-                  :to="primaryActionHref"
-                  :external="isPrimaryActionExternal"
+                  :to="primaryAction.to"
                   color="neutral"
                   variant="solid"
                   class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                 >
-                  {{ primaryActionLabel }}
+                  {{ primaryAction.label }}
                   <template #trailing>
                     <AppIcon
                       name="i-lucide-arrow-up-right"
@@ -388,6 +380,13 @@ useSeoMeta({
 
             <p class="text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
               {{ detailSummary }}
+            </p>
+            <p
+              v-if="workspaceAccess === 'error'"
+              role="status"
+              class="text-sm text-muted"
+            >
+              We couldn’t check your access to this event.
             </p>
           </div>
 
@@ -421,12 +420,11 @@ useSeoMeta({
         class="space-y-7"
       >
         <EventTalkProposalCallout
-          v-if="event.eventType === 'meetup' && event.talkProposalsEnabled && event.talkProposalOpensAt && event.talkProposalClosesAt"
-          :opens-at="event.talkProposalOpensAt"
-          :closes-at="event.talkProposalClosesAt"
+          v-if="talkProposalWindow"
+          :opens-at="talkProposalWindow.opensAt"
+          :closes-at="talkProposalWindow.closesAt"
           :action-href="talkProposalAction?.to"
           :action-label="talkProposalAction?.label"
-          :action-external="talkProposalAction?.external"
         />
 
         <EventOverviewPanel :description="event.description" />
@@ -464,7 +462,7 @@ useSeoMeta({
       </section>
 
       <section
-        v-else
+        v-else-if="activePublicSection === 'gallery' && galleryStatus === 'success'"
         id="public-tab-panel-gallery"
         role="tabpanel"
         aria-labelledby="public-tab-gallery"

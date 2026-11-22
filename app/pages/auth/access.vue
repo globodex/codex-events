@@ -7,8 +7,10 @@ useSeoMeta({
   robots: 'noindex, nofollow'
 })
 
-if (useUser().value) {
-  await navigateTo(accountRegisterHref, { redirectCode: 301 })
+const actor = await useAccountBootstrap().ensureLoaded()
+
+if (actor.isAuthenticated) {
+  await navigateTo(accountRegisterHref, { redirectCode: 302 })
 } else {
   await navigateTo(buildAuthLoginHref(accountRegisterHref), { external: true, redirectCode: 302 })
 }

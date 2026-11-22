@@ -13,7 +13,6 @@ import {
   getAdminOverviewTabForEvent,
   type AdminOverviewTab
 } from '~/domains/events/admin-overview'
-import { canCreateEvent } from '~/domains/events/access'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
 
 definePageMeta({
@@ -31,7 +30,6 @@ const adminOverviewTabLabels: Record<AdminOverviewTab, string> = {
 
 const isPlatformAdmin = computed(() => workspace.actor.value?.isPlatformAdmin === true)
 const isEventOrganizer = computed(() => workspace.actor.value?.isEventOrganizer === true)
-const canCreate = computed(() => canCreateEvent(workspace.actor.value))
 const manageableEvents = computed(() => workspace.manageableEvents.value)
 const activeTab = computed<AdminOverviewTab>(() =>
   resolveTabQueryValue(route.query.tab, adminOverviewTabs, 'active')
@@ -147,7 +145,10 @@ useSeoMeta({
               <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
                 Admin dashboard
               </h1>
-              <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
+              <p
+                v-if="workspace.actor.value"
+                class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]"
+              >
                 {{
                   isPlatformAdmin
                     ? 'Run platform-wide admin work, create events, and open any event workspace from one place.'
@@ -160,7 +161,7 @@ useSeoMeta({
 
             <div class="flex flex-wrap items-center gap-3">
               <AppDropdownMenu
-                v-if="canCreate"
+                v-if="workspace.session.capabilities.value.canCreateEvent"
                 :items="[
                   { label: 'Create event (builder)', to: '/admin/events/builder/new' },
                   { label: 'Create event (classic)', to: '/admin/events/new' }
@@ -205,11 +206,10 @@ useSeoMeta({
       />
 
       <AppAlert
-        v-else-if="workspace.session.status.value === 'pending' || workspace.events.status.value === 'pending'"
+        v-else-if="workspace.session.status.value !== 'success' || workspace.events.status.value !== 'success'"
         color="neutral"
         variant="soft"
         title="Loading admin dashboard"
-        :description="isPlatformAdmin ? 'Fetching the full admin workspace.' : 'Fetching the events you can manage.'"
       />
 
       <template v-else>

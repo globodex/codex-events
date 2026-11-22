@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 const useUser = vi.hoisted(() => vi.fn())
 const useApiClient = vi.hoisted(() => vi.fn())
-const useSessionActor = vi.hoisted(() => vi.fn())
+const useAccountBootstrap = vi.hoisted(() => vi.fn())
 const navigateTo = vi.hoisted(() => vi.fn())
 const createError = vi.hoisted(() => vi.fn((input: { statusCode: number, statusMessage: string }) =>
   Object.assign(new Error(input.statusMessage), input)
@@ -11,8 +11,8 @@ const createError = vi.hoisted(() => vi.fn((input: { statusCode: number, statusM
 vi.mock('../../../../../app/composables/useApiClient', () => ({
   useApiClient
 }))
-vi.mock('../../../../../app/composables/useSessionActor', () => ({
-  useSessionActor
+vi.mock('../../../../../app/composables/useAccountBootstrap', () => ({
+  useAccountBootstrap
 }))
 
 function createPlatformActor(overrides: Record<string, unknown> = {}) {
@@ -49,7 +49,7 @@ function createBootstrap(actor: Record<string, unknown>) {
     actor: {
       value: normalizedActor
     },
-    ensureLoaded: vi.fn(async () => undefined)
+    ensureLoaded: vi.fn(async () => normalizedActor)
   }
 }
 

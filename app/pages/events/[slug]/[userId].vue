@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePreferredReducedMotion } from '@vueuse/core'
 import type { EventCertificate } from '#shared/domains/events/certificates'
 import {
   buildEventCertificateLinkedInAddToProfileUrl,
@@ -40,7 +41,7 @@ const previewSearch = computed(() => {
   return search ? `?${search}` : ''
 })
 const certificateVariant = computed(() => route.query.variant === 'normal' ? 'normal' : 'holo')
-const { actor: accountActor } = await useAccountLifecycleActor()
+const { actor, status: sessionStatus } = useAccountBootstrap()
 const toast = useToast()
 
 if (!slug.value || !userId.value) {
@@ -50,22 +51,37 @@ if (!slug.value || !userId.value) {
   })
 }
 
-const { data: certificateData, error: certificateError } = await useApiResponse<EventCertificate>(
+const { data: certificateData, error: certificateError, status: certificateStatus } = await useApiResponse<EventCertificate>(
   () => `public-event-certificate:${slug.value}:${userId.value}:${previewSearch.value}`,
   () => `/api/public/events/${slug.value}/participants/${userId.value}/certificate${previewSearch.value}`,
-  {
-    cacheScope: 'public',
-    watch: [slug, userId, previewSearch]
-  }
+  { cacheScope: 'public' }
 )
 
-if (certificateError.value || !certificateData.value) {
-  throw createError({
-    statusCode: certificateError.value?.statusCode ?? 404,
-    statusMessage: 'Certificate not found.'
-  })
-}
+const certificatePageError = computed(() => {
+  if (certificateStatus.value === 'error') {
+    const statusCode = certificateError.value?.statusCode ?? certificateError.value?.status ?? 500
+    return createError({
+      statusCode,
+      statusMessage: statusCode === 404 ? 'Certificate not found.' : 'Unable to load the certificate.'
+    })
+  }
+  if (certificateStatus.value === 'success' && !certificateData.value) {
+    return createError({ statusCode: 404, statusMessage: 'Certificate not found.' })
+  }
 
+  return null
+})
+
+if (certificatePageError.value) {
+  throw certificatePageError.value
+}
+watch(certificatePageError, (error) => {
+  if (error) {
+    showError(error)
+  }
+})
+
+const hasCertificate = computed(() => certificateStatus.value === 'success' && Boolean(certificateData.value))
 const certificate = computed(() => certificateData.value!)
 const typeLabel = computed(() => eventCertificateTypeLabels[certificate.value.eventType])
 const locationLabel = computed(() => [certificate.value.city, certificate.value.country].filter(part => part.trim().length > 0).join(', '))
@@ -94,37 +110,39 @@ const shareCertificateUrl = computed(() => {
 })
 const certificateApiBasePath = computed(() => `/api/public/events/${slug.value}/participants/${userId.value}`)
 const certificateImageUrl = computed(() => new URL(`${certificateApiBasePath.value}/certificate.png${previewSearch.value}`, requestUrl.origin).toString())
-const certificateSummary = computed(() => buildEventCertificateSummary(certificate.value))
+const certificateSummary = computed(() => hasCertificate.value ? buildEventCertificateSummary(certificate.value) : undefined)
+const certificateSocialTitle = computed(() => hasCertificate.value
+  ? `${certificate.value.participantName} · Certificate of Participation`
+  : undefined)
 const certificateVerificationText = computed(() => buildEventCertificateVerificationText(certificate.value.certificateId))
-const shouldCelebrate = ref(false)
-const isCertificateOwner = computed(() => accountActor.value.platformUser?.id === userId.value)
+const shouldCelebrate = shallowRef(false)
+const reducedMotion = usePreferredReducedMotion()
 
 onMounted(() => {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    return
-  }
+  watchEffect((onCleanup) => {
+    shouldCelebrate.value = false
+    const celebrationStorageKey = `codex-events-certificate-celebrated:${slug.value}:${userId.value}`
+    if (!hasCertificate.value || reducedMotion.value === 'reduce') {
+      return
+    }
 
-  if (isPreview.value) {
-    setTimeout(() => {
+    const preview = isPreview.value
+    if (!preview && (sessionStatus.value !== 'success' || actor.value?.platformUser?.id !== userId.value)) {
+      return
+    }
+
+    if (!preview && localStorage.getItem(celebrationStorageKey)) {
+      return
+    }
+
+    const timer = setTimeout(() => {
+      if (!preview) {
+        localStorage.setItem(celebrationStorageKey, new Date().toISOString())
+      }
       shouldCelebrate.value = true
     }, 600)
-    return
-  }
-
-  if (!isCertificateOwner.value) {
-    return
-  }
-
-  const celebrationStorageKey = `codex-events-certificate-celebrated:${slug.value}:${userId.value}`
-
-  if (localStorage.getItem(celebrationStorageKey)) {
-    return
-  }
-
-  localStorage.setItem(celebrationStorageKey, new Date().toISOString())
-  setTimeout(() => {
-    shouldCelebrate.value = true
-  }, 600)
+    onCleanup(() => clearTimeout(timer))
+  })
 })
 
 const stageBackgroundImageStyle = computed(() => certificate.value.backgroundImageUrl
@@ -149,9 +167,11 @@ async function copyCertificateLink() {
 
 useSeoMeta({
   robots: () => isPreview.value ? 'noindex, nofollow' : undefined,
-  title: () => `${certificate.value.participantName} - Certificate of Participation | Codex Events`,
+  title: () => hasCertificate.value
+    ? `${certificate.value.participantName} - Certificate of Participation | Codex Events`
+    : undefined,
   description: () => certificateSummary.value,
-  ogTitle: () => `${certificate.value.participantName} · Certificate of Participation`,
+  ogTitle: certificateSocialTitle,
   ogDescription: () => certificateSummary.value,
   ogImage: () => certificateImageUrl.value,
   ogImageWidth: 1200,
@@ -161,7 +181,7 @@ useSeoMeta({
   ogType: 'website',
   ogSiteName: 'Codex Events',
   twitterCard: 'summary_large_image',
-  twitterTitle: () => `${certificate.value.participantName} · Certificate of Participation`,
+  twitterTitle: certificateSocialTitle,
   twitterDescription: () => certificateSummary.value,
   twitterImage: () => certificateImageUrl.value
 })
@@ -194,14 +214,14 @@ const certificateStructuredData = computed(() => JSON.stringify({
   }
 }).replace(/</g, '\\u003c'))
 
-useHead({
+useHead(() => ({
   link: [
     {
       rel: 'canonical',
       href: certificateUrl
     }
   ],
-  script: isPreview.value
+  script: !hasCertificate.value || isPreview.value
     ? []
     : [
         {
@@ -209,11 +229,14 @@ useHead({
           innerHTML: certificateStructuredData
         }
       ]
-})
+}))
 </script>
 
 <template>
-  <div class="certificate-stage relative isolate overflow-hidden pb-16">
+  <div
+    v-if="hasCertificate"
+    class="certificate-stage relative isolate overflow-hidden pb-16"
+  >
     <div
       class="pointer-events-none absolute inset-0 -z-10 bg-white dark:bg-[#05060b]"
       aria-hidden="true"
@@ -383,6 +406,13 @@ useHead({
       </div>
     </AppContainer>
   </div>
+  <AppContainer
+    v-else-if="!certificatePageError"
+    class="py-6"
+    role="status"
+  >
+    Loading certificate…
+  </AppContainer>
 </template>
 
 <style>

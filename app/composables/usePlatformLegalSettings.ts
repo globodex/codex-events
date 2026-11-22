@@ -7,17 +7,11 @@ export interface PlatformLegalSettingsRecord {
 }
 
 export function usePlatformLegalSettings() {
-  const request = useApiResponse<PlatformLegalSettingsRecord | null>(
+  return useApiResponse<PlatformLegalSettingsRecord | null>(
     'current-platform-legal-settings',
     '/api/platform-legal-settings/current',
     {
-      cacheScope: 'public',
-      default: () => null
+      cacheScope: 'public'
     }
   )
-
-  return {
-    ...request,
-    settings: computed(() => request.data.value ?? null)
-  }
 }

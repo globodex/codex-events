@@ -7,11 +7,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '~/components/ui/dropdown-menu'
-import {
-  canAccessAdminDashboard,
-  isEventRoleJudgingEnabled,
-  isEventRoleStaffEnabled
-} from '~/domains/events/access'
 
 const props = defineProps<{
   name?: string | null
@@ -20,18 +15,10 @@ const props = defineProps<{
   avatarAlt?: string | null
 }>()
 
-const { actor } = useSessionActor()
-const displayName = computed(() => props.name?.trim() || 'Developer User')
-const displayEmail = computed(() => props.email?.trim() || 'Signed in')
+const { capabilities } = useAccountBootstrap()
+const displayEmail = computed(() => props.email?.trim())
+const displayName = computed(() => props.name?.trim() || displayEmail.value || 'Account')
 const avatarAlt = computed(() => props.avatarAlt?.trim() || displayName.value)
-const hasStaffAccess = computed(() => actor.value.kind === 'platform_user'
-  && actor.value.eventRoles.some(role => isEventRoleStaffEnabled(role)))
-const hasJudgeAccess = computed(() => actor.value.kind === 'platform_user'
-  && actor.value.eventRoles.some(role => isEventRoleJudgingEnabled(role)))
-const hasAdminAccess = computed(() => actor.value.kind === 'platform_user'
-  && canAccessAdminDashboard(actor.value))
-const hasPlatformSettingsAccess = computed(() => actor.value.kind === 'platform_user'
-  && actor.value.isPlatformAdmin)
 </script>
 
 <template>
@@ -59,7 +46,10 @@ const hasPlatformSettingsAccess = computed(() => actor.value.kind === 'platform_
         <p class="text-[13px] font-medium text-white">
           {{ displayName }}
         </p>
-        <p class="truncate text-[12px] text-[#8C8C8C]">
+        <p
+          v-if="displayEmail && displayEmail !== displayName"
+          class="truncate text-[12px] text-[#8C8C8C]"
+        >
           {{ displayEmail }}
         </p>
       </div>
@@ -98,7 +88,7 @@ const hasPlatformSettingsAccess = computed(() => actor.value.kind === 'platform_
         </DropdownMenuItem>
 
         <DropdownMenuItem
-          v-if="hasStaffAccess"
+          v-if="capabilities.canAccessStaffDashboard"
           as-child
           class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
         >
@@ -115,7 +105,7 @@ const hasPlatformSettingsAccess = computed(() => actor.value.kind === 'platform_
         </DropdownMenuItem>
 
         <DropdownMenuItem
-          v-if="hasJudgeAccess"
+          v-if="capabilities.canAccessJudgeDashboard"
           as-child
           class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
         >
@@ -132,7 +122,7 @@ const hasPlatformSettingsAccess = computed(() => actor.value.kind === 'platform_
         </DropdownMenuItem>
 
         <DropdownMenuItem
-          v-if="hasAdminAccess"
+          v-if="capabilities.canAccessAdminDashboard"
           as-child
           class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
         >
@@ -149,7 +139,7 @@ const hasPlatformSettingsAccess = computed(() => actor.value.kind === 'platform_
         </DropdownMenuItem>
 
         <DropdownMenuItem
-          v-if="hasPlatformSettingsAccess"
+          v-if="capabilities.canAccessPlatformSettings"
           as-child
           class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
         >

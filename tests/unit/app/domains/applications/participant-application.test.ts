@@ -130,231 +130,52 @@ describe('participant application helpers', () => {
     expect(summarizeParticipantApplicationStatus('withdrawn', 'registration_open', 'hackathon')).toContain('withdrew from this event')
   })
 
-  test('resolves participant registration entry redirects by actor and state', () => {
-    expect(resolveParticipantRegistrationEntry({
-      actorKind: 'anonymous',
-      hasAcceptedCurrentPlatformDocuments: false,
-      eventSlug: 'codex-spring',
-      eventState: 'registration_open',
-      registrationOpensAt: '2026-03-20T12:00:00.000Z',
-      registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasExistingApplication: false,
-      now: new Date('2026-03-21T12:00:00.000Z')
-    })).toEqual({
-      to: '/auth/login?returnTo=%2Faccount%2Fregister%3FreturnTo%3D%252Fevents%252Fcodex-spring%252Fregister',
-      external: true
-    })
+  const openRegistration = {
+    eventSlug: 'codex-spring',
+    eventState: 'registration_open' as const,
+    registrationOpensAt: '2026-03-20T12:00:00.000Z',
+    registrationClosesAt: '2026-03-23T12:00:00.000Z',
+    now: new Date('2026-03-21T12:00:00.000Z')
+  }
 
+  test('routes existing applicants to their workspace and closes registration on time', () => {
     expect(resolveParticipantRegistrationEntry({
-      actorKind: 'authenticated_identity',
-      hasAcceptedCurrentPlatformDocuments: false,
-      eventSlug: 'codex-spring',
-      eventState: 'registration_open',
-      registrationOpensAt: '2026-03-20T12:00:00.000Z',
-      registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasExistingApplication: false,
-      now: new Date('2026-03-21T12:00:00.000Z')
-    })).toEqual({
-      to: '/account/register?returnTo=%2Fevents%2Fcodex-spring%2Fregister',
-      external: false
-    })
-
+      ...openRegistration, hasExistingApplication: true
+    })).toBe('/account/events/codex-spring')
     expect(resolveParticipantRegistrationEntry({
-      actorKind: 'platform_user',
-      hasAcceptedCurrentPlatformDocuments: true,
-      eventSlug: 'codex-spring',
-      eventState: 'blind_review',
-      registrationOpensAt: '2026-03-20T12:00:00.000Z',
-      registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasExistingApplication: false,
-      now: new Date('2026-03-21T12:00:00.000Z')
-    })).toEqual({
-      to: '/events/codex-spring',
-      external: false
-    })
-
-    expect(resolveParticipantRegistrationEntry({
-      actorKind: 'platform_user',
-      hasAcceptedCurrentPlatformDocuments: true,
-      eventSlug: 'codex-spring',
-      eventState: 'registration_open',
-      registrationOpensAt: '2026-03-20T12:00:00.000Z',
-      registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasExistingApplication: true,
-      now: new Date('2026-03-21T12:00:00.000Z')
-    })).toEqual({
-      to: '/account/events/codex-spring',
-      external: false
-    })
-
-    expect(resolveParticipantRegistrationEntry({
-      actorKind: 'platform_user',
-      hasAcceptedCurrentPlatformDocuments: true,
-      eventSlug: 'codex-spring',
-      eventState: 'registration_open',
-      registrationOpensAt: '2026-03-20T12:00:00.000Z',
-      registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasExistingApplication: false,
-      now: new Date('2026-03-21T12:00:00.000Z')
+      ...openRegistration, hasExistingApplication: false
     })).toBeNull()
-
     expect(resolveParticipantRegistrationEntry({
-      actorKind: 'platform_user',
-      hasAcceptedCurrentPlatformDocuments: false,
-      eventSlug: 'codex-spring',
-      eventState: 'registration_open',
-      registrationOpensAt: '2026-03-20T12:00:00.000Z',
-      registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasExistingApplication: false,
-      now: new Date('2026-03-21T12:00:00.000Z')
-    })).toEqual({
-      to: '/account/register?returnTo=%2Fevents%2Fcodex-spring%2Fregister',
-      external: false
-    })
-
+      ...openRegistration, hasExistingApplication: false, eventState: 'blind_review'
+    })).toBe('/events/codex-spring')
     expect(resolveParticipantRegistrationEntry({
-      actorKind: 'platform_user',
-      hasAcceptedCurrentPlatformDocuments: true,
-      eventSlug: 'codex-spring',
-      eventState: 'registration_open',
-      registrationOpensAt: '2026-03-20T12:00:00.000Z',
-      registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasExistingApplication: false,
-      now: new Date('2026-03-23T12:00:00.000Z')
-    })).toEqual({
-      to: '/events/codex-spring',
-      external: false
-    })
+      ...openRegistration, hasExistingApplication: false, now: new Date(openRegistration.registrationClosesAt)
+    })).toBe('/events/codex-spring')
   })
 
-  test('keeps the public detail CTA as Register while registration is open', () => {
-    expect(resolvePublicEventPrimaryAction({
-      actorKind: 'anonymous',
-      hasAcceptedCurrentPlatformDocuments: false,
-      eventSlug: 'codex-spring',
-      eventState: 'registration_open',
-      registrationOpensAt: '2026-03-20T12:00:00.000Z',
-      registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasEventWorkspaceAccess: false,
-      now: new Date('2026-03-21T12:00:00.000Z')
-    })).toEqual({
-      label: 'Register',
-      to: '/auth/login?returnTo=%2Faccount%2Fregister%3FreturnTo%3D%252Fevents%252Fcodex-spring%252Fregister',
-      external: true
-    })
-
-    expect(resolvePublicEventPrimaryAction({
-      actorKind: 'platform_user',
-      hasAcceptedCurrentPlatformDocuments: true,
-      eventSlug: 'codex-spring',
-      eventState: 'registration_open',
-      registrationOpensAt: '2026-03-20T12:00:00.000Z',
-      registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasEventWorkspaceAccess: true,
-      now: new Date('2026-03-21T12:00:00.000Z')
-    })).toEqual({
-      label: 'Register',
-      to: '/events/codex-spring/register',
-      external: false
-    })
-
-    expect(resolvePublicEventPrimaryAction({
-      actorKind: 'platform_user',
-      hasAcceptedCurrentPlatformDocuments: false,
-      eventSlug: 'codex-spring',
-      eventState: 'registration_open',
-      registrationOpensAt: '2026-03-20T12:00:00.000Z',
-      registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasEventWorkspaceAccess: true,
-      now: new Date('2026-03-21T12:00:00.000Z')
-    })).toEqual({
-      label: 'Register',
-      to: '/account/register?returnTo=%2Fevents%2Fcodex-spring%2Fregister',
-      external: false
-    })
-  })
-
-  test('preserves the Talk proposal intent through registration and account setup', () => {
-    const routeOptions = {
-      eventSlug: 'codex-spring',
-      eventState: 'registration_open' as const,
-      registrationOpensAt: '2026-03-20T12:00:00.000Z',
-      registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      registrationIntent: 'talk-proposal' as const,
-      now: new Date('2026-03-21T12:00:00.000Z')
+  test('keeps the public Register destination stable while registration is open', () => {
+    for (const hasEventWorkspaceAccess of [false, true]) {
+      expect(resolvePublicEventPrimaryAction({ eventSlug: 'codex-spring', registrationOpen: true, hasEventWorkspaceAccess })).toEqual({
+        label: 'Register',
+        to: '/events/codex-spring/register'
+      })
     }
-
-    expect(resolvePublicEventPrimaryAction({
-      ...routeOptions,
-      actorKind: 'platform_user',
-      hasAcceptedCurrentPlatformDocuments: true,
-      hasEventWorkspaceAccess: false
-    })).toMatchObject({
-      to: '/events/codex-spring/register?intent=talk-proposal'
-    })
-
-    expect(resolveParticipantRegistrationEntry({
-      ...routeOptions,
-      actorKind: 'authenticated_identity',
-      hasAcceptedCurrentPlatformDocuments: false,
-      hasExistingApplication: false
-    })).toEqual({
-      to: '/account/register?returnTo=%2Fevents%2Fcodex-spring%2Fregister%3Fintent%3Dtalk-proposal',
-      external: false
-    })
-
-    expect(resolveParticipantRegistrationEntry({
-      ...routeOptions,
-      actorKind: 'platform_user',
-      hasAcceptedCurrentPlatformDocuments: true,
-      hasExistingApplication: true
-    })).toEqual({
-      to: '/account/events/codex-spring?tab=call-for-talks',
-      external: false
-    })
   })
 
-  test('shows the public detail Open workspace CTA after registration closes when account access exists', () => {
-    expect(resolvePublicEventPrimaryAction({
-      actorKind: 'platform_user',
-      hasAcceptedCurrentPlatformDocuments: true,
-      eventSlug: 'codex-spring',
-      eventState: 'blind_review',
-      registrationOpensAt: '2026-03-20T12:00:00.000Z',
-      registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasEventWorkspaceAccess: true,
-      now: new Date('2026-03-24T12:00:00.000Z')
-    })).toEqual({
-      label: 'Open workspace',
-      to: '/account/events/codex-spring',
-      external: false
-    })
+  test('preserves the Talk proposal destination for an existing applicant', () => {
+    expect(resolveParticipantRegistrationEntry({
+      ...openRegistration, registrationIntent: 'talk-proposal', hasExistingApplication: true
+    })).toBe('/account/events/codex-spring?tab=call-for-talks')
+  })
 
-    expect(resolvePublicEventPrimaryAction({
-      actorKind: 'platform_user',
-      hasAcceptedCurrentPlatformDocuments: true,
-      eventSlug: 'codex-spring',
-      eventState: 'blind_review',
-      registrationOpensAt: '2026-03-20T12:00:00.000Z',
-      registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasEventWorkspaceAccess: false,
-      now: new Date('2026-03-24T12:00:00.000Z')
-    })).toBeNull()
+  test('shows Open workspace after registration closes only with confirmed event access', () => {
+    const closedRegistration = { eventSlug: 'codex-spring', registrationOpen: false }
 
-    expect(resolvePublicEventPrimaryAction({
-      actorKind: 'platform_user',
-      hasAcceptedCurrentPlatformDocuments: false,
-      eventSlug: 'codex-spring',
-      eventState: 'blind_review',
-      registrationOpensAt: '2026-03-20T12:00:00.000Z',
-      registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasEventWorkspaceAccess: true,
-      now: new Date('2026-03-24T12:00:00.000Z')
-    })).toEqual({
+    expect(resolvePublicEventPrimaryAction({ ...closedRegistration, hasEventWorkspaceAccess: true })).toEqual({
       label: 'Open workspace',
-      to: '/account/register?returnTo=%2Faccount%2Fevents%2Fcodex-spring',
-      external: false
+      to: '/account/events/codex-spring'
     })
+    expect(resolvePublicEventPrimaryAction({ ...closedRegistration, hasEventWorkspaceAccess: false })).toBeNull()
   })
 
   test('returns registration submission policy based on lifecycle, profile, and terms acceptance', () => {

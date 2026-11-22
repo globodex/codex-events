@@ -76,5 +76,11 @@ describe('useAuthorizationCache', () => {
 
     expect(clearNuxtData).toHaveBeenLastCalledWith([pendingKey, settledKey])
     expect(pendingRequest.signal.aborted).toBe(true)
+
+    expect(cache.syncAuthorization(null, {})).toBe(true)
+    expect(cache.authorizationGeneration.value).toBe(2)
+    expect(cache.syncAuthorization(null, {})).toBe(false)
+    expect(cache.syncAuthorization(actor, { canView: true })).toBe(true)
+    expect(cache.authorizationGeneration.value).toBe(2)
   })
 })

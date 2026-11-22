@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { ApiDataResponse } from '~/lib/api'
-import type { EventRecord } from '~/domains/events/records'
-import type { EvaluationCriterion } from '~/domains/judging/criteria-config'
 import type {
   CriterionScoreDraft,
   JudgeAssignmentApiDetail,
@@ -44,12 +42,10 @@ const props = withDefaults(defineProps<{
   page: AccountJudgeAssignmentWorkspacePage | null
   isLoading?: boolean
   loadErrorMessage?: string
-  refreshPage?: () => Promise<unknown> | unknown
 }>(), {
   nextReviewHref: null,
   isLoading: false,
-  loadErrorMessage: '',
-  refreshPage: undefined
+  loadErrorMessage: ''
 })
 
 const emit = defineEmits<{
@@ -65,33 +61,11 @@ const judgingWorkspaceHref = computed(() =>
 )
 
 const apiFetch = useApiClient()
-const workspace = {
-  event: computed(() => props.page?.event as unknown as EventRecord | null),
-  criteria: computed(() =>
-    (props.page?.criteria as unknown as EvaluationCriterion[] | undefined) ?? []
-  ),
-  assignment: computed(() => props.page?.assignment
-    ? normalizeJudgeAssignmentDetail(props.page.assignment as unknown as JudgeAssignmentApiDetail)
-    : null),
-  status: computed(() => {
-    if (props.isLoading) {
-      return 'pending'
-    }
-
-    if (props.loadErrorMessage) {
-      return 'error'
-    }
-
-    return props.page ? 'success' : 'idle'
-  }),
-  error: computed(() => props.loadErrorMessage
-    ? new Error(props.loadErrorMessage)
-    : null),
-  refreshAssignmentWorkspace: () => props.refreshPage?.()
-}
-
-const event = computed(() => workspace.event.value)
-const criteria = computed(() => workspace.criteria.value)
+const event = computed(() => props.page?.event)
+const criteria = computed(() => props.page?.criteria ?? [])
+const savedAssignment = computed(() => props.page
+  ? normalizeJudgeAssignmentDetail(props.page.assignment as unknown as JudgeAssignmentApiDetail)
+  : null)
 const assignment = ref<JudgeAssignmentDetail | null>(null)
 const blindAssignment = computed(() =>
   isBlindJudgeAssignment(assignment.value) ? assignment.value : null
@@ -110,7 +84,7 @@ const actionState = reactive({
   error: ''
 })
 
-watch(workspace.assignment, (nextAssignment) => {
+watch(savedAssignment, (nextAssignment) => {
   if (!nextAssignment) {
     return
   }
@@ -239,11 +213,6 @@ const completeActionLabel = computed(() =>
 const nextActionLabel = computed(() =>
   blindAssignment.value ? 'Start next blind review' : 'Start next pitch vote'
 )
-const isWorkspaceLoading = computed(() =>
-  workspace.status.value === 'pending'
-  || (!workspace.error.value && (!workspace.event.value || !workspace.assignment.value))
-)
-
 function notifyWorkspaceUpdated() {
   emit('updated')
 }
@@ -537,29 +506,21 @@ async function markIneligible() {
       Back to judging queue
     </NuxtLink>
 
+    <AppAlert
+      v-if="props.loadErrorMessage"
+      color="warning"
+      variant="soft"
+      title="Judge review unavailable"
+      :description="props.loadErrorMessage"
+    />
+
     <div
-      v-if="isWorkspaceLoading"
+      v-else-if="props.isLoading || !props.page || !assignment"
       class="grid gap-6"
     >
       <div class="h-80 rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60" />
       <div class="h-80 rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60" />
     </div>
-
-    <AppAlert
-      v-else-if="workspace.error.value"
-      color="warning"
-      variant="soft"
-      title="Judge review unavailable"
-      :description="workspace.error.value.message"
-    />
-
-    <AppAlert
-      v-else-if="!assignment || !event"
-      color="warning"
-      variant="soft"
-      title="Judge assignment unavailable"
-      description="The requested judge assignment could not be loaded for this session."
-    />
 
     <div
       v-else

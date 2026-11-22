@@ -2,10 +2,8 @@
 import type { ApiListResponse } from '~/lib/api'
 import type { EventRoleUserSummary } from '~/domains/events/access'
 
-import { getApiSubjectKey } from '~/lib/api'
 import { useApiClient } from '~/composables/useApiClient'
 import { useApiResponse } from '~/composables/useApiData'
-import { useSessionActor } from '~/composables/useSessionActor'
 
 const props = defineProps<{
   role: 'platform-admin' | 'event-organizer'
@@ -38,19 +36,16 @@ const roles = {
 const role = computed(() => roles[props.role])
 const roleNoun = computed(() => role.value.label.toLowerCase())
 const endpoint = computed(() => `/api/${props.role}s`)
-const actor = useSessionActor().actor
 const apiFetch = useApiClient()
 const currentRoster = useApiResponse<EventRoleUserSummary[]>(() => `${props.role}s`, endpoint)
 const { mutationError, runRosterMutation, isPendingAction } = useRosterMutationRunner()
 
-const subjectKey = computed(() => getApiSubjectKey(
-  actor.value.isAuthenticated ? actor.value.sessionUser.sub : null
-))
 const {
   candidateSearchInput,
   appliedCandidateSearch,
   candidateUsers,
   candidateUsersStatus,
+  showCandidateSkeletons,
   candidateUsersErrorMessage,
   isLoadingMoreCandidates,
   loadMoreCandidatesErrorMessage,
@@ -60,7 +55,7 @@ const {
 } = useRosterCandidateSearch<EventRoleUserSummary>({
   pageSize: 20,
   requestKey: () => `${props.role}-candidates`,
-  resetKey: () => `${props.role}:${subjectKey.value}`,
+  resetKey: () => props.role,
   loadPage: ({ page, pageSize, search, signal }) => apiFetch<ApiListResponse<EventRoleUserSummary>>(
     `${endpoint.value}/candidates`,
     {
@@ -135,7 +130,10 @@ async function updateAccess(user: EventRoleUserSummary, action: 'add' | 'remove'
           <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
             Current {{ roleNoun }}s
           </h3>
-          <p class="text-xs text-muted">
+          <p
+            v-if="currentRoster.status.value === 'success'"
+            class="text-xs text-muted"
+          >
             {{ currentUsers.length }} current
           </p>
         </div>
@@ -149,7 +147,7 @@ async function updateAccess(user: EventRoleUserSummary, action: 'add' | 'remove'
         />
 
         <AppAlert
-          v-else-if="currentRoster.status.value === 'pending'"
+          v-else-if="currentRoster.status.value !== 'success'"
           color="neutral"
           variant="soft"
           :title="`Loading ${roleNoun}s`"
@@ -243,7 +241,7 @@ async function updateAccess(user: EventRoleUserSummary, action: 'add' | 'remove'
           v-else
           class="grid gap-3"
         >
-          <template v-if="candidateUsersStatus === 'pending' && candidateUsers.length === 0">
+          <template v-if="showCandidateSkeletons">
             <AccountRosterUserRowSkeleton
               v-for="index in 3"
               :key="`candidate-skeleton-${index}`"
@@ -294,7 +292,7 @@ async function updateAccess(user: EventRoleUserSummary, action: 'add' | 'remove'
             </AccountRosterUserRow>
 
             <p
-              v-if="candidateRows.length === 0"
+              v-if="candidateUsersStatus === 'success' && candidateRows.length === 0"
               class="text-sm text-muted"
             >
               {{ emptyCandidateMessage }}

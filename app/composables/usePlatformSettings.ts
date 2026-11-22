@@ -6,17 +6,11 @@ export interface PlatformSettingsRecord {
 }
 
 export function usePlatformSettings() {
-  const request = useApiResponse<PlatformSettingsRecord | null>(
+  return useApiResponse<PlatformSettingsRecord | null>(
     'current-platform-settings',
     '/api/platform-settings/current',
     {
-      cacheScope: 'public',
-      default: () => null
+      cacheScope: 'public'
     }
   )
-
-  return {
-    ...request,
-    settings: computed(() => request.data.value ?? null)
-  }
 }

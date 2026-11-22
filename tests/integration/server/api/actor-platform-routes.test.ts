@@ -1,3 +1,5 @@
+import { spawn } from 'node:child_process'
+
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { and, asc, eq } from 'drizzle-orm'
@@ -41,6 +43,7 @@ import {
   userPlatformDocumentAcceptances,
   users
 } from '../../../../server/database/schema'
+import loginHandler from '../../../../server/routes/auth/login'
 import { linkedAuth0SubjectsClaim } from '../../../../server/domains/accounts/linking'
 import { authenticatedUploadRateLimitBindingName } from '../../../../server/utils/rate-limit'
 import { fixtureTimestamp } from '../../../support/backend/runtime'
@@ -190,6 +193,19 @@ describe('TASK-3.5 actor-facing API routes', () => {
     while (databases.length > 0) {
       await databases.pop()?.d1Database.close()
     }
+  })
+
+  test('fixture login refuses interactive sign-in before starting a host process', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [{ method: 'get', path: '/auth/login', handler: loginHandler }],
+      runtimeConfig: { localCodexAuth: true }
+    })
+    databases.push(harness)
+
+    const response = await harness.request('/auth/login')
+
+    expect(response.status).toBe(403)
+    expect(spawn).not.toHaveBeenCalled()
   })
 
   test('GET /api/session returns authenticated actor context and event roles', async () => {

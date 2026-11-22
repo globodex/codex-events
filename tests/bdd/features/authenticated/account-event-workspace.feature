@@ -83,6 +83,11 @@ Feature: Account event workspace browser topology
       | judge        | judging    |
       | regular_user | redemption |
 
+  Scenario: A delayed or failed event judging read keeps the judge's queue unknown
+    Given the saved "judge" local session state exists for account topology
+    When I open the Judging tab with its queue request held
+    Then the Judging tab shows a loading state until the failed read reports an error
+
   Scenario: a cold judge workspace waits for bootstrap before its critical read
     Given the saved "judge" local session state exists for account topology
     When I cold-start the judging workspace while holding the account bootstrap response as "judge"

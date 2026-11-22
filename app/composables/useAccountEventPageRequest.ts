@@ -1,4 +1,5 @@
-import type { MultiWatchSources } from 'vue'
+import type { AsyncDataRequestStatus } from '#app'
+import type { MultiWatchSources, Ref } from 'vue'
 
 import {
   buildAccountEventPageCacheKey,
@@ -12,7 +13,14 @@ import {
 
 import { useApiResponse } from './useApiData'
 import { useAuthorizationCache } from './useAuthorizationCache'
-import { useSessionActor } from './useSessionActor'
+import { normalizeApiError } from '~/lib/api'
+
+function accountPageReadState(request: { status: Ref<AsyncDataRequestStatus>, error: Ref<unknown> }) {
+  return {
+    isLoading: computed(() => request.status.value === 'idle' || request.status.value === 'pending'),
+    errorMessage: computed(() => request.error.value ? normalizeApiError(request.error.value).message : '')
+  }
+}
 
 /**
  * True when two normalized queries ask for the same thing. A normalized query holds only the
@@ -39,7 +47,6 @@ export function useAccountEventPageRequest<TPage>(
   options: UseAccountEventPageRequestOptions<TPage> = {}
 ) {
   const authorizationCache = useAuthorizationCache()
-  const session = useSessionActor()
   const resolvedSlug = computed(() => toValue(slug))
   const resolvedPage = computed(() => toValue(page))
   const resolvedQuery = computed<AccountEventPageQuery>((previous) => {
@@ -69,10 +76,8 @@ export function useAccountEventPageRequest<TPage>(
   })
 
   return {
-    actor: session.actor,
+    ...accountPageReadState(pageRequest),
     authorizationGeneration: authorizationCache.authorizationGeneration,
-    bootstrap: session.bootstrap,
-    capabilities: session.capabilities,
     clear: pageRequest.clear,
     data: pageRequest.data,
     error: pageRequest.error,
@@ -99,8 +104,6 @@ export function useAccountJudgeAssignmentPageRequest<TPage>(
   assignmentId: MaybeRefOrGetter<string>,
   options: UseAccountJudgeAssignmentPageRequestOptions<TPage> = {}
 ) {
-  const authorizationCache = useAuthorizationCache()
-  const session = useSessionActor()
   const resolvedSlug = computed(() => toValue(slug))
   const resolvedAssignmentId = computed(() => toValue(assignmentId))
   const requestKey = computed(() =>
@@ -113,10 +116,7 @@ export function useAccountJudgeAssignmentPageRequest<TPage>(
   const pageRequest = useApiResponse<TPage>(requestKey, path, { ...options, server: false })
 
   return {
-    actor: session.actor,
-    authorizationGeneration: authorizationCache.authorizationGeneration,
-    bootstrap: session.bootstrap,
-    capabilities: session.capabilities,
+    ...accountPageReadState(pageRequest),
     clear: pageRequest.clear,
     data: pageRequest.data,
     error: pageRequest.error,

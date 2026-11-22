@@ -254,6 +254,7 @@ export function createApiRouteTestHarness(options: {
     } as never
     event.context.runtimeConfig = {
       firstPlatformAdminEmail: options.runtimeConfig?.firstPlatformAdminEmail ?? '',
+      localAuthFixtures: true,
       localCodexAuth: options.runtimeConfig?.localCodexAuth ?? false,
       auth0: {
         ...(options.runtimeConfig?.auth0 ?? {})
