@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-11-22T13:14:00Z'
-updated_date: '2026-11-22T13:21:00Z'
+updated_date: '2026-11-22T13:24:00Z'
 labels:
   - build-day
 milestone: m-3
@@ -48,6 +48,8 @@ Alex reviewed the participant Agenda on 2026-11-22: selecting an agenda item mus
 The session item (AccountEventProgramSession) no longer shows the details text when it is selected. A selected session with details shows a small Details button in the free bottom right corner of the item (absolutely placed; the line with duration and room keeps that end free), so the item and the items after it keep their size and place. The button opens a dialog with the session's title, time, room and details.
 Closest analog: AdminBuilderCreditsInfoDialog (reka-ui dialog with trigger, overlay, title, description and close button). No new component: the dialog belongs to the session item and uses the shared AppButton for its trigger and close button.
 Checked in the preview at 390 and 1440 px in both themes: the size and place of every agenda item is the same before and after selecting, the dialog shows title, time, room and details, Escape closes it and focus returns to the Details button.
+
+Decision by Alex on 2026-11-22 ('Always show it'): the Details button shows on every agenda item that has details, not only on the selected one, so a participant on a phone opens the details with one tap. Opening the popup does not select the session. Checked at 390 and 1440 px in both themes; lint, typecheck and unit tests pass.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

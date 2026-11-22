@@ -88,8 +88,8 @@ const cardClass = computed(() => {
       </span>
     </AppButton>
 
-    <DialogRoot v-if="selected && session.details">
-      <!-- The button sits in the free corner of the item, so the item keeps its size when it is selected. -->
+    <DialogRoot v-if="session.details">
+      <!-- The button sits in the free corner of the item, so it does not change the item's size. -->
       <DialogTrigger as-child>
         <AppButton
           label="Details"
