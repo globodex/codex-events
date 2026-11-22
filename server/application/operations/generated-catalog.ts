@@ -40,6 +40,7 @@ export const applicationOperationLoaders = [
   () => import('../../api/events/[eventId]/actions/unhide.post'),
   () => import('../../api/events/[eventId]/admin/credits/index.get'),
   () => import('../../api/events/[eventId]/applications/[applicationId]/actions/approve.post'),
+  () => import('../../api/events/[eventId]/applications/[applicationId]/actions/check-in.post'),
   () => import('../../api/events/[eventId]/applications/[applicationId]/actions/override-check-in.post'),
   () => import('../../api/events/[eventId]/applications/[applicationId]/actions/reject.post'),
   () => import('../../api/events/[eventId]/applications/[applicationId]/actions/set-certificate-revocation.post'),

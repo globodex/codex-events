@@ -597,6 +597,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `check_in_source`
   - `luma`
   - `simplified_claim`
+  - `staff`
 
 ### Constraints
 
@@ -613,14 +614,14 @@ It describes the intended persistent model at the level of entities, key fields,
   - `proofOfExecutionUrl`: optional string carrying one or more comma-separated `http` or `https` links to prior execution evidence when visible
   - `aiKnowledgeLevel`: `beginner`, `intermediate`, `advanced`, or an empty string when AI Knowledge is hidden or visible but not required and not selected
 - `withdrawn_at` records when the application was withdrawn from the event, including participant withdrawal, admin-managed withdrawal, and Luma guest cancellation sync.
-- `checked_in_at` records the first accepted Luma or simplified-claim attendance timestamp. `check_in_source` records which path supplied it.
+- `checked_in_at` records the first accepted Luma, simplified-claim, or staff check-in timestamp. `check_in_source` records which path supplied it.
 - `pre_approval_status` stores a staged admin review decision that is applied later to transition the canonical `status`.
 - Applications created while `auto_approve_applications` is true are stored directly as `approved` with `reviewed_at` equal to `submitted_at` and no reviewing user.
 - In an event with `luma_guest_list_enabled = true`, an application whose Luma guest is approved is stored as `approved` in the same way, either at submission or later when Luma approves the guest. `reviewed_at` records that approval and there is no reviewing user.
 - `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for events that show and require a Luma email, have configured Luma sync, and do not use the Luma guest list. It stays null for events with `luma_guest_list_enabled = true`.
 - `selected_track_id` stores the participant's selected Hackathon or Build track for that event when the application is `submitted` or `approved`.
-- `checked_in_at` is sticky and is not cleared or replaced by later Luma or simplified-claim activity.
-- `check_in_override_status` stores an admin attendance decision of `joined` or `not_joined` for an approved application, with `check_in_override_at` and `check_in_override_by_user_id` recording when and by whom it was set. The override wins over `checked_in_at` in both directions and is cleared back to the recorded Luma or simplified-claim check-in by repeating the active decision.
+- `checked_in_at` is sticky and is not cleared or replaced by later Luma, simplified-claim, or staff check-in activity.
+- `check_in_override_status` stores an admin attendance decision of `joined` or `not_joined` for an approved application, with `check_in_override_at` and `check_in_override_by_user_id` recording when and by whom it was set. The override wins over `checked_in_at` in both directions and is cleared back to the recorded check-in by repeating the active decision.
 - `certificate_hidden_at` records when the participant disabled certificate generation. Null means the certificate is generated and publicly reachable when the participant is otherwise certificate-eligible.
 - `certificate_revoked_at` records when an event admin or platform admin revoked certificate access for an approved participant, with `certificate_revoked_by_user_id` recording the acting admin. Null means admin revocation does not block certificate access when the participant is otherwise certificate-eligible.
 - `certificate_email_queued_at` records when an event admin or platform admin reserved the application for certificate email delivery, with `certificate_email_queued_by_user_id` recording the acting admin. `certificate_email_sent_at` records successful delivery. These fields make the admin send action rerunnable without emailing the same participant again.

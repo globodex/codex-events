@@ -106,7 +106,7 @@ BDD and the local load runner use four stable personas defined in source:
 | --- | --- | --- |
 | `platform_admin` | `platform-admin@bdd.codex-events.test` | Platform admin |
 | `event_admin` | `event-admin@bdd.codex-events.test` | Event admin for fixture events |
-| `judge` | `judge@bdd.codex-events.test` | Judge for fixture events |
+| `judge` | `judge@bdd.codex-events.test` | Judge for fixture events; event staff for the staff check-in fixture event |
 | `regular_user` | `regular-user@bdd.codex-events.test` | No administrative role |
 
 Each identity subject has the form:
@@ -153,6 +153,7 @@ Role-specific coverage includes:
 | Public entry and discovery | Signed-out homepage and public event flows |
 | Participant account and application | Registration, applications, teams, and submissions |
 | Judge workspace | Assigned blind-review workflow |
+| Staff workspace | Check-in of confirmed participants from the participant list |
 | Admin workspace | Event configuration, operations, judging oversight, and outcomes |
 | Prize-recipient workspace | Prize redemption |
 | Destructive account behavior | Account deletion and registration recovery |

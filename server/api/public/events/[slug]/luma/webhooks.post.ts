@@ -2,7 +2,7 @@ import { readRawBody, type H3Event } from 'h3'
 import { z } from 'zod'
 
 import { writeAuditLog } from '#server/database/audit-log'
-import { getDatabase, getDatabaseSession, type AppDatabase } from '#server/database/client'
+import { getDatabase, type AppDatabase } from '#server/database/client'
 import type { events } from '#server/database/schema'
 import {
   findEventApplicationByLumaEmail,
@@ -11,6 +11,7 @@ import {
   isEventLumaSyncEnabled,
   withdrawUserApplicationWithAdminPolicy
 } from '#server/domains/applications'
+import { recordFirstApplicationCheckIn } from '#server/domains/applications/check-in'
 import { applyLumaGuestWebhookUpdate } from '#server/domains/applications/luma-guest-list-sync'
 import {
   extractLumaAttendanceCheckInEvent,
@@ -153,24 +154,20 @@ export default defineApiHandler(async (h3Event) => {
 
   const matchingApplication = (await findEventApplicationByLumaEmail(database, event.id, guestEmail))?.application
 
-  if (!matchingApplication || matchingApplication.status !== 'approved' || matchingApplication.checkedInAt) {
+  if (!matchingApplication) {
     return acknowledgeLumaWebhook()
   }
 
-  const updatedAt = new Date().toISOString()
-  const updateResult = await getDatabaseSession(h3Event).prepare(`
-    update user_applications
-    set checked_in_at = ?, check_in_source = 'luma', updated_at = ?
-    where id = ?
-      and status = 'approved'
-      and checked_in_at is null
-  `).bind(
-    attendanceEvent.checkedInAt,
-    updatedAt,
-    matchingApplication.id
-  ).run()
+  const recordedAt = new Date().toISOString()
+  const checkedInApplication = await recordFirstApplicationCheckIn(database, {
+    applicationId: matchingApplication.id,
+    source: 'luma',
+    checkedInAt: attendanceEvent.checkedInAt,
+    recordedAt
+  })
 
-  if ((updateResult.meta.changes ?? 0) === 0) {
+  if (!checkedInApplication) {
+    // Not approved, or already checked in by Luma, staff, or a simplified claim.
     return acknowledgeLumaWebhook()
   }
 
@@ -186,7 +183,7 @@ export default defineApiHandler(async (h3Event) => {
       checkedInAt: attendanceEvent.checkedInAt,
       ...(webhookId ? { webhookId } : {})
     },
-    createdAt: updatedAt
+    createdAt: recordedAt
   })
 
   return acknowledgeLumaWebhook()

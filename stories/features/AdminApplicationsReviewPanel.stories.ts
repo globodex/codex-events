@@ -56,6 +56,7 @@ const meta = {
     searchEnabled: true,
     onApprove: fn(),
     onReject: fn(),
+    onCheckIn: fn(),
     onSaveDecisions: fn()
   },
   argTypes: { applications: { control: false } }
@@ -73,10 +74,16 @@ export const Approving: Story = {
 export const Attendance: Story = {
   args: {
     view: 'approved',
-    showAttendance: true,
     applications: [
       { ...maya, status: 'approved', preApprovalStatus: null, checkedInAt: '2026-12-05T09:10:00.000Z' },
       { ...ellis, status: 'approved' }
     ]
+  }
+}
+
+export const CheckingIn: Story = {
+  args: {
+    ...Attendance.args,
+    pendingActionKey: 'check-in:application-ellis'
   }
 }

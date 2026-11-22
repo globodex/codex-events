@@ -1,4 +1,5 @@
 import type { PublicEvent, PublicEventState } from '~/domains/events/presentation'
+import type { ApplicationCheckInSource } from '#shared/domains/applications/check-in'
 import type { TalkProposalQuestionDefinition } from '#shared/domains/talk-proposals/questions'
 import type {
   ApiDataResponse,
@@ -100,7 +101,7 @@ export interface ParticipantApplicationRecord {
   submittedAt: string
   withdrawnAt: string | null
   checkedInAt: string | null
-  checkInSource: 'luma' | 'simplified_claim' | null
+  checkInSource: ApplicationCheckInSource | null
   checkInOverrideStatus: 'joined' | 'not_joined' | null
   certificateHiddenAt: string | null
   certificateRevokedAt: string | null

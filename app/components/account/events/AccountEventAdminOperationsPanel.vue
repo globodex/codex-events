@@ -40,10 +40,10 @@ import {
   getEventOperationsPhase
 } from '~/domains/events/states'
 import { getCurrentLifecycleControl } from '~/domains/events/lifecycle-controls'
-import { shouldShowApprovedParticipantAttendanceSummary } from '~/domains/applications/admin-application-record'
 import { buildPitchReviewCoverageEntries } from '~/domains/judging/admin-oversight'
 import { formatTimestamp } from '~/lib/date-formatting'
 import { useApiClient } from '~/composables/useApiClient'
+import { useParticipantCheckIn } from '~/composables/useParticipantCheckIn'
 
 type AccountEventAdminOperationsSection = 'participants' | 'submissions' | 'operations'
 type LifecycleMetricCard = {
@@ -238,10 +238,6 @@ watch([pageData, participantPageData, pageStatus, () => props.loadErrorMessage],
 }, {
   immediate: true
 })
-
-const showCheckedInParticipantSummary = computed(() =>
-  shouldShowApprovedParticipantAttendanceSummary(currentEvent.value)
-)
 
 const lifecycleMetrics = computed(() => {
   const lockedEntries = leaderboard.value.filter(entry => entry.submissionStatus === 'locked')
@@ -1629,6 +1625,12 @@ async function rejectApplication(application: AdminApplicationRecord) {
   )
 }
 
+// Shows the check-in in the list at once, without loading the page again.
+const checkInParticipant = useParticipantCheckIn({
+  pendingActionKey,
+  onCheckedIn: application => replaceApplicationsLocally([application])
+})
+
 async function withdrawApplication(application: AdminApplicationRecord) {
   const availability = application.adminWithdrawal
 
@@ -2043,7 +2045,6 @@ async function runLifecycleAction() {
           :is-loading="applicationsStatus === 'pending'"
           :error-message="applicationsStatus === 'error' ? applicationsErrorMessage : ''"
           :pending-action-key="pendingActionKey"
-          :show-attendance="showCheckedInParticipantSummary"
           :show-ai-knowledge="currentEvent.applicationAiKnowledgeVisible"
           :tracks="currentEvent.tracks ?? []"
           :participants-limit="currentEvent.participantsLimit ?? null"
@@ -2054,6 +2055,7 @@ async function runLifecycleAction() {
           @reject="rejectApplication"
           @withdraw="withdrawApplication"
           @undo-withdrawal="undoApplicationWithdrawal"
+          @check-in="checkInParticipant"
           @save-decisions="applyStagedApplicationDecisions"
         />
       </section>

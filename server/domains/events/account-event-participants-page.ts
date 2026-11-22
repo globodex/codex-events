@@ -139,11 +139,6 @@ export const accountEventParticipantsPageRoute = defineAccountEventPageRoute({
       event: {
         state: context.event.state,
         applicationAiKnowledgeVisible: context.event.applicationAiKnowledgeVisible,
-        applicationLumaEmailVisible: context.event.applicationLumaEmailVisible,
-        requireLumaEmail: context.event.requireLumaEmail,
-        lumaEventApiId: context.event.lumaEventApiId,
-        lumaWebhookStatus: context.event.lumaWebhookStatus,
-        simplifiedClaimingEnabled: context.event.simplifiedClaimingEnabled,
         participantsLimit: context.event.participantsLimit,
         autoApproveApplications: context.event.autoApproveApplications,
         tracks: tracks.map(track => ({

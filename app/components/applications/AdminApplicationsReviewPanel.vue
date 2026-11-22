@@ -49,9 +49,9 @@ const props = withDefaults(defineProps<{
   isLoading?: boolean
   errorMessage?: string
   pendingActionKey?: string | null
+  // Hides the review actions (approve, reject, withdraw). Check-in stays available.
   readOnly?: boolean
   searchEnabled?: boolean
-  showAttendance?: boolean
   showAiKnowledge?: boolean
   tracks?: Pick<EventTrack, 'id' | 'name' | 'displayOrder'>[]
   autoApproveApplications?: boolean
@@ -62,7 +62,6 @@ const props = withDefaults(defineProps<{
   pendingActionKey: null,
   readOnly: false,
   searchEnabled: false,
-  showAttendance: false,
   showAiKnowledge: false,
   tracks: () => [],
   autoApproveApplications: false,
@@ -75,6 +74,7 @@ const emit = defineEmits<{
   reject: [application: AdminApplicationRecord]
   withdraw: [application: AdminApplicationRecord]
   undoWithdrawal: [application: AdminApplicationRecord]
+  checkIn: [application: AdminApplicationRecord]
   saveDecisions: []
 }>()
 
@@ -94,7 +94,7 @@ const aiKnowledgeFilter = ref<AdminApplicationAiKnowledgeFilter>('all')
 const allSelectedTrackFilterValue = 'all'
 const selectedTrackFilter = ref(allSelectedTrackFilterValue)
 const showApprovedAttendance = computed(() =>
-  props.showAttendance && props.view === 'approved'
+  props.view === 'approved'
 )
 const sortedTrackOptions = computed(() =>
   [...props.tracks].sort((left, right) =>
@@ -426,6 +426,10 @@ function shouldShowUndoWithdrawalAction(application: AdminApplicationRecord) {
   return shouldShowAdminApplicationWithdrawalUndoAction(application, props.eventState)
 }
 
+function canCheckIn(application: AdminApplicationRecord) {
+  return application.status === 'approved' && !isApplicationCheckedIn(application)
+}
+
 function shouldShowApplicationActionColumn(application: AdminApplicationRecord) {
   return !props.readOnly && (shouldShowWithdrawAction(application) || shouldShowUndoWithdrawalAction(application))
 }
@@ -559,7 +563,7 @@ const emptyState = computed(() => {
   if (showApprovedAttendance.value && checkedInOnly.value) {
     return {
       title: 'No checked-in approved participants yet',
-      description: 'Approved participants will appear here after a Luma check-in is recorded.'
+      description: 'Approved participants will appear here after they are checked in.'
     }
   }
 
@@ -850,7 +854,7 @@ const emptyState = computed(() => {
               >
                 <div class="min-w-0 space-y-3">
                   <div class="space-y-3">
-                    <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="flex flex-wrap items-start justify-between gap-3 sm:flex-nowrap">
                       <div class="flex min-w-0 items-start gap-3">
                         <AppAvatar
                           size="lg"
@@ -863,7 +867,7 @@ const emptyState = computed(() => {
                             Participant
                           </p>
                           <div class="flex flex-wrap items-center gap-2">
-                            <h4 class="text-lg font-semibold text-highlighted">
+                            <h4 class="min-w-0 break-words text-lg font-semibold text-highlighted">
                               {{ getApplicantIdentityLabel(applicant.application) }}
                             </h4>
                             <AppBadge
@@ -933,6 +937,18 @@ const emptyState = computed(() => {
                           </div>
                         </div>
                       </div>
+
+                      <AppButton
+                        v-if="canCheckIn(applicant.application)"
+                        variant="soft"
+                        icon="i-lucide-user-check"
+                        label="Check in"
+                        class="w-full shrink-0 sm:w-auto"
+                        :data-testid="`admin-application-check-in-${applicant.application.id}`"
+                        :loading="pendingActionKey === `check-in:${applicant.application.id}`"
+                        :disabled="pendingActionKey !== null"
+                        @click="emit('checkIn', applicant.application)"
+                      />
                     </div>
 
                     <div

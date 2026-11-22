@@ -342,7 +342,7 @@ Event roles:
 Rules:
 
 - A user has at most one explicit event role per event.
-- Staff can see participant and team data for the event but cannot perform admin operations.
+- Staff can see participant and team data for the event and check in approved participants, but cannot perform admin operations.
 - Every platform admin also has a `EventRoleAssignment` row with role `event_admin` for every event.
 - When an event organizer creates an event, the creator receives a `EventRoleAssignment` row with role `event_admin` for that event.
 - A user can also be appointed as an `event_admin` for an event by an existing event admin or platform admin.
@@ -427,11 +427,15 @@ Rules:
 - `not_synced` is used only for events where Luma sync is enabled. An application in an event that uses the Luma guest list has no Luma sync outcome.
 - An approved participant can verify a Luma email from the account event overview when the event has Luma sync enabled and does not use the Luma guest list. The platform rejects a Luma email already connected to another participant in the same event. The platform saves the entered Luma email only after Luma confirms that the email belongs to a guest on the event, then retries the participant's Luma approval sync and reflects the resulting application sync state to the participant.
 - A `UserApplication` can record `checkedInAt` when a valid signed Luma guest check-in update confirms the approved participant attended the event.
-- A `UserApplication` records whether its sticky check-in came from `luma` or `simplified_claim`.
-- Successful simplified redemption creates or approves the participant application and records a `simplified_claim` check-in when no earlier check-in exists. An earlier Luma or simplified-claim timestamp and source remain unchanged.
+- Event staff, an event admin, or a platform admin can check in an approved participant of their event from the participant list, for example when the Luma check-in is late or missing. The staff check-in records the current time as `checkedInAt`. Submitted, rejected, and withdrawn applications cannot be checked in.
+- A `UserApplication` records whether its check-in came from `luma`, `simplified_claim`, or `staff`.
+- A check-in is recorded once. The first check-in keeps its time and source, and a later Luma, simplified-claim, or staff check-in changes nothing.
+- A staff check-in gives the participant the same checked-in state as a Luma check-in.
+- A staff check-in for a participant who is already checked in, or whom an event admin marked as joined, succeeds without changing anything. A participant whom an event admin marked as not joined cannot be checked in until an event admin changes that decision.
+- Successful simplified redemption creates or approves the participant application and records a `simplified_claim` check-in when no earlier check-in exists.
 - Luma attendance sync is sticky in this version. Once `checkedInAt` is recorded, later Luma uncheck changes do not clear it.
-- An event admin or platform admin can override attendance for an approved application by marking the participant joined or not joined. The override records the acting admin and time, wins over the Luma check-in in both directions, and repeating the active decision clears it back to the Luma default.
-- Effective attendance is the admin override when present, otherwise the recorded Luma or simplified-claim check-in.
+- An event admin or platform admin can override attendance for an approved application by marking the participant joined or not joined. The override records the acting admin and time, wins over the recorded check-in in both directions, and repeating the active decision clears it back to the recorded check-in.
+- Effective attendance is the admin override when present, otherwise the recorded Luma, simplified-claim, or staff check-in.
 - An event admin or platform admin can revoke certificate access for an approved participant who currently has certificate access. Revocation is independent of attendance, records the acting admin and time, and can be restored by an event admin or platform admin.
 
 ### EventLumaGuest

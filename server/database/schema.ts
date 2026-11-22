@@ -9,6 +9,9 @@ import {
   uniqueIndex
 } from 'drizzle-orm/sqlite-core'
 
+// A relative import, because tools such as drizzle-kit load this file without the Nuxt aliases.
+import { applicationCheckInSources } from '../../shared/domains/applications/check-in'
+
 const createId = () => crypto.randomUUID()
 const currentTimestamp = sql`CURRENT_TIMESTAMP`
 
@@ -38,7 +41,6 @@ export const platformDocumentTypes = ['privacy_policy', 'platform_terms'] as con
 export const eventTermsDocumentTypes = ['application_terms', 'winner_terms'] as const
 export const userApplicationStatuses = ['submitted', 'approved', 'rejected', 'withdrawn'] as const
 export const applicationCheckInOverrideStatuses = ['joined', 'not_joined'] as const
-export const applicationCheckInSources = ['luma', 'simplified_claim'] as const
 export const userApplicationPreApprovalStatuses = ['approved', 'rejected'] as const
 export const userApplicationLumaSyncStatuses = [
   'not_synced',

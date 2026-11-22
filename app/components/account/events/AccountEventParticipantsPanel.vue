@@ -18,7 +18,6 @@ const props = withDefaults(defineProps<{
   errorMessage?: string
   pendingActionKey?: string | null
   readOnly?: boolean
-  showAttendance?: boolean
   showAiKnowledge?: boolean
   tracks?: Pick<EventTrack, 'id' | 'name' | 'displayOrder'>[]
   participantsLimit?: number | null
@@ -35,7 +34,6 @@ const props = withDefaults(defineProps<{
   errorMessage: '',
   pendingActionKey: null,
   readOnly: false,
-  showAttendance: false,
   showAiKnowledge: false,
   tracks: () => [],
   participantsLimit: null,
@@ -50,6 +48,7 @@ const emit = defineEmits<{
   reject: [application: AdminApplicationRecord]
   withdraw: [application: AdminApplicationRecord]
   undoWithdrawal: [application: AdminApplicationRecord]
+  checkIn: [application: AdminApplicationRecord]
   saveDecisions: []
 }>()
 
@@ -121,17 +120,10 @@ const participantsLimitSummary = computed(() =>
   getParticipantsLimitSummary(participantRosterApplications.value, props.participantsLimit)
 )
 
-const participantSummaryGridClass = computed(() => {
-  if (participantsLimitSummary.value && props.showAttendance) {
-    return 'xl:grid-cols-6'
-  }
-
-  if (participantsLimitSummary.value || props.showAttendance) {
-    return 'xl:grid-cols-5'
-  }
-
-  return ''
-})
+// Five summary cards, plus the participants limit card when the event has a limit.
+const participantSummaryGridClass = computed(() =>
+  participantsLimitSummary.value ? 'xl:grid-cols-6' : 'xl:grid-cols-5'
+)
 </script>
 
 <template>
@@ -161,10 +153,7 @@ const participantSummaryGridClass = computed(() => {
         </p>
       </div>
 
-      <div
-        v-if="showAttendance"
-        class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:px-5 sm:py-5"
-      >
+      <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:px-5 sm:py-5">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Checked in
         </p>
@@ -230,7 +219,6 @@ const participantSummaryGridClass = computed(() => {
       :pending-action-key="pendingActionKey"
       :read-only="readOnly"
       search-enabled
-      :show-attendance="showAttendance"
       :show-ai-knowledge="showAiKnowledge"
       :tracks="tracks"
       :auto-approve-applications="autoApproveApplications"
@@ -240,6 +228,7 @@ const participantSummaryGridClass = computed(() => {
       @reject="emit('reject', $event)"
       @withdraw="emit('withdraw', $event)"
       @undo-withdrawal="emit('undoWithdrawal', $event)"
+      @check-in="emit('checkIn', $event)"
       @save-decisions="emit('saveDecisions')"
     />
   </div>

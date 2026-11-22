@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { applicationCheckInSources } from '#shared/domains/applications/check-in'
 import {
   accountPrizeRedemptionEventSchema,
   accountPrizeRedemptionPrizeSchema
@@ -273,7 +274,7 @@ const applicationSchema = z.object({
   ]).nullable(),
   withdrawnAt: z.string().nullable(),
   checkedInAt: z.string().nullable(),
-  checkInSource: z.enum(['luma', 'simplified_claim']).nullable(),
+  checkInSource: z.enum(applicationCheckInSources).nullable(),
   checkInOverrideStatus: z.enum(['joined', 'not_joined']).nullable(),
   checkInOverrideAt: z.string().nullable(),
   certificateHiddenAt: z.string().nullable(),

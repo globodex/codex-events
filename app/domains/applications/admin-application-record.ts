@@ -1,9 +1,9 @@
 import type { OperationalUserSummary } from '~/domains/accounts/session-actor'
+import type { TermsDocument } from '~/domains/events/records'
 import type {
-  EventRecord,
-  TermsDocument
-} from '~/domains/events/records'
-import type { ApplicationCheckInOverrideStatus } from '#shared/domains/applications/check-in'
+  ApplicationCheckInOverrideStatus,
+  ApplicationCheckInSource
+} from '#shared/domains/applications/check-in'
 import {
   isApplicationEffectivelyCheckedIn,
   resolveApplicationAttendanceSource
@@ -17,7 +17,7 @@ export interface AdminApplicationRecord {
   preApprovalStatus?: 'approved' | 'rejected' | null
   lumaSyncStatus?: 'not_synced' | 'approve_synced' | 'reject_synced' | 'approve_failed' | 'reject_failed' | null
   checkedInAt?: string | null
-  checkInSource?: 'luma' | 'simplified_claim' | null
+  checkInSource?: ApplicationCheckInSource | null
   checkInOverrideStatus?: ApplicationCheckInOverrideStatus | null
   checkInOverrideAt?: string | null
   certificateHiddenAt?: string | null
@@ -110,9 +110,10 @@ export function getApplicationAttendanceStatusColor(
   return isApplicationCheckedIn(application) ? 'success' : 'neutral'
 }
 
+// The switch has no default on purpose: a new check-in source without a label fails the typecheck.
 export function formatApplicationAttendanceSource(
   application: Pick<AdminApplicationRecord, 'checkedInAt' | 'checkInSource' | 'checkInOverrideStatus'>
-) {
+): string {
   const source = resolveApplicationAttendanceSource({
     checkedInAt: application.checkedInAt ?? null,
     checkInSource: application.checkInSource ?? null,
@@ -126,23 +127,11 @@ export function formatApplicationAttendanceSource(
       return 'Checked in via Luma'
     case 'simplified_claim':
       return 'Checked in after claiming the event credit'
-    default:
+    case 'staff':
+      return 'Checked in by event staff'
+    case null:
       return 'No check-in recorded'
   }
-}
-
-export function shouldShowApprovedParticipantAttendanceSummary(
-  event: Pick<EventRecord, 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId' | 'lumaWebhookStatus' | 'simplifiedClaimingEnabled'> | null | undefined
-) {
-  return Boolean(
-    event?.simplifiedClaimingEnabled
-    || (
-      event?.applicationLumaEmailVisible
-      && event.requireLumaEmail
-      && event.lumaEventApiId?.trim()
-      && event.lumaWebhookStatus === 'configured'
-    )
-  )
 }
 
 export function shouldShowApplicationLumaSyncStatus(

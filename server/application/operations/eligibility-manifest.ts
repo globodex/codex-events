@@ -69,6 +69,7 @@ export const mcpEligibilityManifest = [
   { route: 'events/[eventId]/actions/unhide.post.ts', disposition: 'include' },
   { route: 'events/[eventId]/admin/credits/index.get.ts', disposition: 'include' },
   { route: 'events/[eventId]/applications/[applicationId]/actions/approve.post.ts', disposition: 'include' },
+  { route: 'events/[eventId]/applications/[applicationId]/actions/check-in.post.ts', disposition: 'include' },
   { route: 'events/[eventId]/applications/[applicationId]/actions/override-check-in.post.ts', disposition: 'include' },
   { route: 'events/[eventId]/applications/[applicationId]/actions/reject.post.ts', disposition: 'include' },
   { route: 'events/[eventId]/applications/[applicationId]/actions/set-certificate-revocation.post.ts', disposition: 'include' },

@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { applicationCheckInSources } from '#shared/domains/applications/check-in'
+
 const eventStateSchema = z.enum([
   'draft',
   'registration_open',
@@ -49,7 +51,7 @@ const applicationSchema = z.object({
   submittedAt: z.string(),
   withdrawnAt: z.string().nullable(),
   checkedInAt: z.string().nullable().optional(),
-  checkInSource: z.enum(['luma', 'simplified_claim']).nullable().optional(),
+  checkInSource: z.enum(applicationCheckInSources).nullable().optional(),
   checkInOverrideStatus: z.enum(['joined', 'not_joined']).nullable().optional(),
   checkInOverrideAt: z.string().nullable().optional(),
   certificateHiddenAt: z.string().nullable().optional(),
@@ -81,11 +83,6 @@ export const accountEventParticipantsPageSchema = z.object({
   event: z.object({
     state: eventStateSchema,
     applicationAiKnowledgeVisible: z.boolean(),
-    applicationLumaEmailVisible: z.boolean(),
-    requireLumaEmail: z.boolean(),
-    lumaEventApiId: z.string().nullable(),
-    lumaWebhookStatus: z.enum(['not_configured', 'configured', 'failed']),
-    simplifiedClaimingEnabled: z.boolean(),
     participantsLimit: z.number().int().nullable(),
     autoApproveApplications: z.boolean(),
     tracks: z.array(trackSchema)

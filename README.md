@@ -80,7 +80,7 @@ You run three kinds of event from the same platform. Every event shares the same
 | **Application-first registration** | Per-event registration windows, configurable application fields, required profile fields, and optional event-specific terms. |
 | **Private Meetup calls for talks** | Optionally invite registered Meetup applicants to submit one private Talk proposal for staff review and a final admin decision. Proposal content stays in the account workspace and is not added to the public agenda. |
 | **Approvals and decision emails** | Review applications with staged approve/reject decisions or automatic approval, and notify participants of the outcome by email. |
-| **Attendance and Luma sync** | Mark events in person, gate the venue address and Discord link to approved participants, and optionally verify Luma guests, confirm registrations from the Luma guest list, and sync check-ins. |
+| **Attendance and Luma sync** | Mark events in person, gate the venue address and Discord link to approved participants, let event staff check in participants at the entrance, and optionally verify Luma guests, confirm registrations from the Luma guest list, and sync check-ins. |
 | **Event credits** | Offer redeemable credits — such as API or tooling credits — to approved participants from uploaded inventory. |
 | **Galleries and feedback** | Share a private event gallery, publish selected photos, and collect anonymous post-event feedback. |
 | **Explicit roles and audit** | Platform admins, event admins, event organizers, and staff are separate actors with scoped permissions and an audit trail. |

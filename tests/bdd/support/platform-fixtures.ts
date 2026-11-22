@@ -34,6 +34,7 @@ export const fixtureSimplifiedClaimingEventId = 'event_e2e_simplified_claiming_f
 const fixtureClosedSimplifiedClaimingEventId = 'event_e2e_closed_simplified_claiming_fixture'
 const fixtureLumaGuestListEventId = 'event_e2e_luma_guest_list_fixture'
 const fixtureLumaGuestListEmptyEventId = 'event_e2e_luma_guest_list_empty_fixture'
+const fixtureStaffCheckInEventId = 'event_e2e_staff_check_in_fixture'
 const fixtureParticipantTeamCreateEventId = 'event_e2e_participant_team_create_fixture'
 const fixtureParticipantTeamJoinEventId = 'event_e2e_participant_team_join_fixture'
 const fixtureParticipantTeamSoloEventId = 'event_e2e_participant_team_solo_fixture'
@@ -1198,6 +1199,39 @@ function buildFixtureSql(personas: StablePersona[]) {
     ) values
       ('role_event_admin_luma_guest_list_fixture', ${sqlLiteral(fixtureLumaGuestListEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)}),
       ('role_event_admin_luma_guest_list_empty_fixture', ${sqlLiteral(fixtureLumaGuestListEmptyEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)})`,
+    // A Build event for the staff check-in scenarios. The judge persona is event staff here.
+    // Judging Participant Two is confirmed and can be checked in. Backup Judge is still pending.
+    // The old created_at keeps the event at the end of the public event list.
+    `insert into events (
+      id, event_type, name, slug, description, city, country, address,
+      registration_opens_at, registration_closes_at, state, max_team_members,
+      created_by_user_id, created_at, updated_at
+    ) values (
+      ${sqlLiteral(fixtureStaffCheckInEventId)},
+      'build',
+      'Staff Check-In Fixture Build',
+      'staff-check-in-fixture-event',
+      'Build fixture for checking in confirmed participants at the entrance.',
+      'Vienna',
+      'Austria',
+      'Fixture Venue',
+      '2020-01-01T00:00:00.000Z',
+      '2030-01-01T00:00:00.000Z',
+      'registration_open',
+      1,
+      ${sqlLiteral(eventAdminId)},
+      '2020-01-01T00:00:00.000Z',
+      '2020-01-01T00:00:00.000Z'
+    )`,
+    `insert into event_role_assignments (
+      id, event_id, user_id, role, is_in_judge_pool, is_staff, created_at
+    ) values
+      ('role_staff_check_in_fixture', ${sqlLiteral(fixtureStaffCheckInEventId)}, ${sqlLiteral(judgeId)}, 'staff', 0, 1, ${sqlLiteral(fixtureTimestamp)})`,
+    `insert into user_applications (
+      id, event_id, user_id, status, submitted_at, created_at, updated_at
+    ) values
+      ('application_staff_check_in_fixture_confirmed', ${sqlLiteral(fixtureStaffCheckInEventId)}, ${sqlLiteral(judgingParticipantTwoId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('application_staff_check_in_fixture_pending', ${sqlLiteral(fixtureStaffCheckInEventId)}, ${sqlLiteral(backupJudgeId)}, 'submitted', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into event_terms_documents (
       id, event_id, document_type, version, title, content, published_at, created_at
     ) values
