@@ -98,9 +98,19 @@ export const accountEventParticipantsPageSchema = z.object({
     approved: z.number().int().nonnegative(),
     rejected: z.number().int().nonnegative(),
     withdrawn: z.number().int().nonnegative()
-  })
+  }),
+  // Confirmed participants of the whole event who are checked in.
+  checkedInCount: z.number().int().nonnegative()
 })
 
 export type AccountEventParticipantApplication = z.infer<typeof applicationSchema>
 export type AccountEventParticipantTrack = z.infer<typeof trackSchema>
 export type AccountEventParticipantsPage = z.infer<typeof accountEventParticipantsPageSchema>
+
+/**
+ * True when the event has more registrations than the participant list loads.
+ * `pagination.total` counts the whole event, also in the answer to a search.
+ */
+export function isParticipantListCut(pagination: AccountEventParticipantsPage['pagination']) {
+  return pagination.total > pagination.pageSize
+}

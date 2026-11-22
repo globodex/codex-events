@@ -8,12 +8,14 @@ import {
   type JudgeAssignmentAuthorization
 } from '#server/auth/authorization'
 import { measureRequestPhase } from '#server/http/request-timing'
+import { validateWithSchema } from '#server/http/validation'
 import { routeSlugParamsSchema } from '#server/domains/events'
 import {
   accountEventPageNames,
   accountEventPagePaths,
   accountJudgeAssignmentWorkspaceRoutePath,
   normalizeAccountEventPageQuery,
+  participantSearchMaxLength,
   type AccountEventPageName,
   type AccountEventPageQuery
 } from '#shared/domains/events/account-event-page-registry'
@@ -39,6 +41,7 @@ export const accountEventPageParamsSchema = routeSlugParamsSchema.extend({
 
 export const accountEventPageQuerySchema = z.object({
   selectedTeamSlug: z.string().trim().toLowerCase().min(1).max(120).optional(),
+  participantSearch: z.string().trim().min(1).max(participantSearchMaxLength).optional(),
   includeAdminEventConfiguration: z.coerce.boolean().optional(),
   includeEventShell: z.coerce.boolean().optional()
 }).passthrough()
@@ -143,7 +146,7 @@ export async function executeAccountEventPageRoute<
     page: definition.page
   })
   const query = normalizeAccountEventPageQuery(
-    accountEventPageQuerySchema.parse(getQuery(h3Event))
+    validateWithSchema(accountEventPageQuerySchema, getQuery(h3Event), 'query')
   )
   const context = await resolveAccountEventPageContext(h3Event, params.slug)
   await measureRequestPhase(h3Event, 'authorization', () => definition.authorize(context))

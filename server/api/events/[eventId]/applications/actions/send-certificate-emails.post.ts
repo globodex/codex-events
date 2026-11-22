@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 
 import { getRequestURL } from 'h3'
-import { and, asc, eq, getTableColumns, isNotNull, isNull, or } from 'drizzle-orm'
+import { and, asc, eq, getTableColumns, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { requirePlatformActor } from '#server/auth/actor'
@@ -16,6 +16,7 @@ import {
   requireEventAdminApplicationContext,
   serializeUserApplication
 } from '#server/domains/applications'
+import { effectivelyCheckedInCondition } from '#server/domains/applications/check-in'
 import {
   assertEventNotHidden,
   routeIdParamsSchema
@@ -97,13 +98,7 @@ export default defineApiHandler(async (h3Event) => {
       isNull(userApplications.certificateRevokedAt),
       isNull(userApplications.certificateEmailQueuedAt),
       isNull(userApplications.certificateEmailSentAt),
-      or(
-        eq(userApplications.checkInOverrideStatus, 'joined'),
-        and(
-          isNull(userApplications.checkInOverrideStatus),
-          isNotNull(userApplications.checkedInAt)
-        )
-      ),
+      effectivelyCheckedInCondition(),
       isNull(users.deletedAt),
       isNull(eventRoleAssignments.id)
     ))
@@ -123,6 +118,8 @@ export default defineApiHandler(async (h3Event) => {
     }
 
     const queuedAt = new Date().toISOString()
+    // This statement is plain SQL, so it spells out the check-in rule of
+    // `effectivelyCheckedInCondition` again. Change both together.
     const reserveResult = await getDatabaseSession(h3Event).prepare(`
       update user_applications
       set certificate_email_queued_at = ?,

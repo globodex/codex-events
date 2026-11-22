@@ -153,7 +153,7 @@ Role-specific coverage includes:
 | Public entry and discovery | Signed-out homepage and public event flows |
 | Participant account and application | Registration, applications, teams, and submissions |
 | Judge workspace | Assigned blind-review workflow |
-| Staff workspace | Check-in of confirmed participants from the participant list |
+| Staff workspace | Search and check-in of confirmed participants from the participant list |
 | Admin workspace | Event configuration, operations, judging oversight, and outcomes |
 | Prize-recipient workspace | Prize redemption |
 | Destructive account behavior | Account deletion and registration recovery |
@@ -254,6 +254,16 @@ state.
   approval and withdrawal reconciliation with the single-application matching
   rule, the absence of Luma decision sync, and guest data staying out of every
   response.
+- Participant list coverage includes the newest 100 registrations with the
+  total of the whole event, search by participant name, account email, and
+  Luma email for a registration outside those 100, a match that ignores letter
+  case and accents, `%` and `_` as plain search characters, the search text
+  length limit, staff registrations staying out of the list and the search,
+  the checked-in count for all approved participants with the admin override,
+  and refusal for staff of another event. Server
+  integration tests cover events with more than 100 registrations; the browser
+  fixtures hold smaller events, where the search stays in the browser and
+  sends no request.
 
 Structured operation coverage uses a fresh generated-schema module and an
 instrumented `z.fromJSONSchema` constructor. It verifies that module import

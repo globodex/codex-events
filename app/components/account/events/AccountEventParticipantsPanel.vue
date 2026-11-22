@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import type { AccountEventParticipantsPage } from '#shared/domains/events/account-event-participants-page'
 import type { AdminApplicationReviewView } from '~/domains/applications/admin-application-review'
 import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
 import type { EventRecord, EventTrack } from '~/domains/events/records'
 
 import { LazyApplicationsAdminApplicationsReviewPanel as LazyAdminApplicationsReviewPanel } from '#components'
 import {
-  getApprovedParticipantAttendanceSummary,
   getParticipantApplicationStatusSummary,
   getParticipantsLimitSummary,
   listParticipantRosterApplications
@@ -15,6 +15,8 @@ const props = withDefaults(defineProps<{
   eventId: string
   applications: AdminApplicationRecord[]
   isLoading?: boolean
+  // True while the server is still searching all registrations for the typed text.
+  isSearching?: boolean
   errorMessage?: string
   pendingActionKey?: string | null
   readOnly?: boolean
@@ -29,8 +31,12 @@ const props = withDefaults(defineProps<{
     rejected: number
     withdrawn: number
   }
+  // Confirmed participants of the whole event who are checked in.
+  checkedInCount?: number
+  pagination?: AccountEventParticipantsPage['pagination']
 }>(), {
   isLoading: false,
+  isSearching: false,
   errorMessage: '',
   pendingActionKey: null,
   readOnly: false,
@@ -39,8 +45,12 @@ const props = withDefaults(defineProps<{
   participantsLimit: null,
   autoApproveApplications: false,
   eventState: 'draft',
-  statusCounts: undefined
+  statusCounts: undefined,
+  checkedInCount: 0,
+  pagination: undefined
 })
+
+const search = defineModel<string>('search', { default: '' })
 
 const emit = defineEmits<{
   approve: [application: AdminApplicationRecord]
@@ -52,7 +62,8 @@ const emit = defineEmits<{
   saveDecisions: []
 }>()
 
-const participantView = ref<AdminApplicationReviewView>('applications')
+// A read-only viewer cannot review new registrations, so the list opens on confirmed participants.
+const participantView = ref<AdminApplicationReviewView>(props.readOnly ? 'approved' : 'applications')
 
 function formatParticipantMetricValue(value: string | number) {
   if (props.isLoading) {
@@ -97,8 +108,9 @@ const approvedParticipantRegistrationSummaryValue = computed(() =>
   formatParticipantMetricValue(`${participantStatusSummary.value.approvedCount} / ${participantStatusSummary.value.totalCount}`)
 )
 
+// Both numbers come from the server, so the card is right for an event of any size.
 const checkedInParticipantSummaryValue = computed(() =>
-  formatParticipantMetricValue(getApprovedParticipantAttendanceSummary(participantRosterApplications.value).value)
+  formatParticipantMetricValue(`${props.checkedInCount} / ${participantStatusSummary.value.approvedCount}`)
 )
 
 const rejectedParticipantSummaryValue = computed(() =>
@@ -211,10 +223,13 @@ const participantSummaryGridClass = computed(() =>
     </div>
 
     <LazyAdminApplicationsReviewPanel
+      v-model:search="search"
       :event-id="eventId"
       :applications="participantRosterApplications"
       :view="participantView"
       :is-loading="isLoading"
+      :is-searching="isSearching"
+      :pagination="pagination"
       :error-message="errorMessage"
       :pending-action-key="pendingActionKey"
       :read-only="readOnly"

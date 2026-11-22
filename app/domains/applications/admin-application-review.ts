@@ -6,6 +6,7 @@ import type { ParticipantAiKnowledgeLevel, ParticipantRegistrationDetails } from
 
 import { isApplicationCheckedIn } from '~/domains/applications/admin-application-record'
 import { parseParticipantRegistrationDetailsJson } from './participant-application'
+import { normalizeParticipantSearchText } from '#shared/domains/applications/participant-search'
 
 export const adminApplicationFuzzyNameThreshold = 0.92
 const adminApplicationFuzzyNameUniquenessMargin = 0.03
@@ -121,18 +122,6 @@ function normalizeEmail(value: string | null | undefined) {
   }
 
   return value.trim().toLowerCase()
-}
-
-function normalizeSearchValue(value: string | null | undefined) {
-  if (typeof value !== 'string') {
-    return ''
-  }
-
-  return value
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase()
 }
 
 function normalizeName(value: string | null | undefined) {
@@ -326,7 +315,7 @@ function listAdminApplicationReviewGroupSearchValues(group: AdminApplicationRevi
       pendingTeammate.fullName ?? '',
       pendingTeammate.email ?? ''
     ])
-  ].map(normalizeSearchValue).filter(value => value.length > 0)
+  ].map(normalizeParticipantSearchText).filter(value => value.length > 0)
 }
 
 export function buildAdminApplicationReviewGroups(applications: AdminApplicationRecord[]) {
@@ -696,7 +685,7 @@ export function searchAdminApplicationReviewGroups(
     return groups
   }
 
-  const normalizedSearchQuery = normalizeSearchValue(normalizedQuery)
+  const normalizedSearchQuery = normalizeParticipantSearchText(normalizedQuery)
   const directMatches = groups.filter(group =>
     listAdminApplicationReviewGroupSearchValues(group).some(value =>
       value.includes(normalizedSearchQuery)

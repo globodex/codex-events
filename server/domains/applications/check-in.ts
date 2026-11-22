@@ -1,8 +1,25 @@
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, isNotNull, isNull, or } from 'drizzle-orm'
 
 import type { AppDatabase } from '#server/database/client'
 import { userApplications } from '#server/database/schema'
 import type { ApplicationCheckInSource } from '#shared/domains/applications/check-in'
+
+/**
+ * Query condition for "this application counts as checked in".
+ *
+ * It is the SQL form of `isApplicationEffectivelyCheckedIn` in
+ * `shared/domains/applications/check-in.ts`: an admin override wins over the recorded check-in.
+ * Change both together.
+ */
+export function effectivelyCheckedInCondition() {
+  return or(
+    eq(userApplications.checkInOverrideStatus, 'joined'),
+    and(
+      isNull(userApplications.checkInOverrideStatus),
+      isNotNull(userApplications.checkedInAt)
+    )
+  )
+}
 
 /**
  * Records the first check-in of an approved application.

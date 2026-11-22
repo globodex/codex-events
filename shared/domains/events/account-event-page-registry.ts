@@ -22,9 +22,14 @@ export type AccountEventPageRoutePath<TPage extends AccountEventPageName = Accou
 
 export interface AccountEventPageQuery {
   selectedTeamSlug?: string | null
+  /** Search text of the `participants` page. The server searches all registrations of the event. */
+  participantSearch?: string | null
   includeAdminEventConfiguration?: boolean
   includeEventShell?: boolean
 }
+
+// The search box and the server use the same limit for the participant search text.
+export const participantSearchMaxLength = 120
 
 export const accountEventPagePaths = {
   entry: '/api/account/events/:slug/entry',
@@ -52,11 +57,13 @@ export function normalizeAccountEventPageQuery(
   query?: AccountEventPageQuery | null
 ): AccountEventPageQuery {
   const selectedTeamSlug = query?.selectedTeamSlug?.trim().toLowerCase()
+  const participantSearch = query?.participantSearch?.trim()
   const includeAdminEventConfiguration = query?.includeAdminEventConfiguration === true
   const includeEventShell = query?.includeEventShell === true
 
   return {
     ...(selectedTeamSlug ? { selectedTeamSlug } : {}),
+    ...(participantSearch ? { participantSearch } : {}),
     ...(includeAdminEventConfiguration ? { includeAdminEventConfiguration: true } : {}),
     ...(includeEventShell ? { includeEventShell: true } : {})
   }
@@ -73,6 +80,10 @@ export function buildAccountEventPagePath(
 
   if (page === 'teams' && normalizedQuery.selectedTeamSlug) {
     searchParams.set('selectedTeamSlug', normalizedQuery.selectedTeamSlug)
+  }
+
+  if (page === 'participants' && normalizedQuery.participantSearch) {
+    searchParams.set('participantSearch', normalizedQuery.participantSearch)
   }
 
   if (
@@ -99,13 +110,17 @@ export function buildAccountEventPageCacheKey(
   const selectedTeamKey = page === 'teams' && normalizedQuery.selectedTeamSlug
     ? `:selectedTeamSlug=${encodeURIComponent(normalizedQuery.selectedTeamSlug)}`
     : ''
+  const participantSearchKey = page === 'participants' && normalizedQuery.participantSearch
+    ? `:participantSearch=${encodeURIComponent(normalizedQuery.participantSearch)}`
+    : ''
   const adminEventConfigurationKey = (page === 'entry' || page === 'prizes')
     && normalizedQuery.includeAdminEventConfiguration
     ? ':includeAdminEventConfiguration'
     : ''
   const eventShellKey = normalizedQuery.includeEventShell ? ':includeEventShell' : ''
+  const queryKey = `${selectedTeamKey}${participantSearchKey}${adminEventConfigurationKey}${eventShellKey}`
 
-  return `account-event-page:${slug}:${page}${selectedTeamKey}${adminEventConfigurationKey}${eventShellKey}`
+  return `account-event-page:${slug}:${page}${queryKey}`
 }
 
 export function buildAccountJudgeAssignmentWorkspacePath(

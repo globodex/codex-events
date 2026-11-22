@@ -243,19 +243,6 @@ export function getParticipantsLimitSummary(
   }
 }
 
-export function getApprovedParticipantAttendanceSummary(
-  applications: AdminApplicationRecord[]
-) {
-  const approvedApplications = applications.filter(application => application.status === 'approved')
-  const checkedInCount = approvedApplications.filter(application => isApplicationCheckedIn(application)).length
-
-  return {
-    approvedCount: approvedApplications.length,
-    checkedInCount,
-    value: `${checkedInCount} / ${approvedApplications.length}`
-  }
-}
-
 export function getParticipantApplicationStatusSummary(
   applications: Array<Pick<AdminApplicationRecord, 'status'>>
 ) {

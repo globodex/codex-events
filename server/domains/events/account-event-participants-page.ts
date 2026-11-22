@@ -2,6 +2,8 @@ import { and, asc, count, desc, eq, isNull, sql } from 'drizzle-orm'
 
 import { assertEventParticipantVisibilityAccess } from '#server/auth/authorization'
 import { getAdminApplicationWithdrawalAvailability } from '#server/domains/applications'
+import { effectivelyCheckedInCondition } from '#server/domains/applications/check-in'
+import { participantSearchTextMatches } from '#shared/domains/applications/participant-search'
 import type { AccountEventParticipantsPage } from '#shared/domains/events/account-event-participants-page'
 import { accountEventParticipantsPageSchema } from '#shared/domains/events/account-event-participants-page'
 import type { AppDatabase } from '#server/database/client'
@@ -11,6 +13,39 @@ import { defineAccountEventPageRoute } from './account-event-page-contract'
 
 const firstParticipantPageSize = 100
 
+/** Join condition that finds the event staff role of the registered user, when there is one. */
+function eventStaffRoleOfApplicant(eventId: string) {
+  return and(
+    eq(eventRoleAssignments.eventId, eventId),
+    eq(eventRoleAssignments.userId, userApplications.userId),
+    eq(eventRoleAssignments.isStaff, true)
+  )
+}
+
+/**
+ * Keeps the registrations the participant list is about: those of this event, without the
+ * registrations of event staff and of deleted accounts. The query must join `users` and, with
+ * `eventStaffRoleOfApplicant`, `eventRoleAssignments`.
+ */
+function isParticipantRegistration(eventId: string) {
+  return and(
+    eq(userApplications.eventId, eventId),
+    isNull(users.deletedAt),
+    isNull(eventRoleAssignments.id)
+  )
+}
+
+// Newest registration first. The two further columns keep the order certain for equal times.
+const newestRegistrationFirst = [
+  desc(userApplications.submittedAt),
+  asc(userApplications.createdAt),
+  asc(userApplications.id)
+]
+
+/**
+ * Counts for the whole event, whatever the list shows or searches. Registrations of event staff
+ * are left out, as in the list.
+ */
 async function getParticipantApplicationCounts(
   database: AppDatabase,
   eventId: string
@@ -18,28 +53,26 @@ async function getParticipantApplicationCounts(
   const rows = await database
     .select({
       status: userApplications.status,
-      total: count()
+      total: count(),
+      // `count` skips a row when the case gives no value, so this counts the checked-in rows only.
+      checkedIn: count(sql`case when ${effectivelyCheckedInCondition()} then 1 end`)
     })
     .from(userApplications)
     .innerJoin(users, eq(users.id, userApplications.userId))
-    .leftJoin(eventRoleAssignments, and(
-      eq(eventRoleAssignments.eventId, eventId),
-      eq(eventRoleAssignments.userId, userApplications.userId),
-      eq(eventRoleAssignments.isStaff, true)
-    ))
-    .where(and(
-      eq(userApplications.eventId, eventId),
-      isNull(users.deletedAt),
-      isNull(eventRoleAssignments.id)
-    ))
+    .leftJoin(eventRoleAssignments, eventStaffRoleOfApplicant(eventId))
+    .where(isParticipantRegistration(eventId))
     .groupBy(userApplications.status)
 
-  return Object.fromEntries(
-    userApplicationStatuses.map(status => [
-      status,
-      rows.find(row => row.status === status)?.total ?? 0
-    ])
-  ) as AccountEventParticipantsPage['statusCounts']
+  return {
+    statusCounts: Object.fromEntries(
+      userApplicationStatuses.map(status => [
+        status,
+        rows.find(row => row.status === status)?.total ?? 0
+      ])
+    ) as AccountEventParticipantsPage['statusCounts'],
+    // The Checked in card is about confirmed participants, so only approved registrations count.
+    checkedInCount: rows.find(row => row.status === 'approved')?.checkedIn ?? 0
+  }
 }
 
 const participantApplicationProjection = {
@@ -85,30 +118,91 @@ const participantUserProjection = {
   profileIconRevision: sql<number | null>`case when ${users.profileIconObjectKey} is not null then ${users.profileIconRevision} else null end`
 }
 
-async function listParticipantApplications(database: AppDatabase, eventId: string) {
-  const rows = await database
+/**
+ * Finds the registrations that match the search text: the ids of the newest ones, at most
+ * `firstParticipantPageSize`.
+ *
+ * The name, emails and user id of every registration of the event are read and compared here,
+ * with the rule the browser uses for its loaded rows. SQLite cannot do this comparison: it keeps
+ * accents, and it ignores letter case for A to Z only.
+ */
+async function findParticipantApplicationIds(
+  database: AppDatabase,
+  eventId: string,
+  searchText: string
+) {
+  const registrations = await database
+    .select({
+      applicationId: userApplications.id,
+      userId: users.id,
+      displayName: users.displayName,
+      email: users.email,
+      lumaEmail: users.lumaEmail
+    })
+    .from(userApplications)
+    .innerJoin(users, eq(users.id, userApplications.userId))
+    .leftJoin(eventRoleAssignments, eventStaffRoleOfApplicant(eventId))
+    .where(isParticipantRegistration(eventId))
+    .orderBy(...newestRegistrationFirst)
+
+  return registrations
+    .filter(registration => participantSearchTextMatches(
+      [registration.displayName, registration.email, registration.lumaEmail, registration.userId],
+      searchText
+    ))
+    .slice(0, firstParticipantPageSize)
+    .map(registration => registration.applicationId)
+}
+
+/**
+ * Reads rows of the participant list, newest first, at most `firstParticipantPageSize`. With an
+ * application id, only that registration is read.
+ */
+function readParticipantRows(database: AppDatabase, eventId: string, applicationId?: string) {
+  return database
     .select({
       application: participantApplicationProjection,
       user: participantUserProjection
     })
     .from(userApplications)
     .innerJoin(users, eq(users.id, userApplications.userId))
-    .leftJoin(eventRoleAssignments, and(
-      eq(eventRoleAssignments.eventId, eventId),
-      eq(eventRoleAssignments.userId, userApplications.userId),
-      eq(eventRoleAssignments.isStaff, true)
-    ))
+    .leftJoin(eventRoleAssignments, eventStaffRoleOfApplicant(eventId))
     .where(and(
-      eq(userApplications.eventId, eventId),
-      isNull(users.deletedAt),
-      isNull(eventRoleAssignments.id)
+      isParticipantRegistration(eventId),
+      // `and` leaves out `undefined`, so without an application id the whole list is read.
+      applicationId ? eq(userApplications.id, applicationId) : undefined
     ))
-    .orderBy(
-      desc(userApplications.submittedAt),
-      asc(userApplications.createdAt),
-      asc(userApplications.id)
-    )
+    .orderBy(...newestRegistrationFirst)
     .limit(firstParticipantPageSize)
+}
+
+/** Reads the rows of the registrations that match the search text, one read per registration. */
+async function readMatchingParticipantRows(
+  database: AppDatabase,
+  eventId: string,
+  searchText: string
+) {
+  const applicationIds = await findParticipantApplicationIds(database, eventId, searchText)
+  const rowsOfEachApplication = await Promise.all(
+    applicationIds.map(applicationId => readParticipantRows(database, eventId, applicationId))
+  )
+
+  // A registration that left the list between the two reads has no row.
+  return rowsOfEachApplication.flat()
+}
+
+/**
+ * Lists the newest registrations of the event, at most `firstParticipantPageSize`. With a search
+ * text, only the registrations that match it are listed.
+ */
+async function listParticipantApplications(
+  database: AppDatabase,
+  eventId: string,
+  searchText?: string | null
+) {
+  const rows = searchText
+    ? await readMatchingParticipantRows(database, eventId, searchText)
+    : await readParticipantRows(database, eventId)
 
   return await Promise.all(rows.map(async row => ({
     ...row.application,
@@ -128,9 +222,9 @@ export const accountEventParticipantsPageRoute = defineAccountEventPageRoute({
   authorize: async (context) => {
     assertEventParticipantVisibilityAccess(context.authorization)
   },
-  load: async (context): Promise<AccountEventParticipantsPage> => {
-    const [applications, tracks, statusCounts] = await Promise.all([
-      listParticipantApplications(context.database, context.event.id),
+  load: async (context, query): Promise<AccountEventParticipantsPage> => {
+    const [applications, tracks, { statusCounts, checkedInCount }] = await Promise.all([
+      listParticipantApplications(context.database, context.event.id, query.participantSearch),
       listEventTracks(context.database, context.event.id),
       getParticipantApplicationCounts(context.database, context.event.id)
     ])
@@ -152,9 +246,11 @@ export const accountEventParticipantsPageRoute = defineAccountEventPageRoute({
       pagination: {
         page: 1,
         pageSize: firstParticipantPageSize,
+        // All registrations of the event, also when a search returned fewer rows.
         total: Object.values(statusCounts).reduce((total, count) => total + count, 0)
       },
-      statusCounts
+      statusCounts,
+      checkedInCount
     }
   }
 })

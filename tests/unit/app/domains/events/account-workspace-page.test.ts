@@ -56,6 +56,23 @@ describe('account-event page contract boundary', () => {
     )
   })
 
+  test('makes the participant search text part of the typed participants request', () => {
+    expect(buildAccountEventPagePath('fixture-event', 'participants', {
+      participantSearch: ' Anna 100% a_b+c '
+    })).toBe('/api/account/events/fixture-event/participants?participantSearch=Anna%20100%25%20a_b%2Bc')
+    expect(buildAccountEventPageCacheKey('fixture-event', 'participants', {
+      participantSearch: 'anna'
+    })).not.toBe(buildAccountEventPageCacheKey('fixture-event', 'participants', {
+      participantSearch: 'ben'
+    }))
+    expect(buildAccountEventPageCacheKey('fixture-event', 'participants', {
+      participantSearch: '   '
+    })).toBe(buildAccountEventPageCacheKey('fixture-event', 'participants'))
+    expect(buildAccountEventPagePath('fixture-event', 'teams', {
+      participantSearch: 'anna'
+    })).toBe('/api/account/events/fixture-event/teams')
+  })
+
   test('makes active admin configuration state part of entry and prizes contracts', () => {
     expect(buildAccountEventPagePath('fixture-event', 'entry', {
       includeAdminEventConfiguration: true

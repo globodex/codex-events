@@ -16,7 +16,10 @@ import { useApiClient } from './useApiClient'
  */
 export function useParticipantCheckIn(options: {
   pendingActionKey: Ref<string | null>
+  /** Shows the check-in in the loaded rows at once. */
   onCheckedIn: (application: AdminApplicationRecord) => void
+  /** Reads the participant list again, so its counts include the check-in. */
+  refreshList: () => Promise<unknown> | unknown
 }) {
   const apiFetch = useApiClient()
   const toast = useToast()
@@ -31,6 +34,9 @@ export function useParticipantCheckIn(options: {
       )
 
       options.onCheckedIn(response.data)
+      // `pendingActionKey` stays set during the refresh, so no other action starts on rows that
+      // the refresh is about to replace.
+      await options.refreshList()
     } catch (error) {
       toast.add({
         title: 'Check-in failed',

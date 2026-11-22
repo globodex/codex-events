@@ -19,6 +19,7 @@ function areAccountEventPageQueriesEqual(
   right: AccountEventPageQuery
 ) {
   return left?.selectedTeamSlug === right.selectedTeamSlug
+    && left?.participantSearch === right.participantSearch
     && left?.includeAdminEventConfiguration === right.includeAdminEventConfiguration
     && left?.includeEventShell === right.includeEventShell
 }

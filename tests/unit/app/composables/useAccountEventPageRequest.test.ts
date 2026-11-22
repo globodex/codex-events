@@ -94,6 +94,27 @@ describe('useAccountEventPageRequest', () => {
     )
   })
 
+  test('follows a changed participant search text in the request path and cache key', async () => {
+    const { useAccountEventPageRequest } = await import('../../../../app/composables/useAccountEventPageRequest')
+    const participantSearch = ref('anna')
+    const request = useAccountEventPageRequest('fixture-event', 'participants', {
+      query: computed(() => ({ participantSearch: participantSearch.value }))
+    })
+
+    expect(toValue(request.path)).toBe(
+      '/api/account/events/fixture-event/participants?participantSearch=anna'
+    )
+
+    participantSearch.value = 'ben'
+
+    expect(toValue(request.path)).toBe(
+      '/api/account/events/fixture-event/participants?participantSearch=ben'
+    )
+    expect(toValue(request.requestKey)).toBe(
+      'account-event-page:fixture-event:participants:participantSearch=ben'
+    )
+  })
+
   test('keeps semantically unchanged query state stable across tab-only navigation', async () => {
     const { useAccountEventPageRequest } = await import('../../../../app/composables/useAccountEventPageRequest')
     const query = ref<{ selectedTeamSlug?: string }>({})

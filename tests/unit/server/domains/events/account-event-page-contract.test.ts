@@ -52,7 +52,7 @@ describe('account-event page route contract', () => {
     expect(contractSource).toContain('schema: TSchema')
     expect(contractSource).toContain('authorize: AccountEventPageAuthorizer')
     expect(contractSource).toContain('accountEventPageParamsSchema.parse')
-    expect(contractSource).toContain('accountEventPageQuerySchema.parse')
+    expect(contractSource).toContain('validateWithSchema(accountEventPageQuerySchema, getQuery(h3Event), \'query\')')
     expect(contractSource).toContain('definition.load(context, query)')
     expect(contractSource).toContain('d1')
     expect(contractSource).toContain('() => Promise.all([')

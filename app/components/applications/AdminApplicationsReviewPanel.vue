@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { AccountEventParticipantsPage } from '#shared/domains/events/account-event-participants-page'
 import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
 import type {
   AdminApplicationAiKnowledgeFilter,
@@ -41,12 +42,16 @@ import {
   shouldShowApplicationLumaSyncStatus
 } from '~/domains/applications/admin-application-record'
 import { formatTimestamp } from '~/lib/date-formatting'
+import { participantSearchMaxLength } from '#shared/domains/events/account-event-page-registry'
+import { isParticipantListCut } from '#shared/domains/events/account-event-participants-page'
 
 const props = withDefaults(defineProps<{
   eventId: string
   applications: AdminApplicationRecord[]
   view: AdminApplicationReviewView
   isLoading?: boolean
+  // True while the server is still searching all registrations for the typed text.
+  isSearching?: boolean
   errorMessage?: string
   pendingActionKey?: string | null
   // Hides the review actions (approve, reject, withdraw). Check-in stays available.
@@ -56,8 +61,11 @@ const props = withDefaults(defineProps<{
   tracks?: Pick<EventTrack, 'id' | 'name' | 'displayOrder'>[]
   autoApproveApplications?: boolean
   eventState?: EventRecord['state']
+  // Tells how many registrations the event has and how many of them `applications` can hold.
+  pagination?: AccountEventParticipantsPage['pagination']
 }>(), {
   isLoading: false,
+  isSearching: false,
   errorMessage: '',
   pendingActionKey: null,
   readOnly: false,
@@ -65,8 +73,12 @@ const props = withDefaults(defineProps<{
   showAiKnowledge: false,
   tracks: () => [],
   autoApproveApplications: false,
-  eventState: 'draft'
+  eventState: 'draft',
+  pagination: undefined
 })
+
+// Text of the search box. The rows in `applications` are filtered with it at once.
+const searchQuery = defineModel<string>('search', { default: '' })
 
 const emit = defineEmits<{
   approve: [application: AdminApplicationRecord]
@@ -88,7 +100,6 @@ const whyThisEventPreviewCharacterLimit = 280
 const proofLinksPreviewCount = 2
 const expandedApplicationSectionKeys = ref(new Set<string>())
 const isFailedLumaSyncAlertExpanded = ref(false)
-const searchQuery = ref('')
 const checkedInOnly = ref(false)
 const aiKnowledgeFilter = ref<AdminApplicationAiKnowledgeFilter>('all')
 const allSelectedTrackFilterValue = 'all'
@@ -148,12 +159,38 @@ const hasTrackFilter = computed(() =>
 const hasAiKnowledgeFilter = computed(() =>
   showAiKnowledgeFilter.value && aiKnowledgeFilter.value !== 'all'
 )
-const showAutoApproveApplicationsNotice = computed(() =>
-  props.view === 'applications' && !props.readOnly && props.autoApproveApplications && !hasSubmittedApplications.value
-)
 const hasSearchQuery = computed(() =>
   props.searchEnabled && searchQuery.value.trim().length > 0
 )
+// A search on the server can return no new registration. The notice would then hide the search
+// box, so it stays away while a search text is typed.
+const showAutoApproveApplicationsNotice = computed(() =>
+  props.view === 'applications'
+  && !props.readOnly
+  && props.autoApproveApplications
+  && !hasSubmittedApplications.value
+  && !hasSearchQuery.value
+)
+// Tells the viewer that the list holds only a part of the registrations, or only a part of the
+// search matches. A search covers all registrations of the event, but its answer has a size limit.
+const partialListNote = computed(() => {
+  if (!props.pagination || !isParticipantListCut(props.pagination)) {
+    return null
+  }
+
+  const { pageSize, total } = props.pagination
+
+  if (!hasSearchQuery.value) {
+    return `Showing the newest ${pageSize} of ${total} registrations. Search finds everyone.`
+  }
+
+  // While the server still searches, `applications` holds the rows from before the search.
+  const isSearchAnswerFull = !props.isSearching && props.applications.length >= pageSize
+
+  return isSearchAnswerFull
+    ? `Showing the newest ${pageSize} matches. Type more to narrow the search.`
+    : null
+})
 const filteredReviewGroups = computed(() => {
   let groups = filterAdminApplicationReviewGroups(
     buildAdminApplicationReviewGroups(props.applications),
@@ -490,7 +527,16 @@ const reviewContent = computed(() => {
 })
 
 const emptyState = computed(() => {
-  if (props.applications.length === 0) {
+  // The loaded rows hold no match, but the server has not answered yet. Do not say "no match".
+  if (props.isSearching) {
+    return {
+      title: 'Searching all registrations',
+      description: 'Results appear here in a moment.'
+    }
+  }
+
+  // A search on the server can also return no rows. The messages further down cover that case.
+  if (props.applications.length === 0 && !hasSearchQuery.value) {
     return {
       title: 'No participant records yet',
       description: 'This event does not currently have participant records to review.'
@@ -726,11 +772,19 @@ const emptyState = computed(() => {
           v-if="!showAutoApproveApplicationsNotice && (searchEnabled || showApprovedAttendance || showTrackFilter || showAiKnowledgeFilter)"
           class="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center"
         >
+          <p
+            v-if="partialListNote"
+            class="text-sm text-muted md:basis-full"
+          >
+            {{ partialListNote }}
+          </p>
+
           <AppInput
             v-if="searchEnabled"
             v-model="searchQuery"
             type="search"
             name="participant-review-search"
+            :maxlength="participantSearchMaxLength"
             autocomplete="off"
             autocapitalize="none"
             autocorrect="off"

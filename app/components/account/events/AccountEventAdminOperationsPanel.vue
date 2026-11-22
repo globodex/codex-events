@@ -70,13 +70,19 @@ const props = withDefaults(defineProps<{
   participantsPage?: AccountEventParticipantsPage | null
   canManage: boolean
   isLoading?: boolean
+  // True while the server is still searching all registrations for the typed text.
+  isSearchingParticipants?: boolean
   loadErrorMessage?: string
   refreshPage?: () => Promise<unknown> | unknown
 }>(), {
   isLoading: false,
+  isSearchingParticipants: false,
   loadErrorMessage: '',
   refreshPage: undefined
 })
+
+// Text of the participant search box. The page owns it, because it is part of the page request.
+const participantSearch = defineModel<string>('participantSearch', { default: '' })
 
 const toast = useToast()
 const eventId = computed(() => props.eventId.trim())
@@ -1625,10 +1631,11 @@ async function rejectApplication(application: AdminApplicationRecord) {
   )
 }
 
-// Shows the check-in in the list at once, without loading the page again.
+// Shows the check-in in the list at once. The list is then read again for its counts.
 const checkInParticipant = useParticipantCheckIn({
   pendingActionKey,
-  onCheckedIn: application => replaceApplicationsLocally([application])
+  onCheckedIn: application => replaceApplicationsLocally([application]),
+  refreshList: refreshOperations
 })
 
 async function withdrawApplication(application: AdminApplicationRecord) {
@@ -2039,10 +2046,14 @@ async function runLifecycleAction() {
         class="space-y-4"
       >
         <LazyAccountEventParticipantsPanel
+          v-model:search="participantSearch"
           :event-id="eventId"
           :applications="applications"
           :status-counts="participantPageData?.statusCounts"
+          :checked-in-count="participantPageData?.checkedInCount"
+          :pagination="participantPageData?.pagination"
           :is-loading="applicationsStatus === 'pending'"
+          :is-searching="isSearchingParticipants"
           :error-message="applicationsStatus === 'error' ? applicationsErrorMessage : ''"
           :pending-action-key="pendingActionKey"
           :show-ai-knowledge="currentEvent.applicationAiKnowledgeVisible"

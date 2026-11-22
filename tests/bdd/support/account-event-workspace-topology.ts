@@ -36,7 +36,7 @@ export const accountEventPageKeys: Record<string, readonly string[]> = {
   settings: [
     'event', 'criteria', 'prizes', 'terms', 'roles', 'simplifiedClaiming', 'talkProposals', 'builder'
   ],
-  participants: ['event', 'applications', 'pagination', 'statusCounts'],
+  participants: ['event', 'applications', 'pagination', 'statusCounts', 'checkedInCount'],
   workspace: [
     'event', 'application', 'ownTeam', 'ownMembership', 'joinRequests', 'submission', 'outcome',
     'rank', 'workflow'
