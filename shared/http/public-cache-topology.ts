@@ -4,7 +4,7 @@ export const publicEventCdnCacheControl = 'public, max-age=30, stale-if-error=0'
 const publicGalleryImagePathPattern = /^\/api\/public\/events\/[^/]+\/photos\/[^/]+\/image$/u
 
 const publicCacheableApiPathPatterns = [
-  /^\/api\/public\/events$/u,
+  /^\/api\/public\/(?:discovery|events)$/u,
   /^\/api\/public\/events\/[^/]+$/u,
   /^\/api\/public\/events\/[^/]+\/(?:evaluation-criteria|photos|prizes|published-projects|winners)$/u,
   /^\/api\/public\/events\/[^/]+\/images\/(?:background|banner)$/u,

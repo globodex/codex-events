@@ -65,6 +65,7 @@ type LifecycleSummaryItem = {
 
 const props = withDefaults(defineProps<{
   eventId: string
+  eventSlug: string
   section: AccountEventAdminOperationsSection
   page: AccountEventOperationsPage | AccountEventSubmissionsPage | null
   participantsPage?: AccountEventParticipantsPage | null
@@ -75,13 +76,12 @@ const props = withDefaults(defineProps<{
   // True from "Load more" in the participant list until the longer list has arrived.
   isLoadingMoreParticipants?: boolean
   loadErrorMessage?: string
-  refreshPage?: () => Promise<unknown> | unknown
+  refreshPage: (eventSlug: string) => Promise<unknown>
 }>(), {
   isLoading: false,
   isSearchingParticipants: false,
   isLoadingMoreParticipants: false,
-  loadErrorMessage: '',
-  refreshPage: undefined
+  loadErrorMessage: ''
 })
 
 const emit = defineEmits<{
@@ -111,7 +111,6 @@ type ApplyStagedApplicationDecisionsResponse = ApiDataResponse<{
   approvedCount: number
   rejectedCount: number
 }>
-type StageApplicationResponse = ApiDataResponse<AdminApplicationRecord>
 type SubmissionMonitorData = {
   teamDetails: AdminTeamDetailRecord[]
   teamSubmissions: Array<SubmissionRecord | null>
@@ -150,7 +149,10 @@ const judgingSummaryData = computed(() => pageData.value?.judgingSummary ?? null
 const leaderboard = computed(() => pageData.value?.leaderboard ?? [])
 const allTeams = computed(() => pageData.value?.teams?.data ?? [])
 const prizes = computed(() => pageData.value?.prizes ?? [])
-const applications = ref<AdminApplicationRecord[]>([])
+const applications = computed(() => {
+  const page = showParticipantsSection.value ? participantPageData.value : pageData.value
+  return page?.applications ?? []
+})
 const shortlistEntries = computed(() => (pageData.value?.shortlist?.entries ?? []) as unknown as ShortlistEntry[])
 const shortlistHasSavedSelection = computed(() => pageData.value?.shortlist?.hasSavedShortlistSelection ?? false)
 const finalDeliberation = computed(() => (pageData.value?.finalDeliberation ?? null) as unknown as FinalDeliberationView | null)
@@ -174,9 +176,6 @@ const submissionMonitorData = computed<SubmissionMonitorData>(() =>
     teamSubmissions: []
   }) as unknown as SubmissionMonitorData
 )
-watch(() => showParticipantsSection.value ? participantPageData.value : pageData.value, (page) => {
-  applications.value = (page?.applications ?? []) as unknown as AdminApplicationRecord[]
-}, { immediate: true })
 
 const lifecycleMetrics = computed(() => {
   const lockedEntries = leaderboard.value.filter(entry => entry.submissionStatus === 'locked')
@@ -290,49 +289,17 @@ const judgeChoices = computed<JudgeChoice[]>(() =>
     })
 )
 
-const PITCH_REVIEW_AUTO_REFRESH_MS = 5000
-let pitchReviewAutoRefreshTimer: number | null = null
-
-async function refreshLivePitchReviewData() {
+watchEffect((onCleanup) => {
   if (import.meta.server || !showPitchReviewPanel.value || !canManage.value || pendingActionKey.value !== null) {
     return
   }
 
-  if (import.meta.client && document.visibilityState !== 'visible') {
-    return
-  }
-
-  await props.refreshPage?.()
-}
-
-function stopPitchReviewAutoRefresh() {
-  if (pitchReviewAutoRefreshTimer !== null) {
-    window.clearInterval(pitchReviewAutoRefreshTimer)
-    pitchReviewAutoRefreshTimer = null
-  }
-}
-
-watch([showPitchReviewPanel, canManage, pendingActionKey], async ([visible, allowed, pendingAction]) => {
-  if (import.meta.server) {
-    return
-  }
-
-  stopPitchReviewAutoRefresh()
-
-  if (!visible || !allowed || pendingAction !== null) {
-    return
-  }
-
-  await refreshLivePitchReviewData()
-  pitchReviewAutoRefreshTimer = window.setInterval(() => {
-    void refreshLivePitchReviewData()
-  }, PITCH_REVIEW_AUTO_REFRESH_MS)
-}, {
-  immediate: true
-})
-
-onBeforeUnmount(() => {
-  stopPitchReviewAutoRefresh()
+  const timer = window.setInterval(() => {
+    if (document.visibilityState === 'visible' && !props.isLoading) {
+      void props.refreshPage(props.eventSlug)
+    }
+  }, 5000)
+  onCleanup(() => window.clearInterval(timer))
 })
 
 const approvedApplicationCount = computed(() =>
@@ -1118,47 +1085,15 @@ const lifecycleMetricCards = computed<LifecycleMetricCard[]>(() => {
   }
 })
 
-async function refreshOperations() {
-  await props.refreshPage?.()
-}
-
-function replaceApplicationsLocally(updatedApplications: AdminApplicationRecord[]) {
-  if (updatedApplications.length === 0) {
-    return
-  }
-
-  const updatedApplicationsById = new Map(
-    updatedApplications.map(application => [application.id, application])
-  )
-
-  applications.value = applications.value.map((application) => {
-    const updatedApplication = updatedApplicationsById.get(application.id)
-
-    if (!updatedApplication) {
-      return application
-    }
-
-    return {
-      ...application,
-      ...updatedApplication,
-      user: updatedApplication.user ?? application.user,
-      applicationTermsDocument: updatedApplication.applicationTermsDocument ?? application.applicationTermsDocument
-    }
-  })
-}
-
-async function runMutation<Result>(
+async function runMutation(
   actionKey: string,
-  action: () => Promise<Result>,
+  action: () => Promise<unknown>,
   options?: {
     title: string
     description: string
-  },
-  mutationOptions?: {
-    skipRefresh?: boolean
-    onSuccess?: (result: Result) => void | Promise<void>
   }
 ) {
+  const eventSlug = props.eventSlug
   mutationError.value = ''
   pendingActionKey.value = actionKey
   const scrollPosition = import.meta.client
@@ -1169,11 +1104,7 @@ async function runMutation<Result>(
     : null
 
   try {
-    const result = await action()
-
-    if (mutationOptions?.onSuccess) {
-      await mutationOptions.onSuccess(result)
-    }
+    await action()
 
     if (options) {
       toast.add({
@@ -1183,9 +1114,7 @@ async function runMutation<Result>(
       })
     }
 
-    if (!mutationOptions?.skipRefresh) {
-      await refreshOperations()
-    }
+    await props.refreshPage(eventSlug)
   } catch (error) {
     mutationError.value = normalizeApiError(error).message
   } finally {
@@ -1405,7 +1334,7 @@ async function reorderFinalDeliberation(orderedSubmissionIds: string[]) {
 
 async function announceWinners() {
   if (!finalDeliberation.value) {
-    await refreshOperations()
+    await props.refreshPage(props.eventSlug)
   }
 
   if (!finalDeliberation.value) {
@@ -1444,46 +1373,18 @@ async function announceWinners() {
   )
 }
 
-async function approveApplication(application: AdminApplicationRecord) {
-  await runMutation(
-    `stage:approved:${application.id}`,
-    async () => await apiFetch<StageApplicationResponse>(
-      `/api/events/${application.eventId}/applications/${application.id}/actions/approve`,
-      {
-        method: 'POST'
-      }
-    ),
-    undefined,
-    {
-      skipRefresh: true,
-      onSuccess: response => replaceApplicationsLocally([response.data])
-    }
-  )
+function postApplicationDecision(application: AdminApplicationRecord, decision: 'approve' | 'reject') {
+  return apiFetch(`/api/events/${application.eventId}/applications/${application.id}/actions/${decision}`, {
+    method: 'POST'
+  })
 }
 
-async function rejectApplication(application: AdminApplicationRecord) {
-  await runMutation(
-    `stage:rejected:${application.id}`,
-    async () => await apiFetch<StageApplicationResponse>(
-      `/api/events/${application.eventId}/applications/${application.id}/actions/reject`,
-      {
-        method: 'POST'
-      }
-    ),
-    undefined,
-    {
-      skipRefresh: true,
-      onSuccess: response => replaceApplicationsLocally([response.data])
-    }
-  )
+function stageApplicationDecision(application: AdminApplicationRecord, decision: 'approve' | 'reject') {
+  const status = decision === 'approve' ? 'approved' : 'rejected'
+  return runMutation(`stage:${status}:${application.id}`, () => postApplicationDecision(application, decision))
 }
 
-// Shows the check-in in the list at once. The list is then read again for its counts.
-const checkInParticipant = useParticipantCheckIn({
-  pendingActionKey,
-  onCheckedIn: application => replaceApplicationsLocally([application]),
-  refreshList: refreshOperations
-})
+const checkInParticipant = useParticipantCheckIn(pendingActionKey, props.refreshPage)
 
 async function withdrawApplication(application: AdminApplicationRecord) {
   const availability = application.adminWithdrawal
@@ -1513,7 +1414,7 @@ async function withdrawApplication(application: AdminApplicationRecord) {
 
   await runMutation(
     `withdraw:${application.id}`,
-    async () => await apiFetch<StageApplicationResponse>(
+    async () => await apiFetch(
       `/api/events/${application.eventId}/applications/${application.id}/actions/withdraw`,
       {
         method: 'POST'
@@ -1529,7 +1430,7 @@ async function withdrawApplication(application: AdminApplicationRecord) {
 async function undoApplicationWithdrawal(application: AdminApplicationRecord) {
   await runMutation(
     `undo-withdrawal:${application.id}`,
-    async () => await apiFetch<StageApplicationResponse>(
+    async () => await apiFetch(
       `/api/events/${application.eventId}/applications/${application.id}/actions/undo-withdrawal`,
       {
         method: 'POST'
@@ -1544,35 +1445,24 @@ async function undoApplicationWithdrawal(application: AdminApplicationRecord) {
 
 async function approveApplicationGroup(applicationsToApprove: AdminApplicationRecord[]) {
   const submittedApplications = applicationsToApprove.filter(application => application.status === 'submitted')
-  const shouldClearApproval = submittedApplications.length > 0
-    && submittedApplications.every(application => application.preApprovalStatus === 'approved')
-  const targetApplications = shouldClearApproval
-    ? submittedApplications.filter(application => application.preApprovalStatus === 'approved')
-    : submittedApplications.filter(application => application.preApprovalStatus !== 'approved')
+  if (submittedApplications.length === 0) return
+
+  // When every member is already selected, the same action clears the team's approval.
+  const unselected = submittedApplications.filter(application => application.preApprovalStatus !== 'approved')
+  const targetApplications = unselected.length ? unselected : submittedApplications
   const sortedApplicationIds = submittedApplications
     .map(application => application.id)
     .sort((left, right) => left.localeCompare(right))
 
-  if (targetApplications.length === 0) {
-    return
-  }
-
-  await runMutation(
-    `stage:approved-team:${sortedApplicationIds.join('__')}`,
-    async () => await Promise.all(targetApplications.map(async application =>
-      await apiFetch<StageApplicationResponse>(
-        `/api/events/${application.eventId}/applications/${application.id}/actions/approve`,
-        {
-          method: 'POST'
-        }
-      )
-    )),
-    undefined,
-    {
-      skipRefresh: true,
-      onSuccess: responses => replaceApplicationsLocally(responses.map(response => response.data))
+  await runMutation(`stage:approved-team:${sortedApplicationIds.join('__')}`, async () => {
+    const results = await Promise.allSettled(targetApplications.map(application => postApplicationDecision(application, 'approve')))
+    const failed = results.find(result => result.status === 'rejected')
+    if (failed) {
+      if (results.every(result => result.status === 'rejected')) throw failed.reason
+      // Some decisions were saved. Show the error and let the normal page refresh show which ones.
+      mutationError.value = normalizeApiError(failed.reason).message
     }
-  )
+  })
 }
 
 async function applyStagedApplicationDecisions() {
@@ -1910,12 +1800,12 @@ async function runLifecycleAction() {
           :participants-limit="currentEvent.participantsLimit ?? null"
           :auto-approve-applications="currentEvent.autoApproveApplications"
           :event-state="currentEvent.state"
-          @approve="approveApplication"
+          @approve="application => stageApplicationDecision(application, 'approve')"
           @approve-team="approveApplicationGroup"
-          @reject="rejectApplication"
+          @reject="application => stageApplicationDecision(application, 'reject')"
           @withdraw="withdrawApplication"
           @undo-withdrawal="undoApplicationWithdrawal"
-          @check-in="checkInParticipant"
+          @check-in="application => checkInParticipant(application, props.eventSlug)"
           @save-decisions="applyStagedApplicationDecisions"
           @load-more="emit('loadMoreParticipants')"
         />

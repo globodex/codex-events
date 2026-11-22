@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { SaveBuilderFloorPlan } from '~/domains/events/admin-event'
 import type { EventChallenge } from '#shared/domains/events/challenges'
 import type { EventFloorPlan, EventProgram, ProgramTrack } from '#shared/domains/events/program'
 import type { EventAgendaItem } from '~/domains/events/records'
@@ -9,7 +10,7 @@ import AdminBuilderProgramTrack from '~/components/admin/builder/organisms/Admin
 import { getAgendaItemPresentation } from '~/domains/events/presentation'
 
 const props = defineProps<{
-  eventId: string
+  saveFloorPlan: SaveBuilderFloorPlan
   agendaItems: EventAgendaItem[]
   program: EventProgram | null
   floorPlans: EventFloorPlan[]
@@ -22,7 +23,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   save: [program: EventProgram]
   remove: []
-  floorUpdated: [plan: EventFloorPlan]
   dirtyChange: [dirty: boolean]
 }>()
 
@@ -182,10 +182,9 @@ function remove() {
     </form>
 
     <AdminBuilderFloorPlans
-      :event-id="eventId"
+      :save-floor-plan="saveFloorPlan"
       :plans="floorPlans"
       :challenges="challenges"
-      @updated="emit('floorUpdated', $event)"
     />
   </div>
 </template>

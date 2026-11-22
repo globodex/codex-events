@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { accountPagePaths } from '#shared/domains/account/account-page-registry'
+import type { AccountStaffPage } from '#shared/domains/account/event-dashboards'
 import AccountEventDashboardList from '~/components/account/AccountEventDashboardList.vue'
 import {
   formatEventDateWithWeekday,
@@ -12,7 +14,7 @@ definePageMeta({
   middleware: ['require-staff-dashboard']
 })
 
-const events = useUserEvents()
+const events = useApiResponse<AccountStaffPage>('staff-workspace', accountPagePaths['staff-workspace'], { server: false })
 
 const currentStaffEvents = computed(() =>
   events.data.value?.current ?? []
@@ -88,6 +90,7 @@ useSeoMeta({
         color="error"
         variant="soft"
         title="Staff dashboard unavailable"
+        :retry="events.refresh"
         :description="errorMessage"
       />
 

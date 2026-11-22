@@ -10,6 +10,7 @@ type AlertVariant = 'soft' | 'subtle' | 'outline'
 const props = withDefaults(defineProps<{
   title?: string
   description?: string
+  retry?: () => void
   icon?: string
   color?: AlertColor
   variant?: AlertVariant
@@ -77,6 +78,15 @@ const rootClass = computed(() => {
     >
       {{ props.description }}
     </UiAlertDescription>
+    <AppButton
+      v-if="retry"
+      label="Retry"
+      variant="outline"
+      color="neutral"
+      size="sm"
+      class="mt-2 w-fit"
+      @click="retry()"
+    />
     <slot />
   </UiAlert>
 </template>

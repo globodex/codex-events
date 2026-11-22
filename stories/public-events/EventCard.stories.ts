@@ -3,10 +3,16 @@ import type { Meta, StoryObj } from '@storybook-vue/nuxt'
 import EventCard from '~/components/public/events/EventCard.vue'
 import { completedBuildDay, publicBuildDay } from './fixtures/build-day'
 
+const buildCard = {
+  ...publicBuildDay,
+  imageUrl: publicBuildDay.bannerImageUrl,
+  startsAt: publicBuildDay.agendaItems[0]!.startsAt
+}
+
 const meta = {
   title: 'Public/Discovery/Event card',
   component: EventCard,
-  args: { event: publicBuildDay, showTimelineRail: false },
+  args: { event: buildCard, showTimelineRail: false },
   render: args => ({
     components: { EventCard },
     setup: () => ({ args }),
@@ -21,9 +27,9 @@ type Story = StoryObj<typeof meta>
 export const RegistrationOpen: Story = {}
 
 export const Completed: Story = {
-  args: { event: completedBuildDay }
+  args: { event: { ...buildCard, state: completedBuildDay.state } }
 }
 
 export const NoBanner: Story = {
-  args: { event: { ...publicBuildDay, bannerImageUrl: null } }
+  args: { event: { ...buildCard, imageUrl: null } }
 }

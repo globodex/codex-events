@@ -10,6 +10,11 @@ Feature: Participant photos
     When event staff hide the photo "build-day-table.png" in the gallery of "participant-photos-fixture-event"
     Then the gallery of "participant-photos-fixture-event" should show no participant photos to "regular_user"
 
+  Scenario: An unavailable gallery does not appear empty
+    Given I open my event page of "participant-photos-fixture-event" as "regular_user"
+    When I open the gallery while its photos are loading
+    Then a failed gallery request should show an error without an empty photo count
+
   Scenario: Organizer lets participants add photos in the event builder
     Given I open the event "participant-photos-builder-fixture-event" in the builder as its event admin
     When I let participants add photos to the gallery

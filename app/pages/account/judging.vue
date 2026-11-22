@@ -8,7 +8,7 @@ definePageMeta({
   middleware: ['require-judge-dashboard']
 })
 
-const { data: inbox, error } = useApiResponse<AccountJudgeInboxPage>(
+const { data: inbox, error, refresh } = useApiResponse<AccountJudgeInboxPage>(
   'judge-workspace-inbox',
   '/api/account/judging',
   { server: false }
@@ -74,6 +74,7 @@ useSeoMeta({
         color="error"
         variant="soft"
         title="Judge dashboard unavailable"
+        :retry="refresh"
         :description="error.message"
       />
 

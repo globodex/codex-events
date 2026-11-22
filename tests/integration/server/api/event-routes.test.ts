@@ -17,6 +17,7 @@ import eventBySlugGetHandler from '../../../../server/api/events/slug/[slug]/ind
 import openRegistrationPostHandler from '../../../../server/api/events/[eventId]/actions/open-registration.post'
 import hideEventPostHandler from '../../../../server/api/events/[eventId]/actions/hide.post'
 import unhideEventPostHandler from '../../../../server/api/events/[eventId]/actions/unhide.post'
+import publicDiscoveryGetHandler from '../../../../server/api/public/discovery.get'
 import publicEventsGetHandler from '../../../../server/api/public/events/index.get'
 import publicEventDetailGetHandler from '../../../../server/api/public/events/[slug]/index.get'
 import publicEventFeedbackPostHandler from '../../../../server/api/public/events/[slug]/feedback.post'
@@ -1756,6 +1757,51 @@ describe('TASK-3.5 event CRUD routes', () => {
     })
   })
 
+  test('discovery counts public events and pages the selected tab before returning cards', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [{ method: 'get', path: '/api/public/discovery', handler: publicDiscoveryGetHandler }]
+    })
+    harnesses.push(harness)
+    await harness.database.insert(users).values({
+      id: 'creator', auth0Subject: 'auth0|creator', email: 'creator@example.com', displayName: 'Creator'
+    })
+    const event = {
+      id: 'past', slug: 'past', name: 'Past meetup', eventType: 'meetup' as const, maxTeamMembers: 1,
+      description: 'Description', city: 'Vienna', country: 'Austria', address: 'Private address',
+      registrationOpensAt: '2026-03-01', registrationClosesAt: '2026-03-02',
+      state: 'completed' as const, createdByUserId: 'creator', createdAt: buildOrderedTimestamp(0)
+    }
+    await harness.database.insert(events).values(event)
+
+    async function read(query: string) {
+      const response = await harness.request(`/api/public/discovery${query}`)
+      expect(response.status).toBe(200)
+      expect(response.headers.get('cache-control')).toContain('public, max-age=30')
+      return (await response.json()).data
+    }
+    expect(await read('?tab=active')).toMatchObject({
+      tab: 'past', counts: { active: 0, past: 1 }, nextPage: null, events: [{ slug: 'past' }]
+    })
+
+    await insertEventsInBatches(harness, [
+      ...Array.from({ length: 5 }, (_, i) => ({
+        ...event, id: `active-${i}`, slug: `active-${i}`, state: 'registration_open' as const,
+        createdAt: buildOrderedTimestamp(i + 1)
+      })),
+      { ...event, id: 'hidden', slug: 'hidden', hiddenAt: event.createdAt },
+      { ...event, id: 'draft', slug: 'draft', state: 'draft' }
+    ])
+    const first = await read('')
+    expect(first).toMatchObject({ tab: 'active', counts: { active: 5, past: 1 }, nextPage: 2 })
+    expect(first.events).toHaveLength(4)
+    expect(await read('?tab=active&page=2')).toMatchObject({ nextPage: null, events: [{ slug: 'active-0' }] })
+    const past = await read('?tab=past')
+    expect(past.events).toHaveLength(1)
+    expect(past.events[0]).toMatchObject({ slug: 'past', startsAt: '2026-03-02' })
+    expect(past.events[0]).not.toHaveProperty('address')
+    expect(past.events[0]).not.toHaveProperty('description')
+  })
+
   test('GET /api/public/events stays public-safe and complete for authenticated admins when drafts fill page slots', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -1982,6 +2028,8 @@ describe('TASK-3.5 event CRUD routes', () => {
       data: {
         slug: 'public-event',
         name: 'Target Public Event',
+        hasPublicGallery: false,
+        hasPrizeTab: false,
         currentTerms: {
           applicationTerms: {
             documentType: 'application_terms',

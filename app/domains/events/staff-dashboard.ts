@@ -1,4 +1,4 @@
-import type { AccountStaffEventSummary } from '#shared/domains/account/account-staff-page'
+import type { AccountStaffEventSummary } from '#shared/domains/account/event-dashboards'
 
 export type StaffDashboardEvent = AccountStaffEventSummary
 

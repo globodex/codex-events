@@ -17,14 +17,15 @@ const props = defineProps<{
   registrationClosesAt?: string
 }>()
 
-const statePresentation = computed(() => getPublicEventStatePresentation(props))
+const now = useEventDeadlineClock(() => [props.registrationOpensAt, props.registrationClosesAt])
+const statePresentation = computed(() => getPublicEventStatePresentation(props, now.value))
 const label = computed(() => statePresentation.value.label)
 const attrs = useAttrs()
 const delegatedAttrs = reactiveOmit(attrs, 'class')
 const rootClass = computed(() =>
   cn(
     'rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]',
-    resolvePublicEventHeaderStateClass(props),
+    resolvePublicEventHeaderStateClass(props, now.value),
     attrs.class
   )
 )

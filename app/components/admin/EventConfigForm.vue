@@ -12,7 +12,6 @@ import EventTalkProposalControl from '~/components/admin/EventTalkProposalContro
 
 import type { EventFormState } from '~/domains/events/admin-event'
 import type { EventRecord } from '~/domains/events/records'
-import type { EventImageVersions } from '~/domains/events/presentation'
 import type { EventProgramSettingsMode } from '~/domains/events/program-settings'
 import type { AccountEventSimplifiedClaimingStatus } from '#shared/domains/events/account-event-settings-page'
 
@@ -61,7 +60,7 @@ const props = defineProps<{
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
   bannerImageUploadError?: string
-  imageVersion?: string | number | EventImageVersions | null
+  images?: Pick<EventRecord, 'backgroundImageUrl' | 'bannerImageUrl'> | null
   eventId?: string | null
   persistedSimplifiedClaimingEnabled?: boolean
   initialSimplifiedClaimingStatus?: AccountEventSimplifiedClaimingStatus | null
@@ -1589,7 +1588,7 @@ const submitConfigForm = handleSubmit(() => {
         :background-image-upload-error="props.backgroundImageUploadError"
         :banner-image-upload-pending="props.bannerImageUploadPending"
         :banner-image-upload-error="props.bannerImageUploadError"
-        :image-version="props.imageVersion"
+        :images="props.images"
         @upload-background-image="emit('uploadBackgroundImage', $event)"
         @remove-background-image="emit('removeBackgroundImage')"
         @upload-banner-image="emit('uploadBannerImage', $event)"

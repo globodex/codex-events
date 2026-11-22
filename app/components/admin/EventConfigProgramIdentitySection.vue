@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import type { EventFormState } from '~/domains/events/admin-event'
 
-import {
-  buildVersionedEventImageUrl,
-  resolveEventImageVersion,
-  type EventImageVersions
-} from '~/domains/events/presentation'
+import type { EventRecord } from '~/domains/events/records'
 import { getCountryOptions } from '~/utils/country-options'
 
 const form = defineModel<EventFormState>('form', {
@@ -21,7 +17,7 @@ const props = withDefaults(defineProps<{
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
   bannerImageUploadError?: string
-  imageVersion?: string | number | EventImageVersions | null
+  images?: Pick<EventRecord, 'backgroundImageUrl' | 'bannerImageUrl'> | null
 }>(), {
   showLocation: true
 })
@@ -36,29 +32,6 @@ const emit = defineEmits<{
 const countryOptions = computed(() => getCountryOptions(form.value.country))
 const backgroundImageInput = ref<HTMLInputElement | null>(null)
 const bannerImageInput = ref<HTMLInputElement | null>(null)
-const managedBackgroundImageUrl = computed(() => form.value.backgroundImageUrl.trim())
-const managedBannerImageUrl = computed(() => form.value.bannerImageUrl.trim())
-const managedBackgroundImagePreviewUrl = computed(() =>
-  buildVersionedEventImageUrl(
-    managedBackgroundImageUrl.value,
-    resolveEventImageVersion(props.imageVersion, 'background'),
-    'background'
-  )
-)
-const managedBannerImagePreviewUrl = computed(() =>
-  buildVersionedEventImageUrl(
-    managedBannerImageUrl.value,
-    resolveEventImageVersion(props.imageVersion, 'banner'),
-    'banner'
-  )
-)
-const showBackgroundImageSection = computed(() =>
-  Boolean(props.canUploadManagedImages || managedBackgroundImageUrl.value)
-)
-const showBannerImageSection = computed(() =>
-  Boolean(props.canUploadManagedImages || managedBannerImageUrl.value)
-)
-
 function uploadBackgroundImage(event: Event) {
   const target = event.target as HTMLInputElement | null
   const file = target?.files?.item(0) ?? null
@@ -166,7 +139,7 @@ function promptBannerImageUpload() {
       </div>
 
       <section
-        v-if="showBackgroundImageSection"
+        v-if="canUploadManagedImages || images?.backgroundImageUrl"
         class="grid grid-cols-1 gap-3"
       >
         <div class="space-y-1">
@@ -180,8 +153,8 @@ function promptBannerImageUpload() {
 
         <div class="group relative overflow-hidden rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111]">
           <img
-            v-if="managedBackgroundImageUrl"
-            :src="managedBackgroundImagePreviewUrl"
+            v-if="images?.backgroundImageUrl"
+            :src="images.backgroundImageUrl"
             alt="Event background preview"
             class="h-36 w-full object-cover"
           >
@@ -201,12 +174,12 @@ function promptBannerImageUpload() {
               variant="ghost"
               icon="i-lucide-pencil"
               :loading="props.backgroundImageUploadPending"
-              :aria-label="managedBackgroundImageUrl ? 'Replace background image' : 'Upload background image'"
+              :aria-label="images?.backgroundImageUrl ? 'Replace background image' : 'Upload background image'"
               class="w-9 rounded-full bg-white/15 px-0 text-white hover:bg-white/25 hover:text-white focus-visible:ring-white/80"
               @click="promptBackgroundImageUpload"
             />
             <AppButton
-              v-if="managedBackgroundImageUrl"
+              v-if="images?.backgroundImageUrl"
               color="neutral"
               variant="ghost"
               icon="i-lucide-trash-2"
@@ -221,6 +194,7 @@ function promptBannerImageUpload() {
         <template v-if="props.canUploadManagedImages">
           <input
             ref="backgroundImageInput"
+            aria-label="Background image file"
             type="file"
             accept="image/jpeg,image/png"
             class="sr-only"
@@ -252,7 +226,7 @@ function promptBannerImageUpload() {
       </section>
 
       <section
-        v-if="showBannerImageSection"
+        v-if="canUploadManagedImages || images?.bannerImageUrl"
         class="grid grid-cols-1 gap-3"
       >
         <div class="space-y-1">
@@ -266,8 +240,8 @@ function promptBannerImageUpload() {
 
         <div class="group relative overflow-hidden rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111]">
           <img
-            v-if="managedBannerImageUrl"
-            :src="managedBannerImagePreviewUrl"
+            v-if="images?.bannerImageUrl"
+            :src="images.bannerImageUrl"
             alt="Event banner preview"
             class="h-36 w-full object-cover"
           >
@@ -287,12 +261,12 @@ function promptBannerImageUpload() {
               variant="ghost"
               icon="i-lucide-pencil"
               :loading="props.bannerImageUploadPending"
-              :aria-label="managedBannerImageUrl ? 'Replace banner image' : 'Upload banner image'"
+              :aria-label="images?.bannerImageUrl ? 'Replace banner image' : 'Upload banner image'"
               class="w-9 rounded-full bg-white/15 px-0 text-white hover:bg-white/25 hover:text-white focus-visible:ring-white/80"
               @click="promptBannerImageUpload"
             />
             <AppButton
-              v-if="managedBannerImageUrl"
+              v-if="images?.bannerImageUrl"
               color="neutral"
               variant="ghost"
               icon="i-lucide-trash-2"
@@ -307,6 +281,7 @@ function promptBannerImageUpload() {
         <template v-if="props.canUploadManagedImages">
           <input
             ref="bannerImageInput"
+            aria-label="Banner image file"
             type="file"
             accept="image/jpeg,image/png"
             class="sr-only"

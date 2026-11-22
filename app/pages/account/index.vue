@@ -52,6 +52,7 @@ useSeoMeta({
         color="error"
         variant="soft"
         title="My events are unavailable"
+        :retry="workspace.refresh"
         :description="workspace.errorMessage.value"
       />
 

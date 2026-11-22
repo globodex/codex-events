@@ -3,6 +3,7 @@ import type { AccountEventTeamsPage } from '#shared/domains/events/account-event
 
 import { LazyAccountEventsAccountEventParticipantTeamPanel as LazyAccountEventParticipantTeamPanel } from '#components'
 import { useAccountEventPageRequest } from '~/composables/useAccountEventPageRequest'
+import { normalizeTeamSlugQueryValue } from '~/domains/teams/query'
 
 definePageMeta({
   middleware: ['require-platform-account']
@@ -10,7 +11,7 @@ definePageMeta({
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
-const selectedTeamSlug = computed(() => String(route.query.team ?? '').trim().toLowerCase() || null)
+const selectedTeamSlug = computed(() => normalizeTeamSlugQueryValue(route.params.teamSlug || route.query.team))
 
 if (!slug.value) {
   throw createError({
@@ -27,7 +28,7 @@ const pageRequest = useAccountEventPageRequest<AccountEventTeamsPage>(slug, 'tea
 <template>
   <div class="space-y-6">
     <AppAlert
-      v-if="pageRequest.isLoading.value"
+      v-if="pageRequest.isLoading.value && !pageRequest.data.value"
       color="neutral"
       variant="soft"
       title="Loading teams"
@@ -44,7 +45,7 @@ const pageRequest = useAccountEventPageRequest<AccountEventTeamsPage>(slug, 'tea
 
     <LazyAccountEventParticipantTeamPanel
       v-else-if="pageRequest.data.value"
-      :event="pageRequest.data.value.page.event"
+      :refresh-teams="pageRequest.refreshFor"
       :page="pageRequest.data.value.page"
       :selected-team-slug="selectedTeamSlug"
     />

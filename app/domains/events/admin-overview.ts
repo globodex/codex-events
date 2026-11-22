@@ -1,40 +1,10 @@
-import type {
-  EventAgendaItem,
-  EventRecord
-} from '~/domains/events/records'
-import type { EventState } from '~/domains/events/states'
+import type { AccountAdminPage } from '#shared/domains/account/event-dashboards'
 
 export const adminOverviewTabs = ['active', 'upcoming', 'past'] as const
 
 export type AdminOverviewTab = typeof adminOverviewTabs[number]
 
-interface AdminOverviewEventTiming {
-  agendaItems: Pick<EventAgendaItem, 'startsAt'>[]
-  registrationClosesAt: string
-  state: EventState
-  submissionOpensAt: string | null
-}
-
-export function getAdminOverviewEventStartsAt(event: AdminOverviewEventTiming) {
-  let earliestStartAt = event.submissionOpensAt ?? event.registrationClosesAt
-  let earliestStartAtTimestamp = Date.parse(earliestStartAt)
-
-  for (const item of event.agendaItems) {
-    const agendaItemStartsAtTimestamp = Date.parse(item.startsAt)
-
-    if (
-      Number.isNaN(agendaItemStartsAtTimestamp)
-      || (!Number.isNaN(earliestStartAtTimestamp) && agendaItemStartsAtTimestamp >= earliestStartAtTimestamp)
-    ) {
-      continue
-    }
-
-    earliestStartAt = item.startsAt
-    earliestStartAtTimestamp = agendaItemStartsAtTimestamp
-  }
-
-  return earliestStartAt
-}
+type AdminOverviewEventTiming = Pick<AccountAdminPage[number], 'startsAt' | 'registrationClosesAt' | 'state' | 'submissionOpensAt'>
 
 export function getAdminOverviewTabForEvent(
   event: AdminOverviewEventTiming,
@@ -52,9 +22,12 @@ export function getAdminOverviewTabForEvent(
     return 'active'
   }
 
-  const startsAtTimestamp = Date.parse(getAdminOverviewEventStartsAt(event))
+  const startsAtTimestamp = Math.min(
+    Date.parse(event.startsAt),
+    Date.parse(event.submissionOpensAt ?? event.registrationClosesAt)
+  )
 
-  if (!Number.isNaN(startsAtTimestamp) && startsAtTimestamp > nowTimestamp) {
+  if (startsAtTimestamp > nowTimestamp) {
     return 'upcoming'
   }
 
@@ -62,7 +35,7 @@ export function getAdminOverviewTabForEvent(
 }
 
 export function countAdminOverviewEventsByTab(
-  events: Pick<EventRecord, 'agendaItems' | 'registrationClosesAt' | 'state' | 'submissionOpensAt'>[],
+  events: AdminOverviewEventTiming[],
   nowTimestamp: number = Date.now()
 ) {
   return events.reduce<Record<AdminOverviewTab, number>>((counts, event) => {

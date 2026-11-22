@@ -1,56 +1,29 @@
 <script setup lang="ts">
+import type { DiscoveryEvent } from '#shared/domains/events/public-discovery'
+
 import {
   formatEventCompactDate,
   formatEventDateWithWeekday,
   formatEventLocation,
-  formatEventTypeLabel,
-  getEventEarliestStartAt,
-  resolveEventCardHeroImageUrl,
-  type PublicEvent
+  formatEventTypeLabel
 } from '~/domains/events/presentation'
 
 import EventStateBadge from '~/components/public/events/EventStateBadge.vue'
 
 const props = withDefaults(defineProps<{
-  event: PublicEvent
+  event: DiscoveryEvent
+  loading?: 'eager' | 'lazy'
   showTimelineRail?: boolean
 }>(), {
+  loading: 'lazy',
   showTimelineRail: true
 })
 
-const heroImage = computed(() => resolveEventCardHeroImageUrl(props.event))
-const earliestStartAt = computed(() => getEventEarliestStartAt(props.event))
-const timelineDateLabel = computed(() => formatEventCompactDate(earliestStartAt.value))
-const eventDayLabel = computed(() => formatEventDateWithWeekday(earliestStartAt.value))
-const eventTypeLabel = computed(() => formatEventTypeLabel(props.event.eventType))
-const locationLabel = computed(() => formatEventLocation(props.event))
-const registrationOpensAtTimestamp = computed(() => new Date(props.event.registrationOpensAt).getTime())
-const registrationClosesAtTimestamp = computed(() => new Date(props.event.registrationClosesAt).getTime())
-const eventHref = computed(() => {
-  const path = `/events/${props.event.slug}`
-
-  if (props.event.state === 'completed') {
-    return {
-      path,
-      query: {
-        tab: 'prizes'
-      }
-    }
-  }
-
-  return path
-})
-const isRegistrationOpen = computed(() => {
-  const now = Date.now()
-  return now >= registrationOpensAtTimestamp.value && now <= registrationClosesAtTimestamp.value
-})
-const ctaLabel = computed(() => {
-  if (props.event.state === 'completed') {
-    return 'View outcomes'
-  }
-
-  return isRegistrationOpen.value ? 'Discover' : 'View details'
-})
+const hasOutcomes = computed(() => props.event.eventType === 'hackathon' && props.event.state === 'completed')
+const eventHref = computed(() => ({
+  path: `/events/${props.event.slug}`,
+  query: hasOutcomes.value ? { tab: 'prizes' } : {}
+}))
 </script>
 
 <template>
@@ -61,7 +34,7 @@ const ctaLabel = computed(() => {
     >
       <div class="absolute left-[56px] top-0 h-5 w-5 rounded-full border-4 border-background bg-neutral-500 dark:bg-[#A3A3A3]" />
       <div class="absolute left-0 top-[2px] text-[12px] font-medium leading-none text-neutral-500 dark:text-[#8C8C8C]">
-        {{ timelineDateLabel }}
+        {{ formatEventCompactDate(event.startsAt) }}
       </div>
     </div>
 
@@ -75,8 +48,9 @@ const ctaLabel = computed(() => {
         <div class="relative h-[300px] overflow-hidden md:h-[340px]">
           <div class="absolute inset-0 z-10 bg-gradient-to-b from-black/20 via-black/30 to-black/65 transition-colors group-hover:from-black/15 group-hover:to-black/55 dark:from-black/25 dark:via-black/35 dark:to-black/72" />
           <img
-            v-if="heroImage"
-            :src="heroImage"
+            v-if="event.imageUrl"
+            :src="event.imageUrl"
+            :loading="loading"
             :alt="event.name"
             class="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           >
@@ -90,7 +64,7 @@ const ctaLabel = computed(() => {
               class="rounded-full border border-white/25 bg-black/55 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-md"
               :data-testid="`public-event-type-${event.slug}`"
             >
-              {{ eventTypeLabel }}
+              {{ formatEventTypeLabel(event.eventType) }}
             </span>
             <EventStateBadge
               :state="event.state"
@@ -110,16 +84,16 @@ const ctaLabel = computed(() => {
         <div class="!border !border-black/8 !bg-white/78 !shadow-none dark:!border-white/[0.08] dark:!bg-white/[0.04] flex flex-col gap-5 rounded-none border-0 p-6 md:flex-row md:items-center md:justify-between">
           <div>
             <p class="mb-1 text-[15px] font-medium text-highlighted dark:text-white">
-              {{ eventDayLabel }}
+              {{ formatEventDateWithWeekday(event.startsAt) }}
             </p>
             <p class="mt-1 text-[13px] text-neutral-500 dark:text-[#A3A3A3]">
-              {{ locationLabel }}
+              {{ formatEventLocation(event) }}
             </p>
           </div>
 
           <div class="flex items-center gap-3">
             <div class="inline-flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]">
-              {{ ctaLabel }}
+              {{ hasOutcomes ? 'View outcomes' : 'View details' }}
               <AppIcon
                 name="i-lucide-arrow-up-right"
                 class="size-3.5"

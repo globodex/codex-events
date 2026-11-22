@@ -2,51 +2,40 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
-import type { ApiDataResponse } from '~/lib/api'
-import type { AccountEventEntryTalkProposal } from '#shared/domains/events/account-event-entry-page'
-import type {
-  CustomQuestionAnswer,
-  CustomQuestionDefinition
-} from '#shared/domains/events/custom-questions'
+import type { AccountEventEntryEvent, AccountEventEntryTalkProposal } from '#shared/domains/events/account-event-entry-page'
 import { getEmptyCustomQuestionAnswerValue } from '#shared/domains/events/custom-questions'
+import { isTalkProposalWindowOpen } from '#shared/domains/talk-proposals/window'
 import { getTalkProposalAnswerIssues } from '#shared/domains/talk-proposals/answer-issues'
 import { normalizeApiError } from '~/lib/api'
 import CustomQuestionInput from '~/components/events/molecules/CustomQuestionInput.vue'
 import {
-  isTalkProposalWindowOpen,
+  createTalkProposalAnswers,
   talkProposalFormSchema,
-  talkProposalStatusLabels
+  talkProposalStatusLabels,
+  type TalkProposalFormValues
 } from '~/domains/talk-proposals'
 import { useApiClient } from '~/composables/useApiClient'
 
 const props = defineProps<{
-  eventId: string
+  event: AccountEventEntryEvent
   applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null
-  opensAt: string | null
-  closesAt: string | null
-  questions: CustomQuestionDefinition[]
-  questionSetRevision: number
   proposal: AccountEventEntryTalkProposal | null
-}>()
-const emit = defineEmits<{
-  hasProposalChange: [hasProposal: boolean]
-  updated: []
+  refreshPage: (eventSlug: string) => Promise<void>
 }>()
 
 const apiFetch = useApiClient()
-const proposal = shallowRef<AccountEventEntryTalkProposal | null>(props.proposal)
 const actionPending = ref(false)
 const errorMessage = ref('')
 const toast = useToast()
 
-const { errors, defineField, handleSubmit, resetForm, submitCount } = useForm({
+const { errors, defineField, handleSubmit, submitCount } = useForm({
   validationSchema: toTypedSchema(talkProposalFormSchema),
   initialValues: {
-    title: '',
-    abstract: '',
-    demoOrSlidesUrl: '',
-    questionSetRevision: props.questionSetRevision,
-    answers: []
+    title: props.proposal?.title ?? '',
+    abstract: props.proposal?.abstract ?? '',
+    demoOrSlidesUrl: props.proposal?.demoOrSlidesUrl ?? '',
+    questionSetRevision: props.event.talkProposalQuestionsRevision,
+    answers: createTalkProposalAnswers(props.event.talkProposalQuestions, props.proposal?.answers)
   }
 })
 const [title] = defineField('title')
@@ -56,88 +45,53 @@ const [answers] = defineField('answers')
 const proposalAnswers = computed(() => answers.value ?? [])
 
 const hasEligibleRegistration = computed(() => props.applicationStatus === 'submitted' || props.applicationStatus === 'approved')
-const windowOpen = computed(() => isTalkProposalWindowOpen(props.opensAt, props.closesAt))
+const now = useEventDeadlineClock(() => [props.event.talkProposalOpensAt, props.event.talkProposalClosesAt])
+const windowOpen = computed(() => isTalkProposalWindowOpen(props.event.talkProposalOpensAt, props.event.talkProposalClosesAt, now.value.getTime()))
 const canMutate = computed(() => hasEligibleRegistration.value && windowOpen.value)
-const canEdit = computed(() => canMutate.value && (!proposal.value || proposal.value.status === 'draft'))
-const statusLabel = computed(() => proposal.value ? talkProposalStatusLabels[proposal.value.status] : '')
+const canEdit = computed(() => canMutate.value && (!props.proposal || props.proposal.status === 'draft'))
+const statusLabel = computed(() => props.proposal ? talkProposalStatusLabels[props.proposal.status] : '')
 const questionErrors = ref<Record<string, string>>({})
-
-function answersForQuestions(source: CustomQuestionAnswer[]) {
-  const sourceById = new Map(source.map(answer => [answer.questionId, answer]))
-  return props.questions.map(question => sourceById.get(question.id) ?? {
-    questionId: question.id,
-    value: getEmptyCustomQuestionAnswerValue(question)
-  })
-}
 
 function updateAnswer(index: number, value: string | boolean) {
   answers.value = proposalAnswers.value.map((answer, currentIndex) => currentIndex === index
     ? { ...answer, value }
     : answer)
-  Reflect.deleteProperty(questionErrors.value, props.questions[index]?.id ?? '')
+  Reflect.deleteProperty(questionErrors.value, props.event.talkProposalQuestions[index]?.id ?? '')
 }
 
-function applyProposal(nextProposal: AccountEventEntryTalkProposal | null) {
-  proposal.value = nextProposal
-  emit('hasProposalChange', Boolean(nextProposal))
-  resetForm({
-    values: {
-      title: nextProposal?.title ?? '',
-      abstract: nextProposal?.abstract ?? '',
-      demoOrSlidesUrl: nextProposal?.demoOrSlidesUrl ?? '',
-      questionSetRevision: nextProposal?.questionSetRevision ?? props.questionSetRevision,
-      answers: answersForQuestions(nextProposal?.answers ?? [])
-    }
-  })
+const successMessages = {
+  draft: 'Draft saved',
+  submit: 'Talk proposal submitted',
+  withdraw: 'Talk proposal withdrawn',
+  revise: 'Talk proposal ready to revise'
 }
 
-watch(() => props.proposal, (nextProposal) => {
-  applyProposal(nextProposal)
-}, { immediate: true })
-
-const saveDraft = handleSubmit(async (values) => {
+async function saveProposal(action: keyof typeof successMessages, body?: TalkProposalFormValues) {
+  if (actionPending.value) return
   actionPending.value = true
   errorMessage.value = ''
   try {
-    const response = await apiFetch<ApiDataResponse<AccountEventEntryTalkProposal>>(`/api/events/${props.eventId}/talk-proposals/me`, {
-      method: proposal.value ? 'PATCH' : 'POST',
-      body: values
+    const { id, slug } = props.event
+    const path = `/api/events/${id}/talk-proposals/me`
+    await apiFetch(action === 'draft' ? path : `${path}/actions/${action}`, {
+      method: action === 'draft' && props.proposal ? 'PATCH' : 'POST',
+      body
     })
-    applyProposal(response.data)
-    emit('updated')
-    toast.add({ title: 'Draft saved', color: 'success' })
+    await props.refreshPage(slug)
+    toast.add({ title: successMessages[action], color: 'success' })
   } catch (error) {
     errorMessage.value = normalizeApiError(error).message
   } finally {
     actionPending.value = false
   }
+}
+
+const saveDraft = handleSubmit(values => saveProposal('draft', values))
+const submitProposal = handleSubmit((values) => {
+  const issues = getTalkProposalAnswerIssues(props.event.talkProposalQuestions, values.answers, true)
+  questionErrors.value = Object.fromEntries(issues.map(issue => [issue.questionId, issue.message]))
+  if (issues.length === 0) return saveProposal('submit', values)
 })
-
-async function runAction(action: 'submit' | 'withdraw' | 'revise') {
-  if (action === 'submit') {
-    const issues = getTalkProposalAnswerIssues(props.questions, proposalAnswers.value, true)
-    questionErrors.value = Object.fromEntries(issues.map(issue => [issue.questionId, issue.message]))
-    if (issues.length > 0) return
-  }
-  actionPending.value = true
-  errorMessage.value = ''
-  try {
-    const response = await apiFetch<ApiDataResponse<AccountEventEntryTalkProposal>>(
-      `/api/events/${props.eventId}/talk-proposals/me/actions/${action}`,
-      { method: 'POST' }
-    )
-    applyProposal(response.data)
-    emit('updated')
-    toast.add({
-      title: action === 'submit' ? 'Talk proposal submitted' : action === 'withdraw' ? 'Talk proposal withdrawn' : 'Talk proposal ready to revise',
-      color: 'success'
-    })
-  } catch (error) {
-    errorMessage.value = normalizeApiError(error).message
-  } finally {
-    actionPending.value = false
-  }
-}
 </script>
 
 <template>
@@ -203,7 +157,7 @@ async function runAction(action: 'submit' | 'withdraw' | 'revise') {
         <AppInput
           id="talk-proposal-title"
           v-model="title"
-          :disabled="!canEdit"
+          :disabled="!canEdit || actionPending"
         />
         <p
           v-if="submitCount > 0 && errors.title"
@@ -220,7 +174,7 @@ async function runAction(action: 'submit' | 'withdraw' | 'revise') {
         <AppTextarea
           id="talk-proposal-abstract"
           v-model="abstract"
-          :disabled="!canEdit"
+          :disabled="!canEdit || actionPending"
           :rows="8"
         />
         <p
@@ -239,7 +193,7 @@ async function runAction(action: 'submit' | 'withdraw' | 'revise') {
           id="talk-proposal-url"
           v-model="demoOrSlidesUrl"
           type="url"
-          :disabled="!canEdit"
+          :disabled="!canEdit || actionPending"
         />
         <p
           v-if="submitCount > 0 && errors.demoOrSlidesUrl"
@@ -250,11 +204,11 @@ async function runAction(action: 'submit' | 'withdraw' | 'revise') {
       </AppFormField>
 
       <CustomQuestionInput
-        v-for="(question, index) in props.questions"
+        v-for="(question, index) in props.event.talkProposalQuestions"
         :key="question.id"
         :question="question"
         :model-value="proposalAnswers[index]?.value ?? getEmptyCustomQuestionAnswerValue(question)"
-        :disabled="!canEdit"
+        :disabled="!canEdit || actionPending"
         :error="questionErrors[question.id]"
         @update:model-value="updateAnswer(index, $event)"
       />
@@ -274,7 +228,7 @@ async function runAction(action: 'submit' | 'withdraw' | 'revise') {
           color="primary"
           :loading="actionPending"
           :disabled="actionPending"
-          @click="runAction('submit')"
+          @click="submitProposal"
         >
           Submit proposal
         </AppButton>
@@ -285,7 +239,7 @@ async function runAction(action: 'submit' | 'withdraw' | 'revise') {
           variant="soft"
           :loading="actionPending"
           :disabled="actionPending"
-          @click="runAction('withdraw')"
+          @click="saveProposal('withdraw')"
         >
           Withdraw proposal
         </AppButton>
@@ -296,7 +250,7 @@ async function runAction(action: 'submit' | 'withdraw' | 'revise') {
           variant="soft"
           :loading="actionPending"
           :disabled="actionPending"
-          @click="runAction('revise')"
+          @click="saveProposal('revise')"
         >
           Revise proposal
         </AppButton>

@@ -12,6 +12,12 @@ Feature: Public event discovery
     Then I should see the public event titled "E2E Fixture Event"
     Then I should not see the public event titled "Draft Managed Event"
 
+  Scenario: Switching to Past shows completed events on the first page
+    Given I am on the public events page
+    When I select Past on the public events page
+    Then I should see the public event titled "Public Archive Fixture Event"
+    And I should not see the public event titled "E2E Fixture Event"
+
   Scenario: Loading more public events
     Given I am on the public events page
     Then I should see 4 public event cards
@@ -25,6 +31,17 @@ Feature: Public event discovery
     And I should see the public prize "Launch Award"
     And I should see the text "Vienna, Austria"
     And I should not see the admin control "Configure"
+
+  Scenario: A visitor can retry Prizes independently of Overview
+    Given I am on the public events page
+    When I follow the fixture event link and only its overview data is requested
+    And I open Prizes while the prize list is unavailable
+    Then I can still see the event and retry the Prizes tab
+    When the prize list recovers and I retry
+    Then I should see the public prize "Launch Award"
+
+  Scenario: A direct link to Prizes includes the prize in the server-rendered page
+    Then the public Prizes link should include "Launch Award" in its HTML panel
 
   Scenario: Authenticated public event detail remains publicly cacheable
     When I open the public event detail page for the fixture event with the saved "platform_admin" session

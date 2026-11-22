@@ -7,11 +7,7 @@ const pageSource = readFileSync(
   'utf8'
 )
 const teamsRouteSource = readFileSync(
-  new URL('../../../../app/pages/events/[slug]/teams/index.vue', import.meta.url),
-  'utf8'
-)
-const teamRouteSource = readFileSync(
-  new URL('../../../../app/pages/events/[slug]/teams/[teamId].vue', import.meta.url),
+  new URL('../../../../app/pages/events/[slug]/teams/[[teamSlug]].vue', import.meta.url),
   'utf8'
 )
 const teamsServerSource = readFileSync(
@@ -100,10 +96,9 @@ describe('account event parent page request topology', () => {
   test('keeps selected-team navigation in the page request instead of a slug lookup', () => {
     expect(pageSource).toContain('selectedTeamSlug: selectedTeamSlug.value')
     expect(teamsRouteSource).toContain('query: computed(() => ({ selectedTeamSlug: selectedTeamSlug.value }))')
-    expect(teamRouteSource).toContain('query: computed(() => ({ selectedTeamSlug: teamSlug.value }))')
+    expect(teamsRouteSource).toContain('route.params.teamSlug || route.query.team')
     expect(teamsServerSource).toContain('query: AccountEventPageQuery')
     expect(teamsServerSource).toContain('query.selectedTeamSlug')
-    expect(teamsServerSource).toContain('selectedTeam: selectedTeamDetail')
     expect(participantTeamPanelSource).not.toContain('findVisibleTeamBySlug')
   })
 
@@ -114,7 +109,7 @@ describe('account event parent page request topology', () => {
     expect(pageSource).toContain('includeAdminEventConfiguration: true')
     expect(settingsPanelSource).not.toContain('useAccountEventPageRequest')
     expect(settingsPanelSource).not.toContain('useRoute()')
-    expect(settingsPanelSource).not.toContain('eventSlug')
+    expect(settingsPanelSource).not.toMatch(/^\s*eventSlug\??:/m)
     expect(settingsPanelSource).toContain('page?: AccountEventSettingsPage | null')
     expect(settingsPanelSource).toContain('emit(\'updated\')')
     expect(talkControlSource).toContain('hasExistingProposal')

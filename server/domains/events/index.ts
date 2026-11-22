@@ -969,15 +969,6 @@ export function parseStoredSubmissionIdsJson(value: string | null | undefined) {
   }
 }
 
-function compareEventTracks(
-  left: Pick<EventTrackRecord, 'displayOrder' | 'createdAt' | 'id'>,
-  right: Pick<EventTrackRecord, 'displayOrder' | 'createdAt' | 'id'>
-) {
-  return left.displayOrder - right.displayOrder
-    || left.createdAt.localeCompare(right.createdAt)
-    || left.id.localeCompare(right.id)
-}
-
 function compareEventTrackResources(
   left: EventTrackResourceInput,
   right: EventTrackResourceInput
@@ -987,17 +978,15 @@ function compareEventTrackResources(
     || left.id.localeCompare(right.id)
 }
 
-function eventTypeSupportsTracks(eventType: EventType) {
+export function eventTypeSupportsTracks(eventType: EventType) {
   return eventType === 'hackathon' || eventType === 'build'
 }
 
-export async function listEventTracks(database: AppDatabase, eventId: string) {
-  const tracks = await database.query.eventTracks.findMany({
+export function listEventTracks(database: AppDatabase, eventId: string) {
+  return database.query.eventTracks.findMany({
     where: eq(eventTracks.eventId, eventId),
-    orderBy: [asc(eventTracks.displayOrder), asc(eventTracks.createdAt), asc(eventTracks.id)]
+    orderBy: [asc(eventTracks.displayOrder)]
   })
-
-  return tracks.sort(compareEventTracks)
 }
 
 export function parseEventTrackResources(value: string | null | undefined) {
@@ -1247,7 +1236,7 @@ function buildPublicEventVisibilityClauses() {
   return publicEventStates.map(state => eq(events.state, state))
 }
 
-function buildPublicEventVisibilityWhere(filters: ReturnType<typeof buildEventListFilters> = []) {
+export function buildPublicEventVisibilityWhere(filters: ReturnType<typeof buildEventListFilters> = []) {
   const visibilityWhere = and(
     isNull(events.hiddenAt),
     or(...buildPublicEventVisibilityClauses())!

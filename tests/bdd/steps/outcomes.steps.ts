@@ -9,6 +9,7 @@ import {
   resetOutcomesFixtureScenarioState
 } from '../support/platform-fixtures.ts'
 import { parsePersonaKey } from '../support/personas.ts'
+import { signInAs } from '../support/session-state.ts'
 
 const { When, Then } = createBdd()
 
@@ -206,36 +207,39 @@ When('the saved {string} session completes the remembered outcomes pitch assignm
     }
   }
 
-  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+  await signInAs(parsePersonaKey(personaKey), page)
+  await page.goto('/account/events/e2e-outcomes-fixture-event?tab=judging')
+  await expect(page.getByTestId(/^judge-assignment-card-/)).toHaveCount(2)
+  await page.getByTestId(`judge-assignment-card-${assignments[0]!.id}`).click()
+  const nextPitchVote = page.getByRole('link', { name: 'Start next pitch vote' })
 
-  try {
-    for (const assignment of assignments) {
-      const pitchReview = pitchScoresBySubmissionId[assignment.submissionId]
+  for (const [index, assignment] of assignments.entries()) {
+    const vote = pitchScoresBySubmissionId[assignment.submissionId]!
+    if (index === 1) await nextPitchVote.click()
+    await expect(page).toHaveURL(url => url.searchParams.get('assignment') === assignment.id)
 
-      if (!pitchReview) {
-        throw new Error(`Missing fixture pitch score for submission ${assignment.submissionId}.`)
-      }
+    const comment = page.getByLabel('Comment', { exact: true })
+    const score = page.getByTestId(`judge-pitch-score-option-${vote.score}`)
+    await comment.fill(vote.comment)
+    await score.click()
+    await expect(page.getByTestId('judge-assignment-status')).toContainText('In review')
+    await expect(score).toHaveAttribute('aria-checked', 'true')
+    await expect(comment).toHaveValue(vote.comment)
 
-      await apiClient.post(
-        `/api/events/${platformFixtureIds.outcomesEventId}/judging/assignments/${assignment.id}/actions/start`
-      )
-
-      const response = await apiClient.post(
-        `/api/events/${platformFixtureIds.outcomesEventId}/judging/assignments/${assignment.id}/actions/complete`,
-        {
-          data: {
-            pitchScore: pitchReview.score,
-            pitchComment: pitchReview.comment
-          }
-        }
-      )
-
-      state.response = response
-      state.json = await response.json()
-    }
-  } finally {
-    await apiClient.dispose()
+    const submitted = page.waitForResponse(response => response.url().endsWith(`/judging/assignments/${assignment.id}/actions/complete`))
+    await page.getByTestId('judge-complete-review').click()
+    const response = await submitted
+    expect(response.ok()).toBe(true)
+    expect((await response.json()).data).toMatchObject({ pitchScore: vote.score, pitchComment: vote.comment })
+    await expect(page.getByTestId('judge-assignment-status')).toContainText('Completed')
   }
+  await expect(nextPitchVote).toHaveCount(0)
+  const [queueRead] = await Promise.all([
+    page.waitForResponse(response => new URL(response.url()).pathname === '/api/account/events/e2e-outcomes-fixture-event/judging'),
+    page.getByRole('link', { name: 'Back to judging queue', exact: true }).click()
+  ])
+  expect(queueRead.ok()).toBe(true)
+  await expect(page.getByText('No active blind reviews for this event')).toBeVisible()
 })
 
 Then('the outcomes fixture should expose two remaining active pitch assignments', async ({ page }) => {

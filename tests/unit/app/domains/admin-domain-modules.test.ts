@@ -21,7 +21,6 @@ import {
   canAccessAdminDashboard,
   canCreateEvent,
   canMutateRoleAssignments,
-  filterManageableEvents,
   hasEventAdminAccess,
   hasEventJudgingAccess,
   hasEventParticipantVisibilityAccess
@@ -311,40 +310,10 @@ function createNoSubmissionEntry(overrides: Partial<NoSubmissionEntry> = {}): No
 }
 
 describe('domain admin access helpers', () => {
-  test('filters events by explicit event-admin access for non-platform admins', () => {
+  test('checks explicit event-admin access for non-platform admins', () => {
     const actor = createActor()
-    const events = [
-      createEvent({ id: 'event-1' }),
-      createEvent({ id: 'event-2', slug: 'other-event', name: 'Other Event' })
-    ]
-
-    expect(filterManageableEvents(events, actor).map(event => event.id)).toEqual(['event-1'])
     expect(hasEventAdminAccess(actor, 'event-1')).toBe(true)
     expect(hasEventAdminAccess(actor, 'event-2')).toBe(false)
-  })
-
-  test('returns every event for platform admins', () => {
-    const actor = createActor({
-      isPlatformAdmin: true,
-      platformUser: {
-        id: 'platform-admin',
-        email: 'platform@example.com',
-        displayName: 'Platform Admin',
-        firstName: 'Platform',
-        familyName: 'Admin',
-        isPlatformAdmin: true,
-        isEventOrganizer: false
-      }
-    })
-    const events = [
-      createEvent({ id: 'event-1' }),
-      createEvent({ id: 'event-2', slug: 'other-event', name: 'Other Event' })
-    ]
-
-    expect(filterManageableEvents(events, actor).map(event => event.id)).toEqual([
-      'event-1',
-      'event-2'
-    ])
   })
 
   test('allows explicit role mutations for event admins and platform admins', () => {
@@ -377,15 +346,9 @@ describe('domain admin access helpers', () => {
         isEventOrganizer: true
       }
     })
-    const events = [
-      createEvent({ id: 'event-1' }),
-      createEvent({ id: 'event-2', slug: 'other-event', name: 'Other Event' })
-    ]
-
     expect(canAccessAdminDashboard(actor)).toBe(true)
     expect(canCreateEvent(actor)).toBe(true)
     expect(canMutateRoleAssignments(actor)).toBe(false)
-    expect(filterManageableEvents(events, actor)).toEqual([])
   })
 
   test('grants participant visibility to explicit staff without admin mutations', () => {
@@ -468,8 +431,6 @@ describe('domain admin form helpers', () => {
       city: event.city,
       country: event.country,
       address: event.address,
-      backgroundImageUrl: 'https://example.com/background.jpg',
-      bannerImageUrl: 'https://example.com/banner.jpg',
       discordServerUrl: 'https://discord.gg/codex-builders',
       lumaEventUrl: 'https://lu.ma/codex-builders',
       lumaEventApiId: 'evt-123',

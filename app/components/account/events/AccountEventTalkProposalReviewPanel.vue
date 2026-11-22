@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import type { ApiDataResponse } from '~/lib/api'
-import type { PublicEventState } from '~/domains/events/presentation'
-import type { TalkProposalStatus } from '~/domains/talk-proposals'
-import type { AccountEventEntryTalkProposalReview } from '#shared/domains/events/account-event-entry-page'
+import type { AccountEventEntryEvent, AccountEventEntryTalkProposalReview, AccountEventEntryTalkProposalStatus } from '#shared/domains/events/account-event-entry-page'
 import type { CustomQuestionDefinition } from '#shared/domains/events/custom-questions'
 import { getEmptyCustomQuestionAnswerValue } from '#shared/domains/events/custom-questions'
 import { normalizeApiError } from '~/lib/api'
@@ -11,19 +8,14 @@ import { useApiClient } from '~/composables/useApiClient'
 import CustomQuestionAnswerReview from '~/components/events/molecules/CustomQuestionAnswerReview.vue'
 
 const props = defineProps<{
-  eventId: string
-  eventState: PublicEventState
+  event: AccountEventEntryEvent
   canDecide: boolean
   entries: AccountEventEntryTalkProposalReview[]
-  questions: CustomQuestionDefinition[]
-}>()
-const emit = defineEmits<{
-  updated: []
+  refreshPage: (eventSlug: string) => Promise<void>
 }>()
 
-const allEntries = shallowRef<AccountEventEntryTalkProposalReview[]>(props.entries)
 const selectedId = ref('')
-const statusFilter = ref<'all' | TalkProposalStatus>('all')
+const statusFilter = ref<'all' | AccountEventEntryTalkProposalStatus>('all')
 const decisionMessage = ref('')
 const actionPending = ref(false)
 const errorMessage = ref('')
@@ -31,10 +23,10 @@ const toast = useToast()
 const apiFetch = useApiClient()
 
 const visibleEntries = computed(() => statusFilter.value === 'all'
-  ? allEntries.value
-  : allEntries.value.filter(entry => entry.proposal.status === statusFilter.value))
+  ? props.entries
+  : props.entries.filter(entry => entry.proposal.status === statusFilter.value))
 
-const selectedEntry = computed(() => visibleEntries.value.find(entry => entry.proposal.id === selectedId.value) ?? null)
+const selectedEntry = computed(() => visibleEntries.value.find(entry => entry.proposal.id === selectedId.value) ?? visibleEntries.value[0])
 
 function ownerName(entry: AccountEventEntryTalkProposalReview) {
   return entry.owner.displayName.trim()
@@ -49,36 +41,20 @@ function answerValueFor(question: CustomQuestionDefinition) {
   return answer?.value ?? getEmptyCustomQuestionAnswerValue(question)
 }
 
-watch(() => props.entries, (nextEntries) => {
-  allEntries.value = nextEntries
-  if (!nextEntries.some(entry => entry.proposal.id === selectedId.value)) {
-    selectedId.value = nextEntries[0]?.proposal.id ?? ''
-  }
-}, { immediate: true })
-
-watch(statusFilter, () => {
-  if (!visibleEntries.value.some(entry => entry.proposal.id === selectedId.value)) {
-    selectedId.value = visibleEntries.value[0]?.proposal.id ?? ''
-  }
-})
-
 async function decide(decision: 'accept' | 'reject') {
-  if (!selectedEntry.value) return
+  if (!selectedEntry.value || actionPending.value) return
   actionPending.value = true
   errorMessage.value = ''
   try {
-    const response = await apiFetch<ApiDataResponse<{ proposal: AccountEventEntryTalkProposalReview['proposal'] }>>(
-      `/api/events/${props.eventId}/talk-proposals/${selectedEntry.value.proposal.id}/actions/${decision}`,
+    const { id, slug } = props.event
+    await apiFetch(
+      `/api/events/${id}/talk-proposals/${selectedEntry.value.proposal.id}/actions/${decision}`,
       {
         method: 'POST',
         body: { message: decisionMessage.value.trim() || null }
       }
     )
-    allEntries.value = allEntries.value.map(entry => entry.proposal.id === selectedEntry.value?.proposal.id
-      ? { ...entry, proposal: response.data.proposal }
-      : entry)
-    emit('updated')
-    decisionMessage.value = ''
+    await props.refreshPage(slug)
     toast.add({ title: decision === 'accept' ? 'Talk proposal accepted' : 'Talk proposal not accepted', color: 'success' })
   } catch (error) {
     errorMessage.value = normalizeApiError(error).message
@@ -87,9 +63,9 @@ async function decide(decision: 'accept' | 'reject') {
   }
 }
 
-watch(selectedId, () => {
+watch(() => selectedEntry.value?.proposal.id, () => {
   decisionMessage.value = selectedEntry.value?.proposal.decisionMessage ?? ''
-})
+}, { immediate: true })
 </script>
 
 <template>
@@ -146,7 +122,7 @@ watch(selectedId, () => {
           color="neutral"
           variant="ghost"
           class="grid h-auto w-full grid-cols-1 justify-start gap-1 rounded-none px-3 py-3 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
-          :class="selectedId === entry.proposal.id ? 'bg-black/[0.04] dark:bg-white/[0.06]' : ''"
+          :class="selectedEntry?.proposal.id === entry.proposal.id ? 'bg-black/[0.04] dark:bg-white/[0.06]' : ''"
           @click="selectedId = entry.proposal.id"
         >
           <span class="truncate text-sm font-medium text-highlighted">{{ entry.proposal.title }}</span>
@@ -188,11 +164,11 @@ watch(selectedId, () => {
         </div>
 
         <div
-          v-if="props.questions.length > 0"
+          v-if="props.event.talkProposalQuestions.length > 0"
           class="space-y-5 border-t border-black/8 pt-5 dark:border-white/[0.08]"
         >
           <CustomQuestionAnswerReview
-            v-for="question in props.questions"
+            v-for="question in props.event.talkProposalQuestions"
             :key="question.id"
             :prompt="question.prompt"
             :required="question.required"
@@ -227,7 +203,7 @@ watch(selectedId, () => {
         </div>
 
         <div
-          v-if="props.canDecide && selectedEntry.proposal.status === 'submitted' && props.eventState !== 'completed'"
+          v-if="props.canDecide && selectedEntry.proposal.status === 'submitted' && props.event.state !== 'completed'"
           class="space-y-4 border-t border-black/8 pt-5 dark:border-white/[0.08]"
         >
           <AppFormField

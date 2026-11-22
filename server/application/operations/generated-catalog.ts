@@ -1,6 +1,7 @@
 // Generated from the independently maintained MCP eligibility manifest. Do not edit by hand.
 export const applicationOperationLoaders = [
   () => import('../../api/account.patch'),
+  () => import('../../api/account/admin-workspace.get'),
   () => import('../../api/account/events.get'),
   () => import('../../api/account/events/[slug]/certificates.get'),
   () => import('../../api/account/events/[slug]/entry.get'),
@@ -170,6 +171,7 @@ export const applicationOperationLoaders = [
   () => import('../../api/prize-redemptions/[redemptionId]/actions/redeem.post'),
   () => import('../../api/prize-redemptions/me.get'),
   () => import('../../api/prize-redemptions/workspace.get'),
+  () => import('../../api/public/discovery.get'),
   () => import('../../api/public/events/[slug]/evaluation-criteria/index.get'),
   () => import('../../api/public/events/[slug]/index.get'),
   () => import('../../api/public/events/[slug]/participants/[userId]/certificate.get'),

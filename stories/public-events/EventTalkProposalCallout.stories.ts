@@ -7,6 +7,7 @@ const meta = {
   title: 'Public/Event/Call for talks',
   component: EventTalkProposalCallout,
   args: {
+    isOpen: true,
     opensAt: dayFromToday(-3),
     closesAt: dayFromToday(8),
     actionHref: '/account/events/storybook-build-day?tab=call-for-talks'
@@ -19,4 +20,4 @@ type Story = StoryObj<typeof meta>
 
 export const Open: Story = {}
 
-export const Upcoming: Story = { args: { opensAt: dayFromToday(3) } }
+export const Upcoming: Story = { args: { isOpen: false, opensAt: dayFromToday(3) } }

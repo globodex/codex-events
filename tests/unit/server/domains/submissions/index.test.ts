@@ -11,7 +11,7 @@ import {
   assertSubmissionBodyMatchesEventRequirements,
   assertSubmissionMutable,
   assertSubmissionSubmittable,
-  buildSubmissionWritePayload,
+  getSubmissionWriteFields,
   getEventSubmissionSummary
 } from '../../../../../server/domains/submissions'
 import { createApiRouteTestHarness } from '../../../../support/backend/api-route'
@@ -78,14 +78,6 @@ function createSubmission(status: 'draft' | 'submitted' | 'withdrawn' | 'locked'
   }
 }
 
-function createIncompleteSubmission(status: 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified') {
-  return {
-    ...createSubmission(status),
-    repositoryUrl: null,
-    demoUrl: null
-  }
-}
-
 function createDatabase(trackIds: string[] = []) {
   return {
     query: {
@@ -110,24 +102,8 @@ describe('TASK-3.7 submission helpers', () => {
     expect(() => assertSubmissionMutable(createSubmission('submitted'))).not.toThrow()
     expect(() => assertSubmissionMutable(createSubmission('locked'))).toThrowError(ApiError)
 
-    await expect(assertSubmissionSubmittable(
-      createDatabase(),
-      createEvent('submission_open'),
-      createSubmission('draft')
-    )).resolves.toBeUndefined()
-    await expect(assertSubmissionSubmittable(
-      createDatabase(),
-      createEvent('submission_open'),
-      createSubmission('submitted')
-    )).rejects.toThrowError(ApiError)
-    await expect(assertSubmissionSubmittable(
-      createDatabase(),
-      {
-        ...createEvent('submission_open'),
-        requireSubmissionRepositoryUrl: true
-      },
-      createIncompleteSubmission('draft')
-    )).rejects.toThrowError(ApiError)
+    expect(() => assertSubmissionSubmittable(createSubmission('draft'))).not.toThrow()
+    expect(() => assertSubmissionSubmittable(createSubmission('submitted'))).toThrowError(ApiError)
   })
 
   test('submission create and update requirements follow event configuration', () => {
@@ -152,20 +128,20 @@ describe('TASK-3.7 submission helpers', () => {
     })).toThrowError(ApiError)
   })
 
-  test('submission write payloads persist the canonical required fields', () => {
-    expect(buildSubmissionWritePayload({
+  test('draft fields use the event track and clear optional values', async () => {
+    const fields = await getSubmissionWriteFields(createDatabase(['track_1']), createEvent('submission_open'), {
       projectName: 'Updated Project',
       summary: '',
       repositoryUrl: '',
       demoUrl: 'https://example.com/updated-project',
       trackId: 'track_1'
-    }, '2026-03-24T13:00:00.000Z')).toEqual({
+    })
+    expect(fields).toEqual({
       projectName: 'Updated Project',
       summary: null,
       repositoryUrl: null,
       demoUrl: 'https://example.com/updated-project',
-      trackId: 'track_1',
-      updatedAt: '2026-03-24T13:00:00.000Z'
+      trackId: 'track_1'
     })
   })
 

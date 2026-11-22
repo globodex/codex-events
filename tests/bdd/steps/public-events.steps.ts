@@ -45,7 +45,14 @@ function extractNuxtPayload(html: string) {
     throw new Error('The public event document did not contain a Nuxt payload.')
   }
 
-  return match[1]
+  // Nuxt stores payload values in an array. Each state key points to its value's index.
+  // Two requests can have different render times. Compare every other value.
+  const values = JSON.parse(match[1])
+  const state = values.find((value: unknown) => value && typeof value === 'object' && '$sevent-render-time' in value)
+  const renderTimeIndex = state?.['$sevent-render-time']
+  expect(typeof values[renderTimeIndex]).toBe('number')
+  values[renderTimeIndex] = 0
+  return JSON.stringify(values)
 }
 
 Given('I am on the public events page', async ({ page }) => {
@@ -95,6 +102,13 @@ When('I open the public events page with the saved {string} session', async ({ p
   await page.goto('/')
 })
 
+When('I select Past on the public events page', async ({ page }) => {
+  const link = page.getByRole('link', { name: /^Past/ })
+  await expect(link).toHaveAttribute('href', '/?tab=past')
+  await link.click()
+  await expect(link).toHaveAttribute('aria-current', 'page')
+})
+
 When('I load more public events', async ({ page }) => {
   const loadMoreButton = page.getByRole('button', { name: 'Load more events' })
 
@@ -104,7 +118,7 @@ When('I load more public events', async ({ page }) => {
   )
   await Promise.all([
     page.waitForResponse(response =>
-      response.url().includes('/api/public/events')
+      response.url().includes('/api/public/discovery')
       && response.url().includes('page=2')
       && response.ok()
     ),
@@ -114,6 +128,45 @@ When('I load more public events', async ({ page }) => {
 
 Given('I am on the public event detail page for the fixture event', async ({ page }) => {
   await page.goto('/events/e2e-fixture-event')
+})
+
+const fixtureEventApiPath = '/api/public/events/e2e-fixture-event'
+
+When('I follow the fixture event link and only its overview data is requested', async ({ page }) => {
+  await waitForNuxtHydration(page)
+  const capture = capturePageTopology(page)
+  await page.getByTestId('public-event-card-e2e-fixture-event').click()
+  await expect(page.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true')
+  await capture.settle()
+  assertExactPathCount(capture, fixtureEventApiPath, 1)
+  for (const section of ['prizes', 'winners', 'published-projects', 'photos']) {
+    assertExactPathCount(capture, `${fixtureEventApiPath}/${section}`, 0)
+  }
+})
+
+When('I open Prizes while the prize list is unavailable', async ({ page }) => {
+  await page.route(`${fixtureEventApiPath}/prizes`, route => route.fulfill({ status: 503 }))
+  await openPublicPrizesTab(page)
+})
+
+Then('I can still see the event and retry the Prizes tab', async ({ page }) => {
+  await expect(page.getByTestId('public-event-detail-title')).toHaveText('E2E Fixture Event')
+  await expect(page.getByRole('tabpanel', { name: 'Prizes' }).getByRole('button', { name: 'Retry' })).toBeVisible()
+})
+
+When('the prize list recovers and I retry', async ({ page }) => {
+  await page.unroute(`${fixtureEventApiPath}/prizes`)
+  await page.getByRole('tabpanel', { name: 'Prizes' }).getByRole('button', { name: 'Retry' }).click()
+})
+
+Then('the public Prizes link should include {string} in its HTML panel', async ({ page }, prize: string) => {
+  const response = await page.request.get('/events/e2e-fixture-event?tab=prizes')
+  expect(response.ok()).toBe(true)
+  const serverPanel = await page.evaluate((html) => {
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+    return doc.querySelector('#public-tab-panel-prizes')?.textContent
+  }, await response.text())
+  expect(serverPanel).toContain(prize)
 })
 
 Given('I open the fixture event as a {string} with the session response held', async ({ page }, visitor: string) => {

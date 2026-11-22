@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ComputedRef } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
 import type Sortable from 'sortablejs'
 
 import AccountEventAdminTermsCard from '~/components/account/events/AccountEventAdminTermsCard.vue'
@@ -36,6 +36,7 @@ import { useApiClient } from '~/composables/useApiClient'
 
 const props = withDefaults(defineProps<{
   eventId: string
+  onCatalogSaved: (eventSlug: string) => Promise<void>
   page?: AccountEventSettingsPage | null
   eventData?: AccountEventSettingsEvent | null
   prizesData?: AccountEventSettingsPrize[]
@@ -60,26 +61,17 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{
-  updated: []
+  updated: [slug?: string]
 }>()
 
-type CriterionEditState = Pick<EvaluationCriterion, 'name' | 'description' | 'weight' | 'displayOrder'>
-type EditableCriterionRow = EvaluationCriterion & {
-  isLocalDraft?: boolean
-}
 type CriterionValidationField = 'name' | 'description' | 'weight'
 type CriterionValidationErrors = Partial<Record<CriterionValidationField, string>>
-type PrizeEditState = Pick<PrizeDefinition, 'name' | 'description' | 'rewardType' | 'rewardValue' | 'awardScope' | 'rankStart' | 'rankEnd' | 'displayOrder'> & {
-  rewardCurrency: string
-}
-type EditablePrizeRow = PrizeDefinition & {
-  isLocalDraft?: boolean
-}
 type SortableInstance = Sortable
 type SortableConstructor = typeof Sortable
 
 const toast = useToast()
 const apiFetch = useApiClient()
+const { clearUpdatedEvent } = useEventConfiguration()
 const eventId = computed(() => props.eventId.trim())
 
 if (!eventId.value) {
@@ -110,10 +102,8 @@ const imageMutationState = reactive({
     error: ''
   }
 })
-const criterionEdits = reactive<Record<string, CriterionEditState>>({})
-const prizeEdits = reactive<Record<string, PrizeEditState>>({})
-const criteriaRows = ref<EditableCriterionRow[]>([])
-const prizeRows = ref<EditablePrizeRow[]>([])
+const criteriaRows = ref<EvaluationCriterion[]>([])
+const prizeRows = ref<PrizeDefinition[]>([])
 const hideEventReason = ref('')
 const activeCriterionDragId = ref<string | null>(null)
 const criterionDropTargetId = ref<string | null>(null)
@@ -121,10 +111,6 @@ const criteriaListElement = ref<HTMLElement | null>(null)
 const activePrizeDragId = ref<string | null>(null)
 const prizeDropTargetId = ref<string | null>(null)
 const prizeListElement = ref<HTMLElement | null>(null)
-const applicationTermsDraft = ref('')
-const winnerTermsDraft = ref('')
-const lastSyncedApplicationTermsContent = ref('')
-const lastSyncedWinnerTermsContent = ref('')
 const eventVisibilityMutationError = ref('')
 const isUpdatingEventVisibility = ref(false)
 let criteriaSortable: SortableInstance | null = null
@@ -171,77 +157,15 @@ const criteria = computed(() => settingsPage.value?.criteria ?? [])
 const prizes = computed(() => settingsPage.value?.prizes ?? props.prizesData ?? [])
 const roleAssignments = computed(() => settingsPage.value?.roles.assignments ?? [])
 const orderedCriteria = computed(() =>
-  [...criteriaRows.value].sort((left, right) => {
-    const leftOrder = getCriterionEdit(left).displayOrder
-    const rightOrder = getCriterionEdit(right).displayOrder
-    return leftOrder - rightOrder || left.createdAt.localeCompare(right.createdAt)
-  })
+  [...criteriaRows.value].sort((a, b) => a.displayOrder - b.displayOrder || a.createdAt.localeCompare(b.createdAt))
 )
 const orderedPrizes = computed(() =>
-  [...prizeRows.value].sort((left, right) => {
-    const leftOrder = getPrizeEdit(left).displayOrder
-    const rightOrder = getPrizeEdit(right).displayOrder
-
-    if (leftOrder !== rightOrder) {
-      return leftOrder - rightOrder
-    }
-
-    return left.rankEnd - right.rankEnd || right.rankStart - left.rankStart || left.createdAt.localeCompare(right.createdAt)
-  })
+  [...prizeRows.value].sort((a, b) =>
+    a.displayOrder - b.displayOrder || a.rankEnd - b.rankEnd || b.rankStart - a.rankStart || a.createdAt.localeCompare(b.createdAt)
+  )
 )
-const hasCriteriaChanges = computed(() => {
-  if (criteriaRows.value.length !== criteria.value.length) {
-    return true
-  }
-
-  const visibleCriterionIds = new Set(criteriaRows.value.map(criterion => criterion.id))
-
-  if (criteriaRows.value.some(criterion => !criteria.value.some(existingCriterion => existingCriterion.id === criterion.id))) {
-    return true
-  }
-
-  if (criteria.value.some(criterion => !visibleCriterionIds.has(criterion.id))) {
-    return true
-  }
-
-  return criteria.value.some((criterion) => {
-    const edit = getCriterionEdit(criterion)
-
-    return edit.name !== criterion.name
-      || edit.description !== criterion.description
-      || edit.weight !== criterion.weight
-      || edit.displayOrder !== criterion.displayOrder
-  })
-})
-const hasPrizeChanges = computed(() => {
-  if (prizeRows.value.length !== prizes.value.length) {
-    return true
-  }
-
-  const visiblePrizeIds = new Set(prizeRows.value.map(prize => prize.id))
-
-  if (prizeRows.value.some(prize => !prizes.value.some(existingPrize => existingPrize.id === prize.id))) {
-    return true
-  }
-
-  if (prizes.value.some(prize => !visiblePrizeIds.has(prize.id))) {
-    return true
-  }
-
-  return prizes.value.some((prize) => {
-    const edit = getPrizeEdit(prize)
-
-    return edit.name !== prize.name
-      || edit.description !== prize.description
-      || edit.rewardType !== prize.rewardType
-      || edit.rewardValue !== prize.rewardValue
-      || (edit.rewardCurrency || null) !== prize.rewardCurrency
-      || edit.awardScope !== prize.awardScope
-      || edit.rankStart !== prize.rankStart
-      || edit.rankEnd !== prize.rankEnd
-      || edit.displayOrder !== prize.displayOrder
-  })
-})
+const { hasChanges: hasCriteriaChanges, save: persistCriteria } = useCatalogDraft(criteria, criteriaRows, 'evaluation-criteria')
+const { hasChanges: hasPrizeChanges, save: persistPrizes } = useCatalogDraft(prizes, prizeRows, 'prizes')
 const applicationTerms = computed(() => settingsPage.value?.terms.application.versions ?? [])
 const winnerTerms = computed(() => settingsPage.value?.terms.winner.versions ?? [])
 const currentApplicationTerms = computed(() => settingsPage.value?.terms.application.current ?? null)
@@ -261,18 +185,7 @@ const creatorLabel = computed(() => {
 const creatorMeta = computed(() => creatorAssignment.value?.user?.email ?? 'Platform admin')
 const adminCount = computed(() => settingsPage.value?.roles.counts.admins ?? 0)
 const criteriaValidationIssues = computed(() =>
-  getCriteriaConfigurationValidationIssues(
-    orderedCriteria.value.map((criterion) => {
-      const edit = getCriterionEdit(criterion)
-
-      return {
-        id: criterion.id,
-        name: edit.name,
-        description: edit.description,
-        weight: edit.weight
-      }
-    })
-  )
+  getCriteriaConfigurationValidationIssues(orderedCriteria.value)
 )
 const visibleCriteriaValidationIssues = computed(() =>
   hasAttemptedCriteriaSave.value ? criteriaValidationIssues.value : []
@@ -291,110 +204,14 @@ const criteriaValidationErrorsByCriterion = computed<Record<string, CriterionVal
 const staffCount = computed(() => settingsPage.value?.roles.counts.staff ?? 0)
 const judgeCount = computed(() => settingsPage.value?.roles.counts.judges ?? 0)
 
-function nextCriterionDisplayOrder(items: Array<EditableCriterionRow>) {
-  return items.reduce((highest, item) => Math.max(highest, item.displayOrder), 0) + 1
-}
-
-function nextPrizeDisplayOrder(items: Array<EditablePrizeRow>) {
-  return items.reduce((highest, item) => Math.max(highest, getPrizeEdit(item).displayOrder), 0) + 1
-}
-
-function replaceReactiveMap<T>(target: Record<string, T>, source: Record<string, T>) {
-  for (const key of Object.keys(target)) {
-    if (!(key in source)) {
-      Reflect.deleteProperty(target, key)
-    }
-  }
-
-  Object.assign(target, source)
-}
-
-function createCriterionEditState(criterion: EditableCriterionRow): CriterionEditState {
-  return {
-    name: criterion.name,
-    description: criterion.description,
-    weight: criterion.weight,
-    displayOrder: criterion.displayOrder
-  }
-}
-
-function createPrizeEditState(prize: PrizeDefinition): PrizeEditState {
-  return {
-    name: prize.name,
-    description: prize.description,
-    rewardType: prize.rewardType,
-    rewardValue: prize.rewardValue,
-    rewardCurrency: prize.rewardCurrency ?? '',
-    awardScope: prize.awardScope,
-    rankStart: prize.rankStart,
-    rankEnd: prize.rankEnd,
-    displayOrder: prize.displayOrder
-  }
-}
-
-function getCriterionEdit(criterion: EditableCriterionRow) {
-  const existing = criterionEdits[criterion.id]
-
-  if (existing) {
-    return existing
-  }
-
-  const next = createCriterionEditState(criterion)
-  criterionEdits[criterion.id] = next
-  return next
-}
-
-function getPrizeEdit(prize: PrizeDefinition) {
-  const existing = prizeEdits[prize.id]
-
-  if (existing) {
-    return existing
-  }
-
-  const next = createPrizeEditState(prize)
-  prizeEdits[prize.id] = next
-  return next
-}
-
-function moveItemByDirection<T extends { id: string }>(items: T[], itemId: string, direction: -1 | 1) {
-  const currentIndex = items.findIndex(item => item.id === itemId)
-
-  if (currentIndex < 0) {
-    return items
-  }
-
-  const targetIndex = currentIndex + direction
-
-  if (targetIndex < 0 || targetIndex >= items.length) {
-    return items
-  }
-
-  const reordered = [...items]
-  const [movedItem] = reordered.splice(currentIndex, 1)
-
-  if (!movedItem) {
-    return items
-  }
-
-  reordered.splice(targetIndex, 0, movedItem)
-  return reordered
-}
-
-function applyPrizeOrderFromList(items: PrizeDefinition[]) {
-  items.forEach((prize, index) => {
-    getPrizeEdit(prize).displayOrder = index + 1
+function applyDisplayOrder(items: { displayOrder: number }[]) {
+  items.forEach((item, index) => {
+    item.displayOrder = index + 1
   })
 }
 
-function applyCriterionOrderFromList(items: EditableCriterionRow[]) {
-  items.forEach((criterion, index) => {
-    getCriterionEdit(criterion).displayOrder = index + 1
-  })
-  criteriaRows.value = [...items]
-}
-
-function moveCriterion(criterionId: string, direction: -1 | 1) {
-  applyCriterionOrderFromList(moveItemByDirection(orderedCriteria.value, criterionId, direction))
+function moveCatalogRow(rows: { displayOrder: number }[], from: number, to: number) {
+  applyDisplayOrder(moveListItemByIndex(rows, from, to))
 }
 
 function destroyCriteriaSortable() {
@@ -402,10 +219,6 @@ function destroyCriteriaSortable() {
   criteriaSortable = null
   activeCriterionDragId.value = null
   criterionDropTargetId.value = null
-}
-
-function movePrize(prizeId: string, direction: -1 | 1) {
-  applyPrizeOrderFromList(moveItemByDirection(orderedPrizes.value, prizeId, direction))
 }
 
 async function loadSortableConstructor() {
@@ -454,7 +267,7 @@ async function initializeCriteriaSortable() {
       const newIndex = event.newDraggableIndex ?? event.newIndex
 
       if (oldIndex !== undefined && newIndex !== undefined) {
-        applyCriterionOrderFromList(moveListItemByIndex(orderedCriteria.value, oldIndex, newIndex))
+        moveCatalogRow(orderedCriteria.value, oldIndex, newIndex)
       }
 
       activeCriterionDragId.value = null
@@ -507,7 +320,7 @@ async function initializePrizeSortable() {
       const newIndex = event.newDraggableIndex ?? event.newIndex
 
       if (oldIndex !== undefined && newIndex !== undefined) {
-        applyPrizeOrderFromList(moveListItemByIndex(orderedPrizes.value, oldIndex, newIndex))
+        moveCatalogRow(orderedPrizes.value, oldIndex, newIndex)
       }
 
       activePrizeDragId.value = null
@@ -516,42 +329,74 @@ async function initializePrizeSortable() {
   })
 }
 
-// Each editor keeps its draft until its own saved rows change. Refreshing other
-// settings can return new objects for exactly the same criteria and prizes.
-function watchSavedRows<T>(rows: ComputedRef<T[]>, resetDraft: (items: T[]) => void) {
-  let lastSnapshot: string | undefined
-  watch([currentEvent, rows], ([event, items]) => {
-    if (!event) {
-      return
-    }
+type CatalogRow = { id: string, eventId: string, createdAt: string, displayOrder: number }
 
-    const snapshot = JSON.stringify([event.id, items])
-    if (snapshot !== lastSnapshot) {
-      lastSnapshot = snapshot
-      resetDraft(items)
-    }
+function useCatalogDraft<T extends CatalogRow>(
+  source: ComputedRef<T[]>,
+  drafts: Ref<T[]>,
+  resource: 'evaluation-criteria' | 'prizes'
+) {
+  const saved = shallowReactive(new Map<string, T>())
+  const removed = computed(() => {
+    const ids = new Set(drafts.value.map(row => row.id))
+    return [...saved.keys()].filter(id => !ids.has(id))
+  })
+  const edited = computed(() => drafts.value.filter((row) => {
+    const original = saved.get(row.id)
+    return !original || (Object.keys(row) as (keyof T)[]).some(key => row[key] !== original[key])
+  }))
+  const hasChanges = computed(() => removed.value.length > 0 || edited.value.length > 0)
+
+  watch(source, (rows) => {
+    if (hasChanges.value) return
+    saved.clear()
+    for (const row of rows) saved.set(row.id, row)
+    drafts.value = rows.map(row => ({ ...row }))
   }, { immediate: true })
 
-  return () => {
-    lastSnapshot = undefined
+  async function save(event: AccountEventSettingsEvent) {
+    const path = `/api/events/${event.id}/${resource}`
+    let wrote = false
+    try {
+      for (const id of removed.value) {
+        await apiFetch(`${path}/${id}`, { method: 'DELETE' })
+        saved.delete(id)
+        wrote = true
+      }
+
+      // Criteria require unique positions. Free occupied positions before swapping rows.
+      if (resource === 'evaluation-criteria') {
+        const requested = new Set(drafts.value.map(row => row.displayOrder))
+        let temporaryOrder = Math.max(0, ...requested, ...[...saved.values()].map(row => row.displayOrder))
+        for (const row of edited.value) {
+          const original = saved.get(row.id)
+          if (original && original.displayOrder !== row.displayOrder && requested.has(original.displayOrder)) {
+            const { data } = await apiFetch<ApiDataResponse<T>>(`${path}/${row.id}`, {
+              method: 'PATCH', body: { displayOrder: ++temporaryOrder }
+            })
+            saved.set(data.id, data)
+            wrote = true
+          }
+        }
+      }
+
+      for (const row of edited.value) {
+        const { id, eventId: _eventId, createdAt: _createdAt, ...body } = row
+        const exists = saved.has(id)
+        const { data } = await apiFetch<ApiDataResponse<T>>(exists ? `${path}/${id}` : path, {
+          method: exists ? 'PATCH' : 'POST', body
+        })
+        saved.set(data.id, data)
+        Object.assign(row, data)
+        wrote = true
+      }
+    } finally {
+      if (wrote) void props.onCatalogSaved(event.slug)
+    }
   }
+
+  return { hasChanges, save }
 }
-
-const acceptNextCriteriaRead = watchSavedRows(criteria, (items) => {
-  criteriaRows.value = items.map(criterion => ({ ...criterion }))
-  replaceReactiveMap(
-    criterionEdits,
-    Object.fromEntries(items.map(criterion => [criterion.id, createCriterionEditState(criterion)]))
-  )
-})
-
-const acceptNextPrizeRead = watchSavedRows(prizes, (items) => {
-  prizeRows.value = items.map(prize => ({ ...prize }))
-  replaceReactiveMap(
-    prizeEdits,
-    Object.fromEntries(items.map(prize => [prize.id, createPrizeEditState(prize)]))
-  )
-})
 
 watch([orderedCriteria, () => props.showCriteriaConfiguration], async () => {
   await nextTick()
@@ -569,37 +414,14 @@ watch([orderedPrizes, () => props.showPrizeConfiguration], async () => {
   flush: 'post'
 })
 
-watch(currentApplicationTerms, (document) => {
-  const nextContent = document?.content ?? ''
-
-  if (applicationTermsDraft.value === lastSyncedApplicationTermsContent.value) {
-    applicationTermsDraft.value = nextContent
-  }
-
-  lastSyncedApplicationTermsContent.value = nextContent
-}, {
-  immediate: true
-})
-
-watch(currentWinnerTerms, (document) => {
-  const nextContent = document?.content ?? ''
-
-  if (winnerTermsDraft.value === lastSyncedWinnerTermsContent.value) {
-    winnerTermsDraft.value = nextContent
-  }
-
-  lastSyncedWinnerTermsContent.value = nextContent
-}, {
-  immediate: true
-})
-
 onBeforeUnmount(() => {
   destroyCriteriaSortable()
   destroyPrizeSortable()
 })
 
 async function saveConfiguration(configForm: EventFormState) {
-  if (!currentEvent.value) {
+  const event = currentEvent.value
+  if (!event) {
     return
   }
 
@@ -607,11 +429,9 @@ async function saveConfiguration(configForm: EventFormState) {
   isSavingConfig.value = true
 
   try {
-    const updateUrl = `/api/events/${currentEvent.value.id}` as string
-
-    await apiFetch(updateUrl, {
+    const { data } = await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}`, {
       method: 'PATCH',
-      body: buildEventConfigurationPatch(configForm, currentEvent.value.eventType)
+      body: buildEventConfigurationPatch(configForm, event.eventType)
     })
 
     toast.add({
@@ -620,7 +440,10 @@ async function saveConfiguration(configForm: EventFormState) {
       color: 'success'
     })
 
-    emit('updated')
+    if (props.eventId === event.id) {
+      emit('updated', data.slug)
+    }
+    clearUpdatedEvent(event.slug, data.slug)
   } catch (error) {
     configMutationError.value = normalizeApiError(error).message
   } finally {
@@ -808,56 +631,27 @@ function addCriterion() {
     return
   }
 
-  const draftCriterion: EditableCriterionRow = {
+  const draftCriterion: EvaluationCriterion = {
     id: `draft-criterion-${crypto.randomUUID()}`,
     eventId: event.id,
     name: '',
     description: '',
     weight: 10,
-    displayOrder: nextCriterionDisplayOrder(criteriaRows.value),
-    createdAt: new Date().toISOString(),
-    isLocalDraft: true
+    displayOrder: criteriaRows.value.length + 1,
+    createdAt: new Date().toISOString()
   }
 
   criteriaRows.value = [...orderedCriteria.value, draftCriterion]
-  criterionEdits[draftCriterion.id] = createCriterionEditState(draftCriterion)
-  applyCriterionOrderFromList(criteriaRows.value)
+  applyDisplayOrder(criteriaRows.value)
 }
 
 function removeCriterion(criterionId: string) {
   criteriaRows.value = orderedCriteria.value.filter(criterion => criterion.id !== criterionId)
-  Reflect.deleteProperty(criterionEdits, criterionId)
-  applyCriterionOrderFromList(criteriaRows.value)
+  applyDisplayOrder(criteriaRows.value)
 }
 
 function getCriterionValidationError(criterionId: string, field: CriterionValidationField) {
   return criteriaValidationErrorsByCriterion.value[criterionId]?.[field] ?? ''
-}
-
-function buildCriterionMutationBody(criterion: EditableCriterionRow) {
-  const edit = getCriterionEdit(criterion)
-
-  return {
-    name: edit.name,
-    description: edit.description,
-    weight: edit.weight,
-    displayOrder: edit.displayOrder
-  }
-}
-
-function criterionMatchesPersistedState(criterion: EditableCriterionRow) {
-  const persistedCriterion = criteria.value.find(existingCriterion => existingCriterion.id === criterion.id)
-
-  if (!persistedCriterion) {
-    return false
-  }
-
-  const edit = getCriterionEdit(criterion)
-
-  return edit.name === persistedCriterion.name
-    && edit.description === persistedCriterion.description
-    && edit.weight === persistedCriterion.weight
-    && edit.displayOrder === persistedCriterion.displayOrder
 }
 
 function addPrize() {
@@ -867,7 +661,7 @@ function addPrize() {
     return
   }
 
-  const draftPrize: EditablePrizeRow = {
+  const draftPrize: PrizeDefinition = {
     id: `draft-prize-${crypto.randomUUID()}`,
     eventId: event.id,
     name: '',
@@ -878,56 +672,17 @@ function addPrize() {
     awardScope: 'team',
     rankStart: 1,
     rankEnd: 1,
-    displayOrder: nextPrizeDisplayOrder(prizeRows.value),
-    createdAt: new Date().toISOString(),
-    isLocalDraft: true
+    displayOrder: prizeRows.value.length + 1,
+    createdAt: new Date().toISOString()
   }
 
   prizeRows.value = [...orderedPrizes.value, draftPrize]
-  prizeEdits[draftPrize.id] = createPrizeEditState(draftPrize)
-  applyPrizeOrderFromList(prizeRows.value)
+  applyDisplayOrder(prizeRows.value)
 }
 
 function removePrize(prizeId: string) {
   prizeRows.value = orderedPrizes.value.filter(prize => prize.id !== prizeId)
-  Reflect.deleteProperty(prizeEdits, prizeId)
-  applyPrizeOrderFromList(prizeRows.value)
-}
-
-function buildPrizeMutationBody(prize: EditablePrizeRow) {
-  const edit = getPrizeEdit(prize)
-
-  return {
-    name: edit.name,
-    description: edit.description,
-    rewardType: edit.rewardType,
-    rewardValue: edit.rewardValue,
-    rewardCurrency: edit.rewardCurrency || null,
-    awardScope: edit.awardScope,
-    rankStart: edit.rankStart,
-    rankEnd: edit.rankEnd,
-    displayOrder: edit.displayOrder
-  }
-}
-
-function prizeMatchesPersistedState(prize: EditablePrizeRow) {
-  const persistedPrize = prizes.value.find(existingPrize => existingPrize.id === prize.id)
-
-  if (!persistedPrize) {
-    return false
-  }
-
-  const edit = getPrizeEdit(prize)
-
-  return edit.name === persistedPrize.name
-    && edit.description === persistedPrize.description
-    && edit.rewardType === persistedPrize.rewardType
-    && edit.rewardValue === persistedPrize.rewardValue
-    && (edit.rewardCurrency || null) === persistedPrize.rewardCurrency
-    && edit.awardScope === persistedPrize.awardScope
-    && edit.rankStart === persistedPrize.rankStart
-    && edit.rankEnd === persistedPrize.rankEnd
-    && edit.displayOrder === persistedPrize.displayOrder
+  applyDisplayOrder(prizeRows.value)
 }
 
 async function saveCriteria() {
@@ -936,20 +691,6 @@ async function saveCriteria() {
   if (!event || !hasCriteriaChanges.value) {
     return
   }
-
-  const visibleCriterionIds = new Set(orderedCriteria.value.map(criterion => criterion.id))
-  const removedPersistedCriteria = criteria.value.filter(criterion => !visibleCriterionIds.has(criterion.id))
-  const updatedPersistedCriteria = orderedCriteria.value.filter(
-    criterion => !criterion.isLocalDraft && !criterionMatchesPersistedState(criterion)
-  )
-  const reorderedPersistedCriteria = updatedPersistedCriteria.filter(
-    criterion => getCriterionEdit(criterion).displayOrder !== criteria.value.find(existing => existing.id === criterion.id)?.displayOrder
-  )
-  const maxDisplayOrder = Math.max(
-    0,
-    ...criteria.value.map(criterion => criterion.displayOrder),
-    ...orderedCriteria.value.map(criterion => getCriterionEdit(criterion).displayOrder)
-  )
 
   hasAttemptedCriteriaSave.value = true
   criteriaMutationError.value = ''
@@ -961,47 +702,13 @@ async function saveCriteria() {
   isSavingCriteria.value = true
 
   try {
-    for (const criterion of removedPersistedCriteria) {
-      await apiFetch(`/api/events/${event.id}/evaluation-criteria/${criterion.id}`, {
-        method: 'DELETE'
-      })
-    }
-
-    for (const [index, criterion] of reorderedPersistedCriteria.entries()) {
-      await apiFetch(`/api/events/${event.id}/evaluation-criteria/${criterion.id}`, {
-        method: 'PATCH',
-        body: {
-          displayOrder: maxDisplayOrder + index + 1
-        }
-      })
-    }
-
-    for (const criterion of updatedPersistedCriteria) {
-      await apiFetch(`/api/events/${event.id}/evaluation-criteria/${criterion.id}`, {
-        method: 'PATCH',
-        body: buildCriterionMutationBody(criterion)
-      })
-    }
-
-    for (const criterion of orderedCriteria.value) {
-      if (!criterion.isLocalDraft) {
-        continue
-      }
-
-      await apiFetch(`/api/events/${event.id}/evaluation-criteria`, {
-        method: 'POST',
-        body: buildCriterionMutationBody(criterion)
-      })
-    }
-
+    await persistCriteria(event)
     toast.add({
       title: 'Criteria updated',
       description: 'Judging criteria now match the latest configuration.',
       color: 'success'
     })
     hasAttemptedCriteriaSave.value = false
-    acceptNextCriteriaRead()
-    emit('updated')
   } catch (error) {
     criteriaMutationError.value = normalizeApiError(error).message
   } finally {
@@ -1020,46 +727,12 @@ async function savePrizes() {
   mutationError.value = ''
 
   try {
-    const visiblePrizeIds = new Set(orderedPrizes.value.map(prize => prize.id))
-
-    for (const prize of prizes.value) {
-      if (visiblePrizeIds.has(prize.id)) {
-        continue
-      }
-
-      await apiFetch(`/api/events/${event.id}/prizes/${prize.id}`, {
-        method: 'DELETE'
-      })
-    }
-
-    for (const prize of orderedPrizes.value) {
-      const requestBody = buildPrizeMutationBody(prize)
-
-      if (prize.isLocalDraft) {
-        await apiFetch(`/api/events/${event.id}/prizes`, {
-          method: 'POST',
-          body: requestBody
-        })
-        continue
-      }
-
-      if (prizeMatchesPersistedState(prize)) {
-        continue
-      }
-
-      await apiFetch(`/api/events/${event.id}/prizes/${prize.id}`, {
-        method: 'PATCH',
-        body: requestBody
-      })
-    }
-
+    await persistPrizes(event)
     toast.add({
       title: 'Prizes updated',
       description: 'The prize catalog has been updated.',
       color: 'success'
     })
-    acceptNextPrizeRead()
-    emit('updated')
   } catch (error) {
     mutationError.value = normalizeApiError(error).message
   } finally {
@@ -1083,11 +756,7 @@ function formatTermsTitle(documentType: TermsDocument['documentType'], version: 
   return `${label} v${version} (${date})`
 }
 
-function getTermsDraft(documentType: TermsDocument['documentType']) {
-  return documentType === 'application_terms' ? applicationTermsDraft.value : winnerTermsDraft.value
-}
-
-async function saveTerms(documentType: TermsDocument['documentType']) {
+async function saveTerms(documentType: TermsDocument['documentType'], draft: string) {
   const event = currentEvent.value
 
   if (!event) {
@@ -1097,7 +766,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
   mutationError.value = ''
   savingTermsDocumentType.value = documentType
 
-  const content = getTermsDraft(documentType).trim()
+  const content = draft.trim()
   const version = getNextTermsVersion(documentType === 'application_terms' ? applicationTerms.value : winnerTerms.value)
   const title = formatTermsTitle(documentType, version)
   const validationError = getTermsVersionPublishErrorMessage(title, content)
@@ -1167,7 +836,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
     />
 
     <div
-      v-else-if="props.isLoading"
+      v-else-if="props.isLoading && !currentEvent"
       class="rounded-xl border border-dashed border-black/10 px-5 py-8 text-center text-sm text-muted dark:border-white/[0.08]"
     >
       Loading event settings…
@@ -1271,10 +940,10 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
         </div>
 
         <LazyAdminEventCreateEditForm
+          :key="currentEvent.id"
           :initial-event="currentEvent"
           :initial-simplified-claiming-status="settingsPage?.simplifiedClaiming ?? null"
           :has-existing-talk-proposal="settingsPage?.talkProposals.hasExistingProposal ?? false"
-          :image-version="{ background: currentEvent.backgroundImageRevision, banner: currentEvent.bannerImageRevision }"
           :can-upload-managed-images="true"
           :is-submitting="isSavingConfig"
           mode="settings"
@@ -1299,8 +968,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
       <section class="space-y-6">
         <AccountEventAdminTermsCard
           v-if="props.showTermsManagement"
-          v-model:application-terms-draft="applicationTermsDraft"
-          v-model:winner-terms-draft="winnerTermsDraft"
+          :key="currentEvent.id"
           :current-application-terms="currentApplicationTerms"
           :current-winner-terms="currentWinnerTerms"
           :saving-terms-document-type="savingTermsDocumentType"
@@ -1323,7 +991,10 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
             </div>
           </template>
 
-          <div class="grid grid-cols-1 gap-4">
+          <div
+            class="grid grid-cols-1 gap-4"
+            :inert="isSavingCriteria"
+          >
             <div class="space-y-3">
               <div
                 v-if="orderedCriteria.length === 0"
@@ -1366,16 +1037,16 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         variant="outline"
                         icon="i-lucide-arrow-up"
                         class="w-9 rounded-lg px-0"
-                        :aria-label="`Move ${getCriterionEdit(criterion).name || `criterion ${index + 1}`} up`"
+                        :aria-label="`Move ${criterion.name || `criterion ${index + 1}`} up`"
                         :disabled="index === 0"
-                        @click="moveCriterion(criterion.id, -1)"
+                        @click="moveCatalogRow(orderedCriteria, index, index - 1)"
                       />
 
                       <button
                         type="button"
                         data-criterion-sort-handle
                         class="group inline-flex h-11 w-11 cursor-grab items-center justify-center rounded-xl border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted active:cursor-grabbing dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
-                        :aria-label="`Drag to reorder ${getCriterionEdit(criterion).name || `criterion ${index + 1}`}`"
+                        :aria-label="`Drag to reorder ${criterion.name || `criterion ${index + 1}`}`"
                       >
                         <AppIcon
                           name="i-lucide-grip-vertical"
@@ -1388,9 +1059,9 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         variant="outline"
                         icon="i-lucide-arrow-down"
                         class="w-9 rounded-lg px-0"
-                        :aria-label="`Move ${getCriterionEdit(criterion).name || `criterion ${index + 1}`} down`"
+                        :aria-label="`Move ${criterion.name || `criterion ${index + 1}`} down`"
                         :disabled="index === orderedCriteria.length - 1"
-                        @click="moveCriterion(criterion.id, 1)"
+                        @click="moveCatalogRow(orderedCriteria, index, index + 1)"
                       />
                     </template>
 
@@ -1399,7 +1070,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         <label class="grid gap-1">
                           <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Criterion name</span>
                           <AppInput
-                            v-model="getCriterionEdit(criterion).name"
+                            v-model="criterion.name"
                             type="text"
                             placeholder="Impact"
                             required
@@ -1415,7 +1086,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         <label class="grid gap-1">
                           <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Weight</span>
                           <AppInput
-                            v-model.number="getCriterionEdit(criterion).weight"
+                            v-model.number="criterion.weight"
                             type="number"
                             min="0"
                             placeholder="10"
@@ -1434,7 +1105,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                       <label class="grid gap-1">
                         <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Description</span>
                         <AppTextarea
-                          v-model="getCriterionEdit(criterion).description"
+                          v-model="criterion.description"
                           rows="1"
                           class="min-h-10"
                           placeholder="Explain what judges should evaluate here."
@@ -1456,7 +1127,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         variant="outline"
                         icon="i-lucide-trash-2"
                         class="w-9 rounded-lg px-0"
-                        :aria-label="`Delete ${getCriterionEdit(criterion).name || `criterion ${index + 1}`}`"
+                        :aria-label="`Delete ${criterion.name || `criterion ${index + 1}`}`"
                         @click="removeCriterion(criterion.id)"
                       />
                     </template>
@@ -1515,7 +1186,10 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
             </div>
           </template>
 
-          <div class="grid grid-cols-1 gap-4">
+          <div
+            class="grid grid-cols-1 gap-4"
+            :inert="isSavingPrizes"
+          >
             <div class="space-y-3">
               <div
                 ref="prizeListElement"
@@ -1552,16 +1226,16 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         variant="outline"
                         icon="i-lucide-arrow-up"
                         class="w-9 rounded-lg px-0"
-                        :aria-label="`Move ${getPrizeEdit(prize).name || `prize ${index + 1}`} up`"
+                        :aria-label="`Move ${prize.name || `prize ${index + 1}`} up`"
                         :disabled="index === 0"
-                        @click="movePrize(prize.id, -1)"
+                        @click="moveCatalogRow(orderedPrizes, index, index - 1)"
                       />
 
                       <button
                         type="button"
                         data-prize-sort-handle
                         class="group inline-flex h-11 w-11 cursor-grab items-center justify-center rounded-xl border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted active:cursor-grabbing dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
-                        :aria-label="`Drag to reorder ${getPrizeEdit(prize).name || `prize ${index + 1}`}`"
+                        :aria-label="`Drag to reorder ${prize.name || `prize ${index + 1}`}`"
                       >
                         <AppIcon
                           name="i-lucide-grip-vertical"
@@ -1574,9 +1248,9 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         variant="outline"
                         icon="i-lucide-arrow-down"
                         class="w-9 rounded-lg px-0"
-                        :aria-label="`Move ${getPrizeEdit(prize).name || `prize ${index + 1}`} down`"
+                        :aria-label="`Move ${prize.name || `prize ${index + 1}`} down`"
                         :disabled="index === orderedPrizes.length - 1"
-                        @click="movePrize(prize.id, 1)"
+                        @click="moveCatalogRow(orderedPrizes, index, index + 1)"
                       />
                     </template>
 
@@ -1585,7 +1259,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         <label class="grid gap-1">
                           <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Prize name</span>
                           <AppInput
-                            v-model="getPrizeEdit(prize).name"
+                            v-model="prize.name"
                             type="text"
                             placeholder="Best overall"
                           />
@@ -1593,7 +1267,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         <label class="grid gap-1">
                           <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Reward value</span>
                           <AppInput
-                            v-model="getPrizeEdit(prize).rewardValue"
+                            v-model="prize.rewardValue"
                             type="text"
                             placeholder="5000"
                           />
@@ -1601,9 +1275,10 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         <label class="grid gap-1">
                           <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Currency</span>
                           <AppInput
-                            v-model="getPrizeEdit(prize).rewardCurrency"
+                            :model-value="prize.rewardCurrency ?? undefined"
                             type="text"
                             placeholder="USD"
+                            @update:model-value="value => prize.rewardCurrency = value ? String(value) : null"
                           />
                         </label>
                       </div>
@@ -1612,7 +1287,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         <label class="grid gap-1">
                           <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Reward type</span>
                           <AppSelect
-                            v-model="getPrizeEdit(prize).rewardType"
+                            v-model="prize.rewardType"
                           >
                             <option value="api_credits">
                               API credits
@@ -1631,7 +1306,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         <label class="grid gap-1">
                           <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Awarded to</span>
                           <AppSelect
-                            v-model="getPrizeEdit(prize).awardScope"
+                            v-model="prize.awardScope"
                           >
                             <option value="team">
                               Team
@@ -1644,7 +1319,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         <label class="grid gap-1">
                           <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Rank from</span>
                           <AppInput
-                            v-model.number="getPrizeEdit(prize).rankStart"
+                            v-model.number="prize.rankStart"
                             type="number"
                             min="1"
                             placeholder="1"
@@ -1653,7 +1328,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         <label class="grid gap-1">
                           <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Rank to</span>
                           <AppInput
-                            v-model.number="getPrizeEdit(prize).rankEnd"
+                            v-model.number="prize.rankEnd"
                             type="number"
                             min="1"
                             placeholder="1"
@@ -1664,7 +1339,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                       <label class="grid gap-1">
                         <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Description</span>
                         <AppTextarea
-                          v-model="getPrizeEdit(prize).description"
+                          v-model="prize.description"
                           rows="1"
                           class="min-h-10"
                           placeholder="Explain what the winner receives."
@@ -1678,7 +1353,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                         variant="outline"
                         icon="i-lucide-trash-2"
                         class="w-9 rounded-lg px-0"
-                        :aria-label="`Delete ${getPrizeEdit(prize).name || `prize ${index + 1}`}`"
+                        :aria-label="`Delete ${prize.name || `prize ${index + 1}`}`"
                         @click="removePrize(prize.id)"
                       />
                     </template>

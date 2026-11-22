@@ -1,4 +1,5 @@
 import type {
+  PlatformUserProfile,
   SessionActor,
   SessionActorResponse
 } from '~/domains/accounts/session-actor'
@@ -105,6 +106,16 @@ function createAccountBootstrap() {
   const { syncAuthorization } = useAuthorizationCache()
   watch(actor, nextActor => syncAuthorization(nextActor, capabilities.value), { flush: 'sync' })
 
+  async function saveProfile(profile: Record<string, string | null>) {
+    const { data: { user } } = await apiFetch<{ data: { user: PlatformUserProfile } }>('/api/account', {
+      method: 'PATCH',
+      body: profile
+    })
+    if (data.value?.kind === 'platform_user' && data.value.platformUser.id === user.id) {
+      data.value = { ...data.value, platformUser: user }
+    }
+  }
+
   async function ensureLoaded(signal?: AbortSignal): Promise<SessionActor> {
     if (signal) {
       throwIfAborted(signal)
@@ -127,7 +138,7 @@ function createAccountBootstrap() {
     return actor.value
   }
 
-  return { actor, capabilities, error, status, ensureLoaded, refresh, clear }
+  return { actor, capabilities, error, status, ensureLoaded, refresh, clear, saveProfile }
 }
 
 const accountBootstraps = new WeakMap<object, ReturnType<typeof createAccountBootstrap>>()

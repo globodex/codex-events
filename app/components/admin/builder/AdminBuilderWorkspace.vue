@@ -2,7 +2,6 @@
 import type { EventBuilderTemplate } from '#shared/domains/events/builder-templates'
 import type { TermsDocument, EventRecord, EventType } from '~/domains/events/records'
 import type { EventBuilderApi } from '~/composables/useEventBuilder'
-import type { EventImageVersions } from '~/domains/events/presentation'
 import { eventBuilderBasicsSchema, buildEventBuilderBasicsInput } from '~/domains/events/builder'
 import type { EventBuilderChecklistItem } from '~/domains/events/builder'
 import AdminBuilderAgendaTrack from '~/components/admin/builder/organisms/AdminBuilderAgendaTrack.vue'
@@ -29,7 +28,6 @@ const props = defineProps<{
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
   bannerImageUploadError?: string
-  imageVersion?: string | number | EventImageVersions | null
   currentApplicationTerms?: TermsDocument | null
   currentWinnerTerms?: TermsDocument | null
   savingTermsDocumentType?: TermsDocument['documentType'] | null
@@ -216,7 +214,6 @@ function onSubmit() {
             :background-image-upload-error="backgroundImageUploadError"
             :banner-image-upload-pending="bannerImageUploadPending"
             :banner-image-upload-error="bannerImageUploadError"
-            :image-version="imageVersion"
             :current-application-terms="currentApplicationTerms"
             :current-winner-terms="currentWinnerTerms"
             :saving-terms-document-type="savingTermsDocumentType"

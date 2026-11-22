@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { EventPhotoRecord } from '#shared/domains/events/photos'
+import type { PendingGalleryPhotoChange } from '~/domains/events/gallery'
 import type { AccountEventGalleryPage } from '#shared/domains/events/account-event-gallery-page'
 
 import AccountEventNextStepNotice from '~/components/account/events/molecules/AccountEventNextStepNotice.vue'
@@ -12,21 +13,16 @@ type AccountEventGalleryFilter = 'all' | 'highlighted' | 'not-highlighted' | 'pu
 
 const props = withDefaults(defineProps<{
   eventId: string
+  eventSlug: string
   canManage: boolean
   page: AccountEventGalleryPage | null
+  refreshPage: (eventSlug: string) => Promise<void>
   /** The page that shows the next-step card. Null when the event shows no next-step card. */
   nextStepHref: string | null
-  isLoading?: boolean
   loadErrorMessage?: string
 }>(), {
-  isLoading: false,
   loadErrorMessage: ''
 })
-
-const emit = defineEmits<{
-  /** A photo was added, removed or changed. The parent reads the gallery page again. */
-  updated: []
-}>()
 
 const apiFetch = useApiClient()
 const toast = useToast()
@@ -36,26 +32,11 @@ const canManage = computed(() => props.canManage)
 const canAddParticipantPhotos = computed(() => props.page?.canAddParticipantPhotos ?? false)
 const canUpload = computed(() => canManage.value || canAddParticipantPhotos.value)
 const mutationErrorMessage = ref('')
-const pendingDeletePhotoId = ref<string | null>(null)
-const pendingPublicVisibilityPhotoId = ref<string | null>(null)
-const pendingHighlightPhotoId = ref<string | null>(null)
-const pendingHiddenPhotoId = ref<string | null>(null)
-// One change of a photo runs at a time.
-const isPhotoChangePending = computed(() =>
-  pendingDeletePhotoId.value !== null
-  || pendingPublicVisibilityPhotoId.value !== null
-  || pendingHighlightPhotoId.value !== null
-  || pendingHiddenPhotoId.value !== null
-)
+const pendingPhotoChange = shallowRef<PendingGalleryPhotoChange | null>(null)
 const isUploading = ref(false)
 const uploadingItems = ref(createEventGalleryUploadItems([]))
-const photos = ref<EventPhotoRecord[]>([])
-const galleryFilter = shallowRef<AccountEventGalleryFilter>('highlighted')
-const hasResolvedInitialFilter = shallowRef(false)
-
-watch(() => props.page, (page) => {
-  photos.value = page?.photos ?? []
-}, { immediate: true })
+const photos = computed(() => props.page?.photos ?? [])
+const selectedFilter = shallowRef<AccountEventGalleryFilter | null>(null)
 
 // The gallery shows two lists. The filter and the highlights belong to the photos of the event
 // team. The photos that participants added are always listed in full, in their own section.
@@ -83,7 +64,7 @@ const galleryFilterOptions = computed<Array<{
     ]
   }
 
-  if (highlightedPhotoCount.value > 0 || galleryFilter.value === 'highlighted') {
+  if (highlightedPhotoCount.value > 0 || selectedFilter.value === 'highlighted') {
     return [
       { label: 'Highlights', value: 'highlighted', count: highlightedPhotoCount.value },
       { label: 'All photos', value: 'all', count: eventTeamPhotos.value.length }
@@ -93,6 +74,12 @@ const galleryFilterOptions = computed<Array<{
   return [
     { label: 'All photos', value: 'all', count: eventTeamPhotos.value.length }
   ]
+})
+// The first available filter is the default. Only an explicit choice overrides it.
+const galleryFilter = computed({
+  get: () => galleryFilterOptions.value.find(option => option.value === selectedFilter.value)?.value
+    ?? galleryFilterOptions.value[0]?.value ?? 'all',
+  set: (value: AccountEventGalleryFilter) => { selectedFilter.value = value }
 })
 const visiblePhotos = computed(() => {
   if (galleryFilter.value === 'highlighted') {
@@ -119,27 +106,8 @@ const emptyStateDescription = computed(() => canManage.value
   : 'Gallery photos will appear here once the event team adds them.'
 )
 
-watch([() => props.page, canManage, highlightedPhotoCount], () => {
-  if (!hasResolvedInitialFilter.value) {
-    galleryFilter.value = canManage.value
-      ? 'all'
-      : highlightedPhotoCount.value > 0 ? 'highlighted' : 'all'
-    hasResolvedInitialFilter.value = true
-    return
-  }
-
-  const validFilters = new Set(galleryFilterOptions.value.map(option => option.value))
-
-  if (!validFilters.has(galleryFilter.value)) {
-    galleryFilter.value = galleryFilterOptions.value[0]?.value ?? 'all'
-  }
-}, {
-  immediate: true
-})
-
 watch(eventId, () => {
-  hasResolvedInitialFilter.value = false
-  galleryFilter.value = canManage.value ? 'all' : 'highlighted'
+  selectedFilter.value = null
 })
 
 async function uploadPhotos(files: File[]) {
@@ -150,10 +118,10 @@ async function uploadPhotos(files: File[]) {
   mutationErrorMessage.value = ''
   uploadingItems.value = createEventGalleryUploadItems(files)
   isUploading.value = true
+  const eventSlug = props.eventSlug
   const targetEventId = eventId.value
   const uploadBatches = createEventGalleryUploadBatches(files)
   let uploadedCount = 0
-  let latestPhotos: EventPhotoRecord[] | null = null
 
   try {
     for (const batch of uploadBatches) {
@@ -163,13 +131,11 @@ async function uploadPhotos(files: File[]) {
         formData.append('file', file)
       }
 
-      const response = await apiFetch<{ data: EventPhotoRecord[] }>(`/api/events/${targetEventId}/photos`, {
+      await apiFetch(`/api/events/${targetEventId}/photos`, {
         method: 'POST',
         body: formData
       })
 
-      latestPhotos = response.data
-      photos.value = response.data
       uploadedCount += batch.length
       uploadingItems.value = createEventGalleryUploadItems(files.slice(uploadedCount))
     }
@@ -186,149 +152,77 @@ async function uploadPhotos(files: File[]) {
     mutationErrorMessage.value = uploadedCount > 0
       ? `${uploadedCount} ${uploadedCount === 1 ? 'photo was' : 'photos were'} added before the upload stopped. ${errorMessage}`
       : errorMessage
-
-    if (uploadedCount > 0 && latestPhotos) {
-      photos.value = latestPhotos
-    }
   } finally {
-    isUploading.value = false
-    uploadingItems.value = []
-
     // An upload that stopped halfway also added photos.
-    if (uploadedCount > 0) {
-      emit('updated')
-    }
+    if (uploadedCount > 0) await props.refreshPage(eventSlug)
+    uploadingItems.value = []
+    isUploading.value = false
   }
 }
 
-async function deletePhoto(photo: EventPhotoRecord) {
-  if (!canManage.value || isPhotoChangePending.value) {
-    return
-  }
+async function changePhoto(
+  photo: EventPhotoRecord,
+  action: PendingGalleryPhotoChange['action'],
+  request: () => Promise<unknown>,
+  success: { title: string, description: string }
+) {
+  if (!canManage.value || pendingPhotoChange.value) return
 
-  const confirmed = window.confirm(`Delete ${photo.fileName ?? 'this photo'} from the event gallery?`)
-
-  if (!confirmed) {
-    return
-  }
-
+  const eventSlug = props.eventSlug
+  pendingPhotoChange.value = { photoId: photo.id, action }
   mutationErrorMessage.value = ''
-  pendingDeletePhotoId.value = photo.id
-
   try {
-    await apiFetch(`/api/events/${eventId.value}/photos/${photo.id}`, {
-      method: 'DELETE'
-    })
-
-    photos.value = photos.value.filter(entry => entry.id !== photo.id)
-    emit('updated')
-    toast.add({
-      title: 'Photo removed',
-      description: 'The gallery was updated.',
-      color: 'success'
-    })
+    await request()
+    await props.refreshPage(eventSlug)
+    toast.add({ ...success, color: 'success' })
   } catch (error) {
     mutationErrorMessage.value = normalizeApiError(error).message
   } finally {
-    pendingDeletePhotoId.value = null
+    pendingPhotoChange.value = null
   }
 }
 
-async function togglePublicVisibility(payload: { photo: EventPhotoRecord, value: boolean }) {
-  if (!canManage.value || isPhotoChangePending.value) {
-    return
-  }
+function deletePhoto(photo: EventPhotoRecord) {
+  if (!window.confirm(`Delete ${photo.fileName ?? 'this photo'} from the event gallery?`)) return
 
-  mutationErrorMessage.value = ''
-  pendingPublicVisibilityPhotoId.value = payload.photo.id
+  return changePhoto(photo, 'delete', () =>
+    apiFetch(`/api/events/${eventId.value}/photos/${photo.id}`, { method: 'DELETE' }), {
+    title: 'Photo removed',
+    description: 'The gallery was updated.'
+  })
+}
 
-  try {
-    const response = await apiFetch<{ data: EventPhotoRecord }>(`/api/events/${eventId.value}/photos/${payload.photo.id}/public-visibility`, {
+function togglePublicVisibility({ photo, value }: { photo: EventPhotoRecord, value: boolean }) {
+  return changePhoto(photo, 'public-visibility', () =>
+    apiFetch(`/api/events/${eventId.value}/photos/${photo.id}/public-visibility`, {
       method: 'PATCH',
-      body: {
-        isPubliclyVisible: payload.value
-      }
-    })
-
-    photos.value = photos.value.map(entry => entry.id === payload.photo.id ? response.data : entry)
-    emit('updated')
-    toast.add({
-      title: payload.value ? 'Added to public gallery' : 'Removed from public gallery',
-      description: payload.value
-        ? 'The image now appears on the public event page.'
-        : 'The image is now visible only in the protected gallery.',
-      color: 'success'
-    })
-  } catch (error) {
-    mutationErrorMessage.value = normalizeApiError(error).message
-  } finally {
-    pendingPublicVisibilityPhotoId.value = null
-  }
+      body: { isPubliclyVisible: value }
+    }), {
+    title: value ? 'Added to public gallery' : 'Removed from public gallery',
+    description: value ? 'The image now appears on the public event page.' : 'The image is now visible only in the protected gallery.'
+  })
 }
 
-async function toggleHighlight(payload: { photo: EventPhotoRecord, value: boolean }) {
-  if (!canManage.value || isPhotoChangePending.value) {
-    return
-  }
-
-  mutationErrorMessage.value = ''
-  pendingHighlightPhotoId.value = payload.photo.id
-
-  try {
-    const response = await apiFetch<{ data: EventPhotoRecord }>(`/api/events/${eventId.value}/photos/${payload.photo.id}/highlight`, {
+function toggleHighlight({ photo, value }: { photo: EventPhotoRecord, value: boolean }) {
+  return changePhoto(photo, 'highlight', () =>
+    apiFetch(`/api/events/${eventId.value}/photos/${photo.id}/highlight`, {
       method: 'PATCH',
-      body: {
-        isHighlighted: payload.value
-      }
-    })
-
-    photos.value = photos.value.map(entry => entry.id === payload.photo.id ? response.data : entry)
-    emit('updated')
-    toast.add({
-      title: payload.value ? 'Photo highlighted' : 'Highlight removed',
-      description: payload.value
-        ? 'The image now appears in the highlighted gallery view.'
-        : 'The image remains available in all photos.',
-      color: 'success'
-    })
-  } catch (error) {
-    mutationErrorMessage.value = normalizeApiError(error).message
-  } finally {
-    pendingHighlightPhotoId.value = null
-  }
+      body: { isHighlighted: value }
+    }), {
+    title: value ? 'Photo highlighted' : 'Highlight removed',
+    description: value ? 'The image now appears in the highlighted gallery view.' : 'The image remains available in all photos.'
+  })
 }
 
-/** Hides a participant photo from participants and the public, or shows it again. */
-async function toggleHidden(payload: { photo: EventPhotoRecord, value: boolean }) {
-  if (!canManage.value || isPhotoChangePending.value) {
-    return
-  }
-
-  mutationErrorMessage.value = ''
-  pendingHiddenPhotoId.value = payload.photo.id
-
-  try {
-    const response = await apiFetch<{ data: EventPhotoRecord }>(`/api/events/${eventId.value}/photos/${payload.photo.id}/hidden`, {
+function toggleHidden({ photo, value }: { photo: EventPhotoRecord, value: boolean }) {
+  return changePhoto(photo, 'hidden', () =>
+    apiFetch(`/api/events/${eventId.value}/photos/${photo.id}/hidden`, {
       method: 'PATCH',
-      body: {
-        isHidden: payload.value
-      }
-    })
-
-    photos.value = photos.value.map(entry => entry.id === payload.photo.id ? response.data : entry)
-    emit('updated')
-    toast.add({
-      title: payload.value ? 'Photo hidden' : 'Photo shown again',
-      description: payload.value
-        ? 'Participants no longer see this photo.'
-        : 'Participants see this photo again.',
-      color: 'success'
-    })
-  } catch (error) {
-    mutationErrorMessage.value = normalizeApiError(error).message
-  } finally {
-    pendingHiddenPhotoId.value = null
-  }
+      body: { isHidden: value }
+    }), {
+    title: value ? 'Photo hidden' : 'Photo shown again',
+    description: value ? 'Participants no longer see this photo.' : 'Participants see this photo again.'
+  })
 }
 </script>
 
@@ -342,19 +236,14 @@ async function toggleHidden(payload: { photo: EventPhotoRecord, value: boolean }
     :filter-options="galleryFilterOptions"
     :can-manage="canManage"
     :can-add-participant-photos="canAddParticipantPhotos"
-    :can-toggle-public-visibility="canManage"
-    :can-toggle-highlight="canManage"
     :show-curation-badges="true"
     :show-uploader="true"
-    :is-loading="props.isLoading"
+    :is-loading="!props.page && !props.loadErrorMessage"
     :load-error-message="props.loadErrorMessage"
     :mutation-error-message="mutationErrorMessage"
     :is-uploading="isUploading"
     :uploading-items="uploadingItems"
-    :pending-delete-photo-id="pendingDeletePhotoId"
-    :pending-public-visibility-photo-id="pendingPublicVisibilityPhotoId"
-    :pending-highlight-photo-id="pendingHighlightPhotoId"
-    :pending-hidden-photo-id="pendingHiddenPhotoId"
+    :pending-change="pendingPhotoChange"
     add-button-label="Add photos"
     empty-state-title="No gallery photos yet"
     :empty-state-description="emptyStateDescription"

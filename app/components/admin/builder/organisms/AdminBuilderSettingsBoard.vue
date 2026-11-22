@@ -3,7 +3,6 @@ import type { StagedCredit } from '#shared/domains/credits/draft-credits'
 import { Switch as UiSwitch } from '~/components/ui/switch'
 import type { TermsDocument, EventRecord } from '~/domains/events/records'
 import type { EventFormState, EventFormTrack } from '~/domains/events/admin-event'
-import type { EventImageVersions } from '~/domains/events/presentation'
 import {
   formatParticipantsLimitInput,
   parseParticipantsLimitInput
@@ -43,7 +42,6 @@ const props = defineProps<{
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
   bannerImageUploadError?: string
-  imageVersion?: string | number | EventImageVersions | null
   currentApplicationTerms?: TermsDocument | null
   currentWinnerTerms?: TermsDocument | null
   savingTermsDocumentType?: TermsDocument['documentType'] | null
@@ -62,9 +60,6 @@ const emit = defineEmits<{
   updated: []
   save: []
 }>()
-
-const applicationTermsDraft = ref('')
-const winnerTermsDraft = ref('')
 
 interface ApplicationFieldRow {
   label: string
@@ -671,7 +666,7 @@ function groupById(id: string) {
           :background-image-upload-error="backgroundImageUploadError"
           :banner-image-upload-pending="bannerImageUploadPending"
           :banner-image-upload-error="bannerImageUploadError"
-          :image-version="imageVersion"
+          :images="event"
           @upload-background-image="file => emit('uploadBackgroundImage', file)"
           @remove-background-image="emit('removeBackgroundImage')"
           @upload-banner-image="file => emit('uploadBannerImage', file)"
@@ -685,13 +680,12 @@ function groupById(id: string) {
         :complete="groupById('terms')!.isComplete(form, event)"
       >
         <AccountEventAdminTermsCard
-          v-model:application-terms-draft="applicationTermsDraft"
-          v-model:winner-terms-draft="winnerTermsDraft"
+          :key="event?.id"
           :current-application-terms="currentApplicationTerms ?? null"
           :current-winner-terms="currentWinnerTerms ?? null"
           :saving-terms-document-type="savingTermsDocumentType ?? null"
           :show-winner-terms="form.eventType === 'hackathon'"
-          @save-terms="documentType => emit('saveTerms', documentType, documentType === 'application_terms' ? applicationTermsDraft : winnerTermsDraft)"
+          @save-terms="(type, content) => emit('saveTerms', type, content)"
         />
       </AdminBuilderSettingsGroupCard>
     </div>

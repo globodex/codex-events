@@ -1,5 +1,5 @@
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
-import { accountStaffPageRoute } from '#server/domains/accounts/account-staff-page'
+import { accountStaffPageRoute } from '#server/domains/accounts/account-event-dashboards'
 import { executeAccountPageRoute } from '#server/domains/accounts/account-page-contract'
 
 export const applicationOperation = defineStructuredRouteOperation({

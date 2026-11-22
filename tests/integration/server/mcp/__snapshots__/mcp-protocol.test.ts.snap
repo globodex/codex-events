@@ -12,6 +12,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
           "get.events.by-eventId.published-projects",
           "get.events.participation",
           "get.events.slug.by-slug",
+          "get.public.discovery",
           "get.public.events",
           "get.public.events.by-slug",
           "get.public.events.by-slug.published-projects",
@@ -33,6 +34,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
       },
       {
         "actions": [
+          "get.account.admin-workspace",
           "get.account.events",
           "get.account.events.by-slug.certificates",
           "get.account.events.by-slug.entry",
@@ -212,7 +214,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
         "toolName": "administration_upsert",
       },
     ],
-    "byteSize": 14199,
+    "byteSize": 14252,
     "toolNames": [
       "events_read",
       "events_upsert",
@@ -233,6 +235,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
           "get.events.by-eventId.published-projects",
           "get.events.participation",
           "get.events.slug.by-slug",
+          "get.public.discovery",
           "get.public.events",
           "get.public.events.by-slug",
           "get.public.events.by-slug.published-projects",
@@ -252,6 +255,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
       },
       {
         "actions": [
+          "get.account.admin-workspace",
           "get.account.events",
           "get.account.events.by-slug.certificates",
           "get.account.events.by-slug.entry",
@@ -423,7 +427,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
         "toolName": "administration_upsert",
       },
     ],
-    "byteSize": 13523,
+    "byteSize": 13576,
     "toolNames": [
       "events_read",
       "events_upsert",
@@ -444,6 +448,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
           "get.events.by-eventId.published-projects",
           "get.events.participation",
           "get.events.slug.by-slug",
+          "get.public.discovery",
           "get.public.events",
           "get.public.events.by-slug",
           "get.public.events.by-slug.published-projects",
@@ -452,6 +457,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
       },
       {
         "actions": [
+          "get.account.admin-workspace",
           "get.account.events",
           "get.account.events.by-slug.entry",
           "get.account.events.by-slug.feedback",
@@ -568,7 +574,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
         "toolName": "administration_upsert",
       },
     ],
-    "byteSize": 9708,
+    "byteSize": 9761,
     "toolNames": [
       "events_read",
       "participation_read",
@@ -589,6 +595,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
           "get.events.by-eventId.published-projects",
           "get.events.participation",
           "get.events.slug.by-slug",
+          "get.public.discovery",
           "get.public.events",
           "get.public.events.by-slug",
           "get.public.events.by-slug.published-projects",
@@ -604,6 +611,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
       },
       {
         "actions": [
+          "get.account.admin-workspace",
           "get.account.events",
           "get.account.events.by-slug.entry",
           "get.account.events.by-slug.gallery",
@@ -696,7 +704,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
         "toolName": "administration_upsert",
       },
     ],
-    "byteSize": 8858,
+    "byteSize": 8911,
     "toolNames": [
       "events_read",
       "events_upsert",
@@ -716,6 +724,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
           "get.events.by-eventId.published-projects",
           "get.events.participation",
           "get.events.slug.by-slug",
+          "get.public.discovery",
           "get.public.events",
           "get.public.events.by-slug",
           "get.public.events.by-slug.published-projects",
@@ -724,6 +733,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
       },
       {
         "actions": [
+          "get.account.admin-workspace",
           "get.account.events",
           "get.account.events.by-slug.entry",
           "get.account.events.by-slug.gallery",
@@ -816,7 +826,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
         "toolName": "administration_upsert",
       },
     ],
-    "byteSize": 7961,
+    "byteSize": 8014,
     "toolNames": [
       "events_read",
       "participation_read",
@@ -836,6 +846,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
           "get.events.by-eventId.published-projects",
           "get.events.participation",
           "get.events.slug.by-slug",
+          "get.public.discovery",
           "get.public.events",
           "get.public.events.by-slug",
           "get.public.events.by-slug.published-projects",
@@ -857,6 +868,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
       },
       {
         "actions": [
+          "get.account.admin-workspace",
           "get.account.events",
           "get.account.events.by-slug.certificates",
           "get.account.events.by-slug.entry",
@@ -1047,7 +1059,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
         "toolName": "administration_upsert",
       },
     ],
-    "byteSize": 14550,
+    "byteSize": 14603,
     "toolNames": [
       "events_read",
       "events_upsert",
@@ -1068,6 +1080,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
           "get.events.by-eventId.published-projects",
           "get.events.participation",
           "get.events.slug.by-slug",
+          "get.public.discovery",
           "get.public.events",
           "get.public.events.by-slug",
           "get.public.events.by-slug.published-projects",
@@ -1076,6 +1089,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
       },
       {
         "actions": [
+          "get.account.admin-workspace",
           "get.account.events",
           "get.account.events.by-slug.entry",
           "get.account.events.by-slug.feedback",
@@ -1179,7 +1193,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
         "toolName": "administration_upsert",
       },
     ],
-    "byteSize": 8486,
+    "byteSize": 8539,
     "toolNames": [
       "events_read",
       "participation_read",

@@ -33,6 +33,12 @@ When('the judge inbox request fails', async ({ page }) => {
   await route.fulfill({ status: 503, json: { message: 'Judge inbox unavailable' } })
 })
 
+When('I retry the judge inbox after it recovers', async ({ page }) => {
+  await page.unroute('**/api/account/judging')
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(page.getByText('Active assignments', { exact: true })).toBeVisible()
+})
+
 const directAssignmentReads = new WeakMap<Page, string[]>()
 
 When('I open the fixture blind assignment from its saved link', async ({ page }) => {

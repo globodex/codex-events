@@ -13,36 +13,25 @@ import { normalizeJudgeAssignmentDetail } from '~/domains/judging/workspace'
 import type { JudgeAssignmentApiDetail } from '~/domains/judging/workspace'
 
 const props = withDefaults(defineProps<{
-  eventId: string
-  slug: string
   selectedAssignmentId?: string | null
   page: AccountEventJudgingPage | null
   isLoading?: boolean
   loadErrorMessage?: string
-  refreshPage?: () => Promise<unknown> | unknown
   assignmentPage: AccountJudgeAssignmentWorkspacePage | null
-  assignmentPageIsLoading?: boolean
   assignmentPageErrorMessage?: string
-  refreshAssignmentPage?: () => Promise<unknown> | unknown
+  onSaved: (review: AccountJudgeAssignmentWorkspacePage, assignment: JudgeAssignmentApiDetail) => void
 }>(), {
   selectedAssignmentId: null,
   isLoading: false,
   loadErrorMessage: '',
-  refreshPage: undefined,
-  assignmentPageIsLoading: false,
-  assignmentPageErrorMessage: '',
-  refreshAssignmentPage: undefined
+  assignmentPageErrorMessage: ''
 })
-
-const emit = defineEmits<{
-  updated: []
-}>()
 
 const selectedAssignmentId = computed(() => props.selectedAssignmentId?.trim() ?? '')
 const currentEvent = computed(() => props.page?.event)
 const assignments = computed(() =>
   (props.page?.assignments ?? []).map(assignment =>
-    normalizeJudgeAssignmentDetail(assignment as unknown as JudgeAssignmentApiDetail)
+    normalizeJudgeAssignmentDetail(assignment as JudgeAssignmentApiDetail)
   )
 )
 const inReviewCount = computed(() =>
@@ -84,35 +73,28 @@ const nextAction = computed(() => {
 
   return null
 })
-
-async function refreshWorkspace() {
-  if (selectedAssignmentId.value) {
-    await props.refreshAssignmentPage?.()
-  } else {
-    await props.refreshPage?.()
-  }
-
-  emit('updated')
-}
 </script>
 
 <template>
   <div class="space-y-6">
     <LazyJudgeAssignmentWorkspacePanel
-      v-if="selectedAssignmentId"
+      v-if="selectedAssignmentId && assignmentPage?.assignment.id === selectedAssignmentId"
       :key="selectedAssignmentId"
-      :event-id="props.eventId"
-      :event-slug="props.slug"
-      :assignment-id="selectedAssignmentId"
       :next-review-href="nextQueuedReviewHref"
-      :page="props.assignmentPage"
-      :is-loading="props.assignmentPageIsLoading"
-      :load-error-message="props.assignmentPageErrorMessage"
-      @updated="refreshWorkspace"
+      :page="assignmentPage"
+      :on-saved="props.onSaved"
     />
 
     <AppAlert
-      v-else-if="props.loadErrorMessage"
+      v-else-if="selectedAssignmentId && assignmentPageErrorMessage"
+      color="warning"
+      variant="soft"
+      title="Judge review unavailable"
+      :description="assignmentPageErrorMessage"
+    />
+
+    <AppAlert
+      v-else-if="!selectedAssignmentId && props.loadErrorMessage"
       color="error"
       variant="soft"
       title="Judging workspace unavailable"
@@ -120,7 +102,7 @@ async function refreshWorkspace() {
     />
 
     <AppAlert
-      v-else-if="props.isLoading || !currentEvent"
+      v-else-if="selectedAssignmentId || props.isLoading || !currentEvent"
       color="neutral"
       variant="soft"
       title="Loading judging workspace"

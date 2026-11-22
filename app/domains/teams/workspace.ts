@@ -1,67 +1,18 @@
 import type { PublicEvent } from '~/domains/events/presentation'
 import type {
-  ApiDataResponse,
-  ApiListResponse
-} from '~/lib/api'
+  AccountEventTeamDetail as TeamDetailRecord,
+  AccountEventTeamJoinRequest as TeamJoinRequestRecord,
+  AccountEventTeamMember as TeamMemberRecord,
+  AccountEventTeamSummary as TeamSummaryRecord
+} from '#shared/domains/events/account-event-teams-page'
 
-import { normalizeApiError } from '~/lib/api'
-
-export type TeamWorkspaceApiDataResponse<T> = ApiDataResponse<T>
-export type TeamWorkspaceApiListResponse<T> = ApiListResponse<T>
-
-export interface TeamUserSummary {
-  id: string
-  displayName: string
-  email?: string | null
-  xProfileUrl?: string | null
-  linkedinProfileUrl?: string | null
-  githubProfileUrl?: string | null
-  chatgptEmail?: string | null
-  openaiOrgId?: string | null
-  lumaUsername?: string | null
-}
-
-export interface TeamSummaryRecord {
-  id: string
-  eventId: string
-  name: string
-  bio: string | null
-  slug: string
-  workspaceMode: 'solo' | 'team'
-  isOpenToJoinRequests: boolean
-  createdByUserId: string
-  createdAt: string
-  updatedAt: string
-  activeMemberCount?: number
-  isPersisted?: boolean
-}
-
-export interface TeamMemberRecord {
-  id: string
-  teamId: string
-  userId: string
-  role: 'member' | 'admin'
-  joinedAt: string
-  leftAt: string | null
-  createdAt: string
-  user?: TeamUserSummary
-}
-
-export interface TeamDetailRecord extends TeamSummaryRecord {
-  members: TeamMemberRecord[]
-}
-
-export interface TeamJoinRequestRecord {
-  id: string
-  teamId: string
-  userId: string
-  status: 'pending' | 'approved' | 'rejected' | 'canceled'
-  requestedAt: string
-  reviewedAt: string | null
-  reviewedByUserId: string | null
-  createdAt: string
-  user?: TeamUserSummary
-}
+export type {
+  AccountEventTeamDetail as TeamDetailRecord,
+  AccountEventTeamJoinRequest as TeamJoinRequestRecord,
+  AccountEventTeamMember as TeamMemberRecord,
+  AccountEventTeamSummary as TeamSummaryRecord,
+  AccountEventTeamUser as TeamUserSummary
+} from '#shared/domains/events/account-event-teams-page'
 
 export interface TeamActionAvailability {
   isAllowed: boolean
@@ -73,7 +24,6 @@ export interface TeamDirectoryEntry {
   detailHref: string | null
   isOwnTeam: boolean
   isFull?: boolean
-  hasPendingJoinRequest: boolean
   pendingJoinRequestId: string | null
   joinAvailability: TeamActionAvailability
 }
@@ -124,18 +74,6 @@ export function getParticipantTeamDirectoryStatusBadge(
     color: team.isOpenToJoinRequests ? 'success' : 'neutral',
     label: team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests'
   }
-}
-
-export function normalizeTeamWorkspaceApiError(error: unknown) {
-  return normalizeApiError(error)
-}
-
-export function getOwnTeamMembership(team: TeamDetailRecord | null | undefined, userId: string | null | undefined) {
-  if (!team || !userId) {
-    return null
-  }
-
-  return team.members.find(member => member.userId === userId && member.leftAt === null) ?? null
 }
 
 export function shouldShowParticipantLeaveTeamAction(

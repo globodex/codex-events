@@ -1,3 +1,8 @@
+export interface PendingGalleryPhotoChange {
+  photoId: string
+  action: 'delete' | 'public-visibility' | 'highlight' | 'hidden'
+}
+
 export interface EventGalleryUploadItem {
   id: string
   name: string

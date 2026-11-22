@@ -1,4 +1,5 @@
 export const accountPageNames = [
+  'admin-workspace',
   'overview',
   'judging',
   'staff-workspace',
@@ -12,6 +13,7 @@ export type AccountPageRoutePath<TPage extends AccountPageName = AccountPageName
     : `/api/account/${TPage}`
 
 export const accountPagePaths = {
+  'admin-workspace': '/api/account/admin-workspace',
   'overview': '/api/account/overview',
   'judging': '/api/account/judging',
   'staff-workspace': '/api/account/staff-workspace',

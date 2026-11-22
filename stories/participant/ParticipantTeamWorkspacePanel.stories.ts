@@ -40,30 +40,25 @@ const meta = {
     canManageTeam: true,
     joinAvailability: { isAllowed: false },
     leaveAvailability: allowed,
-    settings: {
-      name: team.name,
-      bio: team.bio ?? '',
-      isOpenToJoinRequests: team.isOpenToJoinRequests
-    },
-    onSubmitProfile: fn(),
     onCopyTeamLink: fn(),
     onLeaveTeam: fn()
   },
   render: args => ({
     components: { ParticipantTeamWorkspacePanel },
     setup() {
-      const settings = ref({ ...args.settings })
-      const setJoinPolicy = (enabled: boolean) => {
-        settings.value.isOpenToJoinRequests = enabled
+      const displayedTeam = ref({ ...args.team })
+      async function saveProfile(fields: { name: string, bio: string }) {
+        Object.assign(displayedTeam.value, fields)
+        return true
       }
-
-      return { args, settings, setJoinPolicy }
+      return { args, displayedTeam, saveProfile }
     },
     template: `
       <ParticipantTeamWorkspacePanel
         v-bind="args"
-        v-model:settings="settings"
-        @toggle-join-policy="setJoinPolicy"
+        :team="displayedTeam"
+        :save-profile="saveProfile"
+        @toggle-join-policy="displayedTeam.isOpenToJoinRequests = $event"
       />
     `
   })

@@ -9,6 +9,7 @@ import { useParticipantCheckIn } from '~/composables/useParticipantCheckIn'
 
 const props = withDefaults(defineProps<{
   eventId: string
+  eventSlug: string
   page: AccountEventParticipantsPage | null
   isLoading?: boolean
   // True while the server is still searching all registrations for the typed text.
@@ -16,7 +17,7 @@ const props = withDefaults(defineProps<{
   // True from "Load more" until the longer list has arrived.
   isLoadingMore?: boolean
   errorMessage?: string
-  refreshPage: () => Promise<unknown> | unknown
+  refreshPage: (eventSlug: string) => Promise<unknown>
 }>(), {
   isLoading: false,
   isSearching: false,
@@ -31,26 +32,10 @@ const emit = defineEmits<{
 // Text of the participant search box. The page owns it, because it is part of the page request.
 const search = defineModel<string>('search', { required: true })
 
-const applications = ref<AdminApplicationRecord[]>([])
+const applications = computed(() => (props.page?.applications ?? []) as AdminApplicationRecord[])
 const pendingActionKey = ref<string | null>(null)
 const event = computed(() => props.page?.event ?? null)
-
-watch(() => props.page, (page) => {
-  applications.value = (page?.applications ?? []) as AdminApplicationRecord[]
-}, { immediate: true })
-
-// Shows the check-in in the list at once. The list is then read again for its counts.
-const checkInParticipant = useParticipantCheckIn({
-  pendingActionKey,
-  onCheckedIn: (checkedInApplication) => {
-    applications.value = applications.value.map(application =>
-      application.id === checkedInApplication.id
-        ? { ...application, ...checkedInApplication }
-        : application
-    )
-  },
-  refreshList: () => props.refreshPage()
-})
+const checkInParticipant = useParticipantCheckIn(pendingActionKey, props.refreshPage)
 </script>
 
 <template>
@@ -72,7 +57,7 @@ const checkInParticipant = useParticipantCheckIn({
     :status-counts="props.page?.statusCounts"
     :checked-in-count="props.page?.checkedInCount"
     :pagination="props.page?.pagination"
-    @check-in="checkInParticipant"
+    @check-in="application => checkInParticipant(application, props.eventSlug)"
     @load-more="emit('loadMore')"
   />
 </template>

@@ -93,6 +93,7 @@ const eventDetailRows = computed(() => {
   return rows
 })
 
+const now = useEventDeadlineClock(() => [props.event.registrationOpensAt, props.event.registrationClosesAt])
 const registrationStart = computed(() => getEventDateTimePresentation(props.event.registrationOpensAt))
 const registrationEnd = computed(() => getEventDateTimePresentation(props.event.registrationClosesAt))
 
@@ -101,9 +102,9 @@ const timelineEntries = computed(() => [
     id: 'registration',
     eyebrow: 'Registration Window',
     title: null,
-    status: describeEventWindowStatus(props.event.registrationOpensAt, props.event.registrationClosesAt),
-    note: describeEventWindowNote(props.event.registrationOpensAt, props.event.registrationClosesAt),
-    progress: getEventWindowProgress(props.event.registrationOpensAt, props.event.registrationClosesAt),
+    status: describeEventWindowStatus(props.event.registrationOpensAt, props.event.registrationClosesAt, now.value),
+    note: describeEventWindowNote(props.event.registrationOpensAt, props.event.registrationClosesAt, now.value),
+    progress: getEventWindowProgress(props.event.registrationOpensAt, props.event.registrationClosesAt, now.value),
     accent: 'bg-green-500',
     start: registrationStart.value,
     end: registrationEnd.value

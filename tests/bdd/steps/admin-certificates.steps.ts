@@ -82,3 +82,9 @@ Then('I should see the certificates row for participant {string} with certificat
 Then('the certificates row for participant {string} should not link to their certificate', async ({ page }, userId: string) => {
   await expect(page.getByTestId(`certificates-view-${userId}`)).toHaveCount(0)
 })
+
+When('I leave and reopen the Certificates tab', async ({ page }) => {
+  await page.getByRole('tab', { name: 'Overview' }).click()
+  await expect(page.getByRole('tabpanel', { name: 'Overview' })).toBeVisible()
+  await page.getByRole('tab', { name: 'Certificates' }).click()
+})

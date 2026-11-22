@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test'
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
+import { holdBrowserGet } from '../support/hold-browser-get.ts'
 import { parsePersonaKey } from '../support/personas.ts'
 import { signInAs } from '../support/session-state.ts'
 
@@ -89,4 +90,21 @@ Then('the builder should still let participants add photos after a reload', asyn
   )
 
   await expect(participantPhotosCheckbox(page)).toBeChecked()
+})
+
+When('I open the gallery while its photos are loading', async ({ page }) => {
+  const read = await holdBrowserGet(page, '**/api/account/events/participant-photos-fixture-event/gallery*')
+  await page.getByTestId('account-event-next-step').getByRole('link', { name: 'Gallery' }).click()
+  const request = await read.first
+  const gallery = page.getByRole('tabpanel', { name: 'Gallery' })
+  await expect(gallery.getByRole('heading', { name: 'Gallery', exact: true })).toBeVisible()
+  await expect(gallery.getByText('0 photos', { exact: true })).toHaveCount(0)
+  await request.fulfill({ status: 503, json: { message: 'Photos unavailable' } })
+})
+
+Then('a failed gallery request should show an error without an empty photo count', async ({ page }) => {
+  const gallery = page.getByRole('tabpanel', { name: 'Gallery' })
+  await expect(gallery.getByText('Unable to load the gallery')).toBeVisible()
+  await expect(gallery.getByText('0 photos', { exact: true })).toHaveCount(0)
+  await expect(gallery.getByText('No gallery photos yet')).toHaveCount(0)
 })

@@ -36,13 +36,15 @@ export const teamJoinRequestParamsSchema = routeIdParamsSchema.extend({
   requestId: z.string().trim().min(1)
 })
 
+const queryBoolean = z.union([z.boolean(), z.stringbool({ truthy: ['true'], falsy: ['false'] })])
+
 export const listTeamsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   page_size: z.coerce.number().int().min(1).max(100).default(20),
   slug: z.string().trim().min(1).optional(),
   search: z.string().trim().min(1).optional(),
-  open_to_join: z.coerce.boolean().optional(),
-  has_capacity: z.coerce.boolean().optional(),
+  open_to_join: queryBoolean.optional(),
+  has_capacity: queryBoolean.optional(),
   workspace_mode: z.enum(teamWorkspaceModes).optional(),
   member_count: z.enum(['multi_person', 'full']).optional()
 })
@@ -242,27 +244,6 @@ export function serializeTeamJoinRequest(
         }
       : {})
   }
-}
-
-export async function getUsersByIds(database: AppDatabase, userIds: string[]) {
-  const uniqueUserIds = [...new Set(userIds)]
-
-  if (uniqueUserIds.length === 0) {
-    return new Map<string, UserRecord>()
-  }
-
-  const relatedUsers = (await Promise.all(
-    uniqueUserIds.map(userId =>
-      database.query.users.findFirst({
-        where: and(
-          eq(users.id, userId),
-          isNull(users.deletedAt)
-        )
-      })
-    )
-  )).filter((user): user is UserRecord => Boolean(user))
-
-  return new Map(relatedUsers.map(user => [user.id, user]))
 }
 
 export async function getTeamOrThrow(database: AppDatabase, eventId: string, teamId: string) {
@@ -500,6 +481,29 @@ export async function listVisibleTeams(
   }
 }
 
+async function listTeamMembersWithUsers(database: AppDatabase, teamId: string, includeSensitiveUserFields: boolean) {
+  const rows = await database
+    .select({ member: teamMembers, user: users })
+    .from(teamMembers)
+    .leftJoin(users, and(eq(users.id, teamMembers.userId), isNull(users.deletedAt)))
+    .where(and(eq(teamMembers.teamId, teamId), isNull(teamMembers.leftAt)))
+    .orderBy(asc(teamMembers.createdAt))
+
+  return rows.map(({ member, user }) => serializeTeamMember(member, user, { includeSensitiveUserFields }))
+}
+
+export async function findDirectoryTeamBySlug(database: AppDatabase, eventId: string, slug: string, includeInactiveTeams: boolean) {
+  const team = await database.query.teams.findFirst({
+    where: and(eq(teams.eventId, eventId), eq(teams.slug, slug))
+  })
+  if (!team) return null
+
+  const members = await listTeamMembersWithUsers(database, team.id, false)
+  if (!includeInactiveTeams && members.length === 0) return null
+
+  return { ...team, members }
+}
+
 export async function getTeamWithMembersOrThrow(
   database: AppDatabase,
   eventId: string,
@@ -510,9 +514,9 @@ export async function getTeamWithMembersOrThrow(
   }
 ) {
   const team = await getTeamOrThrow(database, eventId, teamId)
-  const members = await getActiveTeamMembers(database, team.id)
+  const members = await listTeamMembersWithUsers(database, team.id, options?.includeSensitiveUserFields ?? true)
 
-  if (!options?.allowInactiveTeam && isTeamDissolved(members)) {
+  if (!options?.allowInactiveTeam && members.length === 0) {
     throw new ApiError({
       statusCode: 404,
       code: 'team_not_found',
@@ -524,16 +528,7 @@ export async function getTeamWithMembersOrThrow(
     })
   }
 
-  const usersById = await getUsersByIds(database, members.map(member => member.userId))
-
-  return {
-    team,
-    members: members.map(member => serializeTeamMember(
-      member,
-      usersById.get(member.userId) ?? null,
-      options
-    ))
-  }
+  return { team, members }
 }
 
 export function assertTeamOpenToJoinRequests(team: TeamRecord) {
@@ -593,6 +588,18 @@ export async function getPendingJoinRequestForUser(
       eq(teamJoinRequests.status, 'pending')
     )
   })
+}
+
+export function listPendingJoinRequestsForUser(database: AppDatabase, eventId: string, userId: string) {
+  return database
+    .select({ id: teamJoinRequests.id, teamId: teamJoinRequests.teamId })
+    .from(teamJoinRequests)
+    .innerJoin(teams, eq(teams.id, teamJoinRequests.teamId))
+    .where(and(
+      eq(teams.eventId, eventId),
+      eq(teamJoinRequests.userId, userId),
+      eq(teamJoinRequests.status, 'pending')
+    ))
 }
 
 export async function getJoinRequestOrThrow(

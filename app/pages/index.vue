@@ -1,19 +1,16 @@
 <script setup lang="ts">
 import { defineRouteRules } from '#app/composables/pages'
 
-import type { PublicApiListResponse, PublicEvent } from '~/domains/events/presentation'
+import type { DiscoveryTab, PublicDiscoveryPage } from '#shared/domains/events/public-discovery'
 import {
   publicEventCacheControl,
   publicEventCdnCacheControl
 } from '#shared/http/public-cache-topology'
 
 import EventCard from '~/components/public/events/EventCard.vue'
-import {
-  getPublicHomepageEventView,
-  getPublicHomepageTabForEvent,
-  type PublicHomepageTab
-} from '~/domains/events/public-homepage'
 import { normalizeTabQueryValue } from '~/lib/query-values'
+
+definePageMeta({ key: route => normalizeTabQueryValue(route.query.tab) ?? 'default' })
 
 defineRouteRules({
   cache: {
@@ -26,133 +23,52 @@ if (import.meta.server) {
   useResponseHeader('cloudflare-cdn-cache-control').value = publicEventCdnCacheControl
 }
 
-const publicEventsPageSize = 4
 const route = useRoute()
-const currentPage = ref(1)
-const events = ref<PublicEvent[]>([])
-const total = ref(0)
-const isLoadingMore = ref(false)
-const loadMoreError = ref<string>()
-const homepageTabs = ['active', 'past'] as const
-const requestedTab = computed<PublicHomepageTab | null>(() => {
-  const normalizedTab = normalizeTabQueryValue(route.query.tab)
+const router = useRouter()
+const tabParam = normalizeTabQueryValue(route.query.tab)
+const requestedTab = tabParam === 'active' || tabParam === 'past' ? tabParam : undefined
 
-  return normalizedTab && homepageTabs.includes(normalizedTab as PublicHomepageTab)
-    ? normalizedTab as PublicHomepageTab
-    : null
-})
-
-async function selectHomepageTab(nextTab: PublicHomepageTab) {
-  if (selectedTab.value === nextTab) {
-    return
-  }
-
-  await navigateTo({
-    path: route.path,
-    query: {
-      ...route.query,
-      tab: nextTab
-    },
-    hash: route.hash
-  })
+function fetchDiscovery(page: number, tab?: DiscoveryTab, signal?: AbortSignal) {
+  return $fetch<{ data: PublicDiscoveryPage }>('/api/public/discovery', { query: { page, tab }, signal })
+    .then(response => response.data)
 }
 
-const [
-  { data: initialResponse, error: listError },
-  { data: pastCountResponse, error: countError }
-] = await Promise.all([
-  useFetch<PublicApiListResponse<PublicEvent>>('/api/public/events', {
-    key: 'public-events-homepage:page-1',
-    query: {
-      page: 1,
-      page_size: publicEventsPageSize
-    }
-  }),
-  useFetch<PublicApiListResponse<PublicEvent>>('/api/public/events', {
-    key: 'public-events-homepage:past-count',
-    query: {
-      page: 1,
-      page_size: 1,
-      state: 'completed'
-    }
-  })
-])
-
-events.value = initialResponse.value?.data ?? []
-total.value = initialResponse.value?.meta?.total ?? events.value.length
-const pastTotal = computed(() => pastCountResponse.value?.meta?.total ?? 0)
-const error = computed(() => listError.value ?? countError.value)
-
-const hasMoreEvents = computed(() => events.value.length < total.value)
-const loadedEventCount = computed(() => events.value.length)
-const homepageEventView = computed(() =>
-  getPublicHomepageEventView(
-    requestedTab.value,
-    total.value,
-    pastTotal.value,
-    loadedEventCount.value
-  )
+const { data: discovery, error, refresh } = await useAsyncData(
+  `public-discovery:${requestedTab ?? 'default'}`,
+  (_nuxtApp, { signal }) => fetchDiscovery(1, requestedTab, signal)
 )
-const selectedTab = computed<PublicHomepageTab>(() => homepageEventView.value.effectiveTab)
-const filteredEvents = computed(() =>
-  events.value.filter(event => getPublicHomepageTabForEvent(event) === homepageEventView.value.effectiveTab)
-)
-const currentFilterTotal = computed(() => {
-  if (homepageEventView.value.effectiveTab === 'past') {
-    return pastTotal.value
-  }
-
-  return homepageEventView.value.activeEventCount
-})
-const homepageFilters = computed(() => [
-  { value: 'active', label: 'Active', count: homepageEventView.value.activeEventCount },
-  { value: 'past', label: 'Past', count: pastTotal.value }
-] as const)
-const canLoadMoreForCurrentFilter = computed(() => {
-  if (!hasMoreEvents.value) {
-    return false
-  }
-
-  return filteredEvents.value.length < currentFilterTotal.value
-})
-const visibleEventCount = computed(() => filteredEvents.value.length)
-const loadMoreSummary = computed(() => {
-  return `Showing ${visibleEventCount.value} out of ${currentFilterTotal.value} ${homepageEventView.value.effectiveTab} events.`
-})
+const totalEvents = computed(() => discovery.value ? discovery.value.counts.active + discovery.value.counts.past : 0)
+const tabTotal = computed(() => discovery.value?.counts[discovery.value.tab] ?? 0)
+const tabs = ['active', 'past'] as const
+const isLoadingMore = ref(false)
+const loadMoreError = ref('')
+const requests = useAbortableRequest()
 
 async function loadMoreEvents() {
-  if (isLoadingMore.value || !hasMoreEvents.value) {
-    return
-  }
+  const current = discovery.value
+  if (!current?.nextPage || isLoadingMore.value) return
 
+  const signal = requests.createSignal('load-more')
+  loadMoreError.value = ''
   isLoadingMore.value = true
-  loadMoreError.value = undefined
-
   try {
-    const nextPage = currentPage.value + 1
-    const response = await $fetch<PublicApiListResponse<PublicEvent>>('/api/public/events', {
-      query: {
-        page: nextPage,
-        page_size: publicEventsPageSize
-      }
-    })
+    const next = await fetchDiscovery(current.nextPage, current.tab, signal)
+    if (signal.aborted) return
 
-    const nextEvents = response.data.filter(candidate =>
-      !events.value.some(existing => existing.slug === candidate.slug)
-    )
-
-    events.value = [...events.value, ...nextEvents]
-    total.value = response.meta?.total ?? total.value
-    currentPage.value = nextPage
+    const previousSlugs = new Set(current.events.map(event => event.slug))
+    discovery.value = {
+      ...next,
+      events: [...current.events, ...next.events.filter(event => !previousSlugs.has(event.slug))]
+    }
   } catch {
-    loadMoreError.value = 'More public events could not be loaded right now.'
+    if (!signal.aborted) loadMoreError.value = 'More public events could not be loaded right now.'
   } finally {
     isLoadingMore.value = false
   }
 }
 
 useSeoMeta({
-  title: 'Find a Event | Codex Events',
+  title: 'Find an Event | Codex Events',
   description: 'Browse current and past Codex community events and find the ones you want to join.'
 })
 </script>
@@ -178,30 +94,30 @@ useSeoMeta({
       variant="subtle"
       icon="i-lucide-triangle-alert"
       title="Events are temporarily unavailable"
-      description="We couldn't load the latest events. Please refresh the page or try again in a moment."
+      :retry="refresh"
       class="!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 text-foreground dark:text-[#ECECEC]"
     />
 
-    <template v-else>
+    <template v-else-if="discovery">
       <div
-        v-if="homepageEventView.showFilters"
+        v-if="totalEvents !== 1"
         class="!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 flex flex-col gap-4 rounded-xl p-2"
       >
         <div class="flex min-w-0 flex-wrap items-center gap-2">
           <AppFilterButton
-            v-for="filter in homepageFilters"
-            :key="filter.value"
-            :pressed="selectedTab === filter.value"
-            :count="filter.count"
-            @click="void selectHomepageTab(filter.value)"
+            v-for="tab in tabs"
+            :key="tab"
+            :pressed="discovery.tab === tab"
+            :count="discovery.counts[tab]"
+            :to="router.resolve({ path: route.path, query: { ...route.query, tab }, hash: route.hash }).fullPath"
           >
-            {{ filter.label }}
+            {{ tab === 'active' ? 'Active' : 'Past' }}
           </AppFilterButton>
         </div>
       </div>
 
       <div
-        v-if="events.length === 0"
+        v-if="totalEvents === 0"
         class="!border !border-dashed !border-black/10 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 rounded-xl p-10 text-center"
       >
         <p class="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:text-[#8C8C8C]">
@@ -213,14 +129,14 @@ useSeoMeta({
       </div>
 
       <div
-        v-else-if="filteredEvents.length === 0"
+        v-else-if="tabTotal === 0"
         class="!border !border-dashed !border-black/10 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 rounded-xl p-10 text-center"
       >
         <p class="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:text-[#8C8C8C]">
           No programs in this view
         </p>
         <p class="mt-3 text-lg font-semibold text-highlighted dark:text-white">
-          There are no {{ homepageEventView.effectiveTab }} events in the currently loaded results.
+          There are no {{ discovery.tab }} events.
         </p>
       </div>
 
@@ -229,20 +145,21 @@ useSeoMeta({
         class="relative space-y-16 pt-6"
       >
         <div
-          v-if="homepageEventView.showTimelineRail"
+          v-if="tabTotal > 1"
           class="absolute bottom-0 left-0 top-0 hidden w-1 bg-black/16 dark:bg-white/[0.2] lg:block"
         />
         <EventCard
-          v-for="event in filteredEvents"
+          v-for="(event, index) in discovery.events"
           :key="event.slug"
           :event="event"
-          :show-timeline-rail="homepageEventView.showTimelineRail"
+          :show-timeline-rail="tabTotal > 1"
+          :loading="index === 0 ? 'eager' : 'lazy'"
         />
       </div>
     </template>
 
     <div
-      v-if="!error && canLoadMoreForCurrentFilter"
+      v-if="discovery?.nextPage"
       class="flex flex-col items-center gap-4 pt-2"
     >
       <AppButton
@@ -257,7 +174,7 @@ useSeoMeta({
       </AppButton>
 
       <p class="text-sm text-neutral-500 dark:text-[#8C8C8C]">
-        {{ loadMoreSummary }}
+        Showing {{ discovery.events.length }} out of {{ tabTotal }} {{ discovery.tab }} events.
       </p>
     </div>
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PublicEvent } from '~/domains/events/presentation'
 import type { AccountEventWorkspacePage } from '#shared/domains/events/account-event-workspace-page'
-import type { SubmissionTrackOption } from '~/domains/submissions/team-submission'
+import type { SubmissionTrackOption, TeamSubmissionFormInput } from '~/domains/submissions/team-submission'
 import type { TeamActionAvailability } from '~/domains/teams/workspace'
 
 import {
@@ -10,7 +10,6 @@ import {
   LazyTeamsParticipantTeamWorkspacePanel as LazyParticipantTeamWorkspacePanel
 } from '#components'
 import { Switch as UiSwitch } from '~/components/ui/switch'
-import { cloneFormValues } from '~/utils/form-values'
 import { teamProfileFormSchema } from '~/domains/teams/team-forms'
 import { getEventParticipationOutcomeNotice } from '~/domains/events/participation'
 import {
@@ -18,8 +17,7 @@ import {
   getLeaveTeamAvailability,
   getMemberRemovalAvailability,
   getTeamFormationAvailability,
-  getUpdateJoinPolicyAvailability,
-  shouldShowParticipantLeaveTeamAction
+  getUpdateJoinPolicyAvailability
 } from '~/domains/teams/workspace'
 import {
   getCreateSubmissionAvailability,
@@ -27,8 +25,7 @@ import {
   getSubmitSubmissionAvailability,
   getUpdateSubmissionPublicVisibilityAvailability,
   getUpdateSubmissionAvailability,
-  getWithdrawSubmissionAvailability,
-  shouldShowParticipantSubmissionWorkspace
+  getWithdrawSubmissionAvailability
 } from '~/domains/submissions/team-submission'
 import {
   buildAbsoluteAccountEventTeamsTabHref,
@@ -41,35 +38,19 @@ const props = defineProps<{
     tracks?: SubmissionTrackOption[]
   }
   page: AccountEventWorkspacePage | null
-  isLoading?: boolean
   loadErrorMessage?: string
+  refreshAfterSubmission: (eventSlug: string) => Promise<void>
+  refreshTeams: (eventSlug: string) => Promise<void>
   selectedTrackId?: string | null
 }>()
 
 const toast = useToast()
-const workspace = useTeamFormationWorkspace(
-  computed(() => props.event),
-  {
-    initialState: computed(() => props.page)
-  }
-)
-
-const teamSettings = reactive({
-  name: '',
-  bio: '',
-  isOpenToJoinRequests: false
-})
+const { actor, status: actorStatus, error: actorError } = useAccountBootstrap()
+const { run, pendingActionKey, mutationError } = useTeamActions(() => props.event, props.refreshTeams)
 const createTeamForm = reactive({
   name: '',
   bio: '',
   isOpenToJoinRequests: true
-})
-const submissionForm = reactive({
-  projectName: '',
-  summary: '',
-  repositoryUrl: '',
-  demoUrl: '',
-  trackId: null as string | null
 })
 const createTeamErrors = reactive({
   name: '',
@@ -77,12 +58,9 @@ const createTeamErrors = reactive({
 })
 const createTeamSubmitCount = ref(0)
 
-const { actor } = workspace
-const ownApplicationStatus = computed(() => workspace.ownApplication.value?.status ?? null)
-const displayedTeam = computed(() => workspace.currentTeam.value ?? workspace.ownTeam.value)
-const displayedTeamMembership = computed(() =>
-  workspace.currentTeamMembership.value ?? workspace.ownTeamMembership.value
-)
+const ownApplicationStatus = computed(() => props.page?.application?.status ?? null)
+const displayedTeam = computed(() => props.page?.ownTeam ?? null)
+const displayedTeamMembership = computed(() => props.page?.ownMembership ?? null)
 const workspaceOutcomeNotice = computed(() =>
   getEventParticipationOutcomeNotice({
     event: {
@@ -101,7 +79,7 @@ const workspaceOutcomeNotice = computed(() =>
     outcome: props.page?.outcome ?? null
   })
 )
-const canManageTeam = computed(() => workspace.isCurrentTeamAdmin.value)
+const canManageTeam = computed(() => props.page?.workflow.canManageTeam === true)
 const defaultSoloTeamName = computed(() => {
   if (actor.value?.kind !== 'platform_user') {
     return 'Team Solo'
@@ -117,44 +95,25 @@ const defaultSoloTeamName = computed(() => {
   return `Team ${preferredName}`.trim()
 })
 
-watch(() => displayedTeam.value, (team) => {
-  teamSettings.name = team?.name ?? ''
-  teamSettings.bio = team?.bio ?? ''
-  teamSettings.isOpenToJoinRequests = team?.isOpenToJoinRequests ?? false
-}, {
-  immediate: true
-})
-
 const teamFormationAvailability = computed(() =>
-  getTeamFormationAvailability(props.event, ownApplicationStatus.value, Boolean(workspace.ownTeam.value))
+  getTeamFormationAvailability(props.event, ownApplicationStatus.value, Boolean(displayedTeam.value))
 )
 const createTeamAvailability = computed(() =>
-  getCreateTeamAvailability(props.event, ownApplicationStatus.value, Boolean(workspace.ownTeam.value))
+  getCreateTeamAvailability(props.event, ownApplicationStatus.value, Boolean(displayedTeam.value))
 )
 const joinPolicyAvailability = computed(() =>
   getUpdateJoinPolicyAvailability(props.event, canManageTeam.value)
 )
-const joinAvailability = computed<TeamActionAvailability>(() => ({
-  isAllowed: false,
-  reason: 'Join actions are available from the Teams tab.'
-}))
 const teamsTabHref = computed(() => buildAccountEventTeamsTabHref(props.event.slug))
-const showSubmissionSection = computed(() => Boolean(displayedTeam.value))
-const showClosedSubmissionCountdown = computed(() =>
-  showSubmissionSection.value && props.event.state === 'registration_open'
-)
-const submissionOpensAt = computed(() => props.event.submissionOpensAt!)
-const canViewSubmission = computed(() =>
-  shouldShowParticipantSubmissionWorkspace(props.event, Boolean(displayedTeam.value))
-)
-const submissionWorkspace = useTeamSubmissionWorkspace({
-  visibleEventId: workspace.visibleEventId,
-  team: displayedTeam,
-  canViewSubmission,
-  submission: computed(() => props.page?.submission ?? null)
-})
+const submission = computed(() => props.page?.submission ?? null)
+const submissionPath = computed(() => `teams/${displayedTeam.value!.id}/submission`)
+const {
+  run: runSubmission,
+  pendingActionKey: pendingSubmissionAction,
+  mutationError: submissionError
+} = useTeamActions(() => props.event, props.refreshAfterSubmission)
 const hasActiveTeamSubmission = computed(() => {
-  const status = submissionWorkspace.currentSubmission.value?.status
+  const status = submission.value?.status
   return status === 'draft' || status === 'submitted'
 })
 const selectedTrackPrefillId = computed(() => {
@@ -189,63 +148,33 @@ const removalAvailabilityByUserId = computed<Record<string, TeamActionAvailabili
     ])
   )
 })
-const showMembershipActions = computed(() =>
-  shouldShowParticipantLeaveTeamAction(props.event, displayedTeamMembership.value)
-)
-
-watch([
-  () => submissionWorkspace.currentSubmission.value,
-  selectedTrackPrefillId
-], ([submission, prefillTrackId]) => {
-  submissionForm.projectName = submission?.projectName ?? ''
-  submissionForm.summary = submission?.summary ?? ''
-  submissionForm.repositoryUrl = submission?.repositoryUrl ?? ''
-  submissionForm.demoUrl = submission?.demoUrl ?? ''
-  submissionForm.trackId = submission?.trackId ?? prefillTrackId
-}, {
-  immediate: true
-})
-
 const createSubmissionAvailability = computed(() =>
-  getCreateSubmissionAvailability(props.event, submissionWorkspace.currentSubmission.value, canManageTeam.value)
+  getCreateSubmissionAvailability(props.event, submission.value, canManageTeam.value)
 )
 const updateSubmissionAvailability = computed(() =>
-  getUpdateSubmissionAvailability(props.event, submissionWorkspace.currentSubmission.value, canManageTeam.value)
+  getUpdateSubmissionAvailability(props.event, submission.value, canManageTeam.value)
 )
 const submitSubmissionAvailability = computed(() =>
-  getSubmitSubmissionAvailability(props.event, submissionWorkspace.currentSubmission.value, canManageTeam.value)
+  getSubmitSubmissionAvailability(props.event, submission.value, canManageTeam.value)
 )
 const withdrawSubmissionAvailability = computed(() =>
-  getWithdrawSubmissionAvailability(props.event, submissionWorkspace.currentSubmission.value, canManageTeam.value)
+  getWithdrawSubmissionAvailability(props.event, submission.value, canManageTeam.value)
 )
 const publicVisibilityAvailability = computed(() =>
   getUpdateSubmissionPublicVisibilityAvailability(
     props.event,
-    submissionWorkspace.currentSubmission.value,
+    submission.value,
     canManageTeam.value,
     Boolean(props.page?.outcome?.isWinner)
   )
 )
 const showPublicVisibilityToggle = computed(() =>
-  Boolean(submissionWorkspace.currentSubmission.value) && publicVisibilityAvailability.value.isAllowed
+  Boolean(submission.value) && publicVisibilityAvailability.value.isAllowed
 )
-const submissionUnavailableDescription = computed(() => {
-  return 'The current submission surface could not be resolved right now.'
-})
 const isWorkspaceLoading = computed(() =>
-  props.isLoading || !props.page
-  || workspace.actorStatus.value === 'idle' || workspace.actorStatus.value === 'pending'
+  !props.page
+  || actorStatus.value === 'idle' || actorStatus.value === 'pending'
 )
-
-function buildSubmissionInput() {
-  return {
-    projectName: submissionForm.projectName.trim(),
-    summary: submissionForm.summary.trim(),
-    repositoryUrl: submissionForm.repositoryUrl.trim(),
-    demoUrl: submissionForm.demoUrl.trim(),
-    trackId: submissionForm.trackId?.trim() || null
-  }
-}
 
 function resetCreateTeamErrors() {
   createTeamErrors.name = ''
@@ -255,7 +184,7 @@ function resetCreateTeamErrors() {
 function validateCreateTeamForm() {
   resetCreateTeamErrors()
 
-  const result = teamProfileFormSchema.safeParse(cloneFormValues(createTeamForm))
+  const result = teamProfileFormSchema.safeParse(createTeamForm)
 
   if (result.success) {
     return true
@@ -268,11 +197,13 @@ function validateCreateTeamForm() {
 }
 
 async function participateAsSolo() {
-  const createdTeam = await workspace.createTeam({
-    name: defaultSoloTeamName.value,
-    bio: '',
-    isOpenToJoinRequests: false,
-    workspaceMode: 'solo'
+  const createdTeam = await run('create-team', 'teams', {
+    body: {
+      name: defaultSoloTeamName.value,
+      bio: '',
+      isOpenToJoinRequests: false,
+      workspaceMode: 'solo'
+    }
   })
 
   if (!createdTeam) {
@@ -293,11 +224,13 @@ async function submitCreateTeamForm() {
     return
   }
 
-  const createdTeam = await workspace.createTeam({
-    name: createTeamForm.name,
-    bio: createTeamForm.bio,
-    isOpenToJoinRequests: createTeamForm.isOpenToJoinRequests,
-    workspaceMode: 'team'
+  const createdTeam = await run('create-team', 'teams', {
+    body: {
+      name: createTeamForm.name,
+      bio: createTeamForm.bio,
+      isOpenToJoinRequests: createTeamForm.isOpenToJoinRequests,
+      workspaceMode: 'team'
+    }
   })
 
   if (!createdTeam) {
@@ -348,34 +281,39 @@ async function copyCurrentTeamLink() {
   }
 }
 
-async function submitTeamProfile() {
-  const updatedTeam = await workspace.updateCurrentTeamProfile({
-    name: teamSettings.name,
-    bio: teamSettings.bio
+async function submitTeamProfile(fields: { name: string, bio: string }) {
+  const team = displayedTeam.value
+  if (!team) return false
+  const updatedTeam = await run(`update-team:${team.id}`, `teams/${team.id}`, {
+    method: 'PATCH',
+    body: fields
   })
 
-  if (!updatedTeam) {
-    return
-  }
+  if (!updatedTeam) return false
 
   toast.add({
     title: 'Team profile updated',
     description: 'The team profile was updated.',
     color: 'success'
   })
+  return true
 }
 
 async function toggleJoinPolicy(nextValue: boolean) {
-  const updatedTeam = await workspace.updateCurrentTeamJoinPolicy(nextValue)
+  const team = displayedTeam.value
+  if (!team) return
+  const updatedTeam = await run(`update-team-join-policy:${team.id}`, `teams/${team.id}/join-policy`, {
+    method: 'PATCH',
+    body: { isOpenToJoinRequests: nextValue }
+  })
 
   if (!updatedTeam) {
     return
   }
 
-  teamSettings.isOpenToJoinRequests = updatedTeam.isOpenToJoinRequests
   toast.add({
     title: 'Join policy updated',
-    description: updatedTeam.isOpenToJoinRequests
+    description: nextValue
       ? 'This team now accepts new join requests.'
       : 'This team is now closed to new join requests.',
     color: 'success'
@@ -383,7 +321,9 @@ async function toggleJoinPolicy(nextValue: boolean) {
 }
 
 async function leaveCurrentTeam() {
-  const result = await workspace.leaveCurrentTeam()
+  const team = displayedTeam.value
+  if (!team) return
+  const result = await run(`leave-team:${team.id}`, `teams/${team.id}/actions/leave`)
 
   if (!result) {
     return
@@ -411,7 +351,9 @@ async function makeMemberAdmin(userId: string) {
     return
   }
 
-  const result = await workspace.promoteCurrentTeamMember(userId)
+  const team = displayedTeam.value
+  if (!team) return
+  const result = await run(`make-team-admin:${team.id}:${userId}`, `teams/${team.id}/members/${userId}/actions/make-admin`)
 
   if (!result) {
     return
@@ -434,7 +376,9 @@ async function removeMember(userId: string) {
     return
   }
 
-  const result = await workspace.removeCurrentTeamMember(userId)
+  const team = displayedTeam.value
+  if (!team) return
+  const result = await run(`remove-team-member:${team.id}:${userId}`, `teams/${team.id}/members/${userId}/actions/remove`)
 
   if (!result) {
     return
@@ -448,13 +392,13 @@ async function removeMember(userId: string) {
 }
 
 async function approveJoinRequest(requestId: string) {
-  const request = await workspace.approveJoinRequest(requestId)
+  const request = await run(`approve-join-request:${requestId}`, `team-join-requests/${requestId}/actions/approve`)
 
   if (!request) {
-    if (workspace.mutationError.value) {
+    if (mutationError.value) {
       toast.add({
         title: 'Unable to approve join request',
-        description: workspace.mutationError.value,
+        description: mutationError.value,
         color: 'error'
       })
     }
@@ -469,7 +413,7 @@ async function approveJoinRequest(requestId: string) {
 }
 
 async function rejectJoinRequest(requestId: string) {
-  const request = await workspace.rejectJoinRequest(requestId)
+  const request = await run(`reject-join-request:${requestId}`, `team-join-requests/${requestId}/actions/reject`)
 
   if (!request) {
     return
@@ -482,76 +426,30 @@ async function rejectJoinRequest(requestId: string) {
   })
 }
 
-async function createSubmissionDraft() {
-  const submission = await submissionWorkspace.createSubmissionDraft(buildSubmissionInput())
-
-  if (!submission) {
-    return
-  }
-
-  toast.add({
-    title: 'Submission draft created',
-    description: 'Your draft submission is now saved.',
-    color: 'success'
+async function saveSubmissionDraft(fields: TeamSubmissionFormInput) {
+  const isNew = !submission.value
+  const saved = await runSubmission(isNew ? 'create' : 'save', submissionPath.value, {
+    method: isNew ? 'POST' : 'PATCH',
+    body: fields
   })
+  if (saved) toast.add({ title: isNew ? 'Submission draft created' : 'Submission updated', color: 'success' })
 }
 
-async function saveSubmissionChanges() {
-  const submission = await submissionWorkspace.updateCurrentSubmission(buildSubmissionInput())
-
-  if (!submission) {
-    return
-  }
-
-  toast.add({
-    title: 'Submission updated',
-    description: 'Your draft submission was updated.',
-    color: 'success'
-  })
-}
-
-async function submitProject() {
-  const submission = await submissionWorkspace.submitCurrentSubmission()
-
-  if (!submission) {
-    return
-  }
-
-  toast.add({
-    title: 'Project submitted',
-    description: 'Your submission is now ready for review.',
-    color: 'success'
-  })
+async function submitProject(fields: TeamSubmissionFormInput) {
+  const saved = await runSubmission('submit', `${submissionPath.value}/actions/submit`, { body: fields })
+  if (saved) toast.add({ title: 'Project submitted', color: 'success' })
 }
 
 async function withdrawSubmission() {
-  const submission = await submissionWorkspace.withdrawCurrentSubmission()
-
-  if (!submission) {
-    return
-  }
-
-  toast.add({
-    title: 'Submission withdrawn',
-    description: 'The project submission was withdrawn.',
-    color: 'success'
-  })
+  const saved = await runSubmission('withdraw', `${submissionPath.value}/actions/withdraw`)
+  if (saved) toast.add({ title: 'Submission withdrawn', color: 'success' })
 }
 
-async function toggleSubmissionPublicVisibility(nextValue: boolean) {
-  const submission = await submissionWorkspace.updateCurrentSubmissionPublicVisibility(nextValue)
-
-  if (!submission) {
-    return
-  }
-
-  toast.add({
-    title: 'Project visibility updated',
-    description: submission.isPubliclyVisible
-      ? 'This project now appears in the public published projects section.'
-      : 'This project is now hidden from the public published projects section.',
-    color: 'success'
+async function toggleSubmissionPublicVisibility(isPubliclyVisible: boolean) {
+  const saved = await runSubmission('visibility', `${submissionPath.value}/public-visibility`, {
+    method: 'PATCH', body: { isPubliclyVisible }
   })
+  if (saved) toast.add({ title: 'Project visibility updated', color: 'success' })
 }
 </script>
 
@@ -561,11 +459,11 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
     class="space-y-6"
   >
     <AppAlert
-      v-if="workspace.actorError.value || props.loadErrorMessage"
+      v-if="actorError || props.loadErrorMessage"
       color="error"
       variant="soft"
       title="Workspace unavailable"
-      :description="workspace.actorError.value?.message || props.loadErrorMessage"
+      :description="actorError?.message || props.loadErrorMessage"
     />
 
     <AppAlert
@@ -578,11 +476,11 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
 
     <template v-else-if="actor?.kind === 'platform_user'">
       <AppAlert
-        v-if="workspace.mutationError.value"
+        v-if="mutationError"
         color="error"
         variant="soft"
         title="Team action failed"
-        :description="workspace.mutationError.value"
+        :description="mutationError"
       />
 
       <AppAlert
@@ -601,22 +499,19 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
 
       <template v-if="displayedTeam">
         <LazyParticipantTeamWorkspacePanel
-          v-model:settings="teamSettings"
           :team="displayedTeam"
           :event-state="props.event.state"
           :max-team-members="props.event.maxTeamMembers"
           :membership="displayedTeamMembership"
           :can-manage-team="canManageTeam"
           :is-team-locked="props.event.state !== 'registration_open' && props.event.state !== 'submission_open'"
-          :join-availability="joinAvailability"
           :join-policy-availability="joinPolicyAvailability"
           :leave-availability="leaveAvailability"
-          :pending-action-key="workspace.pendingActionKey.value"
+          :pending-action-key="pendingActionKey"
           :removal-availability-by-user-id="removalAvailabilityByUserId"
-          :join-requests="workspace.teamJoinRequests.value"
-          :show-membership-actions="showMembershipActions"
+          :join-requests="props.page?.joinRequests"
+          :save-profile="submitTeamProfile"
           @copy-team-link="copyCurrentTeamLink"
-          @submit-profile="submitTeamProfile"
           @toggle-join-policy="toggleJoinPolicy"
           @leave-team="leaveCurrentTeam"
           @make-admin="makeMemberAdmin"
@@ -654,8 +549,8 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
                   color="neutral"
                   variant="solid"
                   class="bg-black text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-                  :loading="workspace.pendingActionKey.value === 'create-team'"
-                  :disabled="!createTeamAvailability.isAllowed || workspace.pendingActionKey.value === 'create-team'"
+                  :loading="pendingActionKey === 'create-team'"
+                  :disabled="!createTeamAvailability.isAllowed || pendingActionKey === 'create-team'"
                   @click="participateAsSolo"
                 >
                   Participate as solo
@@ -726,7 +621,7 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
                   name="participant-create-team-name"
                   size="xl"
                   :class="createTeamSubmitCount > 0 && createTeamErrors.name ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
-                  :disabled="workspace.pendingActionKey.value === 'create-team'"
+                  :disabled="pendingActionKey === 'create-team'"
                 />
                 <p
                   v-if="createTeamSubmitCount > 0 && createTeamErrors.name"
@@ -746,7 +641,7 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
                   name="participant-create-team-bio"
                   rows="4"
                   :class="createTeamSubmitCount > 0 && createTeamErrors.bio ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-                  :disabled="workspace.pendingActionKey.value === 'create-team'"
+                  :disabled="pendingActionKey === 'create-team'"
                 />
                 <p
                   v-if="createTeamSubmitCount > 0 && createTeamErrors.bio"
@@ -760,7 +655,7 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
                 <UiSwitch
                   id="participant-create-team-open-initial"
                   v-model="createTeamForm.isOpenToJoinRequests"
-                  :disabled="workspace.pendingActionKey.value === 'create-team'"
+                  :disabled="pendingActionKey === 'create-team'"
                 />
                 <label
                   for="participant-create-team-open-initial"
@@ -774,8 +669,8 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
                 <AppButton
                   type="submit"
                   color="primary"
-                  :loading="workspace.pendingActionKey.value === 'create-team'"
-                  :disabled="!createTeamAvailability.isAllowed || workspace.pendingActionKey.value === 'create-team'"
+                  :loading="pendingActionKey === 'create-team'"
+                  :disabled="!createTeamAvailability.isAllowed || pendingActionKey === 'create-team'"
                 >
                   Create team
                 </AppButton>
@@ -786,15 +681,15 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
       </section>
 
       <section
-        v-if="showSubmissionSection"
+        v-if="displayedTeam"
         data-testid="account-event-submission-panel"
         class="space-y-6"
       >
         <AppCountdownCard
-          v-if="showClosedSubmissionCountdown"
+          v-if="props.event.state === 'registration_open'"
           title="Submission window not open yet"
           description="You can prepare your team during registration. Submission details open once the event enters the submission phase."
-          :target-at="submissionOpensAt"
+          :target-at="props.event.submissionOpensAt!"
           target-label="Submission opens at"
           countdown-label="Submission opens in"
           waiting-title="Scheduled opening time reached"
@@ -806,19 +701,17 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
         />
 
         <LazyParticipantTeamSubmissionPanel
-          v-else-if="canViewSubmission && displayedTeam"
-          v-model:form="submissionForm"
-          :team-id="displayedTeam.id"
-          :event-state="props.event.state"
+          v-else-if="props.page?.workflow.canViewSubmission"
+          :key="displayedTeam.id"
+          :initial-track-id="selectedTrackPrefillId"
           :tracks="props.event.tracks ?? []"
           :submission-requirements="{
             requireSubmissionSummary: props.event.requireSubmissionSummary,
             requireSubmissionRepositoryUrl: props.event.requireSubmissionRepositoryUrl,
             requireSubmissionDemoUrl: props.event.requireSubmissionDemoUrl
           }"
-          :submission="submissionWorkspace.currentSubmission.value"
-          status="success"
-          :mutation-error="submissionWorkspace.mutationError.value"
+          :submission="submission"
+          :mutation-error="submissionError"
           :can-manage-submission="canManageTeam"
           :create-availability="createSubmissionAvailability"
           :update-availability="updateSubmissionAvailability"
@@ -826,30 +719,12 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
           :withdraw-availability="withdrawSubmissionAvailability"
           :public-visibility-availability="publicVisibilityAvailability"
           :show-public-visibility-toggle="showPublicVisibilityToggle"
-          :pending-action-key="submissionWorkspace.pendingActionKey.value"
-          @create-draft="createSubmissionDraft"
-          @save-changes="saveSubmissionChanges"
+          :pending-action="pendingSubmissionAction"
+          @save-draft="saveSubmissionDraft"
           @submit-project="submitProject"
           @withdraw-submission="withdrawSubmission"
           @toggle-public-visibility="toggleSubmissionPublicVisibility"
         />
-
-        <AppCard
-          v-else
-          class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
-        >
-          <template #header>
-            <div class="space-y-1">
-              <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                Project submission
-              </h2>
-            </div>
-          </template>
-
-          <div class="p-5 pt-0 text-sm text-toned">
-            {{ submissionUnavailableDescription }}
-          </div>
-        </AppCard>
       </section>
     </template>
 

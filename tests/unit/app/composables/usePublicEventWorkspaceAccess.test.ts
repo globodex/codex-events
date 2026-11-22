@@ -15,7 +15,7 @@ describe('usePublicEventWorkspaceAccess', () => {
     const actor = ref<{ kind: string, hasAcceptedCurrentPlatformDocuments: boolean } | null>(null)
     useAccountBootstrap.mockReturnValue({ actor, status: sessionStatus })
     const accessStatus = ref('idle')
-    const accessResult = ref<boolean>()
+    const accessResult = ref<string[]>()
     const useApiData = vi.fn().mockReturnValue({ data: accessResult, status: accessStatus })
     vi.stubGlobal('computed', computed)
     vi.stubGlobal('toValue', toValue)
@@ -25,8 +25,8 @@ describe('usePublicEventWorkspaceAccess', () => {
     const needed = ref(false)
     const access = usePublicEventWorkspaceAccess('e2e-fixture-event', needed)
     const [, handler, options] = useApiData.mock.calls[0] as [
-      () => string,
-      (context: { apiFetch: typeof vi.fn, signal: AbortSignal }) => Promise<boolean>,
+      string,
+      (context: { apiFetch: typeof vi.fn, signal: AbortSignal }) => Promise<string[]>,
       { server: boolean, enabled: () => boolean }
     ]
 

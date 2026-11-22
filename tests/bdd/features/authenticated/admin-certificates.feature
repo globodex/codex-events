@@ -10,6 +10,8 @@ Feature: Admin certificate attendance management
     When I revoke the certificates participant "user_judge" certificate
     Then I should see the certificates row for participant "user_judge" with certificate status "Certificate revoked"
     And the certificates row for participant "user_judge" should not link to their certificate
+    When I leave and reopen the Certificates tab
+    Then I should see the certificates row for participant "user_judge" with certificate status "Certificate revoked"
     When I restore the certificates participant "user_judge" certificate
     Then the certificates row for participant "user_judge" should link to their certificate
     When I mark the certificates participant "user_judge" as "joined"

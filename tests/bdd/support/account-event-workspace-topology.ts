@@ -42,8 +42,8 @@ export const accountEventPageKeys: Record<string, readonly string[]> = {
     'rank', 'workflow'
   ],
   teams: [
-    'event', 'application', 'ownTeam', 'ownMembership', 'selectedTeam', 'joinRequests',
-    'visibleTeams', 'visibleTeamsMeta'
+    'event', 'applicationStatus', 'ownTeamId', 'selectedTeam',
+    'pendingJoinRequests', 'visibleTeams', 'visibleTeamsMeta'
   ],
   rosters: ['publishedJudges', 'publishedStaff', 'roleAssignments', 'canManageRoles'],
   program: ['program', 'challenges'],

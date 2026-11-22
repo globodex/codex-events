@@ -21,41 +21,28 @@ import {
 } from '~/domains/teams/workspace'
 import { Switch as UiSwitch } from '~/components/ui/switch'
 import { teamProfileFormSchema } from '~/domains/teams/team-forms'
-import { cloneFormValues } from '~/utils/form-values'
-
-const settings = defineModel<{
-  name: string
-  bio: string
-  isOpenToJoinRequests: boolean
-}>('settings', {
-  required: true
-})
 
 const props = defineProps<{
   team: TeamDetailRecord
+  saveProfile?: (fields: { name: string, bio: string }) => Promise<boolean>
   eventState: PublicEventState
   maxTeamMembers: number
   membership?: TeamMemberRecord | null
   canManageTeam?: boolean
   isTeamLocked?: boolean
-  joinAvailability: TeamActionAvailability
+  joinAvailability?: TeamActionAvailability
   joinPolicyAvailability?: TeamActionAvailability
-  leaveAvailability: TeamActionAvailability
+  leaveAvailability?: TeamActionAvailability
   pendingJoinRequestId?: string | null
   pendingActionKey?: string | null
   removalAvailabilityByUserId?: Record<string, TeamActionAvailability>
   joinRequests?: TeamJoinRequestRecord[]
-  showMembershipActions?: boolean
 }>()
 
 const emit = defineEmits<{
-  submitProfile: []
   toggleJoinPolicy: [value: boolean]
   requestJoin: [teamId: string]
-  cancelJoinRequest: [payload: {
-    teamId: string
-    requestId: string | null
-  }]
+  cancelJoinRequest: [requestId: string]
   leaveTeam: []
   copyTeamLink: []
   makeAdmin: [userId: string]
@@ -107,40 +94,31 @@ function getUserProfileLinks(user?: TeamUserSummary | null) {
   return links
 }
 
+const profile = reactive({ name: '', bio: '' })
 const errors = reactive({
   name: '',
   bio: ''
 })
-const submitCount = ref(0)
 const isEditingProfile = ref(false)
 
-const isPersisted = computed(() => props.team.isPersisted !== false)
-const showMembershipActions = computed(() => props.showMembershipActions ?? true)
 const showHeaderLeaveAction = computed(() =>
-  shouldShowParticipantLeaveTeamAction(
-    {
-      state: props.eventState
-    },
-    props.membership
-  ) && showMembershipActions.value
+  props.leaveAvailability && shouldShowParticipantLeaveTeamAction({ state: props.eventState }, props.membership)
 )
 const showHeaderMembershipAction = computed(() =>
-  showMembershipActions.value
-  && !props.membership
-  && (Boolean(props.pendingJoinRequestId) || showRequestJoinAction.value)
+  props.joinAvailability && !props.membership && (props.pendingJoinRequestId || showRequestJoinAction.value)
 )
 const hasPendingJoinRequests = computed(() =>
   (props.joinRequests ?? []).some(request => request.status === 'pending')
 )
 const showJoinRequestsPanel = computed(() =>
-  Boolean(props.canManageTeam) && (settings.value.isOpenToJoinRequests || hasPendingJoinRequests.value)
+  Boolean(props.canManageTeam) && (props.team.isOpenToJoinRequests || hasPendingJoinRequests.value)
 )
 const isSoloWorkspace = computed(() => props.team.workspaceMode === 'solo')
 const joinPolicySwitchId = computed(() => `team-join-policy-${props.team.id}`)
 const activeMemberCount = computed(() => getActiveTeamMemberCount(props.team))
 const isDissolvedTeam = computed(() => isTeamDissolved(props.team))
 const showRequestJoinAction = computed(() =>
-  Boolean(props.pendingJoinRequestId) || props.team.isOpenToJoinRequests
+  !isSoloWorkspace.value && props.team.isOpenToJoinRequests && !isJoinCapacityReached.value
 )
 const canManageTeamSettings = computed(() =>
   Boolean(props.canManageTeam) && (props.joinPolicyAvailability?.isAllowed ?? true)
@@ -153,7 +131,7 @@ const showParticipantTeamStatusBadge = computed(() =>
 )
 const showJoinPolicyToggle = computed(() => !isSoloWorkspace.value && canManageTeamSettings.value)
 const joinPolicyStatusText = computed(() =>
-  settings.value.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests'
+  props.team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests'
 )
 const isJoinCapacityReached = computed(() =>
   !props.membership && hasTeamReachedMemberLimit(props.maxTeamMembers, activeMemberCount.value)
@@ -176,12 +154,12 @@ const showSoloWorkspaceHint = computed(() =>
   isSoloWorkspace.value && Boolean(props.membership)
 )
 const disabledJoinActionReason = computed(() =>
-  !props.pendingJoinRequestId && showRequestJoinAction.value && !props.joinAvailability.isAllowed
-    ? formatJoinAvailabilityReason(props.team, props.joinAvailability) ?? props.joinAvailability.reason ?? 'Join requests are not available right now.'
+  props.joinAvailability && !props.joinAvailability.isAllowed
+    ? formatJoinAvailabilityReason(props.team, props.joinAvailability) ?? 'Join requests are not available right now.'
     : ''
 )
 const disabledLeaveActionReason = computed(() =>
-  props.membership && !props.leaveAvailability.isAllowed
+  props.leaveAvailability && !props.leaveAvailability.isAllowed
     ? props.leaveAvailability.reason ?? 'Leaving the team is not available right now.'
     : ''
 )
@@ -191,53 +169,28 @@ const joinActionButtonClass = computed(() =>
     : 'rounded-lg bg-emerald-800 text-white shadow-sm ring-1 ring-emerald-950/20 hover:bg-emerald-900 dark:bg-emerald-300 dark:text-black dark:ring-emerald-100/15 dark:hover:bg-emerald-200 dark:hover:text-black'
 )
 
-function validateTeamProfile() {
-  errors.name = ''
-  errors.bio = ''
-
-  const result = teamProfileFormSchema.safeParse(cloneFormValues(settings.value))
-
-  if (result.success) {
-    return true
-  }
-
-  const fieldErrors = result.error.flatten().fieldErrors
-  errors.name = fieldErrors.name?.[0] ?? ''
-  errors.bio = fieldErrors.bio?.[0] ?? ''
-  return false
-}
-
-function submitProfileForm() {
-  submitCount.value += 1
-
-  if (!validateTeamProfile()) {
+async function submitProfileForm() {
+  const result = teamProfileFormSchema.safeParse(profile)
+  if (!result.success) {
+    const fields = result.error.flatten().fieldErrors
+    errors.name = fields.name?.[0] ?? ''
+    errors.bio = fields.bio?.[0] ?? ''
     return
   }
 
-  isEditingProfile.value = false
-  emit('submitProfile')
+  if (await props.saveProfile?.(result.data)) isEditingProfile.value = false
 }
 
 function startEditingProfile() {
-  settings.value.name = props.team.name
-  settings.value.bio = props.team.bio ?? ''
+  profile.name = props.team.name
+  profile.bio = props.team.bio ?? ''
   errors.name = ''
   errors.bio = ''
-  submitCount.value = 0
   isEditingProfile.value = true
 }
 
-function cancelEditingProfile() {
-  settings.value.name = props.team.name
-  settings.value.bio = props.team.bio ?? ''
-  errors.name = ''
-  errors.bio = ''
-  submitCount.value = 0
-  isEditingProfile.value = false
-}
-
 function handleJoinActionClick() {
-  if (!props.joinAvailability.isAllowed) {
+  if (!props.joinAvailability?.isAllowed) {
     toast.add({
       title: 'Join request unavailable',
       description: disabledJoinActionReason.value || 'Join requests are not available right now.',
@@ -289,14 +242,14 @@ function handleJoinActionClick() {
                     </label>
                     <AppInput
                       :id="`team-name-inline-${team.id}`"
-                      v-model="settings.name"
+                      v-model="profile.name"
                       size="xl"
                       class="w-full"
-                      :class="submitCount > 0 && errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
-                      :disabled="isPersisted && isActionPending(`update-team:${team.id}`)"
+                      :class="errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
+                      :disabled="isActionPending(`update-team:${team.id}`)"
                     />
                     <p
-                      v-if="submitCount > 0 && errors.name"
+                      v-if="errors.name"
                       class="text-xs text-error"
                     >
                       {{ errors.name }}
@@ -307,8 +260,8 @@ function handleJoinActionClick() {
                     type="submit"
                     color="primary"
                     class="shrink-0"
-                    :loading="isPersisted && isActionPending(`update-team:${team.id}`)"
-                    :disabled="isPersisted && isActionPending(`update-team:${team.id}`)"
+                    :loading="isActionPending(`update-team:${team.id}`)"
+                    :disabled="isActionPending(`update-team:${team.id}`)"
                     data-testid="participant-team-update-profile"
                   >
                     Save
@@ -319,8 +272,8 @@ function handleJoinActionClick() {
                     color="neutral"
                     variant="outline"
                     class="shrink-0"
-                    :disabled="isPersisted && isActionPending(`update-team:${team.id}`)"
-                    @click="cancelEditingProfile"
+                    :disabled="isActionPending(`update-team:${team.id}`)"
+                    @click="isEditingProfile = false"
                   >
                     Cancel
                   </AppButton>
@@ -335,14 +288,14 @@ function handleJoinActionClick() {
                   </label>
                   <AppTextarea
                     :id="`team-bio-inline-${team.id}`"
-                    v-model="settings.bio"
+                    v-model="profile.bio"
                     rows="4"
                     placeholder="Share a short introduction about your team, what you are building, or how you work together."
-                    :class="submitCount > 0 && errors.bio ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-                    :disabled="isPersisted && isActionPending(`update-team:${team.id}`)"
+                    :class="errors.bio ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
+                    :disabled="isActionPending(`update-team:${team.id}`)"
                   />
                   <p
-                    v-if="submitCount > 0 && errors.bio"
+                    v-if="errors.bio"
                     class="text-xs text-error"
                   >
                     {{ errors.bio }}
@@ -383,8 +336,8 @@ function handleJoinActionClick() {
                   >
                     <UiSwitch
                       :id="joinPolicySwitchId"
-                      :model-value="settings.isOpenToJoinRequests"
-                      :disabled="isPersisted && isActionPending(`update-team-join-policy:${team.id}`)"
+                      :model-value="props.team.isOpenToJoinRequests"
+                      :disabled="isActionPending(`update-team-join-policy:${team.id}`)"
                       @update:model-value="emit('toggleJoinPolicy', $event)"
                     />
                     <label
@@ -530,8 +483,8 @@ function handleJoinActionClick() {
               <template v-if="showJoinPolicyToggle">
                 <UiSwitch
                   :id="joinPolicySwitchId"
-                  :model-value="settings.isOpenToJoinRequests"
-                  :disabled="isPersisted && isActionPending(`update-team-join-policy:${team.id}`)"
+                  :model-value="props.team.isOpenToJoinRequests"
+                  :disabled="isActionPending(`update-team-join-policy:${team.id}`)"
                   @update:model-value="emit('toggleJoinPolicy', $event)"
                 />
                 <label
@@ -557,16 +510,13 @@ function handleJoinActionClick() {
               :loading="isActionPending(`cancel-join-request:${pendingJoinRequestId}`)"
               :disabled="isActionPending(`cancel-join-request:${pendingJoinRequestId}`)"
               data-testid="participant-team-cancel-pending-request"
-              @click="emit('cancelJoinRequest', {
-                teamId: team.id,
-                requestId: pendingJoinRequestId
-              })"
+              @click="emit('cancelJoinRequest', pendingJoinRequestId)"
             >
               Cancel pending request
             </AppButton>
 
             <span
-              v-else-if="showHeaderMembershipAction"
+              v-else-if="showHeaderMembershipAction && joinAvailability"
               :title="disabledJoinActionReason || undefined"
               class="inline-flex"
             >
@@ -587,7 +537,7 @@ function handleJoinActionClick() {
             </span>
 
             <span
-              v-if="showHeaderLeaveAction"
+              v-if="showHeaderLeaveAction && leaveAvailability"
               :title="disabledLeaveActionReason || undefined"
               class="inline-flex"
             >
@@ -659,9 +609,9 @@ function handleJoinActionClick() {
 
                 <p class="text-sm text-toned">
                   <template v-if="member.user?.email">
-                    {{ member.user.email }}<span v-if="isPersisted"> • Joined {{ formatTimestamp(member.joinedAt) }}</span>
+                    {{ member.user.email }} • Joined {{ formatTimestamp(member.joinedAt) }}
                   </template>
-                  <template v-else-if="isPersisted">
+                  <template v-else>
                     Joined {{ formatTimestamp(member.joinedAt) }}
                   </template>
                 </p>
@@ -739,16 +689,8 @@ function handleJoinActionClick() {
             </p>
           </div>
 
-          <AppAlert
-            v-if="!isPersisted"
-            color="neutral"
-            variant="soft"
-            title="No join requests yet"
-            description="Join requests will appear here after you save or share this team."
-          />
-
           <div
-            v-else-if="(joinRequests?.length ?? 0) > 0"
+            v-if="(joinRequests?.length ?? 0) > 0"
             class="grid gap-4"
           >
             <article

@@ -5,8 +5,8 @@ import type { AccountEventSettingsPage } from '#shared/domains/events/account-ev
 import type { AdminEventProgram, EventFloorPlan, EventProgram } from '#shared/domains/events/program'
 
 import { normalizeApiError } from '~/lib/api'
-import { getTermsVersionPublishErrorMessage } from '~/domains/events/admin-event'
-import { accountEventPageNames, buildAccountEventPageCacheKey } from '~/domains/events/account-workspace-page'
+import { getTermsVersionPublishErrorMessage, type SaveBuilderFloorPlan } from '~/domains/events/admin-event'
+import { buildAccountEventPageCacheKey } from '~/domains/events/account-workspace-page'
 import AdminBuilderWorkspace from '~/components/admin/builder/AdminBuilderWorkspace.vue'
 import { useApiClient } from '~/composables/useApiClient'
 import { useApiResponse } from '~/composables/useApiData'
@@ -18,6 +18,7 @@ definePageMeta({
 
 const route = useRoute()
 const apiFetch = useApiClient()
+const { clearUpdatedEvent } = useEventConfiguration()
 const toast = useToast()
 const eventSlug = computed(() => String(route.params.eventId ?? '').trim())
 const settingsRequest = useAccountEventPageRequest<AccountEventSettingsPage>(eventSlug, 'settings')
@@ -38,15 +39,19 @@ const isProgramDirty = shallowRef(false)
 const isProgramSaving = shallowRef(false)
 const programSaveError = shallowRef('')
 const programDisclosure = useTemplateRef<HTMLDetailsElement>('programDisclosure')
-const programPath = computed(() => `/api/events/${encodeURIComponent(currentEvent.value?.id ?? '')}/program`)
+const { authorizationGeneration, clearReads } = useAuthorizationCache()
+const eventPath = computed(() => `/api/events/${encodeURIComponent(currentEvent.value?.id ?? '')}`)
+const programTarget = computed(() => ({
+  eventPath: eventPath.value,
+  slug: eventSlug.value,
+  generation: authorizationGeneration.value
+}))
+const programPath = computed(() => `${programTarget.value.eventPath}/program`)
 const programRequest = useApiResponse<AdminEventProgram>(
   programPath,
   programPath,
   { enabled: () => Boolean(currentEvent.value) && isProgramOpen.value, server: false }
 )
-const { protectedKey } = useAuthorizationCache()
-const requestOwner = useProtectedRequestOwner()
-const adminProgramCacheKey = protectedKey(programPath)
 
 function syncProgramDisclosure() {
   isProgramOpen.value = programDisclosure.value?.open ?? false
@@ -54,40 +59,31 @@ function syncProgramDisclosure() {
 
 watch(programDisclosure, syncProgramDisclosure)
 
-function clearAgendaReads(slug: string, includeParent: boolean) {
-  const reads = new Set([
-    buildAccountEventPageCacheKey(slug, 'program'),
-    buildAccountEventPageCacheKey(slug, 'program', { includeEventShell: true })
-  ])
-  if (includeParent) {
-    reads.add(buildAccountEventPageCacheKey(slug, 'entry'))
-    for (const page of accountEventPageNames) {
-      if (page !== 'entry') {
-        reads.add(buildAccountEventPageCacheKey(slug, page, { includeEventShell: true }))
-      }
-    }
-    reads.add(buildAccountEventPageCacheKey(slug, 'prizes', {
-      includeAdminEventConfiguration: true,
-      includeEventShell: true
-    }))
-  }
-
-  const keys = Array.from(reads, read => protectedKey(read).value)
-  keys.forEach(key => requestOwner.invalidate(key))
-  clearNuxtData(keys)
+function clearAgendaReads(slug: string, includeParent: boolean, keepKey?: string) {
+  const family = includeParent ? `account-event-page:${slug}` : buildAccountEventPageCacheKey(slug, 'program')
+  clearReads([family], keepKey)
 }
 
-function updateFloorPlan(plan: EventFloorPlan) {
-  const data = programRequest.data.value
-  if (!data) {
-    return
-  }
+// A write may finish after navigation. Expire the original event, and patch only its open editor.
+function finishProgramWrite(target: typeof programTarget.value, agendaItemChanged: boolean) {
+  const stillEditing = programDisclosure.value?.open && target === programTarget.value
+  const path = `${target.eventPath}/program`
+  clearAgendaReads(target.slug, agendaItemChanged, stillEditing ? settingsRequest.requestKey.value : undefined)
+  clearReads([path], stillEditing ? path : undefined)
+  return stillEditing ? programRequest.data.value : undefined
+}
 
-  const floorPlans = data.floorPlans.some(current => current.id === plan.id)
-    ? data.floorPlans.map(current => current.id === plan.id ? plan : current)
-    : [...data.floorPlans, plan]
-  programRequest.data.value = { ...data, floorPlans }
-  clearAgendaReads(eventSlug.value, false)
+const saveFloorPlan: SaveBuilderFloorPlan = async (path, request) => {
+  const target = programTarget.value
+  const { data: plan } = await apiFetch<ApiDataResponse<EventFloorPlan>>(`${target.eventPath}/floor-plans${path}`, request)
+  const current = finishProgramWrite(target, false)
+  if (!current) return
+
+  const floorPlans = current.floorPlans.some(floor => floor.id === plan.id)
+    ? current.floorPlans.map(floor => floor.id === plan.id ? plan : floor)
+    : [...current.floorPlans, plan]
+  programRequest.data.value = { ...current, floorPlans }
+  return plan
 }
 
 async function writeProgram(program: EventProgram | null) {
@@ -95,23 +91,21 @@ async function writeProgram(program: EventProgram | null) {
     return
   }
 
-  const key = adminProgramCacheKey.value
+  const target = programTarget.value
+  const originalAgendaItem = programRequest.data.value?.program?.agendaItemId
   const request = program ? { method: 'PUT', body: program } as const : { method: 'DELETE' } as const
   isProgramSaving.value = true
   programSaveError.value = ''
 
   try {
     const { data } = await apiFetch<ApiDataResponse<AdminEventProgram>>(programPath.value, request)
-    const current = programRequest.data.value
-    if (adminProgramCacheKey.value !== key || !current) {
-      return
-    }
+    const current = finishProgramWrite(target, originalAgendaItem !== data.program?.agendaItemId)
+    if (!current) return
 
-    clearAgendaReads(eventSlug.value, current.program?.agendaItemId !== data.program?.agendaItemId)
     programRequest.data.value = { ...current, program: data.program }
     toast.add({ title: program ? 'Parallel agenda saved' : 'Parallel agenda removed', color: 'success' })
   } catch (error) {
-    if (adminProgramCacheKey.value === key) {
+    if (programDisclosure.value?.open && target === programTarget.value) {
       programSaveError.value = normalizeApiError(error).message
     }
   } finally {
@@ -139,12 +133,13 @@ async function saveEvent() {
   const submittedSnapshot = builder.draftSnapshot.value
 
   try {
-    await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}`, {
+    const { data } = await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}`, {
       method: 'PATCH',
       body: builder.buildPatchBody()
     })
-    clearAgendaReads(event.slug, true)
-    if (currentEvent.value?.id !== event.id) {
+    const stillEditing = currentEvent.value?.id === event.id
+    clearUpdatedEvent(event.slug, data.slug)
+    if (!stillEditing) {
       return
     }
     builder.markSaved(submittedSnapshot)
@@ -155,7 +150,12 @@ async function saveEvent() {
       color: 'success'
     })
 
-    await settingsRequest.refresh()
+    if (data.slug !== event.slug) {
+      await navigateTo({ path: `/admin/events/builder/${data.slug}`, query: route.query, hash: route.hash }, { replace: true })
+    } else {
+      clearAgendaReads(event.slug, true, settingsRequest.requestKey.value)
+      await settingsRequest.refresh()
+    }
   } catch (error) {
     submitError.value = normalizeApiError(error).message
   } finally {
@@ -308,7 +308,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
-  programRequest.clear()
 })
 
 useSeoMeta({
@@ -343,7 +342,6 @@ useSeoMeta({
       :background-image-upload-error="imageMutationState.background.error"
       :banner-image-upload-pending="imageMutationState.banner.pending"
       :banner-image-upload-error="imageMutationState.banner.error"
-      :image-version="{ background: currentEvent.backgroundImageRevision, banner: currentEvent.bannerImageRevision }"
       :current-application-terms="currentApplicationTerms"
       :current-winner-terms="currentWinnerTerms"
       :saving-terms-document-type="savingTermsDocumentType"
@@ -394,7 +392,7 @@ useSeoMeta({
             <AdminBuilderProgramEditor
               v-else-if="programRequest.data.value"
               :key="currentEvent.id"
-              :event-id="currentEvent.id"
+              :save-floor-plan="saveFloorPlan"
               :agenda-items="currentEvent.agendaItems"
               :program="programRequest.data.value.program"
               :floor-plans="programRequest.data.value.floorPlans"
@@ -403,7 +401,6 @@ useSeoMeta({
               :save-error="programSaveError"
               @save="writeProgram"
               @remove="writeProgram(null)"
-              @floor-updated="updateFloorPlan"
               @dirty-change="isProgramDirty = $event"
             />
             <p

@@ -1,22 +1,17 @@
 <script setup lang="ts">
-import type { ApiDataResponse } from '~/lib/api'
 import type {
   EventFormState
 } from '~/domains/events/admin-event'
-import type {
-  EventRecord
-} from '~/domains/events/records'
 
 import { normalizeApiError } from '~/lib/api'
 import { buildEventCreateBody } from '~/domains/events/admin-event'
-import { useApiClient } from '~/composables/useApiClient'
 
 definePageMeta({
   middleware: ['require-event-creator']
 })
 
 const session = useAccountBootstrap()
-const apiFetch = useApiClient()
+const { createDraft } = useEventConfiguration()
 const toast = useToast()
 
 const isSubmitting = ref(false)
@@ -27,10 +22,7 @@ async function createEvent(form: EventFormState) {
   isSubmitting.value = true
 
   try {
-    const response = await apiFetch<ApiDataResponse<EventRecord>>('/api/events', {
-      method: 'POST',
-      body: buildEventCreateBody(form)
-    })
+    const event = await createDraft(buildEventCreateBody(form))
 
     toast.add({
       title: 'Event created',
@@ -39,7 +31,7 @@ async function createEvent(form: EventFormState) {
     })
 
     await session.refresh()
-    await navigateTo(`/account/events/${response.data.slug}?tab=settings`)
+    await navigateTo(`/account/events/${event.slug}?tab=settings`)
   } catch (error) {
     const apiError = normalizeApiError(error)
     submitError.value = apiError.message

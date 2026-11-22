@@ -9,6 +9,7 @@ import {
 describe('API response cache policy classifier', () => {
   test('allows only explicit public/versioned API families to remain cacheable', () => {
     const publicPaths = [
+      '/api/public/discovery',
       '/api/public/events',
       '/api/public/events/codex-spring',
       '/api/public/events/codex-spring/evaluation-criteria',

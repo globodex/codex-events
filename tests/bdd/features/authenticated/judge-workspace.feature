@@ -6,6 +6,7 @@ Feature: TASK-4.7 judge workspace UI
     Then the judge dashboard should show "Loading judge dashboard" without assignment results
     When the judge inbox request fails
     Then the judge dashboard should show "Judge dashboard unavailable" without assignment results
+    When I retry the judge inbox after it recovers
 
   Scenario: A judge opens a saved assignment link directly
     When I open the fixture blind assignment from its saved link

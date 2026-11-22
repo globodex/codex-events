@@ -1,7 +1,11 @@
+import { eq } from 'drizzle-orm'
+
 import { getDatabase } from '#server/database/client'
+import { prizes } from '#server/database/schema'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
+  eventTypeSupportsTracks,
   getCurrentEventTerms,
   listEventTracks,
   getPublicEventBySlugOrThrow,
@@ -9,6 +13,7 @@ import {
   routeSlugParamsSchema,
   serializePublicEvent
 } from '#server/domains/events'
+import { hasPublicEventPhotos } from '#server/domains/events/photos'
 import { loadPublicProgramSessions } from '#server/domains/events/program'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import {
@@ -33,11 +38,15 @@ export const applicationOperation = defineStructuredRouteOperation({
   const query = parseValidatedQuery(h3Event, publicEventDetailQuerySchema)
   const database = getDatabase(h3Event)
   const event = await getPublicEventBySlugOrThrow(database, slug)
-  const [currentTerms, tracks, imageOptions, publicSessions] = await Promise.all([
+  const [currentTerms, tracks, imageOptions, publicSessions, hasPublicGallery, prize] = await Promise.all([
     getCurrentEventTerms(database, event),
-    listEventTracks(database, event.id),
+    eventTypeSupportsTracks(event.eventType) ? listEventTracks(database, event.id) : [],
     getEventDisplayImageOptions(database),
-    loadPublicProgramSessions(database, event)
+    loadPublicProgramSessions(database, event),
+    hasPublicEventPhotos(database, event.id),
+    event.eventType === 'hackathon' && event.state !== 'completed'
+      ? database.query.prizes.findFirst({ columns: { id: true }, where: eq(prizes.eventId, event.id) })
+      : null
   ])
 
   const response = apiData({
@@ -45,8 +54,9 @@ export const applicationOperation = defineStructuredRouteOperation({
       ...imageOptions,
       includeFullTrackDetails: query.tracks === 'full'
     }),
-    // The sessions that the organizer made public. The page lists them under their agenda block.
-    publicSessions
+    publicSessions,
+    hasPublicGallery,
+    hasPrizeTab: event.eventType === 'hackathon' && (event.state === 'completed' || Boolean(prize))
   })
 
   setPublicEventCacheHeaders(h3Event, 'public-event-detail', response)

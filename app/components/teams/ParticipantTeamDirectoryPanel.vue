@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TeamDirectoryFilter } from '~/composables/useTeamDirectory'
 import {
   getActiveTeamMemberCount,
   formatJoinAvailabilityReason,
@@ -7,12 +8,8 @@ import {
   type TeamDirectoryEntry
 } from '~/domains/teams/workspace'
 
-const directoryFilter = defineModel<string>('directoryFilter', {
-  required: false,
-  default: 'all'
-})
-
 const props = defineProps<{
+  directoryFilter?: TeamDirectoryFilter
   teams: TeamDirectoryEntry[]
   maxTeamMembers: number
   createTeamHref?: string | null
@@ -22,7 +19,7 @@ const props = defineProps<{
   showOperationalTeamStates?: boolean
   filterOptions?: ReadonlyArray<{
     label: string
-    value: string
+    value: TeamDirectoryFilter
     count?: number
   }>
   isLoadingTeams?: boolean
@@ -34,11 +31,9 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  selectFilter: [filter: TeamDirectoryFilter]
   joinTeam: [teamId: string]
-  cancelJoinRequest: [payload: {
-    teamId: string
-    requestId: string | null
-  }]
+  cancelJoinRequest: [requestId: string]
   loadMoreTeams: []
 }>()
 
@@ -73,14 +68,6 @@ const directoryDescription = computed(() => props.showOperationalTeamStates
   ? 'Browse teams in this event, including dissolved teams retained for operational context.'
   : 'Browse the active teams in this event and filter the directory by team shape or joinability.'
 )
-
-function selectDirectoryFilter(nextFilter: string) {
-  if (directoryFilter.value === nextFilter) {
-    return
-  }
-
-  directoryFilter.value = nextFilter
-}
 </script>
 
 <template>
@@ -123,7 +110,7 @@ function selectDirectoryFilter(nextFilter: string) {
             :key="option.value"
             :pressed="directoryFilter === option.value"
             :count="option.count"
-            @click="selectDirectoryFilter(option.value)"
+            @click="emit('selectFilter', option.value)"
           >
             {{ option.label }}
           </AppFilterButton>
@@ -260,16 +247,13 @@ function selectDirectoryFilter(nextFilter: string) {
               </AppButton>
 
               <AppButton
-                v-if="entry.hasPendingJoinRequest"
+                v-if="entry.pendingJoinRequestId"
                 color="warning"
                 variant="soft"
                 :loading="isActionPending(`cancel-join-request:${entry.pendingJoinRequestId}`)"
                 :disabled="isActionPending(`cancel-join-request:${entry.pendingJoinRequestId}`)"
                 :data-testid="`participant-team-cancel-join-${entry.team.id}`"
-                @click="emit('cancelJoinRequest', {
-                  teamId: entry.team.id,
-                  requestId: entry.pendingJoinRequestId
-                })"
+                @click="emit('cancelJoinRequest', entry.pendingJoinRequestId)"
               >
                 Cancel pending request
               </AppButton>

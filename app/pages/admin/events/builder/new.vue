@@ -1,10 +1,6 @@
 <script setup lang="ts">
-import type { ApiDataResponse } from '~/lib/api'
-import type { EventRecord } from '~/domains/events/records'
-
 import { normalizeApiError } from '~/lib/api'
 import AdminBuilderWorkspace from '~/components/admin/builder/AdminBuilderWorkspace.vue'
-import { useApiClient } from '~/composables/useApiClient'
 import type { WebMcpTool } from '~/composables/useWebMcpTool'
 import { useWebMcpTool } from '~/composables/useWebMcpTool'
 import {
@@ -17,7 +13,7 @@ definePageMeta({
 })
 
 const session = useAccountBootstrap()
-const apiFetch = useApiClient()
+const { createDraft } = useEventConfiguration()
 const toast = useToast()
 const builder = useEventBuilder({ mode: 'create' })
 
@@ -39,15 +35,12 @@ const createEventWebMcpTool = computed<WebMcpTool | null>(() => {
       }
 
       const body = buildWebMcpEventCreateBody(input)
-      const response = await apiFetch<ApiDataResponse<EventRecord>>('/api/events', {
-        method: 'POST',
-        body,
-        signal
-      })
+      const event = await createDraft(body, signal)
+      await session.refresh()
 
       return {
-        event: response.data,
-        url: new URL(`/account/events/${response.data.slug}?tab=settings`, window.location.origin).href
+        event,
+        url: new URL(`/account/events/${event.slug}?tab=settings`, window.location.origin).href
       }
     }
   }
@@ -62,13 +55,7 @@ async function createEvent() {
   isSubmitting.value = true
 
   try {
-    const response = await apiFetch<ApiDataResponse<EventRecord>>('/api/events', {
-      method: 'POST',
-      body: {
-        ...builder.buildCreateBody(),
-        creationFlow: 'builder'
-      }
-    })
+    const event = await createDraft({ ...builder.buildCreateBody(), creationFlow: 'builder' })
 
     builder.markSubmitted()
     toast.add({
@@ -78,7 +65,7 @@ async function createEvent() {
     })
 
     await session.refresh()
-    await navigateTo(`/account/events/${response.data.slug}?tab=settings`)
+    await navigateTo(`/account/events/${event.slug}?tab=settings`)
   } catch (error) {
     submitError.value = normalizeApiError(error).message
   } finally {

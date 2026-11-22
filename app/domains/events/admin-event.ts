@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { EventFloorPlan } from '#shared/domains/events/program'
 import type {
   EventAgendaItem,
   EventRecord,
@@ -9,6 +10,11 @@ import {
   customQuestionsSchema,
   type CustomQuestionDefinition
 } from '#shared/domains/events/custom-questions'
+
+export type SaveBuilderFloorPlan = (
+  path: string,
+  request: { method: 'POST' | 'PUT', body: FormData | Pick<EventFloorPlan, 'name' | 'rooms'> }
+) => Promise<EventFloorPlan | undefined>
 
 export interface EventFormState {
   eventType: EventType
@@ -22,8 +28,6 @@ export interface EventFormState {
   description: string
   agendaItems: EventFormAgendaItem[]
   tracks: EventFormTrack[]
-  backgroundImageUrl: string
-  bannerImageUrl: string
   city: string
   country: string
   address: string
@@ -368,8 +372,6 @@ const eventConfigFormBaseSchema = z.object({
   description: requiredTextSchema,
   agendaItems: agendaItemsFormSchema,
   tracks: tracksFormSchema,
-  backgroundImageUrl: createOptionalHttpUrlSchema('Enter a valid background image URL.'),
-  bannerImageUrl: createOptionalHttpUrlSchema('Enter a valid banner image URL.'),
   city: z.string().trim(),
   country: z.string().trim(),
   address: z.string().trim(),
@@ -673,8 +675,6 @@ export function createEmptyEventFormState(): EventFormState {
     description: '',
     agendaItems: [],
     tracks: [],
-    backgroundImageUrl: '',
-    bannerImageUrl: '',
     city: '',
     country: '',
     address: '',
@@ -797,8 +797,6 @@ export function createEventFormState(event: EventRecord): EventFormState {
           })),
         displayOrder: track.displayOrder
       })),
-    backgroundImageUrl: event.backgroundImageUrl ?? '',
-    bannerImageUrl: event.bannerImageUrl ?? '',
     city: event.city,
     country: event.country,
     address: event.address,

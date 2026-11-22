@@ -353,7 +353,8 @@ describe('TASK-3.7 submission routes', () => {
     })
 
     const submitResponse = await harness.request('/api/events/event_1/teams/team_1/submission/actions/submit', {
-      method: 'POST'
+      method: 'POST',
+      body: JSON.stringify({ projectName: 'Final edited title', summary: '', repositoryUrl: 'https://github.com/example/final', demoUrl: '' })
     })
 
     expect(submitResponse.status).toBe(200)
@@ -369,7 +370,8 @@ describe('TASK-3.7 submission routes', () => {
 
     expect(storedSubmission).toMatchObject({
       status: 'submitted',
-      projectName: 'Alpha Project Revised'
+      projectName: 'Final edited title',
+      repositoryUrl: 'https://github.com/example/final'
     })
   })
 
@@ -429,7 +431,7 @@ describe('TASK-3.7 submission routes', () => {
     expect(incompletePatchResponse.status).toBe(400)
   })
 
-  test('submit rejects incomplete draft submissions already stored on the team', async () => {
+  test('submit rejects incomplete fields without changing the saved draft', async () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),
       sessionUser: {
@@ -459,13 +461,14 @@ describe('TASK-3.7 submission routes', () => {
     })
 
     const submitResponse = await harness.request('/api/events/event_1/teams/team_1/submission/actions/submit', {
-      method: 'POST'
+      method: 'POST',
+      body: JSON.stringify({ projectName: 'Missing repository', summary: '', repositoryUrl: '', demoUrl: '' })
     })
 
     expect(submitResponse.status).toBe(400)
     expect(await submitResponse.json()).toMatchObject({
       error: {
-        code: 'submission_fields_incomplete'
+        code: 'submission_fields_invalid'
       }
     })
   })
@@ -522,7 +525,8 @@ describe('TASK-3.7 submission routes', () => {
     })
 
     const submitResponse = await harness.request('/api/events/event_1/teams/team_1/submission/actions/submit', {
-      method: 'POST'
+      method: 'POST',
+      body: JSON.stringify({ projectName: 'Optional Fields Project Revised', summary: '', repositoryUrl: '', demoUrl: '' })
     })
 
     expect(submitResponse.status).toBe(200)

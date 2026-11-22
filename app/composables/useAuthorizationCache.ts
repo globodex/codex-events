@@ -1,4 +1,5 @@
 import type { SessionActor } from '~/domains/accounts/session-actor'
+import { useProtectedRequestOwner } from './useProtectedRequestOwner'
 
 const authorizationGenerationStateKey = 'account-api:authorization-generation'
 const authorizationFingerprintStateKey = 'account-api:authorization-fingerprint'
@@ -57,11 +58,30 @@ export function buildAuthorizationFingerprint(
 
 export function useAuthorizationCache() {
   const nuxtApp = useNuxtApp()
+  const owner = useProtectedRequestOwner()
   const generation = useState<number>(authorizationGenerationStateKey, () => 0)
   const fingerprint = useState<string | null>(authorizationFingerprintStateKey, () => null)
+  const scope = computed(() => `${protectedAsyncDataKeyPrefix}${generation.value}:`)
 
   function protectedKey(key: MaybeRefOrGetter<string>) {
-    return computed(() => `${protectedAsyncDataKeyPrefix}${generation.value}:${toValue(key)}`)
+    return computed(() => scope.value + toValue(key))
+  }
+
+  function clearMatching(matches: (key: string) => boolean, keepDisplayedKey?: string) {
+    const knownKeys = new Set([...Object.keys(nuxtApp._asyncData), ...Object.keys(nuxtApp.payload.data), ...owner.keys()])
+    const keys = [...knownKeys].filter(matches)
+    for (const key of keys) {
+      // Nuxt drops the pending promise on clear without aborting the underlying request.
+      nuxtApp._asyncData[key]?._abortController?.abort()
+      owner.invalidate(key)
+    }
+    clearNuxtData(keys.filter(key => key !== keepDisplayedKey))
+  }
+
+  // Drop every saved answer for these reads. A page applying a write can keep its displayed data.
+  function clearReads(baseKeys: string[], keepKey?: string) {
+    const keys = baseKeys.map(key => scope.value + key)
+    clearMatching(key => keys.some(base => key === base || key.startsWith(`${base}:`)), keepKey && scope.value + keepKey)
   }
 
   function syncAuthorization(actor: SessionActor | null, capabilities: AuthorizationCapabilities) {
@@ -78,19 +98,7 @@ export function useAuthorizationCache() {
       return true
     }
 
-    // Pending reactive keys can already hold data without a payload entry. Nuxt
-    // can carry that data into the next key, so clear the live entries first.
-    const protectedKeys = [...new Set([
-      ...Object.keys(nuxtApp._asyncData),
-      ...Object.keys(nuxtApp.payload.data)
-    ])].filter(key => key.startsWith(protectedAsyncDataKeyPrefix))
-
-    // clearNuxtData drops the pending promise without aborting its transport.
-    for (const key of protectedKeys) {
-      nuxtApp._asyncData[key]?._abortController?.abort()
-    }
-
-    clearNuxtData(protectedKeys)
+    clearMatching(key => key.startsWith(protectedAsyncDataKeyPrefix))
     generation.value += 1
 
     return true
@@ -99,6 +107,7 @@ export function useAuthorizationCache() {
   return {
     authorizationFingerprint: fingerprint,
     authorizationGeneration: generation,
+    clearReads,
     protectedKey,
     syncAuthorization
   }

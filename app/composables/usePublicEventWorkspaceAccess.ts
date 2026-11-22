@@ -1,5 +1,7 @@
 import { useAccountBootstrap } from '~/composables/useAccountBootstrap'
 
+export const accountWorkspaceSlugsKey = 'account-workspace-slugs'
+
 interface AccountEventAccessRecord {
   slug: string
 }
@@ -16,13 +18,11 @@ export function usePublicEventWorkspaceAccess(slug: MaybeRefOrGetter<string>, ne
   const canCheckAccess = computed(() =>
     actor.value?.kind === 'platform_user' && actor.value.hasAcceptedCurrentPlatformDocuments
   )
-  const access = useApiData<boolean>(
-    () => `public-event-workspace-access:${toValue(slug)}`,
+  const access = useApiData<string[]>(
+    accountWorkspaceSlugsKey,
     async ({ apiFetch, signal }) => {
-      const eventSlug = toValue(slug)
       const { data } = await apiFetch<AccountEventsResponse>('/api/account/events', { signal })
-      return data.current.some(event => event.slug === eventSlug)
-        || data.past.some(event => event.slug === eventSlug)
+      return [...data.current, ...data.past].map(event => event.slug)
     },
     {
       enabled: () => toValue(needed) && status.value === 'success' && canCheckAccess.value,
@@ -37,6 +37,6 @@ export function usePublicEventWorkspaceAccess(slug: MaybeRefOrGetter<string>, ne
     if (!canCheckAccess.value) return 'denied'
     if (access.status.value === 'error') return 'error'
     if (access.status.value !== 'success') return 'unknown'
-    return access.data.value ? 'granted' : 'denied'
+    return access.data.value?.includes(toValue(slug)) ? 'granted' : 'denied'
   })
 }

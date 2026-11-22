@@ -47,36 +47,3 @@ export function buildAbsoluteAccountEventTeamsTabHref(
 ) {
   return new URL(buildAccountEventTeamsTabHref(eventSlug, teamSlug), origin).toString()
 }
-
-export function isSharedTeamSelection(input: {
-  selectedTeamSlug?: string | null
-  currentTeamId?: string | null
-  currentTeamSlug?: string | null
-  ownTeamId?: string | null
-}) {
-  const normalizedSelectedTeamSlug = normalizeTeamSlugQueryValue(input.selectedTeamSlug)
-  const normalizedCurrentTeamSlug = normalizeTeamSlugQueryValue(input.currentTeamSlug)
-
-  if (!normalizedSelectedTeamSlug || normalizedCurrentTeamSlug !== normalizedSelectedTeamSlug) {
-    return false
-  }
-
-  return input.currentTeamId !== null && input.currentTeamId !== input.ownTeamId
-}
-
-export function shouldSyncSelectedTeamSlug(input: {
-  selectedTeamSlug?: string | null
-  previousTeamSlug?: string | null
-  nextTeamSlug?: string | null
-}) {
-  const normalizedSelectedTeamSlug = normalizeTeamSlugQueryValue(input.selectedTeamSlug)
-  const normalizedPreviousTeamSlug = normalizeTeamSlugQueryValue(input.previousTeamSlug)
-  const normalizedNextTeamSlug = normalizeTeamSlugQueryValue(input.nextTeamSlug)
-
-  if (!normalizedSelectedTeamSlug || !normalizedPreviousTeamSlug || !normalizedNextTeamSlug) {
-    return false
-  }
-
-  return normalizedSelectedTeamSlug === normalizedPreviousTeamSlug
-    && normalizedSelectedTeamSlug !== normalizedNextTeamSlug
-}

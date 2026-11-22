@@ -75,6 +75,7 @@ describe('useApiData', () => {
       invalidate: protectedInvalidate
     })
 
+    useAsyncData.mockReturnValue(Promise.resolve({}))
     vi.stubGlobal('useAsyncData', useAsyncData)
     vi.stubGlobal('toValue', (value: unknown) =>
       typeof value === 'function'
@@ -88,14 +89,8 @@ describe('useApiData', () => {
   })
 
   test('passes the selected fetcher and abort signal into useApiData handlers', async () => {
-    useAsyncData.mockImplementation((key, handler, options) => ({
-      key,
-      handler,
-      options
-    }))
-
     const { useApiData } = await import('../../../../app/composables/useApiData')
-    const request = useApiData('session-actor:auth0|user', async ({ apiFetch, signal }) => {
+    useApiData('session-actor:auth0|user', async ({ apiFetch, signal }) => {
       expect(apiFetch).toBe(clientFetch)
       expect(signal).toBeInstanceOf(AbortSignal)
 
@@ -108,8 +103,9 @@ describe('useApiData', () => {
       })
     })
 
-    expect(toValue(request.key)).toBe('protected-api:0:session-actor:auth0|user')
-    expect(request.options).toMatchObject({
+    const [key, handler, options] = useAsyncData.mock.calls[0]!
+    expect(toValue(key)).toBe('protected-api:0:session-actor:auth0|user')
+    expect(options).toMatchObject({
       deep: false,
       dedupe: 'cancel'
     })
@@ -117,7 +113,7 @@ describe('useApiData', () => {
 
     const signal = new AbortController().signal
 
-    await expect(request.handler({}, {
+    await expect(handler({}, {
       signal
     })).resolves.toEqual({
       actor: 'platform_user'
@@ -131,20 +127,16 @@ describe('useApiData', () => {
       releaseBootstrap = resolve
     })
     ensureLoaded.mockReturnValue(bootstrapReady)
-    let capturedHandler: ((nuxtApp: unknown, context: { signal: AbortSignal }) => Promise<unknown>) | undefined
     const consumer = vi.fn(async ({ apiFetch }: { apiFetch: typeof clientFetch }) => {
       return await apiFetch('/api/account/judging')
-    })
-    useAsyncData.mockImplementation((_key, handler) => {
-      capturedHandler = handler
-      return {}
     })
 
     const { useApiData } = await import('../../../../app/composables/useApiData')
     useApiData('judge-workspace', consumer)
+    const [, handler] = useAsyncData.mock.calls[0]!
 
     const signal = new AbortController().signal
-    const pending = capturedHandler!({}, { signal })
+    const pending = handler({}, { signal })
     await Promise.resolve()
 
     expect(ensureLoaded).toHaveBeenCalledWith(signal)
@@ -163,18 +155,14 @@ describe('useApiData', () => {
       })
       throw new DOMException('The request was aborted.', 'AbortError')
     })
-    let capturedHandler: ((nuxtApp: unknown, context: { signal: AbortSignal }) => Promise<unknown>) | undefined
     const consumer = vi.fn(async () => 'never')
-    useAsyncData.mockImplementation((_key, handler) => {
-      capturedHandler = handler
-      return {}
-    })
 
     const { useApiData } = await import('../../../../app/composables/useApiData')
     useApiData('judge-workspace', consumer)
+    const [, handler] = useAsyncData.mock.calls[0]!
 
     const controller = new AbortController()
-    const pending = capturedHandler!({}, { signal: controller.signal })
+    const pending = handler({}, { signal: controller.signal })
     controller.abort()
 
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
@@ -183,42 +171,70 @@ describe('useApiData', () => {
 
   test('changes the protected async-data key when a watched request shape changes', async () => {
     const watchedValue = ref('first')
-    let capturedKey: unknown
-    let capturedHandler: ((nuxtApp: unknown, context: { signal: AbortSignal }) => Promise<unknown>) | undefined
-    useAsyncData.mockImplementation((key, handler, options) => {
-      capturedKey = key
-      capturedHandler = handler
-      return { key, handler, options }
-    })
-
     const { useApiData } = await import('../../../../app/composables/useApiData')
     useApiData('shared-read', async () => 'ready', {
       watch: [watchedValue]
     })
 
-    const firstKey = toValue(capturedKey as never)
+    const [key, handler] = useAsyncData.mock.calls[0]!
+    const firstKey = toValue(key)
     watchedValue.value = 'second'
     await nextTick()
 
-    expect(toValue(capturedKey as never)).not.toBe(firstKey)
-    await capturedHandler!({}, { signal: new AbortController().signal })
-    expect(protectedExecute.mock.calls[0]?.[0]).toBe(toValue(capturedKey as never))
+    expect(toValue(key)).not.toBe(firstKey)
+    await handler({}, { signal: new AbortController().signal })
+    expect(protectedExecute.mock.calls[0]?.[0]).toBe(toValue(key))
   })
 
   test('keeps public async-data keys independent from authorization generation', async () => {
-    useAsyncData.mockImplementation((key, handler, options) => ({
-      key,
-      handler,
-      options
-    }))
-
     const { useApiData } = await import('../../../../app/composables/useApiData')
-    const request = useApiData('public-event', async () => ({ title: 'Public' }), {
+    useApiData('public-event', async () => ({ title: 'Public' }), {
       cacheScope: 'public'
     })
 
-    expect(request.key).toBe('public-event')
+    expect(useAsyncData.mock.calls[0]![0]).toBe('public-event')
     expect(useAuthorizationCache).not.toHaveBeenCalled()
+  })
+
+  test('retries a failed protected read from the awaited result', async () => {
+    const { createProtectedRequestOwner } = await vi.importActual<typeof import('../../../../app/composables/useProtectedRequestOwner')>(
+      '../../../../app/composables/useProtectedRequestOwner'
+    )
+    useProtectedRequestOwner.mockReturnValue(createProtectedRequestOwner())
+
+    const data = ref<string>()
+    const error = ref<unknown>()
+    const pending = ref(false)
+    const status = ref('idle')
+    useAsyncData.mockImplementation((_key, handler) => {
+      async function refresh() {
+        try {
+          data.value = await handler({}, { signal: new AbortController().signal })
+          error.value = undefined
+          status.value = 'success'
+        } catch (caught) {
+          error.value = caught
+          status.value = 'error'
+        }
+      }
+      const raw = { data, error, pending, status, clear: vi.fn(), execute: refresh, refresh }
+      return Object.assign(refresh().then(() => raw), raw)
+    })
+
+    const { useApiData } = await import('../../../../app/composables/useApiData')
+    const load = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce('online')
+    const request = useApiData('retry', load)
+    const awaited = await request
+
+    expect(awaited.status.value).toBe('error')
+    for (const field of ['data', 'error', 'pending', 'status', 'invalidationKey', 'clear', 'execute', 'refresh'] as const) {
+      expect(awaited[field]).toBe(request[field])
+    }
+
+    await awaited.refresh()
+    expect(load).toHaveBeenCalledTimes(2)
+    expect(request.data.value).toBe('online')
+    expect(request.error.value).toBeUndefined()
   })
 
   test('unwraps canonical api data responses in useApiResponse', async () => {
@@ -228,19 +244,14 @@ describe('useApiData', () => {
       }
     })
 
-    useAsyncData.mockImplementation((key, handler, options) => ({
-      key,
-      handler,
-      options
-    }))
-
     const { useApiResponse } = await import('../../../../app/composables/useApiData')
-    const request = useApiResponse('current-platform-documents', '/api/platform-documents/current', {
+    useApiResponse('current-platform-documents', '/api/platform-documents/current', {
       default: () => null
     })
+    const [, handler] = useAsyncData.mock.calls[0]!
     const signal = new AbortController().signal
 
-    await expect(request.handler({}, {
+    await expect(handler({}, {
       signal
     })).resolves.toEqual({
       id: 'privacy'

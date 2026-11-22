@@ -1,24 +1,7 @@
 import type { PublicEvent } from '~/domains/events/presentation'
+import type { AccountEventWorkspaceSubmission } from '#shared/domains/events/account-event-workspace-page'
 
-import { normalizeApiError } from '~/lib/api'
-
-export interface TeamSubmissionRecord {
-  id: string
-  teamId: string
-  trackId: string | null
-  status: 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified'
-  projectName: string | null
-  summary: string | null
-  repositoryUrl: string | null
-  demoUrl: string | null
-  isPubliclyVisible: boolean
-  submittedAt: string | null
-  lockedAt: string | null
-  withdrawnAt: string | null
-  disqualifiedAt: string | null
-  createdAt: string
-  updatedAt: string
-}
+export type TeamSubmissionRecord = AccountEventWorkspaceSubmission
 
 export type TeamSubmissionWorkspaceStatus = TeamSubmissionRecord['status'] | 'none'
 
@@ -61,10 +44,6 @@ export function resolveSelectedTrackPrefillId(
   return tracks?.some(track => track.id === normalizedTrackId) ? normalizedTrackId : null
 }
 
-export function normalizeTeamSubmissionApiError(error: unknown) {
-  return normalizeApiError(error)
-}
-
 export function getTeamSubmissionWorkspaceStatus(submission: TeamSubmissionRecord | null | undefined): TeamSubmissionWorkspaceStatus {
   return submission?.status ?? 'none'
 }
@@ -105,53 +84,6 @@ export function getTeamSubmissionStatusColor(status: TeamSubmissionWorkspaceStat
 
 export function hasEventEnteredSubmissionPhase(event: Pick<PublicEvent, 'state'>) {
   return event.state !== 'draft' && event.state !== 'registration_open'
-}
-
-export function shouldShowParticipantSubmissionWorkspace(
-  event: Pick<PublicEvent, 'state'>,
-  hasTeamMembership: boolean
-) {
-  return hasTeamMembership && hasEventEnteredSubmissionPhase(event)
-}
-
-export function getTeamSubmissionStateSummary(
-  event: Pick<PublicEvent, 'state'>,
-  submission: TeamSubmissionRecord | null | undefined
-) {
-  if (!submission) {
-    if (event.state === 'submission_open') {
-      return 'This team has not started a project submission yet. Team admins can create the first draft while submission is open.'
-    }
-
-    if (event.state === 'registration_open') {
-      return 'This team does not have a project submission yet. Submission drafting starts only after admins open the submission phase.'
-    }
-
-    return 'This team does not have an active submission record for the current event lifecycle.'
-  }
-
-  switch (submission.status) {
-    case 'draft':
-      if (event.state === 'submission_open') {
-        return 'This draft is private to your team. Team admins can edit it, submit it, or withdraw it while submission remains open.'
-      }
-
-      if (event.state === 'judging_preparation') {
-        return 'This draft is not yet submitted. Team admins can still edit it, submit it, or withdraw it until organizers start judging.'
-      }
-
-      return 'This draft never entered judging because it was not submitted before submissions were locked.'
-    case 'submitted':
-      return event.state === 'judging_preparation'
-        ? 'This project is submitted. Team admins can still revise it or withdraw it until organizers start judging.'
-        : 'This project is submitted. Team admins can still revise it or withdraw it while submission remains open.'
-    case 'withdrawn':
-      return 'This project was withdrawn before submissions were locked and is no longer part of the competition.'
-    case 'locked':
-      return 'This project is locked for judging and can no longer be edited or withdrawn.'
-    case 'disqualified':
-      return 'This project was removed from competition by admin action and remains read-only in the participant workspace.'
-  }
 }
 
 function requireTeamAdminAccess(canManageSubmission: boolean) {

@@ -3,13 +3,11 @@ import { describe, expect, test } from 'vitest'
 import {
   formatTeamSubmissionStatus,
   getCreateSubmissionAvailability,
-  getTeamSubmissionStateSummary,
   getTeamSubmissionStatusColor,
   getSubmitSubmissionAvailability,
   getUpdateSubmissionPublicVisibilityAvailability,
   getUpdateSubmissionAvailability,
   getWithdrawSubmissionAvailability,
-  shouldShowParticipantSubmissionWorkspace,
   type TeamSubmissionRecord
 } from '../../../../../app/domains/submissions/team-submission'
 
@@ -34,20 +32,6 @@ function createSubmission(status: TeamSubmissionRecord['status']): TeamSubmissio
 }
 
 describe('team submission helpers', () => {
-  test('shows the participant submission workspace only after submission starts and only for team members', () => {
-    expect(shouldShowParticipantSubmissionWorkspace({
-      state: 'registration_open'
-    }, true)).toBe(false)
-
-    expect(shouldShowParticipantSubmissionWorkspace({
-      state: 'submission_open'
-    }, true)).toBe(true)
-
-    expect(shouldShowParticipantSubmissionWorkspace({
-      state: 'pitch_review'
-    }, false)).toBe(false)
-  })
-
   test('allows creating the first draft only for team admins during submission_open', () => {
     expect(getCreateSubmissionAvailability({
       state: 'submission_open'
@@ -128,27 +112,7 @@ describe('team submission helpers', () => {
     })
   })
 
-  test('returns stable state summaries and labels for participant UI', () => {
-    expect(getTeamSubmissionStateSummary({
-      state: 'submission_open'
-    }, null)).toContain('has not started a project submission yet')
-
-    expect(getTeamSubmissionStateSummary({
-      state: 'judging_preparation'
-    }, createSubmission('submitted'))).toBe('This project is submitted. Team admins can still revise it or withdraw it until organizers start judging.')
-
-    expect(getTeamSubmissionStateSummary({
-      state: 'blind_review'
-    }, createSubmission('draft'))).toBe('This draft never entered judging because it was not submitted before submissions were locked.')
-
-    expect(getTeamSubmissionStateSummary({
-      state: 'submission_open'
-    }, createSubmission('withdrawn'))).toBe('This project was withdrawn before submissions were locked and is no longer part of the competition.')
-
-    expect(getTeamSubmissionStateSummary({
-      state: 'submission_open'
-    }, createSubmission('locked'))).toBe('This project is locked for judging and can no longer be edited or withdrawn.')
-
+  test('shows the participant submission status label and color', () => {
     expect(formatTeamSubmissionStatus('none')).toBe('No submission')
     expect(formatTeamSubmissionStatus('withdrawn')).toBe('Withdrawn')
     expect(getTeamSubmissionStatusColor('submitted')).toBe('primary')

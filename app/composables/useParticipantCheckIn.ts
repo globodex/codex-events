@@ -1,42 +1,28 @@
 import type { Ref } from 'vue'
 
-import type { ApiDataResponse } from '~/lib/api'
 import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
 
 import { normalizeApiError } from '~/lib/api'
 
 import { useApiClient } from './useApiClient'
 
-/**
- * Checks in a confirmed participant from the participant list.
- *
- * The staff panel and the admin panel both use this, so the request and the failure message
- * have one owner. While the request runs, `pendingActionKey` holds `check-in:<application id>`,
- * which is the key the participant list uses to show the loading button.
- */
-export function useParticipantCheckIn(options: {
-  pendingActionKey: Ref<string | null>
-  /** Shows the check-in in the loaded rows at once. */
-  onCheckedIn: (application: AdminApplicationRecord) => void
-  /** Reads the participant list again, so its counts include the check-in. */
-  refreshList: () => Promise<unknown> | unknown
-}) {
+export function useParticipantCheckIn(
+  pendingActionKey: Ref<string | null>,
+  refreshList: (eventSlug: string) => Promise<unknown>
+) {
   const apiFetch = useApiClient()
   const toast = useToast()
 
-  return async function checkInParticipant(application: AdminApplicationRecord) {
-    options.pendingActionKey.value = `check-in:${application.id}`
+  return async function checkInParticipant(application: AdminApplicationRecord, eventSlug: string) {
+    pendingActionKey.value = `check-in:${application.id}`
 
     try {
-      const response = await apiFetch<ApiDataResponse<AdminApplicationRecord>>(
+      await apiFetch(
         `/api/events/${application.eventId}/applications/${application.id}/actions/check-in`,
         { method: 'POST' }
       )
 
-      options.onCheckedIn(response.data)
-      // `pendingActionKey` stays set during the refresh, so no other action starts on rows that
-      // the refresh is about to replace.
-      await options.refreshList()
+      await refreshList(eventSlug)
     } catch (error) {
       toast.add({
         title: 'Check-in failed',
@@ -44,7 +30,7 @@ export function useParticipantCheckIn(options: {
         color: 'error'
       })
     } finally {
-      options.pendingActionKey.value = null
+      pendingActionKey.value = null
     }
   }
 }

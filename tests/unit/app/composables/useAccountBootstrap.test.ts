@@ -142,6 +142,17 @@ describe('useAccountBootstrap', () => {
     expect(syncAuthorization).toHaveBeenLastCalledWith(null, session.capabilities.value)
   })
 
+  test('saving a profile updates all session consumers without fetching the session again', async () => {
+    const { useAccountBootstrap } = await import('../../../../app/composables/useAccountBootstrap')
+    const session = useAccountBootstrap()
+    await session.ensureLoaded()
+    const user = { ...actor.platformUser, familyName: 'Smith' }
+    bootstrapFetch.mockResolvedValueOnce({ data: { user } })
+    await session.saveProfile({ familyName: 'Smith' })
+    expect(useAccountBootstrap().actor.value?.platformUser).toEqual(user)
+    expect(bootstrapFetch.mock.calls.map(([path]) => path)).toEqual(['/api/session', '/api/account'])
+  })
+
   test('returns anonymous only after a 401 and exposes other failures until an explicit retry', async () => {
     const { useAccountBootstrap } = await import('../../../../app/composables/useAccountBootstrap')
     const session = useAccountBootstrap()

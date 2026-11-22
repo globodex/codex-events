@@ -1,6 +1,5 @@
 import { z } from 'zod'
 
-import type { AccountEventParticipantApplication } from './account-event-participants-page'
 import { accountEventParticipantsPageSchema } from './account-event-participants-page'
 
 const teamUserSchema = z.object({
@@ -15,7 +14,7 @@ const teamUserSchema = z.object({
   lumaUsername: z.string().nullable().optional()
 })
 
-const teamMemberSchema = z.object({
+export const teamMemberSchema = z.object({
   id: z.string(),
   teamId: z.string(),
   userId: z.string(),
@@ -40,11 +39,11 @@ const teamSummarySchema = z.object({
   activeMemberCount: z.number().int().nonnegative().optional()
 })
 
-const teamDetailSchema = teamSummarySchema.extend({
+export const teamDetailSchema = teamSummarySchema.extend({
   members: z.array(teamMemberSchema)
 })
 
-const joinRequestSchema = z.object({
+export const teamJoinRequestSchema = z.object({
   id: z.string(),
   teamId: z.string(),
   userId: z.string(),
@@ -64,39 +63,19 @@ const visibleTeamFilterCountsSchema = z.object({
   full: z.number().int().nonnegative()
 })
 
-const eventSchema = z.object({
+export const teamEventSchema = z.object({
   id: z.string(),
   slug: z.string(),
-  state: z.enum([
-    'draft',
-    'registration_open',
-    'submission_open',
-    'judging_preparation',
-    'blind_review',
-    'shortlist',
-    'pitch',
-    'pitch_review',
-    'final_deliberation',
-    'winners_announced',
-    'completed'
-  ]),
-  maxTeamMembers: z.number().int().positive(),
-  submissionOpensAt: z.string().nullable(),
-  requireSubmissionSummary: z.boolean(),
-  requireSubmissionRepositoryUrl: z.boolean(),
-  requireSubmissionDemoUrl: z.boolean(),
-  tracks: z.array(accountEventParticipantsPageSchema.shape.event.shape.tracks.element.extend({
-    shortDescription: z.string()
-  }))
+  state: accountEventParticipantsPageSchema.shape.event.shape.state,
+  maxTeamMembers: z.number().int().positive()
 })
 
 export const accountEventTeamsPageSchema = z.object({
-  event: eventSchema,
-  application: accountEventParticipantsPageSchema.shape.applications.element.nullable(),
-  ownTeam: teamDetailSchema.nullable(),
-  ownMembership: teamMemberSchema.nullable(),
+  event: teamEventSchema,
+  applicationStatus: accountEventParticipantsPageSchema.shape.applications.element.shape.status.nullable(),
+  ownTeamId: z.string().nullable(),
   selectedTeam: teamDetailSchema.nullable(),
-  joinRequests: z.array(joinRequestSchema),
+  pendingJoinRequests: z.array(teamJoinRequestSchema.pick({ id: true, teamId: true })),
   visibleTeams: z.array(teamSummarySchema),
   visibleTeamsMeta: z.object({
     page: z.number().int().positive(),
@@ -110,8 +89,5 @@ export type AccountEventTeamUser = z.infer<typeof teamUserSchema>
 export type AccountEventTeamMember = z.infer<typeof teamMemberSchema>
 export type AccountEventTeamSummary = z.infer<typeof teamSummarySchema>
 export type AccountEventTeamDetail = z.infer<typeof teamDetailSchema>
-export type AccountEventTeamJoinRequest = z.infer<typeof joinRequestSchema>
-export type AccountEventTeamsEvent = z.infer<typeof eventSchema>
-export type AccountEventTeamsPage = z.infer<typeof accountEventTeamsPageSchema> & {
-  application: AccountEventParticipantApplication | null
-}
+export type AccountEventTeamJoinRequest = z.infer<typeof teamJoinRequestSchema>
+export type AccountEventTeamsPage = z.infer<typeof accountEventTeamsPageSchema>

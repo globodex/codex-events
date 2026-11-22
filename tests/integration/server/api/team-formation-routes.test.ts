@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { and, eq } from 'drizzle-orm'
 
+import teamsPageHandler from '../../../../server/api/account/events/[slug]/teams.get'
 import createTeamHandler from '../../../../server/api/events/[eventId]/teams/index.post'
 import listTeamsHandler from '../../../../server/api/events/[eventId]/teams/index.get'
 import getTeamHandler from '../../../../server/api/events/[eventId]/teams/[teamId]/index.get'
@@ -32,6 +33,7 @@ import { stubAuth0Session } from '../../../support/backend/runtime'
 
 function createRoutes() {
   return [
+    { method: 'get' as const, path: '/api/account/events/:slug/teams', handler: teamsPageHandler },
     { method: 'get' as const, path: '/api/events/:eventId/teams', handler: listTeamsHandler },
     { method: 'post' as const, path: '/api/events/:eventId/teams', handler: createTeamHandler },
     { method: 'get' as const, path: '/api/events/:eventId/teams/:teamId', handler: getTeamHandler },
@@ -513,6 +515,9 @@ describe('TASK-3.6 team formation routes', () => {
         })
       ]
     })
+
+    const fullTeams = await harness.request('/api/events/event_1/teams?has_capacity=false')
+    expect((await fullTeams.json()).data.map((team: { id: string }) => team.id)).toEqual(['team_2'])
   })
 
   test('team list paginates filtered teams while preserving the filtered total', async () => {
@@ -946,6 +951,9 @@ describe('TASK-3.6 team formation routes', () => {
         code: 'team_not_found'
       }
     })
+
+    const directory = await adminHarness.request('/api/account/events/fixture-event/teams?selectedTeamSlug=alpha-team')
+    expect((await directory.json()).data.page.selectedTeam).toBeNull()
   })
 
   test('staff can still resolve a dissolved team and see it with zero active members', async () => {
@@ -996,6 +1004,9 @@ describe('TASK-3.6 team formation routes', () => {
         members: []
       }
     })
+
+    const directory = await adminHarness.request('/api/account/events/fixture-event/teams?selectedTeamSlug=alpha-team')
+    expect((await directory.json()).data.page.selectedTeam).toMatchObject({ id: 'team_1', members: [] })
   })
 
   test('team admins must use leave for their own membership removals', async () => {
@@ -1119,6 +1130,24 @@ describe('TASK-3.6 team formation routes', () => {
       }
     })
 
+    await harness.database.insert(teamJoinRequests).values({
+      id: 'another_request',
+      teamId: 'team_1',
+      userId: 'other_requester'
+    })
+    const teamsPagePath = '/api/account/events/fixture-event/teams?selectedTeamSlug=alpha-team'
+    const pending = await harness.request(teamsPagePath)
+    const { page } = (await pending.json()).data
+    expect(page).toMatchObject({
+      applicationStatus: 'approved',
+      ownTeamId: null,
+      selectedTeam: { id: 'team_1' },
+      pendingJoinRequests: [{ id: createPayload.data.id, teamId: 'team_1' }]
+    })
+    expect(page.selectedTeam.members.map((member: { user: unknown }) => member.user)).toEqual(expect.arrayContaining([
+      { id: 'team_admin', displayName: 'Team Admin' }
+    ]))
+
     const cancelResponse = await harness.request(
       `/api/events/event_1/team-join-requests/${createPayload.data.id}/actions/cancel`,
       {
@@ -1133,6 +1162,8 @@ describe('TASK-3.6 team formation routes', () => {
         status: 'canceled'
       }
     })
+    const canceled = await harness.request(teamsPagePath)
+    expect((await canceled.json()).data.page.pendingJoinRequests).toEqual([])
   })
 
   test('team admins can approve join requests, creating membership and an audit entry', async () => {

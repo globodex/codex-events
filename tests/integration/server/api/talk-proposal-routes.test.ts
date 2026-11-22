@@ -110,13 +110,15 @@ describe('Talk proposal API routes', () => {
     }
     expect((await harness.request('/api/events/meetup/talk-proposals/me', { method: 'POST', body: JSON.stringify(body) })).status).toBe(200)
     expect((await harness.request('/api/events/meetup/talk-proposals/me', { method: 'PATCH', body: JSON.stringify({ ...body, title: 'Revised title' }) })).status).toBe(200)
-    expect((await harness.request('/api/events/meetup/talk-proposals/me/actions/submit', { method: 'POST' })).status).toBe(200)
+    expect((await harness.request('/api/events/meetup/talk-proposals/me/actions/submit', { method: 'POST', body: JSON.stringify(body) })).status).toBe(200)
     expect((await harness.request('/api/events/meetup/talk-proposals/me', { method: 'PATCH', body: JSON.stringify(body) })).status).toBe(409)
     expect((await harness.request('/api/events/meetup/talk-proposals/me/actions/withdraw', { method: 'POST' })).status).toBe(200)
     expect((await harness.request('/api/events/meetup/talk-proposals/me/actions/revise', { method: 'POST' })).status).toBe(200)
-    const resubmit = await harness.request('/api/events/meetup/talk-proposals/me/actions/submit', { method: 'POST' })
+    const resubmit = await harness.request('/api/events/meetup/talk-proposals/me/actions/submit', {
+      method: 'POST', body: JSON.stringify({ ...body, title: 'Edited before submitting' })
+    })
     expect(resubmit.status).toBe(200)
-    expect(await resubmit.json()).toMatchObject({ data: { userId: 'owner', status: 'submitted', title: 'Revised title' } })
+    expect(await resubmit.json()).toMatchObject({ data: { userId: 'owner', status: 'submitted', title: 'Edited before submitting' } })
   })
 
   test('submission requires complete answers and question definitions lock after the first draft', async () => {
@@ -134,11 +136,12 @@ describe('Talk proposal API routes', () => {
     expect((await harness.request('/api/events/meetup/talk-proposals/me', {
       method: 'POST', body: JSON.stringify(draft)
     })).status).toBe(200)
-    expect((await harness.request('/api/events/meetup/talk-proposals/me/actions/submit', { method: 'POST' })).status).toBe(422)
-    expect((await harness.request('/api/events/meetup/talk-proposals/me', {
-      method: 'PATCH', body: JSON.stringify({ ...draft, answers: referenceAnswers })
-    })).status).toBe(200)
-    expect((await harness.request('/api/events/meetup/talk-proposals/me/actions/submit', { method: 'POST' })).status).toBe(200)
+    expect((await harness.request('/api/events/meetup/talk-proposals/me/actions/submit', { method: 'POST', body: JSON.stringify(draft) })).status).toBe(422)
+    const submit = await harness.request('/api/events/meetup/talk-proposals/me/actions/submit', {
+      method: 'POST', body: JSON.stringify({ ...draft, answers: referenceAnswers })
+    })
+    expect(submit.status).toBe(200)
+    expect(await submit.json()).toMatchObject({ data: { status: 'submitted', answers: referenceAnswers } })
 
     await harness.database.insert(eventRoleAssignments).values({
       id: 'role_owner_admin', eventId: 'meetup', userId: 'owner', role: 'event_admin'

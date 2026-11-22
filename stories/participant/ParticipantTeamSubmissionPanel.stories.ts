@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook-vue/nuxt'
 import type { TeamSubmissionRecord } from '~/domains/submissions/team-submission'
 
-import { ref } from 'vue'
 import { fn } from 'storybook/test'
 
 import ParticipantTeamSubmissionPanel from '~/components/teams/ParticipantTeamSubmissionPanel.vue'
@@ -35,12 +34,8 @@ const meta = {
   title: 'Participant/Teams/Project submission',
   component: ParticipantTeamSubmissionPanel,
   args: {
-    teamId: submission.teamId,
-    eventState: 'submission_open',
-    status: 'success',
     submission,
     canManageSubmission: true,
-    form: project,
     submissionRequirements: {
       requireSubmissionSummary: true,
       requireSubmissionRepositoryUrl: true,
@@ -50,14 +45,9 @@ const meta = {
     updateAvailability: allowed,
     submitAvailability: allowed,
     withdrawAvailability: allowed,
-    onSaveChanges: fn(),
+    onSaveDraft: fn(),
     onSubmitProject: fn()
-  },
-  render: args => ({
-    components: { ParticipantTeamSubmissionPanel },
-    setup: () => ({ args, form: ref({ ...args.form }) }),
-    template: '<ParticipantTeamSubmissionPanel v-bind="args" v-model:form="form" />'
-  })
+  }
 } satisfies Meta<typeof ParticipantTeamSubmissionPanel>
 
 export default meta
@@ -66,7 +56,6 @@ type Story = StoryObj<typeof meta>
 export const Draft: Story = {}
 export const Locked: Story = {
   args: {
-    eventState: 'blind_review',
     submission: {
       ...submission,
       status: 'locked',

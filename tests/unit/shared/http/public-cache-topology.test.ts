@@ -17,6 +17,7 @@ describe('public Cloudflare cache topology', () => {
     expect(classifyPublicCachePath('/')).toBe('public_html')
     expect(classifyPublicCachePath('/events/codex-spring')).toBe('public_html')
     expect(classifyPublicCachePath('/events/codex-spring/')).toBe('public_html')
+    expect(classifyPublicCachePath('/api/public/discovery')).toBe('public_api')
     expect(classifyPublicCachePath('/api/public/events/codex-spring?tracks=full')).toBe('public_api')
     expect(classifyPublicCachePath('/api/public/events/codex-spring/images/background')).toBe('public_api')
     expect(classifyPublicCachePath('/api/_nuxt_icon/lucide.json')).toBe('static_framework')

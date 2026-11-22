@@ -16,3 +16,16 @@ Feature: TASK-3.9 authenticated admin configuration coverage
     Then the remembered managed event should reference the remembered current application terms document
     When the saved "platform_admin" session loads current terms for the remembered managed event
     Then the current terms response should expose the remembered current application terms document
+
+  Scenario: An organizer edits event details while uploading a new banner
+    When the saved "platform_admin" session creates a managed event named "BDD Event drafts"
+    And the saved "platform_admin" session opens registration for the remembered managed event
+    And I edit the remembered event name and upload a banner from Settings
+    Then the new banner and my unsaved event name should both be visible
+    When I change the event slug and save the configuration
+    Then the updated settings should appear at the new event URL
+
+  Scenario: An organizer retries two judging criteria after a partial save
+    When the saved "platform_admin" session creates a managed event named "BDD criteria retry"
+    And I save two judging criteria and the second one fails
+    Then retrying the criteria save should create only the remaining draft and preserve both rows

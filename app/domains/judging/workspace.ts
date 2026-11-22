@@ -1,3 +1,4 @@
+import type { AccountEventJudgingAssignment } from '#shared/domains/events/account-event-judging-page'
 import type { ApiListResponse } from '~/lib/api'
 import type { SessionActor } from '~/domains/accounts/session-actor'
 import type {
@@ -16,59 +17,9 @@ export type JudgeAssignmentStatus = 'assigned' | 'judge_started' | 'judge_comple
 export type JudgeIneligibilityStatus = 'eligible' | 'ineligible'
 export type JudgeReviewStage = 'blind_review' | 'pitch_review'
 
-export interface BlindApplicationSummary {
-  id: string
-  status: string
-  submittedAt: string | null
-  reviewedAt: string | null
-  applicationTermsDocumentId: string | null
-}
-
-export interface BlindSubmissionSummary {
-  id: string
-  projectName: string | null
-  summary: string | null
-  repositoryUrl: string | null
-  demoUrl: string | null
-  track: {
-    id: string
-    name: string
-    shortDescription: string
-  } | null
-  status: 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified'
-  submittedAt: string | null
-  lockedAt: string | null
-  applications: BlindApplicationSummary[]
-}
-
-export interface PitchSubmissionSummary {
-  id: string
-  projectName: string | null
-  teamName: string
-  summary: string | null
-  repositoryUrl: string | null
-  demoUrl: string | null
-  track: {
-    id: string
-    name: string
-    shortDescription: string
-  } | null
-  status: 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified'
-  submittedAt: string | null
-  lockedAt: string | null
-}
-
-export interface JudgeCriterionScore {
-  id: string
-  evaluationCriterionId: string
-  criterionName: string | null
-  criterionDescription: string | null
-  criterionWeight: number | null
-  score: number
-  comment: string | null
-  createdAt: string
-  updatedAt: string
-}
+type BlindSubmissionSummary = NonNullable<AccountEventJudgingAssignment['blindSubmission']>
+type PitchSubmissionSummary = NonNullable<AccountEventJudgingAssignment['pitchSubmission']>
+type JudgeCriterionScore = NonNullable<AccountEventJudgingAssignment['criterionScores']>[number]
 
 interface BaseJudgeAssignmentDetail {
   id: string

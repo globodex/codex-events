@@ -112,7 +112,11 @@ Then('the public Meetup should show a Call for talks registration action without
 When('I open the remembered Meetup Call for talks with the saved {string} session', async ({ page }, personaKey: string) => {
   const state = stateFor(page)
   await signInAs(parsePersonaKey(personaKey), page)
-  await page.goto(`/events/${state.eventSlug}`)
+  // Follow a shared workspace link before applying, keeping the denied read in the same browser session.
+  await page.goto(`/account/events/${state.eventSlug}?tab=call-for-talks`)
+  await expect(page.getByText('Event workspace unavailable', { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: /Codex Community Events Platform/ }).click()
+  await page.locator(`a[href="/events/${state.eventSlug}"]`).first().click()
   const action = page.getByTestId('public-call-for-talks').getByRole('link', { name: 'Propose a talk' })
   await expect(action).toHaveAttribute('href', `/events/${state.eventSlug}/register?intent=talk-proposal`)
   await action.click()
@@ -205,7 +209,7 @@ Then('the Call for talks workspace should be available', async ({ page }) => {
 
 When('I create and submit Talk proposal {string}', async ({ page }, title: string) => {
   const panel = page.getByTestId('participant-talk-proposal-panel')
-  await panel.getByLabel('Title').fill(title)
+  await panel.getByLabel('Title').fill('Initial draft title')
   await panel.getByLabel('Abstract').fill('A practical talk about dependable handoffs between agents.')
   await panel.getByLabel('Phone number *').fill('+43 123 456')
   await panel.getByLabel('What will you demo live, and what should the audience learn? *').fill('A live Codex agent handoff with a recoverable failure.')
@@ -217,7 +221,12 @@ When('I create and submit Talk proposal {string}', async ({ page }, title: strin
   ])
   expect(createResponse.ok(), await createResponse.text()).toBe(true)
   await expect(panel.getByRole('button', { name: 'Submit proposal' })).toBeVisible()
-  await panel.getByRole('button', { name: 'Submit proposal' }).click()
+  await panel.getByLabel('Title').fill(title)
+  const [submitted] = await Promise.all([
+    page.waitForResponse(response => response.url().endsWith('/talk-proposals/me/actions/submit') && response.request().method() === 'POST'),
+    panel.getByRole('button', { name: 'Submit proposal' }).click()
+  ])
+  expect(await submitted.json()).toMatchObject({ data: { status: 'submitted', title } })
 })
 
 Then('the Talk proposal should be shown as submitted', async ({ page }) => {
@@ -232,7 +241,7 @@ When('the saved {string} session withdraws, revises, and resubmits the remembere
       const response = await api.post(`/api/events/${state.eventId}/talk-proposals/me/actions/${action}`)
       expect(response.ok(), await response.text()).toBe(true)
     }
-    const update = await api.patch(`/api/events/${state.eventId}/talk-proposals/me`, {
+    const submit = await api.post(`/api/events/${state.eventId}/talk-proposals/me/actions/submit`, {
       data: {
         title: 'Reliable agent handoffs',
         abstract: 'A revised practical talk about dependable handoffs between agents.',
@@ -241,8 +250,6 @@ When('the saved {string} session withdraws, revises, and resubmits the remembere
         answers: referenceAnswers
       }
     })
-    expect(update.ok(), await update.text()).toBe(true)
-    const submit = await api.post(`/api/events/${state.eventId}/talk-proposals/me/actions/submit`)
     state.response = submit
     state.json = await submit.json()
   } finally {
@@ -455,4 +462,15 @@ Then('only upcoming, open, and completed-open Meetups should show the public Cal
     const expectedCount = ['upcoming', 'open', 'completed'].includes(stateName) ? 1 : 0
     await expect(page.getByTestId('public-call-for-talks')).toHaveCount(expectedCount)
   }
+})
+
+Then('an upcoming Call for talks should open and close without reloading', async ({ page }) => {
+  await page.clock.install()
+  await page.goto(`/events/${stateFor(page).calloutStateSlugs!.upcoming}`)
+  const callout = page.getByTestId('public-call-for-talks')
+  await expect(callout.getByText(/^Opens /)).toBeVisible()
+  await page.clock.fastForward('01:01:00')
+  await expect(callout.getByRole('link', { name: 'Propose a talk' })).toBeVisible()
+  await page.clock.fastForward('01:00:00')
+  await expect(callout).toHaveCount(0)
 })

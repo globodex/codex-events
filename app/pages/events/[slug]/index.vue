@@ -1,4 +1,11 @@
 <script setup lang="ts">
+import {
+  LazyEventsEventGalleryPanel as EventGalleryPanel,
+  LazyPublicEventsEventOverviewSection as EventOverviewSection,
+  LazyPublicEventsEventPrizeList as EventPrizeList,
+  LazyPublicEventsEventPublishedProjectsShowcase as EventPublishedProjectsShowcase,
+  LazyPublicEventsEventWinnersShowcase as EventWinnersShowcase
+} from '#components'
 import { defineRouteRules } from '#app/composables/pages'
 
 import type {
@@ -21,18 +28,9 @@ import type {
   WinnerEntry
 } from '~/domains/outcomes/published-outcomes'
 
-import EventGalleryPanel from '~/components/events/EventGalleryPanel.vue'
 import EventStateBadge from '~/components/public/events/EventStateBadge.vue'
-import EventPrizeList from '~/components/public/events/EventPrizeList.vue'
-import EventOverviewPanel from '~/components/public/events/EventOverviewPanel.vue'
-import EventAgendaPanel from '~/components/public/events/EventAgendaPanel.vue'
-import EventPublishedProjectsShowcase from '~/components/public/events/EventPublishedProjectsShowcase.vue'
-import EventTracksPanel from '~/components/public/events/organisms/EventTracksPanel.vue'
-import EventTimeline from '~/components/public/events/EventTimeline.vue'
-import EventWinnersShowcase from '~/components/public/events/EventWinnersShowcase.vue'
-import EventTalkProposalCallout from '~/components/public/events/EventTalkProposalCallout.vue'
 import { resolvePublicEventPrimaryAction, shouldShowPublicRegistrationEntry } from '~/domains/applications/participant-application'
-import { isTalkProposalWindowOpen } from '~/domains/talk-proposals'
+import { isTalkProposalWindowOpen } from '#shared/domains/talk-proposals/window'
 import { usePublicEventWorkspaceAccess } from '~/composables/usePublicEventWorkspaceAccess'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
 import type { WebMcpTool } from '~/composables/useWebMcpTool'
@@ -62,7 +60,12 @@ if (!slug.value) {
   })
 }
 
-const { data: eventData, error: eventError } = await useApiResponse<PublicEvent>(
+interface PublicEventDetail extends PublicEvent {
+  hasPublicGallery: boolean
+  hasPrizeTab: boolean
+}
+
+const { data: eventData, error: eventError } = await useApiResponse<PublicEventDetail>(
   () => `public-event-detail:${slug.value}:${includeFullTrackDetails.value ? 'full-tracks' : 'short-tracks'}`,
   () => publicEventDetailPath.value,
   {
@@ -106,111 +109,49 @@ const eventDetailsWebMcpTool = computed<WebMcpTool>(() => ({
   execute: async () => event.value
 }))
 useWebMcpTool(eventDetailsWebMcpTool)
+
+type PublicSection = 'overview' | 'prizes' | 'gallery'
+const visibleTabs = computed(() => {
+  const tabs: { id: PublicSection, label: string }[] = [{ id: 'overview', label: 'Overview' }]
+  if (event.value.hasPrizeTab) tabs.push({ id: 'prizes', label: event.value.state === 'completed' ? 'Winners' : 'Prizes' })
+  if (event.value.hasPublicGallery) tabs.push({ id: 'gallery', label: 'Gallery' })
+  return tabs
+})
+const requestedSection = computed(() => resolveTabQueryValue(route.query.tab, ['overview', 'prizes', 'gallery'] as const, 'overview'))
+const activeTab = computed(() => visibleTabs.value.find(tab => tab.id === requestedSection.value) ?? visibleTabs.value[0]!)
+
+function tabLocation(tab: PublicSection) {
+  return { path: route.path, query: { ...route.query, tab }, hash: route.hash }
+}
+
+watchEffect(() => {
+  if (activeTab.value.id !== requestedSection.value) void navigateTo(tabLocation('overview'), { replace: true })
+})
+
 const isCompetitionEvent = computed(() => event.value.eventType === 'hackathon')
-const eventState = computed(() => event.value.state)
+const now = useEventDeadlineClock(() => [
+  event.value.registrationOpensAt, event.value.registrationClosesAt,
+  event.value.talkProposalOpensAt, event.value.talkProposalClosesAt
+])
 const registrationOpen = computed(() => shouldShowPublicRegistrationEntry(
-  event.value.state, event.value.registrationOpensAt, event.value.registrationClosesAt
+  event.value.state, event.value.registrationOpensAt, event.value.registrationClosesAt, now.value
 ))
 const talkProposalWindow = computed(() => {
   const { eventType, talkProposalsEnabled, talkProposalOpensAt, talkProposalClosesAt } = event.value
-  if (eventType !== 'meetup' || !talkProposalsEnabled || !talkProposalOpensAt || !talkProposalClosesAt) {
+  if (eventType !== 'meetup' || !talkProposalsEnabled || !talkProposalOpensAt || !talkProposalClosesAt
+    || now.value.getTime() > Date.parse(talkProposalClosesAt)) {
     return null
   }
 
-  return Date.now() <= Date.parse(talkProposalClosesAt)
-    ? { opensAt: talkProposalOpensAt, closesAt: talkProposalClosesAt }
-    : null
+  return {
+    opensAt: talkProposalOpensAt,
+    closesAt: talkProposalClosesAt,
+    isOpen: isTalkProposalWindowOpen(talkProposalOpensAt, talkProposalClosesAt, now.value.getTime())
+  }
 })
-const workspaceAccess = usePublicEventWorkspaceAccess(slug, () => !registrationOpen.value || !!talkProposalWindow.value)
-const [
-  { data: prizesData, error: prizesError, status: prizesStatus },
-  { data: winnersData, error: winnersError },
-  { data: publishedProjectsData, error: publishedProjectsError },
-  { data: galleryPhotosData, error: galleryError, status: galleryStatus }
-] = await Promise.all([
-  useApiData<PublicPrize[]>(
-    () => `public-event-prizes:${slug.value}:${isCompetitionEvent.value ? 'competition' : 'registration'}`,
-    async ({ apiFetch, signal }) => {
-      if (!isCompetitionEvent.value) {
-        return []
-      }
-
-      const response = await apiFetch<PublicApiListResponse<PublicPrize>>(`/api/public/events/${slug.value}/prizes`, {
-        signal
-      })
-
-      return response.data
-    },
-    {
-      cacheScope: 'public',
-      default: () => []
-    }
-  ),
-  useApiData<WinnerEntry[]>(
-    () => `public-event-winners:${slug.value}:${eventState.value}`,
-    async ({ apiFetch, signal }) => {
-      if (!isCompetitionEvent.value || eventState.value !== 'completed') {
-        return []
-      }
-
-      const response = await apiFetch<PublicApiListResponse<WinnerEntry>>(`/api/public/events/${slug.value}/winners`, {
-        signal
-      })
-
-      return response.data
-    },
-    {
-      cacheScope: 'public',
-      default: () => []
-    }
-  ),
-  useApiData<PublishedProjectEntry[]>(
-    () => `public-event-published-projects:${slug.value}:${eventState.value}`,
-    async ({ apiFetch, signal }) => {
-      if (!isCompetitionEvent.value || eventState.value !== 'completed') {
-        return []
-      }
-
-      const response = await apiFetch<PublicApiListResponse<PublishedProjectEntry>>(
-        `/api/public/events/${slug.value}/published-projects`,
-        {
-          signal
-        }
-      )
-
-      return response.data
-    },
-    {
-      cacheScope: 'public',
-      default: () => []
-    }
-  ),
-  useApiResponse<EventPhotoRecord[]>(() => `public-event-gallery:${slug.value}`, () => `/api/public/events/${slug.value}/photos`, {
-    cacheScope: 'public',
-    default: () => []
-  })
-])
-
-const sectionError = computed(() =>
-  prizesError.value ?? winnersError.value ?? publishedProjectsError.value ?? galleryError.value
+const workspaceAccess = usePublicEventWorkspaceAccess(slug, () =>
+  !registrationOpen.value || (activeTab.value.id === 'overview' && !!talkProposalWindow.value)
 )
-if (sectionError.value) {
-  throw sectionError.value
-}
-
-watch(sectionError, (error) => {
-  if (error) showError(error)
-})
-
-const prizes = computed(() => prizesData.value)
-const winners = computed(() => winnersData.value)
-const publishedProjects = computed(() => publishedProjectsData.value)
-const galleryPhotos = computed(() => galleryPhotosData.value)
-const hasPublishedPrizes = computed(() => isCompetitionEvent.value && prizes.value.length > 0)
-const hasPublicGallery = computed(() => galleryPhotos.value.length > 0)
-const isWinnerRevealVisible = computed(() => isCompetitionEvent.value && event.value.state === 'completed')
-const publicPrizeTabLabel = computed(() => isWinnerRevealVisible.value ? 'Winners' : 'Prizes')
-
 const detailBackgroundImageUrl = computed(() => resolveEventDetailBackgroundImageUrl(event.value))
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
@@ -231,69 +172,33 @@ const talkProposalAction = computed(() => {
   if (workspaceAccess.value !== 'denied' || !primaryAction.value) {
     return null
   }
-  if (isTalkProposalWindowOpen(event.value.talkProposalOpensAt ?? null, event.value.talkProposalClosesAt ?? null)) {
+  if (talkProposalWindow.value?.isOpen) {
     return { label: 'Propose a talk', to: `${primaryAction.value.to}?intent=talk-proposal` }
   }
   return primaryAction.value
 })
-const publicSectionTabs = ['overview', 'prizes', 'gallery'] as const
-type PublicSectionTab = (typeof publicSectionTabs)[number]
-const activePublicSection = computed<PublicSectionTab>(() =>
-  resolveTabQueryValue(route.query.tab, publicSectionTabs, 'overview')
+
+const { data: section, status: sectionStatus, refresh: retrySection } = await useApiData(
+  () => `public-event-section:${slug.value}:${activeTab.value.id}:${event.value.state}`,
+  async ({ apiFetch, signal }) => {
+    const base = `/api/public/events/${slug.value}`
+    if (activeTab.value.id === 'overview') return { kind: 'overview' } as const
+    if (activeTab.value.id === 'gallery') {
+      const { data: photos } = await apiFetch<PublicApiListResponse<EventPhotoRecord>>(`${base}/photos`, { signal })
+      return { kind: 'gallery', photos } as const
+    }
+    if (event.value.state === 'completed') {
+      const [winners, projects] = await Promise.all([
+        apiFetch<PublicApiListResponse<WinnerEntry>>(`${base}/winners`, { signal }),
+        apiFetch<PublicApiListResponse<PublishedProjectEntry>>(`${base}/published-projects`, { signal })
+      ])
+      return { kind: 'winners', winners: winners.data, projects: projects.data } as const
+    }
+    const { data: prizes } = await apiFetch<PublicApiListResponse<PublicPrize>>(`${base}/prizes`, { signal })
+    return { kind: 'prizes', prizes } as const
+  },
+  { cacheScope: 'public' }
 )
-
-const visiblePublicTabs = computed(() => ([
-  { id: 'overview', label: 'Overview', visible: true },
-  { id: 'prizes', label: publicPrizeTabLabel.value, visible: hasPublishedPrizes.value || isWinnerRevealVisible.value },
-  { id: 'gallery', label: 'Gallery', visible: hasPublicGallery.value }
-] satisfies { id: PublicSectionTab, label: string, visible: boolean }[]).filter(tab => tab.visible))
-// An event without prizes and public photos has only the Overview, so the page shows no tab bar.
-const showPublicTabs = computed(() => visiblePublicTabs.value.length > 1)
-
-async function selectPublicSection(nextSection: PublicSectionTab) {
-  if (normalizeTabQueryValue(route.query.tab) === nextSection) {
-    return
-  }
-
-  await navigateTo({
-    path: route.path,
-    query: {
-      ...route.query,
-      tab: nextSection
-    },
-    hash: route.hash
-  })
-}
-
-watchEffect(() => {
-  if (activePublicSection.value !== 'prizes' || prizesStatus.value !== 'success' || hasPublishedPrizes.value || isWinnerRevealVisible.value) {
-    return
-  }
-
-  void navigateTo({
-    path: route.path,
-    query: {
-      ...route.query,
-      tab: 'overview'
-    },
-    hash: route.hash
-  }, { replace: true })
-})
-
-watchEffect(() => {
-  if (activePublicSection.value !== 'gallery' || galleryStatus.value !== 'success' || hasPublicGallery.value) {
-    return
-  }
-
-  void navigateTo({
-    path: route.path,
-    query: {
-      ...route.query,
-      tab: 'overview'
-    },
-    hash: route.hash
-  }, { replace: true })
-})
 
 useSeoMeta({
   title: () => `${event.value.name} | Codex Events`,
@@ -391,18 +296,18 @@ useSeoMeta({
           </div>
 
           <nav
-            v-if="showPublicTabs"
+            v-if="visibleTabs.length > 1"
             aria-label="Event detail sections"
             role="tablist"
             class="flex items-center gap-5 overflow-x-auto"
           >
             <AppSectionTab
-              v-for="tab in visiblePublicTabs"
+              v-for="tab in visibleTabs"
               :id="`public-tab-${tab.id}`"
               :key="tab.id"
-              :selected="activePublicSection === tab.id"
+              :selected="activeTab.id === tab.id"
               :aria-controls="`public-tab-panel-${tab.id}`"
-              @click="void selectPublicSection(tab.id)"
+              :to="tabLocation(tab.id)"
             >
               {{ tab.label }}
             </AppSectionTab>
@@ -412,67 +317,50 @@ useSeoMeta({
     </section>
 
     <AppContainer class="relative z-10 max-w-[68rem] pt-6">
-      <section
-        v-if="activePublicSection === 'overview'"
+      <EventOverviewSection
+        v-if="activeTab.id === 'overview'"
         id="public-tab-panel-overview"
-        :role="showPublicTabs ? 'tabpanel' : undefined"
-        :aria-labelledby="showPublicTabs ? 'public-tab-overview' : undefined"
-        class="space-y-7"
-      >
-        <EventTalkProposalCallout
-          v-if="talkProposalWindow"
-          :opens-at="talkProposalWindow.opensAt"
-          :closes-at="talkProposalWindow.closesAt"
-          :action-href="talkProposalAction?.to"
-          :action-label="talkProposalAction?.label"
-        />
-
-        <EventOverviewPanel :description="event.description" />
-
-        <EventTimeline :event="event" />
-
-        <EventTracksPanel
-          :event-type="event.eventType"
-          :tracks="event.tracks ?? []"
-        />
-
-        <EventAgendaPanel
-          :agenda-items="event.agendaItems"
-          :public-sessions="event.publicSessions"
-        />
-      </section>
+        :role="visibleTabs.length > 1 ? 'tabpanel' : undefined"
+        :aria-labelledby="visibleTabs.length > 1 ? 'public-tab-overview' : undefined"
+        :event="event"
+        :talk-proposal-window="talkProposalWindow"
+        :talk-proposal-action="talkProposalAction"
+      />
 
       <section
-        v-else-if="(hasPublishedPrizes || isWinnerRevealVisible) && activePublicSection === 'prizes'"
-        id="public-tab-panel-prizes"
+        v-else
+        :id="`public-tab-panel-${activeTab.id}`"
         role="tabpanel"
-        aria-labelledby="public-tab-prizes"
+        :aria-labelledby="`public-tab-${activeTab.id}`"
       >
-        <template v-if="isWinnerRevealVisible">
-          <EventWinnersShowcase :winners="winners" />
-
+        <AppAlert
+          v-if="sectionStatus === 'error'"
+          color="error"
+          :title="`Unable to load ${activeTab.label.toLowerCase()}`"
+          :retry="retrySection"
+        />
+        <p
+          v-else-if="sectionStatus !== 'success'"
+          role="status"
+        >
+          Loading {{ activeTab.label.toLowerCase() }}…
+        </p>
+        <template v-else-if="section?.kind === 'winners'">
+          <EventWinnersShowcase :winners="section.winners" />
           <EventPublishedProjectsShowcase
-            v-if="publishedProjects.length > 0"
+            v-if="section.projects.length"
             class="mt-8"
-            :projects="publishedProjects"
+            :projects="section.projects"
           />
         </template>
-
         <EventPrizeList
-          v-else
-          :prizes="prizes"
+          v-else-if="section?.kind === 'prizes'"
+          :prizes="section.prizes"
         />
-      </section>
-
-      <section
-        v-else-if="activePublicSection === 'gallery' && galleryStatus === 'success'"
-        id="public-tab-panel-gallery"
-        role="tabpanel"
-        aria-labelledby="public-tab-gallery"
-      >
         <EventGalleryPanel
+          v-else-if="section?.kind === 'gallery'"
           :description="`Browse selected gallery photos from ${event.name}. Open any image to view it at full size.`"
-          :photos="galleryPhotos"
+          :photos="section.photos"
           empty-state-title="No gallery photos yet"
           empty-state-description="Public gallery photos will appear here once the event team selects them."
         />

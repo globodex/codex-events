@@ -26,10 +26,12 @@ describe('useAccountEventPageRequest', () => {
       error: ref(null),
       pending: ref(false),
       refresh: vi.fn(),
+      invalidationKey: ref('active-view-with-watched-inputs'),
       status: ref('idle')
     })
     useAuthorizationCache.mockReset().mockReturnValue({
-      authorizationGeneration: ref(3)
+      authorizationGeneration: ref(3),
+      clearReads: vi.fn()
     })
 
     vi.stubGlobal('computed', computed)
@@ -42,9 +44,27 @@ describe('useAccountEventPageRequest', () => {
 
   test('uses the shared bootstrap/client boundary without a feature-local session read or refresh', () => {
     expect(pageRequestSource).not.toContain('/api/session')
-    expect(pageRequestSource).not.toContain('.refresh(')
     expect(pageRequestSource).not.toContain('ensureLoaded(')
     expect(pageRequestSource).not.toContain('$fetch')
+  })
+
+  test('refreshes the active participant search and clears other cached views of the list', async () => {
+    const { useAccountEventPageRequest } = await import('../../../../app/composables/useAccountEventPageRequest')
+    const request = useAccountEventPageRequest('fixture-event', 'participants', { query: { participantSearch: 'ben' } })
+    const pageRead = useApiResponse.mock.results[0]!.value
+    const cache = useAuthorizationCache.mock.results[0]!.value
+
+    expect(pageRead.refresh).not.toHaveBeenCalled()
+    await request.refreshFor('previous-event')
+    expect(cache.clearReads).toHaveBeenCalledExactlyOnceWith(['account-event-page:previous-event:participants'])
+    expect(pageRead.refresh).not.toHaveBeenCalled()
+    cache.clearReads.mockClear()
+    await request.refresh()
+    expect(cache.clearReads).toHaveBeenCalledExactlyOnceWith(
+      ['account-event-page:fixture-event:participants'],
+      'active-view-with-watched-inputs'
+    )
+    expect(pageRead.refresh).toHaveBeenCalledOnce()
   })
 
   test('passes one browser-only request and the tab gate to the protected data helper', async () => {

@@ -28,10 +28,8 @@ import {
   resolveParticipantApplicationSubmittedTransition,
   resolveParticipantRegistrationEntry
 } from '~/domains/applications/participant-application'
-import {
-  createTalkProposalAnswers,
-  isTalkProposalWindowOpen
-} from '~/domains/talk-proposals'
+import { isTalkProposalWindowOpen } from '#shared/domains/talk-proposals/window'
+import { createTalkProposalAnswers } from '~/domains/talk-proposals'
 import {
   createParticipantRegistrationDraft,
   evaluateParticipantRegistration,
@@ -40,6 +38,8 @@ import {
   projectParticipantRegistrationApplicationPayload,
   resolveParticipantRegistrationDefinition
 } from '~/domains/applications/participant-registration-definition'
+import { buildAccountOverviewPageCacheKey } from '#shared/domains/account/account-overview-page'
+import { accountWorkspaceSlugsKey } from '~/composables/usePublicEventWorkspaceAccess'
 import { useApiClient } from '~/composables/useApiClient'
 
 definePageMeta({
@@ -48,9 +48,11 @@ definePageMeta({
 })
 
 const route = useRoute()
+const router = useRouter()
 const slug = computed(() => String(route.params.slug ?? '').trim())
 const apiFetch = useApiClient()
-const { actor: accountActor, error: accountError } = useAccountBootstrap()
+const { clearReads } = useAuthorizationCache()
+const { actor: accountActor, error: accountError, saveProfile } = useAccountBootstrap()
 
 if (!slug.value) {
   throw createError({
@@ -100,7 +102,6 @@ const detailSummary = computed(() => formatEventHeaderSummary(event.value))
 const inPersonCommitmentDateLabel = computed(() =>
   formatEventDate(getEventEarliestStartAt(event.value))
 )
-const isSavingProfile = ref(false)
 const profileSaveError = ref('')
 const submissionError = ref('')
 const isSubmitting = ref(false)
@@ -318,47 +319,50 @@ async function submitParticipantApplication() {
     return
   }
 
+  const registrationSlug = slug.value
+  const registrationPath = route.path
+  const nextSubmissionTransition = resolveParticipantApplicationSubmittedTransition(registrationSlug, {
+    autoApproveApplications: event.value.autoApproveApplications,
+    talkProposalSubmitted: isTalkProposalRegistration.value
+  })
+  const application = projectParticipantRegistrationApplicationPayload(registrationDefinition.value, registrationDraft.value)
   profileSaveError.value = ''
   submissionError.value = ''
   submissionTransition.value = null
   isSubmitting.value = true
-  isSavingProfile.value = true
 
   try {
     const normalizedProfileForm = normalizeParticipantRegistrationProfileForm(registrationDraft.value.profileForm)
     Object.assign(registrationDraft.value.profileForm, normalizedProfileForm)
 
-    await apiFetch('/api/account', {
-      method: 'PATCH',
-      body: projectParticipantRegistrationAccountPatch(registrationDefinition.value, registrationDraft.value)
-    })
+    await saveProfile(projectParticipantRegistrationAccountPatch(registrationDefinition.value, registrationDraft.value))
   } catch (error) {
     profileSaveError.value = normalizeParticipantApiError(error).message
     isSubmitting.value = false
-    isSavingProfile.value = false
     return
   }
 
   try {
     await apiFetch(`/api/events/${eventId}/applications`, {
       method: 'POST',
-      body: projectParticipantRegistrationApplicationPayload(registrationDefinition.value, registrationDraft.value)
+      body: application
     })
   } catch (error) {
     submissionError.value = normalizeParticipantApiError(error).message
     isSubmitting.value = false
-    isSavingProfile.value = false
     return
   }
 
-  const nextSubmissionTransition = resolveParticipantApplicationSubmittedTransition(slug.value, {
-    autoApproveApplications: event.value.autoApproveApplications,
-    talkProposalSubmitted: isTalkProposalRegistration.value
-  })
+  clearReads([
+    buildAccountOverviewPageCacheKey(),
+    accountWorkspaceSlugsKey,
+    `account-event-page:${registrationSlug}`,
+    `public-event-register-state:${registrationSlug}`
+  ])
+  isSubmitting.value = false
+  if (router.currentRoute.value.path !== registrationPath) return
 
   submissionTransition.value = nextSubmissionTransition
-  isSubmitting.value = false
-  isSavingProfile.value = false
 
   await nextTick()
 
@@ -446,7 +450,6 @@ useSeoMeta({
           :in-person-commitment-date-label="inPersonCommitmentDateLabel"
           :submission-policy="participantSubmissionPolicy"
           :is-submitting="isSubmitting"
-          :is-saving-profile="isSavingProfile"
           :profile-error="profileSaveError"
           :submission-error="submissionError"
           :submission-transition="submissionTransition"

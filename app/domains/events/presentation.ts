@@ -153,20 +153,6 @@ export interface EventImageSource {
   bannerImageUrl: string | null
 }
 
-export interface EventImageVersions {
-  background: string | number | null | undefined
-  banner: string | number | null | undefined
-}
-
-export function resolveEventImageVersion(
-  version: string | number | EventImageVersions | null | undefined,
-  variant: 'background' | 'banner'
-) {
-  return typeof version === 'object' && version !== null
-    ? version[variant]
-    : version
-}
-
 export function buildVersionedEventImageUrl(
   imageUrl: string | null | undefined,
   version: string | number | null | undefined,
@@ -215,17 +201,6 @@ export function resolveEventDetailBackgroundImageUrl(event: EventImageSource) {
 
   const bannerImageUrl = event.bannerImageUrl?.trim()
   return bannerImageUrl || null
-}
-
-export function resolveEventCardHeroImageUrl(event: EventImageSource) {
-  const bannerImageUrl = event.bannerImageUrl?.trim()
-
-  if (bannerImageUrl) {
-    return bannerImageUrl
-  }
-
-  const displayBackgroundImageUrl = event.displayBackgroundImageUrl?.trim()
-  return displayBackgroundImageUrl || null
 }
 
 const stateLabels: Record<PublicEventState, string> = {

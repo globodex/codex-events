@@ -20,6 +20,7 @@ const props = withDefaults(defineProps<{
   eventId: string
   eventSlug: string
   page: AccountEventCertificatesPage | null
+  refreshPage: (eventSlug: string) => Promise<void>
   isLoading?: boolean
   loadErrorMessage?: string
 }>(), {
@@ -34,10 +35,8 @@ const eventId = computed(() => props.eventId.trim())
 type CertificateEmailResponse = {
   enqueuedCount: number
   failedCount: number
-  applications: AdminApplicationRecord[]
 }
 
-const applications = ref<AdminApplicationRecord[]>([])
 const pendingActionKey = ref('')
 const searchTerm = ref('')
 const certificateEmailActionKey = 'certificate-emails:send'
@@ -58,7 +57,7 @@ type AttendanceFilter = (typeof attendanceFilters)[number]['id']
 const activeAttendanceFilter = ref<AttendanceFilter>('all')
 
 const approvedApplications = computed(() =>
-  listParticipantRosterApplications(applications.value)
+  listParticipantRosterApplications(props.page?.applications ?? [])
     .filter(application => application.status === 'approved')
 )
 
@@ -108,19 +107,16 @@ const isCertificateEmailActionDisabled = computed(() =>
   || certificateEmailReadyCount.value === 0
 )
 
-watch(() => props.page, (page) => {
-  applications.value = (page?.applications ?? []) as AdminApplicationRecord[]
-}, { immediate: true })
-
 async function overrideCheckIn(application: AdminApplicationRecord, status: ApplicationCheckInOverrideStatus) {
   if (pendingActionKey.value) {
     return
   }
 
+  const eventSlug = props.eventSlug
   pendingActionKey.value = getCheckInActionKey(application, status)
 
   try {
-    const response = await apiFetch<ApiDataResponse<AdminApplicationRecord>>(
+    await apiFetch(
       `/api/events/${eventId.value}/applications/${application.id}/actions/override-check-in`,
       {
         method: 'POST',
@@ -128,9 +124,7 @@ async function overrideCheckIn(application: AdminApplicationRecord, status: Appl
       }
     )
 
-    applications.value = applications.value.map(record => record.id === application.id
-      ? { ...record, ...response.data, user: record.user }
-      : record)
+    await props.refreshPage(eventSlug)
   } catch (error) {
     toast.add({
       title: 'Attendance could not be updated',
@@ -147,10 +141,11 @@ async function setCertificateRevoked(application: AdminApplicationRecord, revoke
     return
   }
 
+  const eventSlug = props.eventSlug
   pendingActionKey.value = getCertificateRevocationActionKey(application, revoked)
 
   try {
-    const response = await apiFetch<ApiDataResponse<AdminApplicationRecord>>(
+    await apiFetch(
       `/api/events/${eventId.value}/applications/${application.id}/actions/set-certificate-revocation`,
       {
         method: 'POST',
@@ -158,9 +153,7 @@ async function setCertificateRevoked(application: AdminApplicationRecord, revoke
       }
     )
 
-    applications.value = applications.value.map(record => record.id === application.id
-      ? { ...record, ...response.data, user: record.user }
-      : record)
+    await props.refreshPage(eventSlug)
 
     toast.add({
       title: revoked ? 'Certificate revoked' : 'Certificate restored',
@@ -182,6 +175,7 @@ async function sendCertificateEmails() {
     return
   }
 
+  const eventSlug = props.eventSlug
   pendingActionKey.value = certificateEmailActionKey
 
   try {
@@ -192,25 +186,7 @@ async function sendCertificateEmails() {
       }
     )
 
-    if (response.data.applications.length > 0) {
-      const updatedApplicationsById = new Map(
-        response.data.applications.map(application => [application.id, application] as const)
-      )
-
-      applications.value = applications.value.map((record) => {
-        const updatedApplication = updatedApplicationsById.get(record.id)
-
-        if (!updatedApplication) {
-          return record
-        }
-
-        return {
-          ...record,
-          ...updatedApplication,
-          user: record.user ?? updatedApplication.user
-        }
-      })
-    }
+    await props.refreshPage(eventSlug)
 
     if (response.data.enqueuedCount > 0) {
       toast.add({
@@ -319,7 +295,7 @@ function formatCheckedInTimestamp(application: AdminApplicationRecord) {
     </template>
 
     <AppAlert
-      v-if="props.isLoading"
+      v-if="props.isLoading && !props.page"
       color="neutral"
       variant="soft"
       title="Loading participants"

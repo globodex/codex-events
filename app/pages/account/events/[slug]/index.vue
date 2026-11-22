@@ -133,6 +133,7 @@ type AccountEventAccessRecord = AccountEventEntryAccess
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
+const { clearReads } = useAuthorizationCache()
 const { actor, refresh: refreshActor } = useAccountBootstrap()
 
 if (!slug.value) {
@@ -198,11 +199,9 @@ const participationRecord = shallowRef<AccountEventEntryParticipation | null>(nu
 const participantCreditOffers = computed(() => entryPage.value?.participantCredits ?? [])
 const talkProposal = computed(() => entryPage.value?.talkProposal ?? null)
 const talkProposalReviews = computed(() => entryPage.value?.talkProposalReviews ?? [])
-const hasRetainedTalkProposal = ref(false)
 watch([entryPage, pageShell], ([page, shell]) => {
   accessRecord.value = page?.access ?? shell?.access ?? null
   participationRecord.value = page?.participation ?? null
-  hasRetainedTalkProposal.value = Boolean(page?.talkProposal)
 }, { immediate: true })
 const isWithdrawApplicationPending = ref(false)
 const withdrawApplicationErrorMessage = ref('')
@@ -533,6 +532,24 @@ const assignmentPageRequest = useAccountJudgeAssignmentPageRequest<AccountJudgeA
     enabled: shouldLoadAssignmentPage
   }
 )
+// Keep an open review in sync with its mutation response. Its queue and inbox are read again on return.
+function applyJudgeAssignment(review: AccountJudgeAssignmentWorkspacePage, assignment: AccountJudgeAssignmentWorkspacePage['assignment']) {
+  const eventSlug = review.event.slug
+  const key = `account-event-judge-assignment:${eventSlug}:${review.assignment.id}`
+  // A skipped review can return a replacement assigned to another judge.
+  const displayingAssignment = assignment.id === review.assignment.id && assignmentPageRequest.data.value === review
+  if (displayingAssignment) {
+    assignmentPageRequest.data.value = { ...review, assignment }
+    const queue = judgingPageRequest.data.value
+    if (queue?.page.event.id === review.event.id) {
+      // The editor uses the queue to offer the next unstarted assignment.
+      const assignments = queue.page.assignments.map(row => row.id === assignment.id ? assignment : row)
+      judgingPageRequest.data.value = { ...queue, page: { ...queue.page, assignments } }
+    }
+  }
+  clearReads([key, 'judge-workspace-inbox'], displayingAssignment ? key : undefined)
+  void judgingPageRequest.refreshFor(eventSlug)
+}
 const workspacePage = computed(() => workspacePageRequest.data.value?.page ?? null)
 const galleryPage = computed(() => galleryPageRequest.data.value?.page ?? null)
 const feedbackPage = computed(() => feedbackPageRequest.data.value?.page ?? null)
@@ -543,12 +560,6 @@ const operationsPage = computed(() => operationsPageRequest.data.value?.page ?? 
 const submissionsPage = computed(() => submissionsPageRequest.data.value?.page ?? null)
 const judgingPage = computed(() => judgingPageRequest.data.value?.page ?? null)
 const assignmentPage = computed(() => assignmentPageRequest.data.value ?? null)
-// The gallery and the participant list show their loading state only while they have nothing to
-// show. A search, a refresh or "Load more" keeps the loaded content on screen until the new answer
-// arrives.
-const galleryPageIsLoading = computed(() =>
-  galleryPageRequest.isLoading.value && !galleryPage.value
-)
 const participantsPageIsLoading = computed(() =>
   participantsPageRequest.isLoading.value && !participantsPage.value
 )
@@ -617,13 +628,41 @@ async function refreshAfterCheckInStep() {
   await Promise.all([refreshAccountEvent(), galleryPageRequest.refresh(), programPageRequest.refresh()])
 }
 
+async function refreshCriteria(eventSlug: string) {
+  // Keep the current score sheet and its draft when a catalog save finishes in another tab.
+  if (slug.value !== eventSlug || assignmentPageRequest.status.value !== 'pending') {
+    clearReads([`account-event-judge-assignment:${eventSlug}`], assignmentPageRequest.requestKey.value)
+  }
+  await Promise.all([settingsPageRequest.refreshFor(eventSlug), judgingPageRequest.refreshFor(eventSlug)])
+}
+
 // A Settings save can change the header, the tab bar and the agenda. The Agenda tab reads its page
 // again on the next visit.
-async function refreshSettingsPage() {
+async function refreshSettingsPage(savedSlug?: string) {
+  if (savedSlug && savedSlug !== slug.value) {
+    await navigateTo({ path: `/account/events/${savedSlug}`, query: route.query, hash: route.hash }, { replace: true })
+    return
+  }
+
   await Promise.all([
     settingsPageRequest.refresh(),
     entryPageRequest.refresh(),
     programPageRequest.refresh()
+  ])
+}
+
+async function refreshMemberTeam(eventSlug: string) {
+  await Promise.all([
+    teamsPageRequest.refreshFor(eventSlug),
+    workspacePageRequest.refreshFor(eventSlug),
+    entryPageRequest.refreshFor(eventSlug)
+  ])
+}
+
+async function refreshAttendance(eventSlug: string) {
+  await Promise.all([
+    participantsPageRequest.refreshFor(eventSlug),
+    certificatesPageRequest.refreshFor(eventSlug)
   ])
 }
 
@@ -1590,26 +1629,20 @@ useSeoMeta({
         class="space-y-8"
       >
         <LazyAccountEventTalkProposalPanel
-          v-if="applicationStatus === 'submitted' || applicationStatus === 'approved' || hasRetainedTalkProposal"
-          :event-id="event.id"
+          v-if="applicationStatus === 'submitted' || applicationStatus === 'approved' || talkProposal"
+          :key="`${talkProposal?.id ?? event.id}:${event.talkProposalQuestionsRevision}:${talkProposal?.status ?? 'new'}`"
+          :event="event"
           :application-status="applicationStatus"
-          :opens-at="event.talkProposalOpensAt"
-          :closes-at="event.talkProposalClosesAt"
-          :questions="event.talkProposalQuestions"
-          :question-set-revision="event.talkProposalQuestionsRevision"
           :proposal="talkProposal"
-          @has-proposal-change="hasRetainedTalkProposal = $event"
-          @updated="refreshAccountEvent"
+          :refresh-page="entryPageRequest.refreshFor"
         />
 
         <LazyAccountEventTalkProposalReviewPanel
           v-if="canViewParticipantsAndTeams"
-          :event-id="event.id"
-          :event-state="event.state"
+          :event="event"
           :can-decide="canAdmin"
           :entries="talkProposalReviews"
-          :questions="event.talkProposalQuestions"
-          @updated="refreshAccountEvent"
+          :refresh-page="entryPageRequest.refreshFor"
         />
       </section>
 
@@ -1623,7 +1656,8 @@ useSeoMeta({
         <LazyAccountEventParticipantWorkspacePanel
           :event="event"
           :page="workspacePage"
-          :is-loading="workspacePageRequest.isLoading.value"
+          :refresh-after-submission="workspacePageRequest.refreshFor"
+          :refresh-teams="refreshMemberTeam"
           :load-error-message="workspacePageRequest.errorMessage.value"
           :selected-track-id="selectedTrackId"
         />
@@ -1658,7 +1692,9 @@ useSeoMeta({
 
           <LazyAccountEventAdminSettingsPanel
             v-if="tabAccess.showPrizeConfiguration"
+            :key="workspaceEventId"
             :event-id="workspaceEventId"
+            :on-catalog-saved="prizesPageRequest.refreshFor"
             :event-data="prizesPage.adminSettingsEvent"
             :prizes-data="prizesPage.prizes"
             :can-manage="canAdmin"
@@ -1739,13 +1775,13 @@ useSeoMeta({
         class="space-y-8"
       >
         <LazyAccountEventGalleryPanel
+          :event-slug="slug"
           :event-id="workspaceEventId"
           :can-manage="canAdmin || canJudge || canViewParticipantsAndTeams"
           :page="galleryPage"
           :next-step-href="nextStepHref"
-          :is-loading="galleryPageIsLoading"
           :load-error-message="galleryPageRequest.errorMessage.value"
-          @updated="galleryPageRequest.refresh"
+          :refresh-page="galleryPageRequest.refreshFor"
         />
       </section>
 
@@ -1824,17 +1860,13 @@ useSeoMeta({
         aria-labelledby="account-tab-judging"
       >
         <LazyAccountEventJudgePanel
-          :event-id="workspaceEventId"
-          :slug="slug"
           :selected-assignment-id="selectedJudgeAssignmentId"
           :page="judgingPage"
           :is-loading="judgingPageRequest.isLoading.value"
           :load-error-message="judgingPageRequest.errorMessage.value"
-          :refresh-page="judgingPageRequest.refresh"
           :assignment-page="assignmentPage"
-          :assignment-page-is-loading="assignmentPageRequest.isLoading.value"
           :assignment-page-error-message="assignmentPageRequest.errorMessage.value"
-          :refresh-assignment-page="assignmentPageRequest.refresh"
+          :on-saved="applyJudgeAssignment"
         />
       </section>
 
@@ -1849,6 +1881,7 @@ useSeoMeta({
           v-if="canAdmin"
           v-model:participant-search="participantSearchText"
           :event-id="workspaceEventId"
+          :event-slug="slug"
           section="participants"
           :page="null"
           :participants-page="participantsPage"
@@ -1857,7 +1890,7 @@ useSeoMeta({
           :is-searching-participants="isSearchingParticipants"
           :is-loading-more-participants="isLoadingMoreParticipants"
           :load-error-message="participantsPageRequest.errorMessage.value"
-          :refresh-page="participantsPageRequest.refresh"
+          :refresh-page="refreshAttendance"
           @load-more-participants="loadMoreParticipants"
         />
 
@@ -1865,12 +1898,13 @@ useSeoMeta({
           v-else-if="canViewParticipantsAndTeams"
           v-model:search="participantSearchText"
           :event-id="workspaceEventId"
+          :event-slug="slug"
           :page="participantsPage"
           :is-loading="participantsPageIsLoading"
           :is-searching="isSearchingParticipants"
           :is-loading-more="isLoadingMoreParticipants"
           :error-message="participantsPageRequest.errorMessage.value"
-          :refresh-page="participantsPageRequest.refresh"
+          :refresh-page="refreshAttendance"
           @load-more="loadMoreParticipants"
         />
       </section>
@@ -1887,6 +1921,7 @@ useSeoMeta({
           :event-id="workspaceEventId"
           :event-slug="slug"
           :page="certificatesPage"
+          :refresh-page="refreshAttendance"
           :is-loading="certificatesPageRequest.isLoading.value"
           :load-error-message="certificatesPageRequest.errorMessage.value"
         />
@@ -1899,13 +1934,22 @@ useSeoMeta({
         aria-labelledby="account-tab-teams"
         class="space-y-8"
       >
+        <AppAlert
+          v-if="teamsPageRequest.error.value"
+          color="error"
+          title="Teams unavailable"
+          :description="teamsPageRequest.errorMessage.value"
+        />
         <LazyAccountEventParticipantTeamPanel
-          :event="event"
+          v-else-if="teamsPage"
           :page="teamsPage"
-          :is-loading="teamsPageRequest.isLoading.value"
-          :load-error-message="teamsPageRequest.errorMessage.value"
+          :refresh-teams="teamsPageRequest.refreshFor"
           :selected-team-slug="selectedTeamSlug"
           :show-operational-team-states="canViewParticipantsAndTeams || canAdmin"
+        />
+        <AppAlert
+          v-else
+          title="Loading teams"
         />
       </section>
 
@@ -1918,12 +1962,13 @@ useSeoMeta({
       >
         <LazyAccountEventAdminOperationsPanel
           :event-id="workspaceEventId"
+          :event-slug="slug"
           section="submissions"
           :page="submissionsPage"
           :can-manage="canAdmin"
           :is-loading="submissionsPageRequest.isLoading.value"
           :load-error-message="submissionsPageRequest.errorMessage.value"
-          :refresh-page="submissionsPageRequest.refresh"
+          :refresh-page="submissionsPageRequest.refreshFor"
         />
       </section>
 
@@ -1936,12 +1981,13 @@ useSeoMeta({
       >
         <LazyAccountEventAdminOperationsPanel
           :event-id="workspaceEventId"
+          :event-slug="slug"
           section="operations"
           :page="operationsPage"
           :can-manage="canAdmin"
           :is-loading="operationsPageRequest.isLoading.value"
           :load-error-message="operationsPageRequest.errorMessage.value"
-          :refresh-page="operationsPageRequest.refresh"
+          :refresh-page="operationsPageRequest.refreshFor"
         />
       </section>
 
@@ -1953,7 +1999,9 @@ useSeoMeta({
         class="space-y-8"
       >
         <LazyAccountEventAdminSettingsPanel
+          :key="workspaceEventId"
           :event-id="workspaceEventId"
+          :on-catalog-saved="refreshCriteria"
           :page="settingsPage"
           :can-manage="canAdmin"
           :is-loading="settingsPageRequest.isLoading.value"
@@ -1972,11 +2020,8 @@ useSeoMeta({
   >
     <LazyJudgingOrganismsJudgeAssignmentWorkspacePanel
       :key="assignmentPage.assignment.id"
-      :event-id="assignmentPage.event.id"
-      :event-slug="slug"
-      :assignment-id="assignmentPage.assignment.id"
       :page="assignmentPage"
-      @updated="assignmentPageRequest.refresh()"
+      :on-saved="applyJudgeAssignment"
     />
   </AppContainer>
   <div

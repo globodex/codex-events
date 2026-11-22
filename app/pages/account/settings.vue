@@ -11,7 +11,7 @@ definePageMeta({
 })
 
 const apiFetch = useApiClient()
-const { actor, error, refresh } = useAccountBootstrap()
+const { actor, error, refresh, saveProfile: saveAccountProfile } = useAccountBootstrap()
 
 const profileForm = reactive({
   firstName: '',
@@ -77,12 +77,7 @@ async function saveProfile() {
   saveState.success = ''
 
   try {
-    await apiFetch('/api/account', {
-      method: 'PATCH',
-      body: { ...profileForm }
-    })
-
-    await refresh()
+    await saveAccountProfile({ ...profileForm })
     saveState.success = 'Profile saved.'
   } catch (error) {
     saveState.error = error instanceof Error

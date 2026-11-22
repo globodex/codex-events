@@ -5,6 +5,7 @@ import { createBdd } from 'playwright-bdd'
 
 import { createAuthenticatedApiClient } from '../support/api-client'
 import { parsePersonaKey } from '../support/personas.ts'
+import { signInAs } from '../support/session-state.ts'
 
 const { When, Then } = createBdd()
 const pngFixtureBytes = Buffer.from(
@@ -65,6 +66,7 @@ When('the saved {string} session creates a managed event named {string}', async 
     const json = await response.json() as {
       data?: {
         id?: string
+        slug?: string
       }
     }
     const state = getScenarioState(page)
@@ -343,4 +345,95 @@ Then('the current terms response should expose the remembered current applicatio
       }
     }
   })
+})
+
+When('I edit the remembered event name and upload a banner from Settings', async ({ page }) => {
+  const { eventSlug } = getScenarioState(page)
+  await signInAs('platform_admin', page)
+  await page.goto(`/account/events/${eventSlug}?tab=settings`)
+  await page.getByRole('textbox', { name: 'Event name' }).fill('Updated event draft')
+  await Promise.all([
+    page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/settings') && response.ok()),
+    page.getByLabel('Banner image file').setInputFiles({ name: 'banner.png', mimeType: 'image/png', buffer: pngFixtureBytes })
+  ])
+})
+
+Then('the new banner and my unsaved event name should both be visible', async ({ page }) => {
+  const banner = page.getByAltText('Event banner preview')
+  await expect(banner).toBeVisible()
+  await expect.poll(() => banner.evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
+  await expect(page.getByRole('textbox', { name: 'Event name' })).toHaveValue('Updated event draft')
+})
+
+When('I change the event slug and save the configuration', async ({ page }) => {
+  const state = getScenarioState(page)
+  state.eventSlug = `${state.eventSlug}-renamed`
+  await page.getByRole('textbox', { name: 'Slug', exact: true }).fill(state.eventSlug)
+  await page.getByRole('button', { name: 'Save Configuration' }).click()
+})
+
+Then('the updated settings should appear at the new event URL', async ({ page }) => {
+  const { eventSlug } = getScenarioState(page)
+  await expect(page).toHaveURL(url => url.pathname === `/account/events/${eventSlug}` && url.searchParams.get('tab') === 'settings')
+  await expect(page.getByRole('textbox', { name: 'Event name' })).toHaveValue('Updated event draft')
+})
+
+When('I save two judging criteria and the second one fails', async ({ page }) => {
+  const state = getScenarioState(page)
+  await signInAs('platform_admin', page)
+  await page.goto(`/account/events/${state.eventSlug}?tab=settings`)
+  const rows = page.locator('[data-criterion-row]')
+  for (const name of ['Impact', 'Originality']) {
+    await page.getByRole('button', { name: /^Add (first )?criterion$/ }).click()
+    await rows.last().getByLabel('Criterion name').fill(name)
+    await rows.last().getByLabel('Description').fill(`Rate project ${name.toLowerCase()}.`)
+  }
+
+  const path = `/api/events/${state.eventId}/evaluation-criteria`
+  await page.route(path, (route) => {
+    const request = route.request()
+    if (request.method() === 'POST' && request.postDataJSON().name === 'Originality') {
+      return route.fulfill({ status: 503, json: { error: { message: 'Try saving again.' } } })
+    }
+    return route.continue()
+  })
+  const [first] = await Promise.all([
+    page.waitForResponse(response =>
+      new URL(response.url()).pathname === path && response.request().method() === 'POST' && response.ok()
+    ),
+    page.getByRole('button', { name: 'Save criteria' }).click()
+  ])
+  state.criterionId = (await first.json()).data.id
+  await expect(page.getByTestId('criteria-save-error')).toBeVisible()
+  await page.unroute(path)
+})
+
+Then('retrying the criteria save should create only the remaining draft and preserve both rows', async ({ page }) => {
+  const { eventId, criterionId } = getScenarioState(page)
+  const path = `/api/events/${eventId}/evaluation-criteria`
+  const rows = page.locator('[data-criterion-row]')
+  await expect(rows.first()).toHaveAttribute('data-criterion-id', criterionId!)
+  await expect(rows.last().getByLabel('Description')).toHaveValue('Rate project originality.')
+
+  const creates: string[] = []
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === path) {
+      creates.push(request.postDataJSON().name)
+    }
+  })
+  await Promise.all([
+    page.waitForResponse(response =>
+      new URL(response.url()).pathname === path
+        && response.request().postDataJSON()?.name === 'Originality'
+        && response.ok()
+    ),
+    page.getByRole('button', { name: 'Save criteria' }).click()
+  ])
+  await page.reload()
+  await expect(rows).toHaveCount(2)
+  await expect(rows.first()).toHaveAttribute('data-criterion-id', criterionId!)
+  await expect(rows.first().getByLabel('Criterion name')).toHaveValue('Impact')
+  await expect(rows.last().getByLabel('Criterion name')).toHaveValue('Originality')
+  await expect(rows.last().getByLabel('Description')).toHaveValue('Rate project originality.')
+  expect(creates).toEqual(['Originality'])
 })

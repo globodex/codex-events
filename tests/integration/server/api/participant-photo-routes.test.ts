@@ -14,6 +14,7 @@ import eventPhotoPublicVisibilityPatchHandler from '../../../../server/api/event
 import eventPhotosGetHandler from '../../../../server/api/events/[eventId]/photos/index.get'
 import eventPhotosPostHandler from '../../../../server/api/events/[eventId]/photos/index.post'
 import publicEventPhotoImageGetHandler from '../../../../server/api/public/events/[slug]/photos/[photoId]/image.get'
+import publicEventGetHandler from '../../../../server/api/public/events/[slug]/index.get'
 import publicEventPhotosGetHandler from '../../../../server/api/public/events/[slug]/photos/index.get'
 import {
   auditLogs,
@@ -128,6 +129,7 @@ describe('TASK-451 participant photos', () => {
         { method: 'patch', path: '/api/events/:eventId/photos/:photoId/highlight', handler: eventPhotoHighlightPatchHandler },
         { method: 'patch', path: '/api/events/:eventId/photos/:photoId/public-visibility', handler: eventPhotoPublicVisibilityPatchHandler },
         { method: 'get', path: '/api/events/:eventId/photos/:photoId/image', handler: eventPhotoImageGetHandler },
+        { method: 'get', path: '/api/public/events/:slug', handler: publicEventGetHandler },
         { method: 'get', path: '/api/public/events/:slug/photos', handler: publicEventPhotosGetHandler },
         { method: 'get', path: '/api/public/events/:slug/photos/:photoId/image', handler: publicEventPhotoImageGetHandler },
         { method: 'get', path: '/api/account/events/:slug/entry', handler: entryPageGetHandler },
@@ -674,6 +676,8 @@ describe('TASK-451 participant photos', () => {
       const publicContentRevision = (await readStoredEvent(context)).publicContentRevision
 
       expect(await listPublicPhotoIds(context)).toEqual(['photo_1'])
+      const visibleDetail = await context.harness.request('/api/public/events/build-day')
+      expect(await visibleDetail.json()).toMatchObject({ data: { hasPublicGallery: true, hasPrizeTab: false } })
       expect((await requestPublicImage(context, 'photo_1', 1)).status).toBe(200)
 
       expect((await setHidden(context, 'staff', 'photo_1', true)).status).toBe(200)
@@ -686,6 +690,8 @@ describe('TASK-451 participant photos', () => {
       })
       expect((await readStoredEvent(context)).publicContentRevision).toBe(publicContentRevision + 1)
       expect(await listPublicPhotoIds(context)).toEqual([])
+      const hiddenDetail = await context.harness.request('/api/public/events/build-day')
+      expect(await hiddenDetail.json()).toMatchObject({ data: { hasPublicGallery: false } })
       expect((await requestPublicImage(context, 'photo_1', 1)).status).toBe(404)
       expect((await requestPublicImage(context, 'photo_1', 2)).status).toBe(404)
 

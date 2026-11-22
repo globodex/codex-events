@@ -22,8 +22,12 @@ Feature: Participant team submission workspace
     When I fill the participant submission form with project name "Launch Console Revised", summary "Updated draft for the launch console.", repository URL "https://github.com/example/launch-console-revised", and demo URL "https://example.com/launch-console-revised"
     And I save the participant submission draft
     Then the participant submission field "Project name" should have value "Launch Console Revised"
-    When I submit the participant submission
+    When I fill the participant submission form with project name "Final project", summary "Final summary", repository URL "https://github.com/example/final", and demo URL "https://example.com/final"
+    And I submit the participant submission
     Then I should see the participant submission status "Submitted"
+    When I switch the account event tab to "Overview"
+    And I switch the account event tab to "Workspace"
+    Then the participant submission field "Project name" should have value "Final project"
     When I withdraw the participant submission
     Then I should see the participant submission status "Withdrawn"
 

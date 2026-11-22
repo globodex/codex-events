@@ -741,6 +741,10 @@ function publicPhotosOfEvent(eventId: string) {
   )
 }
 
+function publicGalleryPhotosOfEvent(eventId: string) {
+  return and(publicPhotosOfEvent(eventId), isNotNull(eventPhotos.objectKey), gt(eventPhotos.imageRevision, 0))
+}
+
 export async function getEventPhotoRecordOrThrow(
   database: AppDatabase,
   eventId: string,
@@ -882,11 +886,7 @@ export async function listPublicEventPhotoRecords(
   slug: string
 ) {
   const photos = await database.query.eventPhotos.findMany({
-    where: and(
-      publicPhotosOfEvent(eventId),
-      isNotNull(eventPhotos.objectKey),
-      gt(eventPhotos.imageRevision, 0)
-    ),
+    where: publicGalleryPhotosOfEvent(eventId),
     orderBy: [asc(eventPhotos.createdAt)]
   })
 
@@ -924,11 +924,7 @@ export async function hasPublicEventPhotos(database: AppDatabase, eventId: strin
     columns: {
       id: true
     },
-    where: and(
-      publicPhotosOfEvent(eventId),
-      isNotNull(eventPhotos.objectKey),
-      gt(eventPhotos.imageRevision, 0)
-    )
+    where: publicGalleryPhotosOfEvent(eventId)
   })
 
   return Boolean(photo)

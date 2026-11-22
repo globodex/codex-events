@@ -2,7 +2,6 @@ import type {
   EventRoleSummary,
   SessionActor
 } from '~/domains/accounts/session-actor'
-import type { EventRecord } from '~/domains/events/records'
 import type { EventScopedRole } from '~/domains/events/roles'
 
 export interface EventRoleUserSummary {
@@ -104,22 +103,4 @@ export function hasEventJudgingAccess(actor: SessionActor | null | undefined, ev
     role.eventId === eventId
     && isEventRoleJudgingEnabled(role)
   )
-}
-
-export function filterManageableEvents(events: EventRecord[], actor: SessionActor | null | undefined) {
-  if (!actor?.hasPlatformAccount) {
-    return []
-  }
-
-  if (actor.isPlatformAdmin) {
-    return [...events]
-  }
-
-  const allowedIds = new Set(
-    actor.eventRoles
-      .filter(role => role.role === 'event_admin')
-      .map(role => role.eventId)
-  )
-
-  return events.filter(event => allowedIds.has(event.id))
 }

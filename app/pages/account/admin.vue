@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { accountPagePaths } from '#shared/domains/account/account-page-registry'
+import type { AccountAdminPage } from '#shared/domains/account/event-dashboards'
 import AccountEventDashboardList from '~/components/account/AccountEventDashboardList.vue'
 import {
   formatEventDateWithWeekday,
   formatEventLocation,
   formatEventTypeLabel,
-  getEventDashboardTeamSizeMetaItems,
-  getEventEarliestStartAt
+  getEventDashboardTeamSizeMetaItems
 } from '~/domains/events/presentation'
 import {
   adminOverviewTabs,
@@ -20,7 +21,11 @@ definePageMeta({
 })
 
 const route = useRoute()
-const workspace = useAdminWorkspace()
+const { actor, capabilities } = useAccountBootstrap()
+const { data: events, status, error, refresh } = useApiResponse<AccountAdminPage>('admin-workspace', accountPagePaths['admin-workspace'], {
+  server: false,
+  default: () => []
+})
 const adminOverviewNow = Date.now()
 const adminOverviewTabLabels: Record<AdminOverviewTab, string> = {
   active: 'Active',
@@ -28,14 +33,13 @@ const adminOverviewTabLabels: Record<AdminOverviewTab, string> = {
   past: 'Past'
 }
 
-const isPlatformAdmin = computed(() => workspace.actor.value?.isPlatformAdmin === true)
-const isEventOrganizer = computed(() => workspace.actor.value?.isEventOrganizer === true)
-const manageableEvents = computed(() => workspace.manageableEvents.value)
+const isPlatformAdmin = computed(() => actor.value?.isPlatformAdmin === true)
+const isEventOrganizer = computed(() => actor.value?.isEventOrganizer === true)
 const activeTab = computed<AdminOverviewTab>(() =>
   resolveTabQueryValue(route.query.tab, adminOverviewTabs, 'active')
 )
 const filterCounts = computed(() =>
-  countAdminOverviewEventsByTab(manageableEvents.value, adminOverviewNow)
+  countAdminOverviewEventsByTab(events.value, adminOverviewNow)
 )
 const filterTabs = computed(() =>
   adminOverviewTabs.map(tab => ({
@@ -45,7 +49,7 @@ const filterTabs = computed(() =>
   }))
 )
 const filteredEvents = computed(() =>
-  manageableEvents.value.filter(event =>
+  events.value.filter(event =>
     getAdminOverviewTabForEvent(event, adminOverviewNow) === activeTab.value
   )
 )
@@ -61,7 +65,7 @@ const listItems = computed(() =>
     registrationClosesAt: event.registrationClosesAt,
     to: `/account/events/${event.slug}?tab=operations`,
     actionLabel: 'Open operations',
-    sortAt: getEventEarliestStartAt(event),
+    sortAt: event.startsAt,
     externalAction: {
       label: 'Public page',
       to: `/events/${event.slug}`
@@ -69,7 +73,7 @@ const listItems = computed(() =>
     overline: 'Admin',
     meta: [
       `Type: ${formatEventTypeLabel(event.eventType)}`,
-      `Date: ${formatEventDateWithWeekday(getEventEarliestStartAt(event))}`,
+      `Date: ${formatEventDateWithWeekday(event.startsAt)}`,
       formatEventLocation(event),
       ...getEventDashboardTeamSizeMetaItems(event)
     ]
@@ -146,7 +150,7 @@ useSeoMeta({
                 Admin dashboard
               </h1>
               <p
-                v-if="workspace.actor.value"
+                v-if="actor"
                 class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]"
               >
                 {{
@@ -161,7 +165,7 @@ useSeoMeta({
 
             <div class="flex flex-wrap items-center gap-3">
               <AppDropdownMenu
-                v-if="workspace.session.capabilities.value.canCreateEvent"
+                v-if="capabilities.canCreateEvent"
                 :items="[
                   { label: 'Create event (builder)', to: '/admin/events/builder/new' },
                   { label: 'Create event (classic)', to: '/admin/events/new' }
@@ -190,23 +194,16 @@ useSeoMeta({
 
     <AppContainer class="max-w-none space-y-6 pt-6">
       <AppAlert
-        v-if="workspace.session.error.value"
-        color="error"
-        variant="soft"
-        title="Admin dashboard unavailable"
-        :description="workspace.session.error.value.message"
-      />
-
-      <AppAlert
-        v-else-if="workspace.events.error.value"
+        v-if="error"
         color="error"
         variant="soft"
         title="Unable to load events"
-        :description="workspace.events.error.value.message"
+        :retry="refresh"
+        :description="error.message"
       />
 
       <AppAlert
-        v-else-if="workspace.session.status.value !== 'success' || workspace.events.status.value !== 'success'"
+        v-else-if="status !== 'success'"
         color="neutral"
         variant="soft"
         title="Loading admin dashboard"

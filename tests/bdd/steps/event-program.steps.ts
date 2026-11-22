@@ -1,4 +1,4 @@
-import { expect, type APIRequestContext, type Page, type Request } from '@playwright/test'
+import { expect, type APIRequestContext, type Page, type Request, type Route } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import type { EventFloorPlan, EventProgram, ProgramRoom } from '../../../shared/domains/events/program'
@@ -49,6 +49,15 @@ async function openParallelAgendaInBuilder(page: Page) {
 function builderFloor(page: Page, floorName: string) {
   return page.getByTestId('event-builder-floor-plans').locator('details')
     .filter({ has: page.getByText(floorName, { exact: true }) })
+}
+
+async function selectBuilderRoom(page: Page, roomName: string, floorName: string) {
+  const floor = builderFloor(page, floorName)
+  if (await floor.getAttribute('open') === null) {
+    await floor.locator('summary').first().click()
+  }
+  await floor.getByRole('button', { name: roomName, exact: true }).click()
+  return floor
 }
 
 async function uploadFloorPlan(api: APIRequestContext, name: string, rooms: ProgramRoom[]) {
@@ -253,27 +262,46 @@ Then('I can save the track edit in the event builder', async ({ page }) => {
   expect(data.program.tracks[0]?.name).toBe('Updated build track')
 })
 
-When('I draw a route to {string} on {string} in the event builder', async ({ page }, roomName: string, floorName: string) => {
+When('I leave the builder for event settings', async ({ page }) => {
+  await page.getByRole('link', { name: 'Back', exact: true }).click()
+})
+
+When('I reopen the parallel agenda from event settings', async ({ page }) => {
+  await page.getByTestId('event-builder-open-in-builder').click()
+  await page.locator('summary').filter({ hasText: 'Parallel agenda' }).click()
+})
+
+Then('the builder should show the saved track name', async ({ page }) => {
+  await expect(page.getByRole('region', { name: 'Updated build track' }).getByLabel('Track name'))
+    .toHaveValue('Updated build track')
+})
+
+Then('the builder should show the saved route to {string} on {string}', async ({ page }, roomName: string, floorName: string) => {
+  const floor = await selectBuilderRoom(page, roomName, floorName)
+  await expect(floor.getByRole('button', { name: 'Remove route' })).toBeVisible()
+})
+
+When('I draw a route to {string} on {string} and leave before the save finishes', async ({ page }, roomName: string, floorName: string) => {
   await openParallelAgendaInBuilder(page)
-  const floor = builderFloor(page, floorName)
-  if (await floor.getAttribute('open') === null) {
-    await floor.locator('summary').first().click()
-  }
-  await floor.getByRole('button', { name: roomName, exact: true }).click()
+  const floor = await selectBuilderRoom(page, roomName, floorName)
   await floor.getByRole('button', { name: 'Draw route' }).click()
   const map = floor.getByTestId('admin-floor-plan-map')
   const { width, height } = (await map.boundingBox())!
   for (const [x, y] of [[0.05, 0.9], [0.05, 0.2], [0.2, 0.2]] as const) {
     await map.click({ position: { x: width * x, y: height * y } })
   }
-  const [saved] = await Promise.all([
-    page.waitForResponse(response => new URL(response.url()).pathname.startsWith(`${eventPath}/floor-plans/`)
-      && response.request().method() === 'PUT'),
-    floor.getByRole('button', { name: 'Save floor plan' }).click()
-  ])
-  expect(saved.ok(), `Floor plan save returned HTTP ${saved.status()}`).toBe(true)
+  const held = Promise.withResolvers<Route>()
+  await page.route(`**${eventPath}/floor-plans/*`, held.resolve, { times: 1 })
+  await floor.getByRole('button', { name: 'Save floor plan' }).click()
+  const route = await held.promise
+  expect(route.request().method()).toBe('PUT')
+  const saved = await route.fetch()
+  await expect(saved).toBeOK()
   const { data }: { data: EventFloorPlan } = await saved.json()
   expect(data.rooms.find(room => room.name === roomName)?.route).toHaveLength(3)
+  await page.getByRole('link', { name: 'Back', exact: true }).click()
+  await expect(page.getByTestId('event-builder-open-in-builder')).toBeVisible()
+  await route.fulfill({ response: saved })
 })
 
 When('I open the Agenda tab {int} minutes into Build Time', async ({ page }, minutes: number) => {

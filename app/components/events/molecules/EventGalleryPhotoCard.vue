@@ -13,8 +13,6 @@ withDefaults(defineProps<{
   /** Shows the Hidden, Highlight and Public marks. */
   showCurationBadges?: boolean
   canManage?: boolean
-  canToggleHighlight?: boolean
-  canTogglePublicVisibility?: boolean
   /** True while a change of any photo of the gallery runs. The controls are off then. */
   hasPendingMutation?: boolean
   /** True while this photo is being deleted. */
@@ -25,8 +23,6 @@ withDefaults(defineProps<{
   showUploader: false,
   showCurationBadges: false,
   canManage: false,
-  canToggleHighlight: false,
-  canTogglePublicVisibility: false,
   hasPendingMutation: false,
   isDeleting: false,
   isTogglingHidden: false
@@ -151,12 +147,12 @@ function highlightStatusLabel(photo: EventPhotoRecord) {
       </AppButton>
 
       <div
-        v-if="canToggleHighlight || canTogglePublicVisibility || canManage"
+        v-if="canManage"
         class="flex flex-col gap-4 border-t border-black/8 pt-4 dark:border-white/[0.08]"
       >
         <!-- Highlights choose the photos of the event team for the curated view. Participant photos are always listed, so they have no highlight switch. -->
         <div
-          v-if="canToggleHighlight && !photo.isParticipantUpload"
+          v-if="!photo.isParticipantUpload"
           class="flex items-start justify-between gap-4"
         >
           <div class="space-y-1">
@@ -182,10 +178,7 @@ function highlightStatusLabel(photo: EventPhotoRecord) {
           />
         </div>
 
-        <div
-          v-if="canTogglePublicVisibility"
-          class="flex items-start justify-between gap-4"
-        >
+        <div class="flex items-start justify-between gap-4">
           <div class="space-y-1">
             <label
               :for="publicVisibilitySwitchId(photo.id)"
@@ -210,10 +203,7 @@ function highlightStatusLabel(photo: EventPhotoRecord) {
           />
         </div>
 
-        <div
-          v-if="canManage"
-          class="flex justify-end gap-2"
-        >
+        <div class="flex justify-end gap-2">
           <AppButton
             v-if="photo.isParticipantUpload"
             color="neutral"

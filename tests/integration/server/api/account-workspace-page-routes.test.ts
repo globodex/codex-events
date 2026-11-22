@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from 'vitest'
 
 import { eq } from 'drizzle-orm'
 
+import accountAdminWorkspaceHandler from '../../../../server/api/account/admin-workspace.get'
 import accountOverviewHandler from '../../../../server/api/account/overview.get'
 import accountStaffWorkspaceHandler from '../../../../server/api/account/staff-workspace.get'
 import prizeRedemptionsWorkspaceHandler from '../../../../server/api/prize-redemptions/workspace.get'
@@ -163,6 +164,35 @@ describe('account page-shaped workspace reads', () => {
     expect(body.data.current.map(record => record.event.id)).toEqual(['overview-visible'])
     expect(body.data.past).toEqual([])
     expectSingleRequestSession(harness, queryOffset)
+  })
+
+  test('admin workspace finds every manageable event even when the public list has over 100 events', async () => {
+    const path = '/api/account/admin-workspace'
+    const harness = createApiRouteTestHarness({
+      routes: [{ method: 'get', path, handler: accountAdminWorkspaceHandler }],
+      sessionUser: { sub: 'auth0|organizer', email: 'organizer@example.com' },
+      autoAcceptCurrentPlatformDocuments: false
+    })
+    harnesses.push(harness)
+    await seedPlatformUser(harness, { id: 'organizer', subject: 'auth0|organizer' })
+    await harness.database.update(users).set({ isEventOrganizer: true }).where(eq(users.id, 'organizer'))
+    await seedEvent(harness, { id: 'hidden', creatorId: 'organizer', hiddenAt: '2026-08-19T12:00:00.000Z' })
+    for (let index = 0; index < 100; index++) {
+      await seedEvent(harness, { id: `visible-${index}`, creatorId: 'organizer' })
+    }
+
+    const organizer = await harness.request(path)
+    expect((await organizer.json()).data).toEqual([])
+
+    await harness.database.insert(eventRoleAssignments).values({
+      id: 'admin-role', eventId: 'hidden', userId: 'organizer', role: 'event_admin', isStaff: false
+    })
+    const admin = await harness.request(path)
+    expect((await admin.json()).data).toMatchObject([{ id: 'hidden', startsAt: '2026-08-11T00:00:00.000Z' }])
+
+    await harness.database.update(users).set({ isPlatformAdmin: true }).where(eq(users.id, 'organizer'))
+    const platformAdmin = await harness.request(path)
+    expect((await platformAdmin.json()).data).toHaveLength(101)
   })
 
   test('staff workspace applies staff role and hidden-event visibility on the server', async () => {

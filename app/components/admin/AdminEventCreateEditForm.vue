@@ -8,7 +8,6 @@ import type {
   EventRecord
 } from '~/domains/events/records'
 import type { EventProgramSettingsMode } from '~/domains/events/program-settings'
-import type { EventImageVersions } from '~/domains/events/presentation'
 import type {
   AccountEventSimplifiedClaimingStatus
 } from '#shared/domains/events/account-event-settings-page'
@@ -42,27 +41,13 @@ const props = defineProps<{
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
   bannerImageUploadError?: string
-  imageVersion?: string | number | EventImageVersions | null
   isRetryingLumaConfiguration?: boolean
   initialSimplifiedClaimingStatus?: AccountEventSimplifiedClaimingStatus | null
   hasExistingTalkProposal?: boolean
 }>()
 
-const form = reactive(createEmptyEventFormState())
+const form = reactive(props.initialEvent ? createEventFormState(props.initialEvent) : createEmptyEventFormState())
 const submitErrorTitle = computed(() => props.initialEvent ? 'Unable to save event' : 'Unable to create event')
-
-function applyInitialEvent() {
-  if (!props.initialEvent) {
-    Object.assign(form, createEmptyEventFormState())
-    return
-  }
-
-  Object.assign(form, createEventFormState(props.initialEvent))
-}
-
-watch(() => props.initialEvent, applyInitialEvent, {
-  immediate: true
-})
 
 function submitForm() {
   emit('submit', cloneFormValues(form))
@@ -85,7 +70,7 @@ function submitForm() {
       :background-image-upload-error="backgroundImageUploadError"
       :banner-image-upload-pending="bannerImageUploadPending"
       :banner-image-upload-error="bannerImageUploadError"
-      :image-version="imageVersion"
+      :images="initialEvent"
       :event-id="initialEvent?.id ?? null"
       :persisted-simplified-claiming-enabled="initialEvent?.simplifiedClaimingEnabled ?? false"
       :initial-simplified-claiming-status="initialSimplifiedClaimingStatus ?? null"

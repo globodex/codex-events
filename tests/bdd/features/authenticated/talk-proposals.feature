@@ -35,6 +35,7 @@ Feature: Meetup Call for talks
   Scenario: Public Calls for talks follow their independent schedule
     Given the saved "platform_admin" session creates disabled, upcoming, open, closed, and completed Meetup Calls for talks
     Then only upcoming, open, and completed-open Meetups should show the public Call for talks
+    And an upcoming Call for talks should open and close without reloading
 
   Scenario: An admin does not accept a submitted Talk proposal
     When the saved "platform_admin" session creates an open Meetup with a Call for talks

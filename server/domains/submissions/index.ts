@@ -11,7 +11,7 @@ import type { events } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
 import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
 import { assertCompetitionEvent, getVisibleEventOrThrow, requireEventAdmin, routeIdParamsSchema } from '#server/domains/events'
-import { getActiveTeamMembers, getTeamOrThrow, getUsersByIds, serializeTeam, serializeTeamMember } from '#server/domains/teams'
+import { getTeamOrThrow, serializeTeam, serializeTeamMember } from '#server/domains/teams'
 
 const requiredStringSchema = z.string().trim().min(1)
 function createOptionalUrlSchema(message: string) {
@@ -36,15 +36,12 @@ const submissionBodyShape = {
 
 type EventRecord = typeof events.$inferSelect
 type SubmissionRecord = typeof submissions.$inferSelect
-type SubmissionInsert = typeof submissions.$inferInsert
 
 export const submissionParamsSchema = routeIdParamsSchema.extend({
   teamId: z.string().trim().min(1)
 })
 
-export const createSubmissionBodySchema = z.object(submissionBodyShape)
-
-export const updateSubmissionBodySchema = z.object(submissionBodyShape)
+export const submissionBodySchema = z.object(submissionBodyShape)
 
 export const updateSubmissionPublicVisibilityBodySchema = z.object({
   isPubliclyVisible: z.coerce.boolean()
@@ -215,14 +212,9 @@ function createConfiguredSubmissionValidationSchema(config: SubmissionRequiremen
   })
 }
 
-function normalizeOptionalSubmissionValue(value: string | null | undefined) {
-  const normalizedValue = value?.trim() ?? ''
-  return normalizedValue.length > 0 ? normalizedValue : null
-}
-
 export function assertSubmissionBodyMatchesEventRequirements(
   event: SubmissionRequirementConfig,
-  input: z.infer<typeof createSubmissionBodySchema> | z.infer<typeof updateSubmissionBodySchema>
+  input: z.infer<typeof submissionBodySchema>
 ) {
   const validationResult = createConfiguredSubmissionValidationSchema(event).safeParse(input)
 
@@ -336,11 +328,7 @@ export async function resolveValidatedSubmissionTrackId(
   return normalizedTrackId
 }
 
-export async function assertSubmissionSubmittable(
-  database: AppDatabase,
-  event: EventRecord,
-  submission: SubmissionRecord
-) {
+export function assertSubmissionSubmittable(submission: SubmissionRecord) {
   assertAllowedState(submission.status, ['draft'], {
     code: 'submission_state_invalid',
     message: 'Only draft submissions can be submitted.',
@@ -348,25 +336,6 @@ export async function assertSubmissionSubmittable(
       submissionId: submission.id
     }
   })
-
-  const requiredFieldResult = createConfiguredSubmissionValidationSchema(event).safeParse({
-    projectName: submission.projectName,
-    summary: normalizeOptionalSubmissionValue(submission.summary) ?? '',
-    repositoryUrl: normalizeOptionalSubmissionValue(submission.repositoryUrl) ?? '',
-    demoUrl: normalizeOptionalSubmissionValue(submission.demoUrl) ?? ''
-  })
-
-  assertGuard(requiredFieldResult.success, {
-    code: 'submission_fields_incomplete',
-    message: 'Complete the required submission fields before submitting.',
-    details: {
-      submissionId: submission.id,
-      fieldErrors: requiredFieldResult.error?.flatten().fieldErrors
-    },
-    statusCode: 400
-  })
-
-  await resolveValidatedSubmissionTrackId(database, event.id, submission.trackId)
 }
 
 export function assertSubmissionWithdrawable(
@@ -459,35 +428,19 @@ export function assertSubmissionPublicVisibilityMutable(
   })
 }
 
-export function buildSubmissionWritePayload(
-  input: z.infer<typeof createSubmissionBodySchema> | z.infer<typeof updateSubmissionBodySchema>,
-  updatedAt: string
+export async function getSubmissionWriteFields(
+  database: AppDatabase,
+  event: EventRecord,
+  input: z.infer<typeof submissionBodySchema>
 ) {
-  const payload: Partial<SubmissionInsert> & Pick<SubmissionInsert, 'updatedAt'> = {
-    updatedAt
+  assertSubmissionBodyMatchesEventRequirements(event, input)
+  return {
+    projectName: input.projectName,
+    summary: input.summary || null,
+    repositoryUrl: input.repositoryUrl || null,
+    demoUrl: input.demoUrl || null,
+    trackId: await resolveValidatedSubmissionTrackId(database, event.id, input.trackId)
   }
-
-  if ('projectName' in input) {
-    payload.projectName = input.projectName
-  }
-
-  if ('summary' in input) {
-    payload.summary = normalizeOptionalSubmissionValue(input.summary)
-  }
-
-  if ('repositoryUrl' in input) {
-    payload.repositoryUrl = normalizeOptionalSubmissionValue(input.repositoryUrl)
-  }
-
-  if ('demoUrl' in input) {
-    payload.demoUrl = normalizeOptionalSubmissionValue(input.demoUrl)
-  }
-
-  if ('trackId' in input) {
-    payload.trackId = input.trackId?.trim() || null
-  }
-
-  return payload
 }
 
 export async function requireSubmissionVisibilityContext(h3Event: H3Event, eventId: string, teamId: string) {
@@ -723,20 +676,5 @@ export async function listSubmissionMonitorTeams(database: AppDatabase, eventId:
           : null
       })
     })
-  }
-}
-
-export async function getTeamSubmissionDetail(database: AppDatabase, eventId: string, teamId: string) {
-  const team = await getTeamOrThrow(database, eventId, teamId)
-  const members = await getActiveTeamMembers(database, teamId)
-  const usersById = await getUsersByIds(database, members.map(member => member.userId))
-  const submission = await getSubmissionForTeam(database, teamId)
-
-  return {
-    team: serializeTeam(team, {
-      activeMemberCount: members.length,
-      members: members.map(member => serializeTeamMember(member, usersById.get(member.userId) ?? null))
-    }),
-    submission: submission ? serializeSubmission(submission) : null
   }
 }

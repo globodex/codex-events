@@ -1,21 +1,17 @@
 <script setup lang="ts">
+import type { SaveBuilderFloorPlan } from '~/domains/events/admin-event'
 import type { EventChallenge } from '#shared/domains/events/challenges'
 import type { EventFloorPlan } from '#shared/domains/events/program'
-import type { ApiDataResponse } from '~/lib/api'
 import { normalizeApiError } from '~/lib/api'
 import AdminBuilderFloorPlanEditor from '~/components/admin/builder/molecules/AdminBuilderFloorPlanEditor.vue'
 
 const props = defineProps<{
-  eventId: string
+  saveFloorPlan: SaveBuilderFloorPlan
   plans: EventFloorPlan[]
   /** The saved challenges of the event, drafts included. A room can name one of them. */
   challenges: Pick<EventChallenge, 'id' | 'title' | 'isPublished'>[]
 }>()
-const emit = defineEmits<{
-  updated: [plan: EventFloorPlan]
-}>()
 
-const apiFetch = useApiClient()
 const formId = useId()
 const showingForm = shallowRef(false)
 const uploadedPlanId = shallowRef<string | null>(null)
@@ -29,7 +25,6 @@ function closeForm() {
 }
 
 async function addPlan(event: SubmitEvent) {
-  const eventId = props.eventId
   if (uploading.value) {
     return
   }
@@ -39,13 +34,9 @@ async function addPlan(event: SubmitEvent) {
   uploading.value = true
   error.value = ''
   try {
-    const { data } = await apiFetch<ApiDataResponse<EventFloorPlan>>(
-      `/api/events/${encodeURIComponent(eventId)}/floor-plans`,
-      { method: 'POST', body }
-    )
-    if (eventId === props.eventId) {
-      emit('updated', data)
-      uploadedPlanId.value = data.id
+    const saved = await props.saveFloorPlan('', { method: 'POST', body })
+    if (saved) {
+      uploadedPlanId.value = saved.id
       closeForm()
     }
   } catch (caught) {
@@ -154,11 +145,10 @@ async function addPlan(event: SubmitEvent) {
           />
         </summary>
         <AdminBuilderFloorPlanEditor
-          :event-id="eventId"
+          :save-floor-plan="saveFloorPlan"
           :plan="plan"
           :challenges="challenges"
           class="pb-4"
-          @updated="emit('updated', $event)"
         />
       </details>
     </div>

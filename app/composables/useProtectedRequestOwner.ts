@@ -17,6 +17,7 @@ export interface ProtectedRequestExecuteOptions {
 }
 
 export interface ProtectedRequestOwner {
+  keys(): IterableIterator<string>
   execute<T>(
     key: string,
     signal: AbortSignal | undefined,
@@ -253,6 +254,7 @@ export function createProtectedRequestOwner(
   }
 
   return {
+    keys: () => entries.keys(),
     execute<T>(
       key: string,
       signal: AbortSignal | undefined,

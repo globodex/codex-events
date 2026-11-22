@@ -36,7 +36,6 @@ const props = withDefaults(defineProps<{
   submissionPolicy: ParticipantApplicationSubmissionPolicy
   inPersonCommitmentDateLabel: string
   isSubmitting?: boolean
-  isSavingProfile?: boolean
   profileError?: string
   submissionError?: string
   submissionTransition?: ParticipantApplicationSubmittedTransition | null
@@ -58,7 +57,6 @@ const controller = useParticipantRegistrationController({
   draft,
   definition: () => props.definition
 })
-const isBusy = computed(() => Boolean(props.isSubmitting || props.isSavingProfile))
 const canRenderSubmissionForm = computed(() => props.event.state === 'registration_open')
 const eventLocationLabel = computed(() => formatEventLocation(props.event))
 const submissionPolicyReason = computed(() => {
@@ -105,7 +103,7 @@ function updateTalkProposalAnswer(index: number, value: string | boolean) {
 }
 
 async function handleSubmitAttempt() {
-  if (!formRoot.value || isBusy.value) return
+  if (!formRoot.value || props.isSubmitting) return
   if (!await controller.validateSubmitAttempt(formRoot.value) || !props.submissionPolicy.isAllowed) return
   emit('submitApplication')
 }
@@ -190,7 +188,7 @@ watch(() => props.profileError || props.submissionError, async (error) => {
               :draft="draft"
               :definition="props.definition"
               :errors="controller.displayedErrors.value"
-              :disabled="isBusy"
+              :disabled="props.isSubmitting"
               :section-label="props.definition.talkProposal ? 'Event registration' : undefined"
               @update-field="updateProfileField"
             />
@@ -206,7 +204,7 @@ watch(() => props.profileError || props.submissionError, async (error) => {
               :draft="draft"
               :definition="props.definition"
               :errors="controller.displayedErrors.value"
-              :disabled="isBusy"
+              :disabled="props.isSubmitting"
               @update-selected-track-id="draft.selectedTrackId = $event"
               @update-ai-knowledge-level="draft.aiKnowledgeLevel = $event"
               @update-why-this-event="draft.whyThisEvent = $event"
@@ -218,7 +216,7 @@ watch(() => props.profileError || props.submissionError, async (error) => {
               :definition="props.definition"
               :event-type="props.event.eventType"
               :errors="controller.displayedErrors.value"
-              :disabled="isBusy"
+              :disabled="props.isSubmitting"
               @update-team-intent="draft.teamIntent = $event"
               @update-team-member="updateTeamMember"
             />
@@ -230,7 +228,7 @@ watch(() => props.profileError || props.submissionError, async (error) => {
               :event-location-label="eventLocationLabel"
               :in-person-commitment-date-label="props.inPersonCommitmentDateLabel"
               :errors="controller.displayedErrors.value"
-              :disabled="isBusy"
+              :disabled="props.isSubmitting"
               @update-in-person-attendance-commitment="draft.inPersonAttendanceCommitment = $event"
               @update-terms-accepted="draft.termsAccepted = $event"
             />
@@ -241,7 +239,7 @@ watch(() => props.profileError || props.submissionError, async (error) => {
             :draft="draft.talkProposal"
             :definition="props.definition"
             :errors="controller.displayedErrors.value"
-            :disabled="isBusy"
+            :disabled="props.isSubmitting"
             @update-title="draft.talkProposal.title = $event"
             @update-abstract="draft.talkProposal.abstract = $event"
             @update-demo-or-slides-url="draft.talkProposal.demoOrSlidesUrl = $event"
@@ -263,8 +261,8 @@ watch(() => props.profileError || props.submissionError, async (error) => {
               type="submit"
               color="primary"
               variant="solid"
-              :loading="isBusy"
-              :disabled="isBusy"
+              :loading="props.isSubmitting"
+              :disabled="props.isSubmitting"
               :class="props.definition.talkProposal ? 'w-full sm:w-auto lg:hidden' : 'w-full sm:w-auto'"
             >
               {{ resolvedSubmitLabel }}
@@ -285,7 +283,7 @@ watch(() => props.profileError || props.submissionError, async (error) => {
             :progress-percent="controller.progressPercent.value"
             :submit-label="resolvedSubmitLabel"
             :show-submit="Boolean(props.definition.talkProposal)"
-            :submitting="isBusy"
+            :submitting="props.isSubmitting"
             @navigate="formRoot && controller.navigateToSection(formRoot, $event)"
           />
         </div>

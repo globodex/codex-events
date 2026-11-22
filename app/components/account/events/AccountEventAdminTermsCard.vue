@@ -2,8 +2,6 @@
 import type { TermsDocument } from '~/domains/events/records'
 
 const props = defineProps<{
-  applicationTermsDraft: string
-  winnerTermsDraft: string
   currentApplicationTerms: TermsDocument | null
   currentWinnerTerms: TermsDocument | null
   savingTermsDocumentType: TermsDocument['documentType'] | null
@@ -11,20 +9,22 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'update:applicationTermsDraft': [value: string]
-  'update:winnerTermsDraft': [value: string]
-  'saveTerms': [documentType: TermsDocument['documentType']]
+  saveTerms: [documentType: TermsDocument['documentType'], content: string]
 }>()
 
-const applicationTermsDraftModel = computed({
-  get: () => props.applicationTermsDraft,
-  set: (value: string) => emit('update:applicationTermsDraft', value)
-})
+function useTermsDraft(current: () => TermsDocument | null) {
+  const content = computed(() => current()?.content ?? '')
+  const draft = ref(content.value)
+  watch(content, (next, previous) => {
+    if (draft.value === previous) {
+      draft.value = next
+    }
+  })
+  return draft
+}
 
-const winnerTermsDraftModel = computed({
-  get: () => props.winnerTermsDraft,
-  set: (value: string) => emit('update:winnerTermsDraft', value)
-})
+const applicationTermsDraft = useTermsDraft(() => props.currentApplicationTerms)
+const winnerTermsDraft = useTermsDraft(() => props.currentWinnerTerms)
 </script>
 
 <template>
@@ -51,7 +51,7 @@ const winnerTermsDraftModel = computed({
 
         <div class="space-y-4">
           <LazyAdminMarkdownEditorField
-            v-model="applicationTermsDraftModel"
+            v-model="applicationTermsDraft"
             name="application-terms-editor"
             editor-id="application-terms-editor"
             label="Content"
@@ -66,7 +66,7 @@ const winnerTermsDraftModel = computed({
               size="md"
               :loading="savingTermsDocumentType === 'application_terms'"
               :disabled="savingTermsDocumentType !== null"
-              @click="emit('saveTerms', 'application_terms')"
+              @click="emit('saveTerms', 'application_terms', applicationTermsDraft)"
             >
               Save application terms
             </AppButton>
@@ -89,7 +89,7 @@ const winnerTermsDraftModel = computed({
 
         <div class="space-y-4">
           <LazyAdminMarkdownEditorField
-            v-model="winnerTermsDraftModel"
+            v-model="winnerTermsDraft"
             name="winner-terms-editor"
             editor-id="winner-terms-editor"
             label="Content"
@@ -104,7 +104,7 @@ const winnerTermsDraftModel = computed({
               size="md"
               :loading="savingTermsDocumentType === 'winner_terms'"
               :disabled="savingTermsDocumentType !== null"
-              @click="emit('saveTerms', 'winner_terms')"
+              @click="emit('saveTerms', 'winner_terms', winnerTermsDraft)"
             >
               Save winner terms
             </AppButton>

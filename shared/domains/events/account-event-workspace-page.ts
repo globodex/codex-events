@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { accountEventParticipantsPageSchema } from './account-event-participants-page'
-import { accountEventTeamsPageSchema } from './account-event-teams-page'
+import { teamDetailSchema, teamEventSchema, teamJoinRequestSchema, teamMemberSchema } from './account-event-teams-page'
 
 const submissionSchema = z.object({
   id: z.string(),
@@ -41,11 +41,19 @@ const rankSchema = z.object({
 })
 
 export const accountEventWorkspacePageSchema = z.object({
-  event: accountEventTeamsPageSchema.shape.event,
+  event: teamEventSchema.extend({
+    submissionOpensAt: z.string().nullable(),
+    requireSubmissionSummary: z.boolean(),
+    requireSubmissionRepositoryUrl: z.boolean(),
+    requireSubmissionDemoUrl: z.boolean(),
+    tracks: z.array(accountEventParticipantsPageSchema.shape.event.shape.tracks.element.extend({
+      shortDescription: z.string()
+    }))
+  }),
   application: accountEventParticipantsPageSchema.shape.applications.element.nullable(),
-  ownTeam: accountEventTeamsPageSchema.shape.ownTeam,
-  ownMembership: accountEventTeamsPageSchema.shape.ownMembership,
-  joinRequests: z.array(accountEventTeamsPageSchema.shape.joinRequests.element),
+  ownTeam: teamDetailSchema.nullable(),
+  ownMembership: teamMemberSchema.nullable(),
+  joinRequests: z.array(teamJoinRequestSchema),
   submission: submissionSchema.nullable(),
   outcome: outcomeSchema.nullable(),
   rank: rankSchema.nullable(),

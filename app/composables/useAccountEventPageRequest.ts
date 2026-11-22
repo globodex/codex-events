@@ -75,6 +75,17 @@ export function useAccountEventPageRequest<TPage>(
     server: false
   })
 
+  // Retain the current result while it refreshes. useApiData waits for a disabled tab to reopen.
+  async function refreshFor(eventSlug: string) {
+    const family = buildAccountEventPageCacheKey(eventSlug, resolvedPage.value)
+    if (eventSlug !== resolvedSlug.value) {
+      authorizationCache.clearReads([family])
+      return
+    }
+    authorizationCache.clearReads([family], pageRequest.invalidationKey.value)
+    await pageRequest.refresh()
+  }
+
   return {
     ...accountPageReadState(pageRequest),
     authorizationGeneration: authorizationCache.authorizationGeneration,
@@ -85,7 +96,8 @@ export function useAccountEventPageRequest<TPage>(
     path,
     pending: pageRequest.pending,
     query: resolvedQuery,
-    refresh: pageRequest.refresh,
+    refresh: () => refreshFor(resolvedSlug.value),
+    refreshFor,
     requestKey,
     slug: resolvedSlug,
     status: pageRequest.status

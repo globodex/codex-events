@@ -141,26 +141,6 @@ async function resetParticipantWorkspaceFixtureScenarioStateIfNeeded(slug: strin
   }
 }
 
-async function recoverTeamDirectoryIfUnresolved(page: Page) {
-  const directoryPanel = page.getByTestId('participant-team-directory-panel')
-
-  if (!(await directoryPanel.isVisible().catch(() => false))) {
-    return
-  }
-
-  const hasCards = await directoryPanel.locator('[data-testid^="participant-team-card-"]').count() > 0
-  const hasEmptyState = await directoryPanel.getByText('No visible teams yet').count() > 0
-  const hasErrorState = await directoryPanel.getByText('Team directory unavailable').count() > 0
-
-  if (hasCards || hasEmptyState || hasErrorState) {
-    return
-  }
-
-  await page.reload()
-  await expect(page.getByTestId('account-event-team-panel')).toBeVisible()
-  await waitForParticipantTeamTabToSettle(page)
-}
-
 When('I open the participant Team tab for event slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
   const parsedPersonaKey = parsePersonaKey(personaKey)
   await resetParticipantWorkspaceFixtureScenarioStateIfNeeded(slug)
@@ -168,7 +148,6 @@ When('I open the participant Team tab for event slug {string} with the saved {st
   await page.goto(`/account/events/${slug}?tab=workspace`)
   await expect(page.getByTestId('account-event-workspace-panel')).toBeVisible()
   await waitForParticipantTeamTabToSettle(page)
-  await recoverTeamDirectoryIfUnresolved(page)
 })
 
 When('I open the participant Teams tab for event slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
@@ -178,7 +157,6 @@ When('I open the participant Teams tab for event slug {string} with the saved {s
   await page.goto(`/account/events/${slug}?tab=teams`)
   await expect(page.getByTestId('account-event-team-panel')).toBeVisible()
   await waitForParticipantTeamTabToSettle(page)
-  await recoverTeamDirectoryIfUnresolved(page)
 })
 
 When('I open the participant Team tab for event slug {string} and selected team slug {string} with the saved {string} session', async ({ page }, slug: string, selectedTeamSlug: string, personaKey: string) => {
@@ -345,8 +323,11 @@ When('I enable join requests for the participant team', async ({ page }) => {
 
 When('I reload the participant Team tab page', async ({ page }) => {
   await page.reload()
-  await expect(page.getByTestId('account-event-workspace-panel')).toBeVisible()
   await waitForParticipantTeamTabToSettle(page)
+})
+
+When('I click the selected participant team action {string}', async ({ page }, label: string) => {
+  await page.getByTestId('participant-team-workspace-panel').getByRole('button', { name: label, exact: true }).click()
 })
 
 Then('I should be in the participant team workspace for the created team', async ({ page }) => {

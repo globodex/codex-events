@@ -417,8 +417,8 @@ function buildFixtureSql(personas: StablePersona[]) {
       null,
       null,
       ${sqlLiteral(platformAdminId)},
-      ${sqlLiteral(fixtureTimestamp)},
-      ${sqlLiteral(fixtureTimestamp)}
+      '2026-03-22T12:00:01.000Z',
+      '2026-03-22T12:00:01.000Z'
     ),
     (
       ${sqlLiteral(fixtureDraftEventId)},

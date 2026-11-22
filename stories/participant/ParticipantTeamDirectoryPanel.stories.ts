@@ -11,7 +11,6 @@ const teamEntries: TeamDirectoryEntry[] = [
     team: openTeam,
     detailHref: '/account/events/build-day/teams/open-tools',
     isOwnTeam: false,
-    hasPendingJoinRequest: false,
     pendingJoinRequestId: null,
     joinAvailability: { isAllowed: true }
   },
@@ -29,7 +28,6 @@ const teamEntries: TeamDirectoryEntry[] = [
     detailHref: '/account/events/build-day/teams/quiet-workshop',
     isOwnTeam: false,
     isFull: true,
-    hasPendingJoinRequest: false,
     pendingJoinRequestId: null,
     joinAvailability: { isAllowed: false, reason: 'This team is full.' }
   }
@@ -44,7 +42,7 @@ const meta = {
     createTeamHref: '/account/events/build-day?tab=team',
     filterOptions: [
       { label: 'All', value: 'all', count: 2 },
-      { label: 'Open to join', value: 'open', count: 1 }
+      { label: 'Open to join', value: 'open_to_join', count: 1 }
     ]
   }
 } satisfies Meta<typeof ParticipantTeamDirectoryPanel>
@@ -59,12 +57,12 @@ export const BrowseTeams: Story = {
       const directoryFilter = shallowRef('all')
       const pendingTeamId = shallowRef<string | null>(null)
       const visibleTeams = computed(() => {
-        const teams = directoryFilter.value === 'open'
+        const teams = directoryFilter.value === 'open_to_join'
           ? args.teams.filter(entry => entry.joinAvailability.isAllowed)
           : args.teams
 
         return teams.map(entry => entry.team.id === pendingTeamId.value
-          ? { ...entry, hasPendingJoinRequest: true, pendingJoinRequestId: 'story-join-request' }
+          ? { ...entry, pendingJoinRequestId: 'story-join-request' }
           : entry)
       })
 
@@ -73,7 +71,8 @@ export const BrowseTeams: Story = {
     template: `
       <ParticipantTeamDirectoryPanel
         v-bind="args"
-        v-model:directory-filter="directoryFilter"
+        :directory-filter="directoryFilter"
+        @select-filter="directoryFilter = $event"
         :teams="visibleTeams"
         @join-team="pendingTeamId = $event"
         @cancel-join-request="pendingTeamId = null"

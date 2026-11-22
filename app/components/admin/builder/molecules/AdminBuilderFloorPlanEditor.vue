@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import type { SaveBuilderFloorPlan } from '~/domains/events/admin-event'
 import type { EventChallenge } from '#shared/domains/events/challenges'
 import type { EventFloorPlan, ProgramRoom } from '#shared/domains/events/program'
 import { floorPlanRoomAreaSchema, programRoomSchema } from '#shared/domains/events/program'
-import type { ApiDataResponse } from '~/lib/api'
 import { normalizeApiError } from '~/lib/api'
 import AdminBuilderFloorPlanMap from '~/components/admin/builder/molecules/AdminBuilderFloorPlanMap.vue'
 
@@ -11,13 +11,10 @@ type RoutePoint = NonNullable<ProgramRoom['route']>[number]
 type DraftRoom = Omit<ProgramRoom, 'area'> & { area: Partial<RoomArea> }
 
 const props = defineProps<{
-  eventId: string
+  saveFloorPlan: SaveBuilderFloorPlan
   plan: EventFloorPlan
   /** The saved challenges of the event, drafts included. A room can name one of them. */
   challenges: Pick<EventChallenge, 'id' | 'title' | 'isPublished'>[]
-}>()
-const emit = defineEmits<{
-  updated: [plan: EventFloorPlan]
 }>()
 
 const areaFields = [
@@ -31,7 +28,6 @@ const routeAxes = [
   { key: 'y', label: 'top (%)' }
 ] as const
 
-const apiFetch = useApiClient()
 const toast = useToast()
 const formId = useId()
 const imageInput = useTemplateRef<HTMLInputElement>('imageInput')
@@ -146,9 +142,8 @@ async function updatePlan(
   operation: 'metadata' | 'image',
   body: FormData | { name: string, rooms: ProgramRoom[] }
 ) {
-  const eventId = props.eventId
   const planId = props.plan.id
-  const path = `/api/events/${encodeURIComponent(eventId)}/floor-plans/${encodeURIComponent(planId)}`
+  const path = `/${encodeURIComponent(planId)}`
   const replacing = operation === 'image'
 
   marking.value = false
@@ -156,12 +151,11 @@ async function updatePlan(
   pending.value = operation
   error.value = ''
   try {
-    const { data } = await apiFetch<ApiDataResponse<EventFloorPlan>>(replacing ? `${path}/image` : path, {
+    const saved = await props.saveFloorPlan(replacing ? `${path}/image` : path, {
       method: replacing ? 'POST' : 'PUT',
       body
     })
-    emit('updated', data)
-    toast.add({ title: replacing ? 'Image replaced' : 'Floor plan saved', color: 'success' })
+    if (saved) toast.add({ title: replacing ? 'Image replaced' : 'Floor plan saved', color: 'success' })
   } catch (caught) {
     error.value = normalizeApiError(caught).message
   } finally {

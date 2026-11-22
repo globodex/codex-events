@@ -41,16 +41,12 @@ export function useApiData<Data>(
   const bootstrap = cacheScope === 'protected'
     ? useAccountBootstrap()
     : null
-  const protectedRequestShapeKey = cacheScope === 'protected'
-    ? computed(() => {
-        const watchedSources = resolveProtectedWatchSources(options?.watch)
-        return watchedSources.length > 0
-          ? buildProtectedRequestKey(toValue(key), watchedSources)
-          : toValue(key)
-      })
-    : null
+  const invalidationKey = computed(() => {
+    const watched = cacheScope === 'protected' && resolveProtectedWatchSources(options?.watch)
+    return watched && watched.length ? `${toValue(key)}:watch=${buildProtectedRequestKey(watched)}` : toValue(key)
+  })
   const resolvedKey = cacheScope === 'protected'
-    ? useAuthorizationCache().protectedKey(protectedRequestShapeKey!)
+    ? useAuthorizationCache().protectedKey(invalidationKey)
     : key
   const protectedRequestOwner = cacheScope === 'protected'
     ? useProtectedRequestOwner()
@@ -119,21 +115,24 @@ export function useApiData<Data>(
     })
   }
 
-  if (!protectedRequestOwner) {
-    return request
-  }
-
   const clear = () => {
     queuedRefreshKey = undefined
-    protectedRequestOwner.invalidate(toValue(resolvedKey))
+    protectedRequestOwner?.invalidate(toValue(resolvedKey))
     rawClear()
   }
 
-  return Object.assign(request, {
-    clear,
-    execute: refresh,
-    refresh
-  })
+  const state = {
+    data: request.data,
+    error: request.error,
+    pending: request.pending,
+    status: request.status,
+    invalidationKey,
+    clear: protectedRequestOwner ? clear : rawClear,
+    refresh: protectedRequestOwner ? refresh : rawRefresh,
+    execute: protectedRequestOwner ? refresh : rawExecute
+  }
+  // Nuxt returns a promise with synchronous fields and resolves it to a separate object.
+  return Object.assign(request.then(() => state), state)
 }
 
 export function useApiResponse<Data>(

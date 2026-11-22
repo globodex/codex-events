@@ -2,6 +2,7 @@
 const props = defineProps<{
   pressed: boolean
   count?: number | string
+  to?: string
 }>()
 </script>
 
@@ -10,7 +11,7 @@ const props = defineProps<{
     color="neutral"
     variant="ghost"
     size="sm"
-    :aria-pressed="props.pressed"
+    v-bind="to ? { to, 'aria-current': pressed ? 'page' : false } : { 'aria-pressed': pressed }"
     class="h-auto min-w-max grow basis-0 justify-between px-4 py-1.5 text-[13px] font-normal sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
     :class="props.pressed
       ? 'bg-black font-medium text-white hover:bg-black hover:text-white dark:bg-white dark:text-black dark:hover:bg-white dark:hover:text-black'

@@ -77,3 +77,12 @@ Feature: Participant team workspace in the account event page
     And I should not see the account workspace heading "Create a team"
     And I should not see the participant workspace text "Closed to join requests"
     And the participant team action "Leave team" should be visible
+
+  Scenario: A participant can cancel an existing join request after reloading the team
+    When I open the participant Team tab for event slug "participant-team-join-fixture-event" and selected team slug "judge-review-team" with the saved "regular_user" session
+    And I click the selected participant team action "Request to join"
+    Then the selected participant team action "Cancel pending request" should be visible
+    When I reload the participant Team tab page
+    Then the selected participant team action "Cancel pending request" should be visible
+    When I click the selected participant team action "Cancel pending request"
+    Then the selected participant team action "Request to join" should be visible

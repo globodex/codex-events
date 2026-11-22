@@ -2,8 +2,7 @@
 import type { ApiDataResponse } from '~/lib/api'
 import type {
   CriterionScoreDraft,
-  JudgeAssignmentApiDetail,
-  JudgeAssignmentDetail
+  JudgeAssignmentApiDetail
 } from '~/domains/judging/workspace'
 import type { AccountJudgeAssignmentWorkspacePage } from '#shared/domains/events/account-event-judging-page'
 
@@ -35,48 +34,28 @@ import {
 } from '~/domains/judging/workspace'
 
 const props = withDefaults(defineProps<{
-  eventId: string
-  eventSlug: string
-  assignmentId: string
+  page: AccountJudgeAssignmentWorkspacePage
   nextReviewHref?: string | null
-  page: AccountJudgeAssignmentWorkspacePage | null
-  isLoading?: boolean
-  loadErrorMessage?: string
-}>(), {
-  nextReviewHref: null,
-  isLoading: false,
-  loadErrorMessage: ''
-})
+  onSaved: (review: AccountJudgeAssignmentWorkspacePage, assignment: JudgeAssignmentApiDetail) => void
+}>(), { nextReviewHref: null })
 
-const emit = defineEmits<{
-  updated: []
-}>()
-
-const scoreOptions = Array.from({ length: 5 }, (_, index) => index + 1)
-
-const normalizedEventId = computed(() => props.eventId.trim())
-const normalizedAssignmentId = computed(() => props.assignmentId.trim())
-const judgingWorkspaceHref = computed(() =>
-  buildAccountEventJudgingTabHref(props.eventSlug)
-)
-
+const scoreOptions = [1, 2, 3, 4, 5]
 const apiFetch = useApiClient()
-const event = computed(() => props.page?.event)
-const criteria = computed(() => props.page?.criteria ?? [])
-const savedAssignment = computed(() => props.page
-  ? normalizeJudgeAssignmentDetail(props.page.assignment as unknown as JudgeAssignmentApiDetail)
-  : null)
-const assignment = ref<JudgeAssignmentDetail | null>(null)
+const event = computed(() => props.page.event)
+const criteria = computed(() => props.page.criteria)
+const assignment = computed(() => normalizeJudgeAssignmentDetail(props.page.assignment as JudgeAssignmentApiDetail))
+const assignmentPath = `/api/events/${props.page.event.id}/judging/assignments/${props.page.assignment.id}`
+const judgingWorkspaceHref = computed(() => buildAccountEventJudgingTabHref(event.value.slug))
 const blindAssignment = computed(() =>
   isBlindJudgeAssignment(assignment.value) ? assignment.value : null
 )
 const pitchAssignment = computed(() =>
   isPitchJudgeAssignment(assignment.value) ? assignment.value : null
 )
-const scoreDrafts = ref(createCriterionScoreDrafts(criteria.value, null))
-const pitchDraft = ref(createPitchScoreDraft(null))
+const scoreDrafts = ref(createCriterionScoreDrafts(criteria.value, assignment.value))
+const pitchDraft = ref(createPitchScoreDraft(assignment.value))
 const skipReason = ref('')
-const ineligibleReason = ref('')
+const ineligibleReason = ref(assignment.value.ineligibilityReason ?? '')
 const showInlineSkipForm = ref(false)
 const actionState = reactive({
   pendingAction: '' as '' | 'start' | 'save' | 'complete' | 'skip' | 'ineligible',
@@ -84,54 +63,21 @@ const actionState = reactive({
   error: ''
 })
 
-watch(savedAssignment, (nextAssignment) => {
-  if (!nextAssignment) {
-    return
-  }
-
-  assignment.value = nextAssignment
-  scoreDrafts.value = createCriterionScoreDrafts(criteria.value, nextAssignment)
-  pitchDraft.value = createPitchScoreDraft(nextAssignment)
-  skipReason.value = ''
-  ineligibleReason.value = nextAssignment.ineligibilityReason ?? ''
-  showInlineSkipForm.value = false
-}, {
-  immediate: true
-})
-
-watch(criteria, (nextCriteria) => {
-  if (!blindAssignment.value) {
-    return
-  }
-
-  scoreDrafts.value = createCriterionScoreDrafts(nextCriteria, blindAssignment.value)
-})
-
 const hasIncompleteScores = computed(() => hasIncompleteCriterionScores(scoreDrafts.value))
 const hasIncompletePitchVote = computed(() => hasIncompletePitchScore(pitchDraft.value))
 const completedCriteriaCount = computed(() =>
   scoreDrafts.value.filter(draft => draft.score.trim().length > 0).length
 )
-const rubricInteractionDisabled = computed(() =>
-  actionState.pendingAction === 'complete'
-  || actionState.pendingAction === 'start'
-  || actionState.pendingAction === 'save'
-)
-const rubricReadonly = computed(() => !assignment.value || assignment.value.status !== 'judge_started')
+const actionPending = computed(() => Boolean(actionState.pendingAction))
+const rubricReadonly = computed(() => assignment.value.status !== 'judge_started')
 const allowBlindScoreSelectionWhenReadonly = computed(() =>
-  Boolean(
-    canAutoStartBlindReviewFromScoreSelection(assignment.value, event.value?.state)
-    && !rubricInteractionDisabled.value
-  )
+  canAutoStartBlindReviewFromScoreSelection(assignment.value, event.value.state)
 )
-const allowPitchVoteInputWhenReadonly = computed(() =>
-  Boolean(
-    canAutoStartPitchReviewFromVoteInput(assignment.value, event.value?.state)
-    && !rubricInteractionDisabled.value
-  )
+const pitchInputDisabled = computed(() =>
+  actionPending.value || (rubricReadonly.value && !canAutoStartPitchReviewFromVoteInput(assignment.value, event.value.state))
 )
 const reviewActionDisabledReason = computed(() => {
-  if (!assignment.value || !blindAssignment.value) {
+  if (!blindAssignment.value) {
     return null
   }
 
@@ -139,24 +85,16 @@ const reviewActionDisabledReason = computed(() => {
     return null
   }
 
-  return getJudgeAssignmentActionDisabledReason(assignment.value, event.value?.state)
+  return getJudgeAssignmentActionDisabledReason(assignment.value, event.value.state)
 })
-const startReviewDisabled = computed(() =>
-  Boolean(
-    !assignment.value
-    || !canStartJudgeAssignment(assignment.value)
-    || reviewActionDisabledReason.value
-  )
-)
 const skipReviewDisabled = computed(() =>
   Boolean(
-    !assignment.value
-    || !canSkipJudgeAssignment(assignment.value)
+    !canSkipJudgeAssignment(assignment.value)
     || reviewActionDisabledReason.value
   )
 )
 const completeDisabled = computed(() => {
-  if (!assignment.value || !canCompleteJudgeAssignment(assignment.value)) {
+  if (!canCompleteJudgeAssignment(assignment.value)) {
     return true
   }
 
@@ -171,10 +109,6 @@ const completeDisabled = computed(() => {
   return true
 })
 const reviewProgressHeading = computed(() => {
-  if (!assignment.value) {
-    return 'Review progress'
-  }
-
   if (assignment.value.status === 'assigned') {
     return pitchAssignment.value
       ? 'Select a pitch score to start review'
@@ -213,8 +147,13 @@ const completeActionLabel = computed(() =>
 const nextActionLabel = computed(() =>
   blindAssignment.value ? 'Start next blind review' : 'Start next pitch vote'
 )
-function notifyWorkspaceUpdated() {
-  emit('updated')
+async function postAction(action: 'start' | 'complete' | 'skip' | 'mark-ineligible', body?: Record<string, unknown>) {
+  const review = props.page
+  const { data } = await apiFetch<ApiDataResponse<JudgeAssignmentApiDetail>>(`${assignmentPath}/actions/${action}`, {
+    method: 'POST',
+    body
+  })
+  props.onSaved(review, data)
 }
 
 function openInlineSkipForm() {
@@ -230,60 +169,22 @@ function closeInlineSkipForm() {
   skipReason.value = ''
 }
 
-function updatePitchScore(score: number) {
-  if (
-    actionState.pendingAction === 'complete'
-    || actionState.pendingAction === 'start'
-    || !pitchAssignment.value
-    || (!allowPitchVoteInputWhenReadonly.value && rubricReadonly.value)
-  ) {
-    return
-  }
+async function updatePitchScore(score: number) {
+  if (pitchInputDisabled.value) return
 
-  if (assignment.value?.status === 'assigned') {
-    actionState.pendingAction = 'start'
-    actionState.error = ''
-    actionState.success = ''
-
-    apiFetch<ApiDataResponse<JudgeAssignmentDetail>>(
-      `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/start`,
-      {
-        method: 'POST'
-      }
-    )
-      .then((response) => {
-        assignment.value = response.data
-        scoreDrafts.value = createCriterionScoreDrafts(criteria.value, response.data)
-        pitchDraft.value = {
-          ...createPitchScoreDraft(response.data),
-          score: String(score),
-          comment: pitchDraft.value.comment
-        }
-        showInlineSkipForm.value = false
-        actionState.success = 'Pitch review started. Continue scoring and submit when you are ready.'
-        notifyWorkspaceUpdated()
-      })
-      .catch((error: unknown) => {
-        actionState.error = getJudgeActionErrorMessage(
-          error,
-          'The selected score could not be recorded yet.'
-        )
-      })
-      .finally(() => {
-        actionState.pendingAction = ''
-      })
-
-    return
-  }
-
-  pitchDraft.value = {
-    ...pitchDraft.value,
-    score: String(score)
+  if (assignment.value.status === 'assigned') {
+    await withActionFeedback('start', async () => {
+      await postAction('start')
+      pitchDraft.value.score = String(score)
+      actionState.success = 'Pitch review started. Continue scoring and submit when you are ready.'
+    })
+  } else {
+    pitchDraft.value.score = String(score)
   }
 }
 
 async function withActionFeedback(
-  action: 'start' | 'complete' | 'skip' | 'ineligible',
+  action: 'start' | 'save' | 'complete' | 'skip' | 'ineligible',
   handler: () => Promise<void>
 ) {
   actionState.pendingAction = action
@@ -299,146 +200,40 @@ async function withActionFeedback(
   }
 }
 
-async function persistBlindCriterionScores(nextDrafts: CriterionScoreDraft[]) {
-  const response = await apiFetch<ApiDataResponse<JudgeAssignmentDetail>>(
-    `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}`,
-    {
-      method: 'PATCH',
-      body: {
-        criterionScores: buildSavedCriterionScoresPayload(nextDrafts)
-      }
-    }
-  )
-
-  assignment.value = response.data
-  scoreDrafts.value = nextDrafts
-}
-
 async function updateBlindScoreDrafts(nextDrafts: CriterionScoreDraft[]) {
-  if (!blindAssignment.value || !assignment.value) {
+  const scoreChanged = nextDrafts.some((draft, index) => draft.score !== scoreDrafts.value[index]?.score)
+  if (!scoreChanged) {
     scoreDrafts.value = nextDrafts
     return
   }
 
-  const scoreChanged = nextDrafts.some((draft, index) => draft.score !== scoreDrafts.value[index]?.score)
-  scoreDrafts.value = nextDrafts
-
-  if (!scoreChanged) {
-    return
-  }
-
-  if (assignment.value.status === 'assigned') {
-    if (startReviewDisabled.value) {
-      return
-    }
-
-    actionState.pendingAction = 'start'
-    actionState.error = ''
-    actionState.success = ''
-
-    try {
-      const response = await apiFetch<ApiDataResponse<JudgeAssignmentDetail>>(
-        `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/start`,
-        {
-          method: 'POST'
-        }
-      )
-
-      assignment.value = response.data
-      pitchDraft.value = createPitchScoreDraft(response.data)
-      showInlineSkipForm.value = false
-      notifyWorkspaceUpdated()
-
-      await persistBlindCriterionScores(nextDrafts)
-
+  const starting = assignment.value.status === 'assigned'
+  await withActionFeedback(starting ? 'start' : 'save', async () => {
+    if (starting) {
+      await postAction('start')
       actionState.success = 'Review started. Continue scoring and submit when you are ready.'
-    } catch (error) {
-      actionState.error = getJudgeActionErrorMessage(
-        error,
-        'The selected score could not be saved yet.'
-      )
-    } finally {
-      actionState.pendingAction = ''
     }
-
-    return
-  }
-
-  if (assignment.value.status !== 'judge_started') {
-    return
-  }
-
-  actionState.pendingAction = 'save'
-  actionState.error = ''
-
-  try {
-    await persistBlindCriterionScores(nextDrafts)
-  } catch (error) {
-    actionState.error = getJudgeActionErrorMessage(
-      error,
-      'The selected score could not be saved yet.'
-    )
-  } finally {
-    actionState.pendingAction = ''
-  }
+    const review = props.page
+    const { data } = await apiFetch<ApiDataResponse<JudgeAssignmentApiDetail>>(assignmentPath, {
+      method: 'PATCH',
+      body: { criterionScores: buildSavedCriterionScoresPayload(nextDrafts) }
+    })
+    props.onSaved(review, data)
+    scoreDrafts.value = nextDrafts
+  })
 }
 
 async function completeReview() {
-  if (!assignment.value || !canCompleteJudgeAssignment(assignment.value)) {
-    return
-  }
-
-  if (pitchAssignment.value) {
-    if (hasIncompletePitchVote.value) {
-      actionState.error = 'A 1-5 pitch score is required before the vote can be submitted.'
-      return
-    }
-
-    await withActionFeedback('complete', async () => {
-      const response = await apiFetch<ApiDataResponse<JudgeAssignmentDetail>>(
-        `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/complete`,
-        {
-          method: 'POST',
-          body: buildPitchReviewCompletionPayload(pitchDraft.value)
-        }
-      )
-
-      assignment.value = response.data
-      scoreDrafts.value = createCriterionScoreDrafts(criteria.value, response.data)
-      pitchDraft.value = createPitchScoreDraft(response.data)
-      actionState.success = 'Pitch vote submitted. The assignment is now recorded as complete.'
-      notifyWorkspaceUpdated()
-    })
-
-    return
-  }
-
-  if (criteria.value.length === 0) {
-    actionState.error = 'This event has no evaluation criteria configured for blind review.'
-    return
-  }
-
-  if (hasIncompleteScores.value) {
-    actionState.error = 'Every criterion needs an integer score between 1 and 5 before the review can be completed.'
-    return
-  }
+  if (completeDisabled.value) return
 
   await withActionFeedback('complete', async () => {
-    const response = await apiFetch<ApiDataResponse<JudgeAssignmentDetail>>(
-      `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/complete`,
-      {
-        method: 'POST',
-        body: {
-          criterionScores: buildCompletionCriterionScoresPayload(scoreDrafts.value)
-        }
-      }
-    )
-
-    assignment.value = response.data
-    scoreDrafts.value = createCriterionScoreDrafts(criteria.value, response.data)
-    pitchDraft.value = createPitchScoreDraft(response.data)
-    actionState.success = 'Review submitted. The assignment is now recorded as complete.'
-    notifyWorkspaceUpdated()
+    if (pitchAssignment.value) {
+      await postAction('complete', buildPitchReviewCompletionPayload(pitchDraft.value))
+      actionState.success = 'Pitch vote submitted. The assignment is now recorded as complete.'
+    } else {
+      await postAction('complete', { criterionScores: buildCompletionCriterionScoresPayload(scoreDrafts.value) })
+      actionState.success = 'Review submitted. The assignment is now recorded as complete.'
+    }
   })
 }
 
@@ -448,23 +243,13 @@ async function skipReview() {
   }
 
   await withActionFeedback('skip', async () => {
-    await apiFetch(
-      `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/skip`,
-      {
-        method: 'POST',
-        body: {
-          reason: skipReason.value.trim() || undefined
-        }
-      }
-    )
-
-    notifyWorkspaceUpdated()
+    await postAction('skip', { reason: skipReason.value.trim() || undefined })
     await navigateTo(judgingWorkspaceHref.value)
   })
 }
 
 async function markIneligible() {
-  if (!assignment.value || !canMarkJudgeAssignmentIneligible(assignment.value)) {
+  if (!canMarkJudgeAssignmentIneligible(assignment.value)) {
     return
   }
 
@@ -474,21 +259,8 @@ async function markIneligible() {
   }
 
   await withActionFeedback('ineligible', async () => {
-    const response = await apiFetch<ApiDataResponse<JudgeAssignmentDetail>>(
-      `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/mark-ineligible`,
-      {
-        method: 'POST',
-        body: {
-          reason: ineligibleReason.value.trim()
-        }
-      }
-    )
-
-    assignment.value = response.data
-    scoreDrafts.value = createCriterionScoreDrafts(criteria.value, response.data)
-    pitchDraft.value = createPitchScoreDraft(response.data)
+    await postAction('mark-ineligible', { reason: ineligibleReason.value.trim() })
     actionState.success = 'The assignment is now marked ineligible.'
-    notifyWorkspaceUpdated()
   })
 }
 </script>
@@ -506,26 +278,7 @@ async function markIneligible() {
       Back to judging queue
     </NuxtLink>
 
-    <AppAlert
-      v-if="props.loadErrorMessage"
-      color="warning"
-      variant="soft"
-      title="Judge review unavailable"
-      :description="props.loadErrorMessage"
-    />
-
-    <div
-      v-else-if="props.isLoading || !props.page || !assignment"
-      class="grid gap-6"
-    >
-      <div class="h-80 rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60" />
-      <div class="h-80 rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60" />
-    </div>
-
-    <div
-      v-else
-      class="flex flex-col gap-6"
-    >
+    <div class="flex flex-col gap-6">
       <JudgeSubmissionPanel
         class="order-1"
         :assignment="assignment"
@@ -543,7 +296,7 @@ async function markIneligible() {
             <JudgeReviewRubric
               v-else
               :model-value="scoreDrafts"
-              :disabled="rubricInteractionDisabled"
+              :disabled="actionPending"
               :readonly="rubricReadonly"
               :allow-score-selection-when-readonly="allowBlindScoreSelectionWhenReadonly"
               @update:model-value="updateBlindScoreDrafts"
@@ -573,7 +326,7 @@ async function markIneligible() {
                   v-for="score in scoreOptions"
                   :key="score"
                   :checked="pitchDraft.score === String(score)"
-                  :disabled="actionState.pendingAction === 'complete' || actionState.pendingAction === 'start' || (!allowPitchVoteInputWhenReadonly && rubricReadonly)"
+                  :disabled="pitchInputDisabled"
                   :data-testid="`judge-pitch-score-option-${score}`"
                   @click="updatePitchScore(score)"
                 >
@@ -601,7 +354,7 @@ async function markIneligible() {
                 v-model="pitchDraft.comment"
                 rows="3"
                 placeholder="Optional note for this pitch vote."
-                :disabled="actionState.pendingAction === 'complete' || actionState.pendingAction === 'start' || (!allowPitchVoteInputWhenReadonly && rubricReadonly)"
+                :disabled="pitchInputDisabled"
                 class="leading-6"
               />
             </div>

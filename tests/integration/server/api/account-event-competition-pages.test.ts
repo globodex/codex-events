@@ -374,7 +374,7 @@ describe('account event operations, submissions, and judging page reads', () => 
 
       expect(response.status).toBe(403)
       expect(body.data).toBeUndefined()
-      expect(harness.d1Database.queries.slice(queryOffset).some(query => query.sql.includes('event_tracks'))).toBe(false)
+      expect(harness.d1Database.queries.slice(queryOffset).some(query => query.sql.includes('team_join_requests'))).toBe(false)
     }
   )
 
@@ -400,7 +400,7 @@ describe('account event operations, submissions, and judging page reads', () => 
 
     expect(response.status).toBe(403)
     expect(body.data).toBeUndefined()
-    expect(harness.d1Database.queries.slice(queryOffset).some(query => query.sql.includes('event_tracks'))).toBe(false)
+    expect(harness.d1Database.queries.slice(queryOffset).some(query => query.sql.includes('team_join_requests'))).toBe(false)
   })
 
   test('allows an ordinary workspace user with an application to read published rosters', async () => {

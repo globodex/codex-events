@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { EventPhotoRecord } from '#shared/domains/events/photos'
-import type { EventGalleryUploadItem } from '~/domains/events/gallery'
+import type { EventGalleryUploadItem, PendingGalleryPhotoChange } from '~/domains/events/gallery'
 
 import 'photoswipe/style.css'
 
@@ -13,13 +13,6 @@ interface EventGalleryFilterOption {
   count?: number
 }
 
-type PhotoSwipeLightboxInstance = {
-  init: () => void
-  destroy: () => void
-}
-
-type PhotoSwipeLightboxCtor = new (options: Record<string, unknown>) => PhotoSwipeLightboxInstance
-
 const props = withDefaults(defineProps<{
   description?: string
   photos: EventPhotoRecord[]
@@ -30,8 +23,6 @@ const props = withDefaults(defineProps<{
   canManage?: boolean
   /** The viewer adds photos as a participant. Shows the upload action of the participant section. */
   canAddParticipantPhotos?: boolean
-  canTogglePublicVisibility?: boolean
-  canToggleHighlight?: boolean
   showCurationBadges?: boolean
   showUploader?: boolean
   isLoading?: boolean
@@ -39,10 +30,7 @@ const props = withDefaults(defineProps<{
   mutationErrorMessage?: string
   isUploading?: boolean
   uploadingItems?: EventGalleryUploadItem[]
-  pendingDeletePhotoId?: string | null
-  pendingPublicVisibilityPhotoId?: string | null
-  pendingHighlightPhotoId?: string | null
-  pendingHiddenPhotoId?: string | null
+  pendingChange?: PendingGalleryPhotoChange | null
   addButtonLabel?: string
   emptyStateTitle?: string
   emptyStateDescription?: string
@@ -55,8 +43,6 @@ const props = withDefaults(defineProps<{
   filterOptions: () => [],
   canManage: false,
   canAddParticipantPhotos: false,
-  canTogglePublicVisibility: false,
-  canToggleHighlight: false,
   showCurationBadges: false,
   showUploader: false,
   isLoading: false,
@@ -64,10 +50,7 @@ const props = withDefaults(defineProps<{
   mutationErrorMessage: '',
   isUploading: false,
   uploadingItems: () => [],
-  pendingDeletePhotoId: null,
-  pendingPublicVisibilityPhotoId: null,
-  pendingHighlightPhotoId: null,
-  pendingHiddenPhotoId: null,
+  pendingChange: null,
   addButtonLabel: 'Add photos',
   emptyStateTitle: 'No gallery photos yet',
   emptyStateDescription: 'Gallery photos will appear here once they are available.',
@@ -120,8 +103,7 @@ const photoCountLabel = computed(() => {
 
   return `${listedPhotoCount} ${listedPhotoCount === 1 ? 'photo' : 'photos'}`
 })
-const uploadingItems = computed(() => props.uploadingItems ?? [])
-const showInitialLoadingState = computed(() => props.isLoading && listedPhotos.value.length === 0)
+const showPhotos = computed(() => !props.loadErrorMessage && !props.isLoading)
 const showFilterControls = computed(() => props.filterOptions.length > 1)
 const hasFilteredEmptyState = computed(() =>
   typeof props.totalPhotoCount === 'number'
@@ -136,16 +118,6 @@ const canUseEmptyUploadTarget = computed(() => props.canManage && !hasFilteredEm
 const invitesFirstParticipantPhoto = computed(() =>
   props.canAddParticipantPhotos && listedPhotos.value.length === 0 && !hasFilteredEmptyState.value
 )
-const hasPendingMutation = computed(() =>
-  props.pendingDeletePhotoId !== null
-  || props.pendingPublicVisibilityPhotoId !== null
-  || props.pendingHighlightPhotoId !== null
-  || props.pendingHiddenPhotoId !== null
-)
-
-let photoLightbox: PhotoSwipeLightboxInstance | null = null
-let photoSwipeLightboxCtor: PhotoSwipeLightboxCtor | null = null
-
 function openFilePicker() {
   if (!canUpload.value || props.isUploading) {
     return
@@ -235,43 +207,22 @@ function onDropTargetDrop(event: DragEvent) {
   }
 }
 
-async function ensurePhotoLightbox() {
-  if (!import.meta.client || !galleryElement.value || listedPhotos.value.length === 0) {
-    photoLightbox?.destroy()
-    photoLightbox = null
-    return
-  }
+// PhotoSwipe listens for clicks on the gallery, including photos added after it mounts.
+watch(galleryElement, async (gallery, _previous, onCleanup) => {
+  if (!gallery) return
 
-  if (!photoSwipeLightboxCtor) {
-    const module = await import('photoswipe/lightbox')
-    photoSwipeLightboxCtor = module.default as PhotoSwipeLightboxCtor
-  }
+  const { default: PhotoSwipeLightbox } = await import('photoswipe/lightbox')
+  if (gallery !== galleryElement.value) return
 
-  photoLightbox?.destroy()
-  photoLightbox = new photoSwipeLightboxCtor!({
-    gallery: galleryElement.value,
+  const lightbox = new PhotoSwipeLightbox({
+    gallery,
     children: 'a[data-photoswipe-photo]',
-    loop: true,
     showHideAnimationType: 'zoom',
-    pswpModule: async () => await import('photoswipe')
+    pswpModule: () => import('photoswipe')
   })
-  photoLightbox.init()
-}
-
-onMounted(async () => {
-  await ensurePhotoLightbox()
-})
-
-watch([galleryElement, listedPhotos], async () => {
-  await ensurePhotoLightbox()
-}, {
-  flush: 'post'
-})
-
-onBeforeUnmount(() => {
-  photoLightbox?.destroy()
-  photoLightbox = null
-})
+  lightbox.init()
+  onCleanup(() => lightbox.destroy())
+}, { flush: 'post' })
 </script>
 
 <template>
@@ -284,6 +235,7 @@ onBeforeUnmount(() => {
               Gallery
             </h2>
             <AppBadge
+              v-if="showPhotos"
               color="neutral"
               variant="soft"
               class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
@@ -346,7 +298,7 @@ onBeforeUnmount(() => {
       />
 
       <div
-        v-if="showFilterControls"
+        v-if="showPhotos && showFilterControls"
         class="flex flex-col gap-4"
       >
         <div class="flex min-w-0 flex-wrap items-center gap-2">
@@ -363,7 +315,7 @@ onBeforeUnmount(() => {
       </div>
 
       <div
-        v-if="showInitialLoadingState"
+        v-if="isLoading && !loadErrorMessage"
         class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
       >
         <div
@@ -373,7 +325,7 @@ onBeforeUnmount(() => {
         />
       </div>
 
-      <template v-else>
+      <template v-else-if="showPhotos">
         <div
           v-if="listedPhotos.length === 0 && !invitesFirstParticipantPhoto"
           class="rounded-2xl border border-dashed px-6 py-10 text-center transition-colors dark:border-white/[0.08]"
@@ -485,11 +437,9 @@ onBeforeUnmount(() => {
                   :show-uploader="showUploader"
                   :show-curation-badges="showCurationBadges"
                   :can-manage="canManage"
-                  :can-toggle-highlight="canToggleHighlight"
-                  :can-toggle-public-visibility="canTogglePublicVisibility"
-                  :has-pending-mutation="hasPendingMutation"
-                  :is-deleting="pendingDeletePhotoId === photo.id"
-                  :is-toggling-hidden="pendingHiddenPhotoId === photo.id"
+                  :has-pending-mutation="!!pendingChange"
+                  :is-deleting="pendingChange?.photoId === photo.id && pendingChange.action === 'delete'"
+                  :is-toggling-hidden="pendingChange?.photoId === photo.id && pendingChange.action === 'hidden'"
                   @delete="emit('deletePhoto', photo)"
                   @toggle-public-visibility="emit('togglePublicVisibility', { photo, value: $event })"
                   @toggle-highlight="emit('toggleHighlight', { photo, value: $event })"

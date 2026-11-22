@@ -11,15 +11,15 @@ import {
   createTalkProposalDraft,
   decideTalkProposal,
   reviseOwnTalkProposal,
-  submitOwnTalkProposal,
+  saveTalkProposalDraft,
   talkProposalContentBodySchema,
-  updateTalkProposalDraft,
   withdrawOwnTalkProposal,
   assertTalkProposalAnswers
 } from '../../../../../server/domains/talk-proposals'
 import { ApiError } from '../../../../../server/http/api-error'
 import { createApiRouteTestHarness } from '../../../../support/backend/api-route'
 
+const content = { eventId: 'meetup', userId: 'owner', title: 'Talk', abstract: 'Abstract', demoOrSlidesUrl: '', questionSetRevision: 0, answers: [] }
 const now = new Date('2026-08-13T12:00:00.000Z')
 
 async function seedContext(harness: ReturnType<typeof createApiRouteTestHarness>) {
@@ -135,31 +135,29 @@ describe('Meetup talk proposal domain', () => {
     const harness = createApiRouteTestHarness({ routes: [] })
     harnesses.push(harness)
     await seedContext(harness)
-    const content = { eventId: 'meetup', userId: 'owner', title: 'Talk', abstract: 'Abstract', demoOrSlidesUrl: '', questionSetRevision: 0, answers: [] }
+
     const draft = await createTalkProposalDraft(harness.database, content, now)
     expect(draft.status).toBe('draft')
     await expect(createTalkProposalDraft(harness.database, content, now)).rejects.toThrowError(ApiError)
 
-    const submitted = await submitOwnTalkProposal(harness.database, { eventId: 'meetup', userId: 'owner' }, now)
+    const submitted = await saveTalkProposalDraft(harness.database, content, 'submitted', now)
     expect(submitted.status).toBe('submitted')
-    await expect(updateTalkProposalDraft(harness.database, { ...content, title: 'Changed' }, now)).rejects.toThrowError(ApiError)
+    await expect(saveTalkProposalDraft(harness.database, { ...content, title: 'Changed' }, 'draft', now)).rejects.toThrowError(ApiError)
 
     const withdrawn = await withdrawOwnTalkProposal(harness.database, { eventId: 'meetup', userId: 'owner' }, now)
     expect(withdrawn.status).toBe('withdrawn')
     const revised = await reviseOwnTalkProposal(harness.database, { eventId: 'meetup', userId: 'owner' }, now)
     expect(revised.status).toBe('draft')
-    expect((await submitOwnTalkProposal(harness.database, { eventId: 'meetup', userId: 'owner' }, now)).status).toBe('submitted')
+    expect((await saveTalkProposalDraft(harness.database, content, 'submitted', now)).status).toBe('submitted')
   })
 
   test('later application rejection retains the proposal but pauses owner mutations', async () => {
     const harness = createApiRouteTestHarness({ routes: [] })
     harnesses.push(harness)
     await seedContext(harness)
-    await createTalkProposalDraft(harness.database, {
-      eventId: 'meetup', userId: 'owner', title: 'Talk', abstract: 'Abstract', questionSetRevision: 0, answers: []
-    }, now)
+    await createTalkProposalDraft(harness.database, content, now)
     await harness.database.update(userApplications).set({ status: 'rejected' }).where(eq(userApplications.id, 'application'))
-    await expect(submitOwnTalkProposal(harness.database, { eventId: 'meetup', userId: 'owner' }, now)).rejects.toThrowError(ApiError)
+    await expect(saveTalkProposalDraft(harness.database, content, 'submitted', now)).rejects.toThrowError(ApiError)
     expect(await harness.database.query.talkProposals.findFirst({ where: eq(talkProposals.userId, 'owner') })).not.toBeNull()
   })
 
@@ -167,10 +165,8 @@ describe('Meetup talk proposal domain', () => {
     const harness = createApiRouteTestHarness({ routes: [] })
     harnesses.push(harness)
     await seedContext(harness)
-    await createTalkProposalDraft(harness.database, {
-      eventId: 'meetup', userId: 'owner', title: 'Talk', abstract: 'Abstract', questionSetRevision: 0, answers: []
-    }, now)
-    await submitOwnTalkProposal(harness.database, { eventId: 'meetup', userId: 'owner' }, now)
+    await createTalkProposalDraft(harness.database, content, now)
+    await saveTalkProposalDraft(harness.database, content, 'submitted', now)
     const afterClose = new Date('2026-08-16T00:00:00.000Z')
     await expect(withdrawOwnTalkProposal(harness.database, { eventId: 'meetup', userId: 'owner' }, afterClose)).rejects.toThrowError(ApiError)
     const proposal = await harness.database.query.talkProposals.findFirst({ where: eq(talkProposals.userId, 'owner') })
@@ -192,10 +188,8 @@ describe('Meetup talk proposal domain', () => {
     const harness = createApiRouteTestHarness({ routes: [] })
     harnesses.push(harness)
     await seedContext(harness)
-    const proposal = await createTalkProposalDraft(harness.database, {
-      eventId: 'meetup', userId: 'owner', title: 'Talk', abstract: 'Abstract', questionSetRevision: 0, answers: []
-    }, now)
-    await submitOwnTalkProposal(harness.database, { eventId: 'meetup', userId: 'owner' }, now)
+    const proposal = await createTalkProposalDraft(harness.database, content, now)
+    await saveTalkProposalDraft(harness.database, content, 'submitted', now)
 
     const decisions = await Promise.allSettled([
       decideTalkProposal(harness.database, {

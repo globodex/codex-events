@@ -2,7 +2,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { getVisibleEventOrThrow } from '#server/domains/events'
-import { serializeTalkProposal, talkProposalContentBodySchema, talkProposalEventParamsSchema, updateTalkProposalDraft } from '#server/domains/talk-proposals'
+import { serializeTalkProposal, talkProposalContentBodySchema, talkProposalEventParamsSchema, saveTalkProposalDraft } from '#server/domains/talk-proposals'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
@@ -22,7 +22,7 @@ export const applicationOperation = defineStructuredRouteOperation({
   const body = await parseValidatedBody(h3Event, talkProposalContentBodySchema)
   await getVisibleEventOrThrow(h3Event, eventId)
   const database = getDatabase(h3Event)
-  const proposal = await updateTalkProposalDraft(database, { eventId, userId: actor.platformUser.id, ...body })
+  const proposal = await saveTalkProposalDraft(database, { eventId, userId: actor.platformUser.id, ...body }, 'draft')
   await writeAuditLog(database, { actorUserId: actor.platformUser.id, entityType: 'talk_proposal', entityId: proposal.id, action: 'talk_proposal.updated', metadata: { eventId } })
   return apiData(serializeTalkProposal(proposal))
 })
