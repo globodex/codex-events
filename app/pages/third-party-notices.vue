@@ -1,23 +1,5 @@
 <script setup lang="ts">
-interface ThirdPartyNoticeRecord {
-  homepageUrl: string | null
-  license: string | null
-  licenseFileName: string | null
-  licenseText: string | null
-  name: string
-  noticeFileName: string | null
-  noticeText: string | null
-  registryUrl: string
-  repositoryUrl: string | null
-  version: string
-}
-
-interface ThirdPartyNoticesPayload {
-  generatedAtIso: string
-  generatedAtLabel: string
-  notices: ThirdPartyNoticeRecord[]
-  scopeLabel: string
-}
+import type { ThirdPartyNoticesPayload } from '#shared/types/third-party-notices'
 
 const {
   data: noticesPayload,
@@ -40,12 +22,8 @@ if (!noticesPayload.value) {
   })
 }
 
-const thirdPartyNotices = computed(() => noticesPayload.value!.notices)
-const thirdPartyNoticesGeneratedAtLabel = computed(() => noticesPayload.value!.generatedAtLabel)
-const thirdPartyNoticesScopeLabel = computed(() => noticesPayload.value!.scopeLabel)
-const totalLicenseCount = computed(() => new Set(
-  thirdPartyNotices.value.map(notice => notice.license ?? 'Undeclared')
-).size)
+const { generatedAtLabel, scopeLabel, notices } = noticesPayload.value
+const totalLicenseCount = new Set(notices.map(notice => notice.license ?? 'Undeclared')).size
 
 useSeoMeta({
   title: 'Third-Party Notices | Codex Events',
@@ -78,9 +56,9 @@ useSeoMeta({
               This page lists the installed runtime open-source packages used by Codex Events together with their declared licenses and bundled notice material.
             </p>
             <div class="flex flex-wrap items-center gap-3 text-[13px] text-neutral-600 dark:text-[#A3A3A3]">
-              <span>Generated {{ thirdPartyNoticesGeneratedAtLabel }} UTC</span>
+              <span>Generated {{ generatedAtLabel }} UTC</span>
               <span class="hidden sm:inline">•</span>
-              <span>{{ thirdPartyNotices.length }} packages</span>
+              <span>{{ notices.length }} packages</span>
               <span class="hidden sm:inline">•</span>
               <span>{{ totalLicenseCount }} declared license labels</span>
             </div>
@@ -96,7 +74,7 @@ useSeoMeta({
             Scope
           </h2>
           <p class="text-sm text-neutral-700 dark:text-[#A3A3A3]">
-            {{ thirdPartyNoticesScopeLabel }}
+            {{ scopeLabel }}
           </p>
           <p class="text-sm text-neutral-700 dark:text-[#A3A3A3]">
             Each entry links back to the package source metadata. License text is shown when the installed package ships a bundled license file.
@@ -106,7 +84,7 @@ useSeoMeta({
 
       <section class="space-y-4">
         <article
-          v-for="notice in thirdPartyNotices"
+          v-for="notice in notices"
           :key="`${notice.name}@${notice.version}`"
           class="overflow-hidden rounded-xl border border-black/8 bg-[#F7F7F8]/80 dark:border-white/[0.08] dark:bg-[#111111]/80"
         >

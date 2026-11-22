@@ -117,8 +117,9 @@ function getMemberLinks(member: PublishedProjectShowcaseEntry['teamMembers'][num
               <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                 Project description
               </p>
-              <AppMarkdownRenderer
+              <LazyAppMarkdownRenderer
                 v-if="item.summary?.trim()"
+                hydrate-never
                 :source="item.summary"
               />
               <p

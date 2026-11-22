@@ -29,8 +29,9 @@ function resourceKey(resource: TrackResource) {
     class="space-y-5"
     :class="props.separated ? 'mt-5 border-t border-black/8 pt-5 dark:border-white/[0.08]' : 'mt-3'"
   >
-    <AppMarkdownRenderer
+    <LazyAppMarkdownRenderer
       v-if="hasDescription"
+      hydrate-never
       :source="props.description"
       class="max-w-[72ch]"
     />

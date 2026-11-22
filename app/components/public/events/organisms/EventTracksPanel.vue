@@ -102,7 +102,8 @@ const panelDescription = computed(() => {
           </summary>
 
           <div class="mt-2 min-w-0 space-y-2 sm:ml-24">
-            <AppMarkdownRenderer
+            <LazyAppMarkdownRenderer
+              hydrate-never
               :source="track.shortDescription"
               class="max-w-[62ch]"
             />

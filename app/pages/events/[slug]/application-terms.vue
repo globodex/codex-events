@@ -202,7 +202,8 @@ useSeoMeta({
           </div>
         </div>
 
-        <AppMarkdownRenderer
+        <LazyAppMarkdownRenderer
+          hydrate-never
           :source="applicationTermsMarkdown"
           strip-leading-heading
         />

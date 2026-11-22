@@ -1,3 +1,5 @@
+import type { ThirdPartyNoticeRecord, ThirdPartyNoticesPayload } from '../../shared/types/third-party-notices'
+
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 
@@ -10,26 +12,6 @@ interface PackageJsonShape {
   repository?: unknown
   dependencies?: Record<string, string>
   optionalDependencies?: Record<string, string>
-}
-
-export interface ThirdPartyNoticeRecord {
-  homepageUrl: string | null
-  license: string | null
-  licenseFileName: string | null
-  licenseText: string | null
-  name: string
-  noticeFileName: string | null
-  noticeText: string | null
-  registryUrl: string
-  repositoryUrl: string | null
-  version: string
-}
-
-export interface ThirdPartyNoticesPayload {
-  generatedAtIso: string
-  generatedAtLabel: string
-  notices: ThirdPartyNoticeRecord[]
-  scopeLabel: string
 }
 
 const runtimeScopeLabel = 'Installed runtime dependencies from package.json and their resolved transitive dependencies.'

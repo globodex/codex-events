@@ -199,7 +199,8 @@ useSeoMeta({
           v-if="settings"
           class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80"
         >
-          <AppMarkdownRenderer
+          <LazyAppMarkdownRenderer
+            hydrate-never
             :source="settings.imprintContent"
             normalize-escaped-newlines
           />
