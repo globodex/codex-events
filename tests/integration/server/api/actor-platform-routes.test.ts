@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-import { and, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 
 import accountDeleteHandler from '../../../../server/api/account.delete'
 import accountEmailVerificationPostHandler from '../../../../server/api/account/email-verification.post'
@@ -23,6 +23,8 @@ import platformSettingsDefaultBackgroundPostHandler from '../../../../server/api
 import publicPlatformDefaultEventBackgroundGetHandler from '../../../../server/api/public/platform/event-default-background-image.get'
 import {
   auditLogs,
+  emptyRegistrationDetailsJson,
+  eventPhotos,
   events,
   eventRoleAssignments,
   eventTermsDocuments,
@@ -3901,5 +3903,105 @@ describe('TASK-3.5 actor-facing API routes', () => {
         action: 'account.deleted'
       })
     ])
+  })
+
+  test('DELETE /api/account removes the registration answers and keeps the registration and the photos', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'delete', path: '/api/account', handler: accountDeleteHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|delete-me',
+        email: 'delete-me@example.com'
+      }
+    })
+    databases.push(harness)
+
+    await harness.database.insert(users).values([
+      { id: 'user_delete', auth0Subject: 'auth0|delete-me', email: 'delete-me@example.com', displayName: 'Delete Me' },
+      { id: 'user_other', auth0Subject: 'auth0|other', email: 'other@example.com', displayName: 'Other Participant' }
+    ])
+    await seedCurrentPlatformDocumentAcceptances(harness, 'user_delete')
+    await harness.database.insert(events).values({
+      id: 'event_1',
+      eventType: 'build',
+      name: 'Fixture Event',
+      slug: 'fixture-event-delete-answers',
+      description: 'Fixture event',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 1,
+      createdByUserId: 'user_other'
+    })
+    const writtenAnswers = {
+      registrationDetailsJson: JSON.stringify({
+        teamIntent: 'team',
+        teamMembers: [{ fullName: 'Grace Hopper', email: 'grace@example.com' }],
+        inPersonAttendanceCommitment: true,
+        whyThisEvent: 'I want to build a compiler.',
+        proofOfExecutionUrl: 'https://example.com/my-work',
+        aiKnowledgeLevel: 'advanced'
+      }),
+      questionnaireAnswersJson: JSON.stringify([
+        { questionId: 'project', prompt: 'What do you want to build today?', value: 'A compiler' }
+      ])
+    }
+    await harness.database.insert(userApplications).values([
+      {
+        id: 'application_delete',
+        eventId: 'event_1',
+        userId: 'user_delete',
+        status: 'approved',
+        submittedAt: fixtureTimestamp(),
+        checkedInAt: fixtureTimestamp(),
+        checkInSource: 'staff',
+        questionnaireCompletedAt: fixtureTimestamp(),
+        ...writtenAnswers
+      },
+      {
+        id: 'application_other',
+        eventId: 'event_1',
+        userId: 'user_other',
+        status: 'approved',
+        submittedAt: fixtureTimestamp(),
+        ...writtenAnswers
+      }
+    ])
+    await harness.database.insert(eventPhotos).values({
+      id: 'photo_delete',
+      eventId: 'event_1',
+      uploadedByUserId: 'user_delete',
+      fileName: 'table.png',
+      isParticipantUpload: true,
+      contentType: 'image/png',
+      width: 10,
+      height: 10
+    })
+
+    const response = await harness.request('/api/account', {
+      method: 'DELETE'
+    })
+
+    expect(response.status).toBe(200)
+
+    const applications = await harness.database.select().from(userApplications).orderBy(asc(userApplications.id))
+
+    // The registration of the deleted account stays, without what the participant wrote.
+    expect(applications[0]).toMatchObject({
+      id: 'application_delete',
+      status: 'approved',
+      checkedInAt: fixtureTimestamp(),
+      questionnaireCompletedAt: fixtureTimestamp(),
+      registrationDetailsJson: emptyRegistrationDetailsJson,
+      questionnaireAnswersJson: null
+    })
+    // Another participant keeps their answers.
+    expect(applications[1]).toMatchObject({ id: 'application_other', ...writtenAnswers })
+    // The photo that the participant added stays in the gallery.
+    expect(await harness.database.select().from(eventPhotos)).toHaveLength(1)
   })
 })

@@ -241,7 +241,7 @@ Operations:
 | Get profile icon | `GET /api/account/profile-icon` | authenticated user with a platform account and current platform-document acceptance | Returns the uploaded profile icon object for the caller. When `user` and `event` query parameters are provided, this route can also return the uploaded profile icon for another user who is visible to the caller through event-scoped participant visibility or the published judge or staff rosters for that event. |
 | Upload or replace own profile icon | `POST /api/account/profile-icon` | authenticated user with a platform account and current platform-document acceptance | Accepts multipart upload for a single profile icon image and replaces any prior icon object, recording the prior object in the managed-media outbox in the same D1 mutation. |
 | Remove own profile icon | `DELETE /api/account/profile-icon` | authenticated user with a platform account and current platform-document acceptance | Deletes the caller's uploaded profile icon, clears profile-icon metadata on the platform user record, and records the prior object in the managed-media outbox in the same D1 mutation. |
-| Delete own account | `DELETE /api/account` | authenticated user | Performs GDPR-compliant account deletion handling and writes the required audit trail. |
+| Delete own account | `DELETE /api/account` | authenticated user | Performs GDPR-compliant account deletion handling and writes the required audit trail. Removes the registration answers and the questionnaire answers of every application of the user; the application records and the photos that the user added to event galleries stay. |
 
 Testing:
 - Unit: registration acceptance-version rules, profile normalization, profile-icon upload guards, and deletion guard semantics.

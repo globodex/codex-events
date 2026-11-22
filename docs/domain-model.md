@@ -470,6 +470,7 @@ Rules:
 - A participant has finished the check-in flow when effective attendance is true and, if the event has a questionnaire, the participant has completed it. Every check-in source and the admin joined override lead to the same result.
 - Staff, event admins, and platform admins read a participant's questionnaire answers in the participant list, next to the registration answers.
 - Restoring a withdrawn application clears its questionnaire answers and completion time together with its check-in.
+- Account deletion removes what the participant wrote in every application of that user: the registration answers and the questionnaire answers. The application records stay with their status, attendance, and questionnaire completion time.
 - An event admin or platform admin can revoke certificate access for an approved participant who currently has certificate access. Revocation is independent of attendance, records the acting admin and time, and can be restored by an event admin or platform admin.
 
 ### EventLumaGuest
@@ -859,6 +860,7 @@ Judging applies only to Hackathon events.
 ## Compliance
 
 - The platform must support GDPR-compliant account deletion.
+- Account deletion removes the user's profile data, sign-in identities, platform document acceptances, event roles, MCP credentials, private talk proposal, and the registration and questionnaire answers of the user's applications. The application records stay without those answers, and photos that the user added to an event gallery stay in that gallery.
 - The platform must retain the auditability needed for operational and legal review.
 - Acceptance of platform registration documents, event application terms when present, and winner terms must be recorded against the accepted document version.
 

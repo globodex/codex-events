@@ -4,10 +4,12 @@ import { z } from 'zod'
 import type { AuthenticatedIdentityActor } from '#server/auth/actor'
 import type { AppDatabase } from '#server/database/client'
 import {
+  emptyRegistrationDetailsJson,
   eventRoleAssignments,
   mcpAccessTokens,
   platformDocuments,
   talkProposals,
+  userApplications,
   userAuthIdentities,
   userPlatformDocumentAcceptances,
   users
@@ -645,6 +647,15 @@ export async function deletePlatformAccount(
     database
       .delete(talkProposals)
       .where(eq(talkProposals.userId, actor.userId)),
+    // The registration records stay with their status and attendance. What the participant
+    // wrote in the registration form and in the questionnaire after check-in is removed.
+    database
+      .update(userApplications)
+      .set({
+        registrationDetailsJson: emptyRegistrationDetailsJson,
+        questionnaireAnswersJson: null
+      })
+      .where(eq(userApplications.userId, actor.userId)),
     buildAuditLogInsert(database, {
       actorUserId: actor.userId,
       entityType: 'user',

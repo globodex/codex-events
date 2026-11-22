@@ -655,6 +655,10 @@ export const eventLumaGuests = sqliteTable(
   ]
 )
 
+// What `registration_details_json` holds for a registration without answers. It is the column
+// default, and account deletion resets the column to it.
+export const emptyRegistrationDetailsJson = '{"teamIntent":"unknown","teamMembers":[],"inPersonAttendanceCommitment":false,"whyThisEvent":"","proofOfExecutionUrl":"","aiKnowledgeLevel":""}'
+
 export const userApplications = sqliteTable(
   'user_applications',
   {
@@ -689,7 +693,7 @@ export const userApplications = sqliteTable(
     applicationTermsAcceptedAt: text('application_terms_accepted_at'),
     registrationDetailsJson: text('registration_details_json')
       .notNull()
-      .default('{"teamIntent":"unknown","teamMembers":[],"inPersonAttendanceCommitment":false,"whyThisEvent":"","proofOfExecutionUrl":"","aiKnowledgeLevel":""}'),
+      .default(emptyRegistrationDetailsJson),
     // Both stay null until the participant completes the event questionnaire.
     questionnaireAnswersJson: text('questionnaire_answers_json'),
     questionnaireCompletedAt: text('questionnaire_completed_at'),
