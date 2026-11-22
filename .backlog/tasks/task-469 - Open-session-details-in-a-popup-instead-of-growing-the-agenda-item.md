@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-11-22T13:14:00Z'
-updated_date: '2026-11-22T13:24:00Z'
+updated_date: '2026-11-22T13:27:00Z'
 labels:
   - build-day
 milestone: m-3
@@ -50,6 +50,8 @@ Closest analog: AdminBuilderCreditsInfoDialog (reka-ui dialog with trigger, over
 Checked in the preview at 390 and 1440 px in both themes: the size and place of every agenda item is the same before and after selecting, the dialog shows title, time, room and details, Escape closes it and focus returns to the Details button.
 
 Decision by Alex on 2026-11-22 ('Always show it'): the Details button shows on every agenda item that has details, not only on the selected one, so a participant on a phone opens the details with one tap. Opening the popup does not select the session. Checked at 390 and 1440 px in both themes; lint, typecheck and unit tests pass.
+
+Content rule from Alex on 2026-11-22 ('don't add useless details to every agenda item, make the details matter'): a session gets details only when they tell a participant something useful. In the preview the one-line fillers are removed; only the two workshops (what you build, that they are optional, that the breakout rooms stay open) and the last item (awards 17:30, networking 18:00) keep details. The agenda table in TASK-454 still lists the old one-liners and was not changed.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
