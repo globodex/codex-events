@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { EventFloorPlan, ProgramSession, ProgramTrack } from '#shared/domains/events/program'
 
-import AccountEventProgramSession from '~/components/account/events/AccountEventProgramSession.vue'
+import AccountEventProgramSession from '~/components/account/events/molecules/AccountEventProgramSession.vue'
 import { formatEventTime, getAgendaItemPresentation } from '~/domains/events/presentation'
 import { formatMinutes, getSessionPhase, type SessionPhase } from '~/domains/events/program-timeline'
 

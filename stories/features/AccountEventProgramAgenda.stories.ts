@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook-vue/nuxt'
-import AccountEventProgramAgenda from '~/components/account/events/AccountEventProgramAgenda.vue'
+import AccountEventProgramAgenda from '~/components/account/events/organisms/AccountEventProgramAgenda.vue'
 import { buildDayProgram } from './fixtures/build-day.fixtures'
 
 const meta = {

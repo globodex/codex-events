@@ -3,8 +3,8 @@ import { useIntervalFn, useNow } from '@vueuse/core'
 
 import type { ParticipantEventProgram, ProgramSession } from '#shared/domains/events/program'
 
-import AccountEventProgramFloorPlan from '~/components/account/events/AccountEventProgramFloorPlan.vue'
-import AccountEventProgramTimeline from '~/components/account/events/AccountEventProgramTimeline.vue'
+import AccountEventProgramFloorPlan from '~/components/account/events/molecules/AccountEventProgramFloorPlan.vue'
+import AccountEventProgramTimeline from '~/components/account/events/organisms/AccountEventProgramTimeline.vue'
 
 const props = defineProps<{
   program: ParticipantEventProgram

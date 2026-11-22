@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook-vue/nuxt'
 import { computed, shallowRef } from 'vue'
-import AccountEventProgramFloorPlan from '~/components/account/events/AccountEventProgramFloorPlan.vue'
+import AccountEventProgramFloorPlan from '~/components/account/events/molecules/AccountEventProgramFloorPlan.vue'
 import { buildDayGroundFloor, buildDayUpperFloor } from './fixtures/build-day.fixtures'
 
 const meta = {
