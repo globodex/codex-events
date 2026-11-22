@@ -63,7 +63,7 @@ const boundaries = computed(() => {
 })
 
 const gridStyle = computed(() => {
-  // Longer sessions get taller rows. A row grows when a selected session shows its details.
+  // Longer sessions get taller rows. A row grows when a session's title needs more lines.
   const rowSizes = boundaries.value.slice(0, -1).map(({ offset, hasSession }, index) => {
     const duration = boundaries.value[index + 1]!.offset - offset
     return `minmax(${Math.max(hasSession ? 72 : 16, Math.min(duration * 1.2, 150))}px, auto)`

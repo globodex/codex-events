@@ -1,4 +1,15 @@
 <script setup lang="ts">
+import {
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogOverlay,
+  DialogPortal,
+  DialogRoot,
+  DialogTitle,
+  DialogTrigger
+} from 'reka-ui'
+
 import type { ProgramSession } from '#shared/domains/events/program'
 
 import { formatMinutes, type SessionPhase } from '~/domains/events/program-timeline'
@@ -30,7 +41,7 @@ const cardClass = computed(() => {
 
 <template>
   <div
-    class="m-1 flex min-w-0 flex-col rounded-xl border transition-colors"
+    class="relative m-1 flex min-w-0 flex-col rounded-xl border transition-colors"
     :class="[cardClass, { 'opacity-60': phase === 'past' && !selected }]"
   >
     <AppButton
@@ -58,7 +69,11 @@ const cardClass = computed(() => {
         {{ phaseLabel }}
       </span>
       <span class="break-words text-sm font-semibold leading-snug text-highlighted">{{ session.title }}</span>
-      <span class="flex max-w-full flex-wrap items-center gap-x-2 gap-y-0.5 text-xs leading-tight text-muted">
+      <!-- A session with details keeps the right end of this line free for its Details button. -->
+      <span
+        class="flex max-w-full flex-wrap items-center gap-x-2 gap-y-0.5 text-xs leading-tight text-muted"
+        :class="{ 'pr-16': session.details }"
+      >
         <span class="tabular-nums">{{ formatMinutes(session.durationMinutes) }}</span>
         <span
           v-if="roomName"
@@ -72,11 +87,50 @@ const cardClass = computed(() => {
         </span>
       </span>
     </AppButton>
-    <p
-      v-if="selected && session.details"
-      class="whitespace-pre-wrap break-words px-3 pb-3 text-sm text-toned"
-    >
-      {{ session.details }}
-    </p>
+
+    <DialogRoot v-if="selected && session.details">
+      <!-- The button sits in the free corner of the item, so the item keeps its size when it is selected. -->
+      <DialogTrigger as-child>
+        <AppButton
+          label="Details"
+          variant="soft"
+          size="xs"
+          class="absolute right-2 bottom-2 h-6"
+        />
+      </DialogTrigger>
+
+      <DialogPortal>
+        <DialogOverlay class="fixed inset-0 z-50 bg-black/45 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+        <DialogContent
+          class="fixed top-1/2 left-1/2 z-50 max-h-[85dvh] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2
+            overflow-y-auto rounded-xl border bg-popover p-5 text-popover-foreground shadow-lg outline-none
+            data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+        >
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <DialogTitle class="break-words text-base font-semibold text-highlighted">
+                {{ session.title }}
+              </DialogTitle>
+              <DialogDescription class="mt-1 text-sm text-muted">
+                {{ [timeLabel, roomName].filter(Boolean).join(' · ') }}
+              </DialogDescription>
+            </div>
+            <DialogClose as-child>
+              <AppButton
+                icon="i-lucide-x"
+                aria-label="Close"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                class="shrink-0 px-1.5"
+              />
+            </DialogClose>
+          </div>
+          <p class="mt-4 whitespace-pre-wrap break-words text-sm text-toned">
+            {{ session.details }}
+          </p>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
   </div>
 </template>
