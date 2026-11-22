@@ -14,6 +14,7 @@ import AdminBuilderSettingsBoard from '~/components/admin/builder/organisms/Admi
 import AdminBuilderSidePanel from '~/components/admin/builder/organisms/AdminBuilderSidePanel.vue'
 import AdminBuilderTemplateGallery from '~/components/admin/builder/organisms/AdminBuilderTemplateGallery.vue'
 import type {
+  AccountEventLumaGuestList,
   AccountEventSettingsCreditOffer,
   AccountEventSimplifiedClaimingStatus
 } from '#shared/domains/events/account-event-settings-page'
@@ -33,6 +34,7 @@ const props = defineProps<{
   currentWinnerTerms?: TermsDocument | null
   savingTermsDocumentType?: TermsDocument['documentType'] | null
   initialSimplifiedClaimingStatus?: AccountEventSimplifiedClaimingStatus | null
+  lumaGuestList?: AccountEventLumaGuestList | null
   creditOffers?: AccountEventSettingsCreditOffer[]
   hasExistingTalkProposal?: boolean
 }>()
@@ -219,6 +221,7 @@ function onSubmit() {
             :current-winner-terms="currentWinnerTerms"
             :saving-terms-document-type="savingTermsDocumentType"
             :initial-simplified-claiming-status="initialSimplifiedClaimingStatus"
+            :luma-guest-list="lumaGuestList"
             :credit-offers="creditOffers"
             :has-existing-talk-proposal="hasExistingTalkProposal"
             @update:staged-credits="builder.setStagedCredits"

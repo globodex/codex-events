@@ -34,6 +34,8 @@ export interface EventFormState {
   participantsLimit: number | null
   autoApproveApplications: boolean
   simplifiedClaimingEnabled: boolean
+  /** The private Luma guest list confirms registrations. Edited in the builder's Luma connection section. */
+  lumaGuestListEnabled: boolean
   talkProposalsEnabled: boolean
   talkProposalOpensAt: string
   talkProposalClosesAt: string
@@ -367,6 +369,7 @@ const eventConfigFormBaseSchema = z.object({
   participantsLimit: z.number().int().min(1).nullable(),
   autoApproveApplications: z.boolean(),
   simplifiedClaimingEnabled: z.boolean(),
+  lumaGuestListEnabled: z.boolean(),
   talkProposalsEnabled: z.boolean(),
   talkProposalOpensAt: z.string().trim(),
   talkProposalClosesAt: z.string().trim(),
@@ -661,6 +664,7 @@ export function createEmptyEventFormState(): EventFormState {
     participantsLimit: null,
     autoApproveApplications: false,
     simplifiedClaimingEnabled: false,
+    lumaGuestListEnabled: false,
     talkProposalsEnabled: false,
     talkProposalOpensAt: '',
     talkProposalClosesAt: '',
@@ -780,6 +784,7 @@ export function createEventFormState(event: EventRecord): EventFormState {
     participantsLimit: event.participantsLimit ?? null,
     autoApproveApplications: event.autoApproveApplications,
     simplifiedClaimingEnabled: event.simplifiedClaimingEnabled,
+    lumaGuestListEnabled: event.lumaGuestListEnabled ?? false,
     talkProposalsEnabled: event.talkProposalsEnabled ?? false,
     talkProposalOpensAt: toDateTimeLocalValue(event.talkProposalOpensAt),
     talkProposalClosesAt: toDateTimeLocalValue(event.talkProposalClosesAt),
@@ -838,6 +843,7 @@ export function buildEventConfigurationPatch(configForm: EventFormState, eventTy
     participantsLimit: configForm.participantsLimit,
     autoApproveApplications: configForm.autoApproveApplications,
     simplifiedClaimingEnabled: eventType === 'meetup' && configForm.simplifiedClaimingEnabled,
+    lumaGuestListEnabled: configForm.lumaGuestListEnabled,
     talkProposalsEnabled: eventType === 'meetup' && configForm.talkProposalsEnabled,
     talkProposalOpensAt: eventType === 'meetup' && configForm.talkProposalsEnabled
       ? fromDateTimeLocalValue(configForm.talkProposalOpensAt)

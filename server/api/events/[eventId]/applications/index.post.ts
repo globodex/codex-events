@@ -7,6 +7,7 @@ import { eventTracks, userApplications } from '#server/database/schema'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { ApiError } from '#server/http/api-error'
 import { apiData } from '#server/http/api-response'
+import { findEventLumaGuestStanding } from '#server/domains/applications/luma-guest-list'
 import { lookupLumaEventGuestByEmail } from '#server/domains/applications/luma-sync-queue'
 import {
   assertCurrentApplicationTermsAcceptance,
@@ -15,6 +16,7 @@ import {
   assertNoExistingApplication,
   assertUserMeetsEventProfileRequirements,
   getInitialApplicationLumaSyncStatus,
+  isEventLumaGuestListEnabled,
   isEventLumaSyncEnabled,
   serializeRegistrationDetailsJson,
   serializeUserApplication,
@@ -51,6 +53,23 @@ export const applicationOperation = defineStructuredRouteOperation({
     body.applicationTermsDocumentId
   )
   const lumaEmail = actor.platformUser.lumaEmail?.trim() ?? ''
+
+  if (isEventLumaGuestListEnabled(event)) {
+    // Only people on the private Luma guest list can register. Luma itself is not called here.
+    // A waiting guest may register and stays `submitted` until Luma approves them.
+    const guestStanding = await findEventLumaGuestStanding(database, eventId, lumaEmail)
+
+    if (guestStanding === null || guestStanding === 'declined') {
+      throw new ApiError({
+        statusCode: 409,
+        code: 'luma_registration_required',
+        message: 'Register for this event on Luma first, then come back and register here. We could not find an active Luma registration for the Luma email you entered.',
+        details: {
+          eventId
+        }
+      })
+    }
+  }
 
   if (isEventLumaSyncEnabled(event) && lumaEmail) {
     const lumaGuestLookup = await lookupLumaEventGuestByEmail({

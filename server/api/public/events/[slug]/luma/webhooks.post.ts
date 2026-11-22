@@ -1,21 +1,21 @@
-import { and, eq, getTableColumns, isNull, sql } from 'drizzle-orm'
-import { readRawBody } from 'h3'
+import { readRawBody, type H3Event } from 'h3'
 import { z } from 'zod'
 
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase, getDatabaseSession, type AppDatabase } from '#server/database/client'
+import type { events } from '#server/database/schema'
 import {
-  userApplications,
-  users
-} from '#server/database/schema'
-import {
+  findEventApplicationByLumaEmail,
   isEventLumaAttendanceSyncEnabled,
+  isEventLumaGuestListEnabled,
   isEventLumaSyncEnabled,
   withdrawUserApplicationWithAdminPolicy
 } from '#server/domains/applications'
+import { applyLumaGuestWebhookUpdate } from '#server/domains/applications/luma-guest-list-sync'
 import {
   extractLumaAttendanceCheckInEvent,
   extractLumaGuestCancellationEvent,
+  extractLumaGuestStatusEvent,
   resolveLumaAttendanceGuestEmail,
   verifyLumaWebhookRequest
 } from '#server/domains/applications/luma-webhooks'
@@ -35,26 +35,37 @@ function acknowledgeLumaWebhook() {
   })
 }
 
-async function findLumaWebhookApplicationByGuestEmail(
+/**
+ * For an event that uses the Luma guest list: stores the guest status from a registration or
+ * update delivery in the private list and updates the matching application.
+ */
+async function refreshLumaGuestFromWebhook(
+  h3Event: H3Event,
   database: AppDatabase,
-  eventId: string,
-  guestEmail: string
+  event: typeof events.$inferSelect,
+  rawBody: string
 ) {
-  const matchingApplications = await database
-    .select({
-      application: getTableColumns(userApplications)
-    })
-    .from(userApplications)
-    .innerJoin(users, eq(users.id, userApplications.userId))
-    .where(and(
-      eq(userApplications.eventId, eventId),
-      isNull(users.deletedAt),
-      sql`lower(${users.lumaEmail}) = lower(${guestEmail})`
-    ))
+  const { guestStatusEvent } = extractLumaGuestStatusEvent(rawBody)
 
-  return matchingApplications.length === 1
-    ? matchingApplications[0]?.application ?? null
-    : null
+  if (!guestStatusEvent || guestStatusEvent.eventApiId !== event.lumaEventApiId?.trim()) {
+    return
+  }
+
+  const guestEmail = await resolveLumaAttendanceGuestEmail(h3Event, guestStatusEvent, {
+    lumaApiKey: event.lumaApiKey
+  })
+
+  if (!guestEmail) {
+    return
+  }
+
+  await applyLumaGuestWebhookUpdate({
+    h3Event,
+    database,
+    event,
+    guestEmail,
+    approvalStatus: guestStatusEvent.approvalStatus
+  })
 }
 
 export default defineApiHandler(async (h3Event) => {
@@ -66,6 +77,13 @@ export default defineApiHandler(async (h3Event) => {
   const { webhookId } = await verifyLumaWebhookRequest(h3Event, rawBody, {
     webhookSecret: event.lumaWebhookSecret
   })
+
+  if (isEventLumaGuestListEnabled(event)) {
+    // The guest list handles registrations, approvals, and declines for this event.
+    // Check-ins continue below, after an approval had the chance to approve the application.
+    await refreshLumaGuestFromWebhook(h3Event, database, event, rawBody)
+  }
+
   const { envelope, cancellationEvent } = extractLumaGuestCancellationEvent(rawBody)
 
   if (envelope.type !== 'guest.updated') {
@@ -85,9 +103,9 @@ export default defineApiHandler(async (h3Event) => {
       return acknowledgeLumaWebhook()
     }
 
-    const matchingApplication = await findLumaWebhookApplicationByGuestEmail(database, event.id, guestEmail)
+    const match = await findEventApplicationByLumaEmail(database, event.id, guestEmail)
 
-    if (!matchingApplication) {
+    if (!match) {
       return acknowledgeLumaWebhook()
     }
 
@@ -95,7 +113,7 @@ export default defineApiHandler(async (h3Event) => {
       h3Event,
       database,
       event,
-      application: matchingApplication,
+      application: match.application,
       actorUserId: null,
       trigger: 'luma_cancellation'
     })
@@ -133,7 +151,7 @@ export default defineApiHandler(async (h3Event) => {
     return acknowledgeLumaWebhook()
   }
 
-  const matchingApplication = await findLumaWebhookApplicationByGuestEmail(database, event.id, guestEmail)
+  const matchingApplication = (await findEventApplicationByLumaEmail(database, event.id, guestEmail))?.application
 
   if (!matchingApplication || matchingApplication.status !== 'approved' || matchingApplication.checkedInAt) {
     return acknowledgeLumaWebhook()

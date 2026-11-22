@@ -100,6 +100,7 @@ export const accountEventSettingsEventSchema = z.object({
   participantsLimit: z.number().int().nullable().optional(),
   autoApproveApplications: z.boolean(),
   simplifiedClaimingEnabled: z.boolean(),
+  lumaGuestListEnabled: z.boolean(),
   talkProposalsEnabled: z.boolean().optional(),
   talkProposalOpensAt: z.string().nullable().optional(),
   talkProposalClosesAt: z.string().nullable().optional(),
@@ -245,6 +246,15 @@ export const accountEventSimplifiedClaimingStatusSchema = z.object({
   }))
 })
 
+// Organizers see only these totals and the refresh state of the private Luma guest list.
+// Never add guest emails or individual guest statuses here.
+export const accountEventLumaGuestListSchema = z.object({
+  approvedGuestCount: z.number().int().nonnegative(),
+  waitingGuestCount: z.number().int().nonnegative(),
+  syncedAt: z.string().nullable(),
+  syncError: z.string().nullable()
+})
+
 export const accountEventTalkProposalConfigurationSchema = z.object({
   hasExistingProposal: z.boolean()
 })
@@ -286,6 +296,7 @@ export const accountEventSettingsPageSchema = z.object({
   }),
   credits: z.array(accountEventSettingsCreditOfferSchema),
   simplifiedClaiming: accountEventSimplifiedClaimingStatusSchema,
+  lumaGuestList: accountEventLumaGuestListSchema,
   talkProposals: accountEventTalkProposalConfigurationSchema,
   builder: z.object({
     creationFlow: z.enum(['classic', 'builder']),
@@ -300,6 +311,7 @@ export type AccountEventSettingsPage = z.infer<typeof accountEventSettingsPageSc
 export type AccountEventSettingsEvent = z.infer<typeof accountEventSettingsEventSchema>
 export type AccountEventSettingsCreditOffer = z.infer<typeof accountEventSettingsCreditOfferSchema>
 export type AccountEventSimplifiedClaimingStatus = z.infer<typeof accountEventSimplifiedClaimingStatusSchema>
+export type AccountEventLumaGuestList = z.infer<typeof accountEventLumaGuestListSchema>
 export type AccountEventTalkProposalConfiguration = z.infer<typeof accountEventTalkProposalConfigurationSchema>
 export type AccountEventSettingsTermsDocument = z.infer<typeof termsDocumentSchema>
 export type AccountEventSettingsTermsVersion = z.infer<typeof termsVersionSummarySchema>

@@ -15,7 +15,7 @@ This document defines the canonical permissions for the Codex event platform.
 - `event_organizer`: a user with `is_event_organizer = true`
 - `platform_admin`: a user with `is_platform_admin = true`
 - `prize_recipient`: a user with a `PrizeRedemption` record to complete, or an active team admin acting on a pending team-scoped redemption
-- `system`: automatic platform behavior driven by configured windows
+- `system`: automatic platform behavior driven by configured windows, signed Luma guest updates, and Luma guest-list refreshes
 
 ## Permission Inheritance
 
@@ -101,10 +101,11 @@ This document defines the canonical permissions for the Codex event platform.
 
 | Action | User | Approved User | Staff | Event Admin | Platform Admin |
 | --- | --- | --- | --- | --- | --- |
-| Submit `UserApplication` | Yes, if no application exists for the event and the event is `registration_open` | No | No | No | No |
+| Submit `UserApplication` | Yes, if no application exists for the event and the event is `registration_open`; when the event uses the Luma guest list, the user's saved Luma email must also match a guest on the private list who is not declined | No | No | No | No |
 | View own application | Yes | Yes | No | No | No |
 | Select own event track | Yes, if the application is `submitted`, the event is not `completed`, and the selected track belongs to the same Hackathon or Build event | Yes, if the event is not `completed` and the selected track belongs to the same Hackathon or Build event | No | No | No |
-| Verify own Luma email | No | Yes, when Luma sync is enabled for the event | No | No | No |
+| Verify own Luma email | No | Yes, when Luma sync is enabled for the event and the event does not use the Luma guest list | No | No | No |
+| Import or refresh the Luma guest list | No | No | No | Yes, when the event uses the Luma guest list | Yes, when the event uses the Luma guest list |
 | Withdraw own application | Yes, if the application is still `submitted` and the user has no active team membership in the event | Yes, if the application is `approved` and the user has no active team membership in the event | No | No | No |
 | View event application records | No | No | Yes | Yes | Yes |
 | Withdraw application | No | No | No | Yes, if the application is `submitted` or `approved`; if the participant has an active team, the withdrawal can remove that membership or dissolve the team, but it cannot dissolve a team with an active draft, submitted, or locked submission | Yes, if the application is `submitted` or `approved`; if the participant has an active team, the withdrawal can remove that membership or dissolve the team, but it cannot dissolve a team with an active draft, submitted, or locked submission |
@@ -115,6 +116,8 @@ This document defines the canonical permissions for the Codex event platform.
 | Disable or enable own certificate generation | No | Yes | No | No | No |
 | Revoke or restore participant certificate access | No | No | No | Yes, approved applications only; revocation is available only while the participant currently has certificate access | Yes, approved applications only; revocation is available only while the participant currently has certificate access |
 | Send certificate emails | No | No | No | Yes, for currently available certificates that have not already had an email queued or sent | Yes, for currently available certificates that have not already had an email queued or sent |
+
+In an event that uses the Luma guest list, the `system` actor also approves a `submitted` application when Luma approves the matching guest and withdraws a `submitted` or `approved` application when Luma declines it. Event admins and platform admins keep every application permission above.
 
 For Meetup and Build events, an approved application is the participation record. Team permissions below do not apply.
 
@@ -296,6 +299,7 @@ required-document changes take effect on the next MCP request.
 - Hidden events are not visible to public users, workspace users, approved participants, staff, or judges through public pages, participant account lists, or non-admin direct event reads.
 - Hidden events remain visible to event admins for that event and platform admins.
 - Staff can view event-wide participant and team data.
+- The private Luma guest list is visible to no actor: no page or API response shows guest emails or individual guest statuses. Event admins and platform admins see only the approved and waiting guest counts, the last refresh time, and whether the list needs attention.
 - Workspace users can view the published judge and staff rosters for events they can access in `/account/events/:slug`.
 - Published judge and staff rosters expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
 - Published staff rosters also show whether each staff member supports the whole event or a specific event track. Track-specific staff roster entries include the track ID, name, short description, and display order so participant account pages can highlight staff connected to the participant's selected track.

@@ -255,6 +255,7 @@ const maxTeamMembersSchema = z.coerce.number().int().min(1)
 const participantsLimitSchema = z.coerce.number().int().min(1).nullable()
 const autoApproveApplicationsSchema = z.coerce.boolean()
 const simplifiedClaimingEnabledSchema = z.coerce.boolean()
+const lumaGuestListEnabledSchema = z.coerce.boolean()
 const talkProposalsEnabledSchema = z.coerce.boolean()
 const blindReviewCountSchema = z.coerce.number().int().min(0).max(2)
 const pitchReviewEnabledSchema = z.coerce.boolean()
@@ -563,6 +564,7 @@ export const updateEventBodySchema = z.object({
   participantsLimit: participantsLimitSchema.optional(),
   autoApproveApplications: autoApproveApplicationsSchema.optional(),
   simplifiedClaimingEnabled: simplifiedClaimingEnabledSchema.optional(),
+  lumaGuestListEnabled: lumaGuestListEnabledSchema.optional(),
   talkProposalsEnabled: talkProposalsEnabledSchema.optional(),
   talkProposalOpensAt: isoTimestampSchema.nullable().optional(),
   talkProposalClosesAt: isoTimestampSchema.nullable().optional(),
@@ -1466,6 +1468,32 @@ export function assertSimplifiedClaimingConfiguration(
   })
 }
 
+/**
+ * The Luma guest list is refreshed with the event's Luma credentials and matches guests with
+ * participants by their Luma email, so it can be on only while the event has both.
+ */
+export function assertLumaGuestListConfiguration(
+  input: Record<string, unknown>,
+  eventId: string
+) {
+  if (input.lumaGuestListEnabled !== true) {
+    return
+  }
+
+  assertGuard(Boolean(input.lumaEventApiId && input.lumaApiKey), {
+    statusCode: 409,
+    code: 'luma_guest_list_configuration_conflict',
+    message: 'The Luma guest list needs a Luma connection. Keep Luma connected, or turn the Luma guest list off in the event builder first.',
+    details: { eventId }
+  })
+  assertGuard(input.applicationLumaEmailVisible === true && input.requireLumaEmail === true, {
+    statusCode: 409,
+    code: 'luma_guest_list_configuration_conflict',
+    message: 'The Luma guest list needs the Luma email as a required registration field. Keep it required, or turn the Luma guest list off in the event builder first.',
+    details: { eventId }
+  })
+}
+
 export function assertTalkProposalConfiguration(
   input: Record<string, unknown>,
   eventId?: string
@@ -1642,6 +1670,7 @@ export function buildEventUpdatePayload(
   })
   assertEventApplicationFieldConfiguration(mergedEvent, existingEvent.id)
   assertSimplifiedClaimingConfiguration(mergedEvent, existingEvent.id)
+  assertLumaGuestListConfiguration(mergedEvent, existingEvent.id)
 
   return {
     ...normalizedPatch,
@@ -2328,6 +2357,7 @@ export function serializeAdminEvent(
     hiddenByUserId: event.hiddenByUserId,
     hiddenReason: event.hiddenReason,
     simplifiedClaimingEnabled: event.simplifiedClaimingEnabled,
+    lumaGuestListEnabled: event.lumaGuestListEnabled,
     talkProposalsEnabled: event.talkProposalsEnabled,
     talkProposalOpensAt: event.talkProposalOpensAt,
     talkProposalClosesAt: event.talkProposalClosesAt,

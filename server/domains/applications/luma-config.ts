@@ -2,6 +2,18 @@ import type { events } from '#server/database/schema'
 
 type EventRecord = typeof events.$inferSelect
 
+type LumaSyncEventFields = Pick<
+  EventRecord,
+  'simplifiedClaimingEnabled'
+  | 'lumaGuestListEnabled'
+  | 'applicationLumaEmailVisible'
+  | 'requireLumaEmail'
+  | 'lumaEventApiId'
+  | 'lumaApiKey'
+  | 'lumaWebhookSecret'
+  | 'lumaWebhookStatus'
+>
+
 export function isEventLumaEmailRequired(
   event: Pick<EventRecord, 'applicationLumaEmailVisible' | 'requireLumaEmail'>
 ) {
@@ -19,14 +31,27 @@ export function isEventLumaAttendanceSyncEnabled(
   )
 }
 
-export function isEventLumaSyncEnabled(
-  event: Pick<EventRecord, 'simplifiedClaimingEnabled' | 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId' | 'lumaApiKey' | 'lumaWebhookSecret' | 'lumaWebhookStatus'>
-) {
-  return !event.simplifiedClaimingEnabled && isEventLumaEmailRequired(event) && isEventLumaAttendanceSyncEnabled(event)
+/**
+ * The private Luma guest list confirms registrations for this event (Luma decides).
+ * Saving an event keeps this switch off unless the event has Luma credentials and requires the
+ * Luma email. It stays on when the Luma connection breaks later, so registration never opens
+ * silently to people who are not on the list.
+ */
+export function isEventLumaGuestListEnabled(event: Pick<EventRecord, 'lumaGuestListEnabled'>) {
+  return event.lumaGuestListEnabled
 }
 
-export function getInitialApplicationLumaSyncStatus(
-  event: Pick<EventRecord, 'simplifiedClaimingEnabled' | 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId' | 'lumaApiKey' | 'lumaWebhookSecret' | 'lumaWebhookStatus'>
-) {
+/**
+ * Organizers decide on the platform and every approval, rejection, and withdrawal is sent to Luma.
+ * This is never true for an event that uses the Luma guest list: there Luma is the one that decides.
+ */
+export function isEventLumaSyncEnabled(event: LumaSyncEventFields) {
+  return !event.simplifiedClaimingEnabled
+    && !isEventLumaGuestListEnabled(event)
+    && isEventLumaEmailRequired(event)
+    && isEventLumaAttendanceSyncEnabled(event)
+}
+
+export function getInitialApplicationLumaSyncStatus(event: LumaSyncEventFields) {
   return isEventLumaSyncEnabled(event) ? 'not_synced' as const : null
 }

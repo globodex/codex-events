@@ -1,10 +1,17 @@
 <script setup lang="ts">
+import type { AccountEventLumaGuestList } from '#shared/domains/events/account-event-settings-page'
 import type { EventFormState } from '~/domains/events/admin-event'
 import type { EventRecord } from '~/domains/events/records'
 import { normalizeApiError, type ApiDataResponse } from '~/lib/api'
+import { formatTimestamp } from '~/lib/date-formatting'
 
 const form = defineModel<EventFormState>('form', { required: true })
-const props = defineProps<{ event: EventRecord | null, saving: boolean }>()
+const props = defineProps<{
+  event: EventRecord | null
+  saving: boolean
+  /** Guest totals and refresh state of the saved event. Guest emails never reach the browser. */
+  lumaGuestList: AccountEventLumaGuestList | null
+}>()
 const emit = defineEmits<{ save: [], updated: [] }>()
 const apiFetch = useApiClient()
 const toast = useToast()
@@ -17,6 +24,16 @@ const editing = shallowRef(!connected.value && Boolean(form.value.lumaEventApiId
 const importPending = shallowRef(false)
 const importError = shallowRef('')
 const canImport = computed(() => connected.value && form.value.simplifiedClaimingEnabled && props.event?.simplifiedClaimingEnabled)
+const guestListSaved = computed(() => props.event?.lumaGuestListEnabled ?? false)
+// Turning the guest list on needs a working connection. While it is on (saved or not), the
+// controls always stay visible, so the organizer can refresh the list or turn it off again
+// even when the connection is broken.
+const showGuestList = computed(() => guestListSaved.value
+  || form.value.lumaGuestListEnabled
+  || (connected.value && !editing.value && !form.value.simplifiedClaimingEnabled))
+const guestListPending = shallowRef(false)
+const guestListRequestError = shallowRef('')
+const guestListFailure = computed(() => guestListRequestError.value || props.lumaGuestList?.syncError || '')
 watch([connected, hasSavedCredentials, () => props.event], ([isConnected, hasCredentials]) => {
   if (isConnected || (!hasCredentials && !form.value.lumaEventApiId && !form.value.lumaApiKey)) editing.value = false
 })
@@ -46,6 +63,37 @@ async function importCheckIns() {
     importError.value = normalizeApiError(error).message
   } finally {
     importPending.value = false
+  }
+}
+
+function setGuestListEnabled(enabled: boolean) {
+  form.value.lumaGuestListEnabled = enabled
+
+  if (enabled) {
+    // Luma guests are matched with participants by their Luma email, so the field must be required.
+    form.value.applicationLumaEmailVisible = true
+    form.value.requireLumaEmail = true
+  }
+}
+
+async function refreshGuestList() {
+  guestListPending.value = true
+  guestListRequestError.value = ''
+  try {
+    const response = await apiFetch<ApiDataResponse<{ approvedGuestCount: number, waitingGuestCount: number }>>(
+      `/api/events/${props.event!.id}/luma/actions/sync-guest-list`, { method: 'POST' }
+    )
+    toast.add({
+      title: 'Guest list updated',
+      description: `${response.data.approvedGuestCount} approved, ${response.data.waitingGuestCount} waiting.`,
+      color: 'success'
+    })
+  } catch (error) {
+    guestListRequestError.value = normalizeApiError(error).message
+  } finally {
+    guestListPending.value = false
+    // Reload the saved totals and refresh state after a success and after a failure.
+    emit('updated')
   }
 }
 </script>
@@ -143,7 +191,9 @@ async function importCheckIns() {
       v-if="hasSavedCredentials && event?.lumaWebhookStatus !== 'configured'"
       color="warning"
       title="Luma is not connected"
-      description="Check the connection details and save again."
+      :description="guestListSaved
+        ? 'New Luma registrations and approvals do not reach this event. Check the connection details and save again.'
+        : 'Check the connection details and save again.'"
     />
     <template v-if="connected && !editing">
       <p class="text-sm text-muted">
@@ -175,5 +225,66 @@ async function importCheckIns() {
       title="Check-ins could not be imported"
       :description="importError"
     />
+
+    <div
+      v-if="showGuestList"
+      class="space-y-4 border-t border-black/6 pt-4 dark:border-white/[0.06]"
+      data-testid="event-builder-luma-guest-list"
+    >
+      <AppCheckbox
+        :model-value="form.lumaGuestListEnabled"
+        :disabled="saving"
+        @update:model-value="setGuestListEnabled"
+      >
+        <span class="block text-highlighted">Confirm registrations from the Luma guest list</span>
+        <span class="block text-xs text-muted">
+          Only people on your Luma guest list can register. Luma approvals confirm them here.
+        </span>
+      </AppCheckbox>
+
+      <p
+        v-if="form.lumaGuestListEnabled !== guestListSaved"
+        class="text-sm text-muted"
+      >
+        Save the event to apply this change.
+      </p>
+      <template v-else-if="guestListSaved && lumaGuestList">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="min-w-0">
+            <p class="text-sm text-highlighted">
+              {{ lumaGuestList.approvedGuestCount }} approved · {{ lumaGuestList.waitingGuestCount }} waiting
+            </p>
+            <p
+              v-if="lumaGuestList.syncedAt"
+              class="text-xs text-muted"
+            >
+              Last refreshed {{ formatTimestamp(lumaGuestList.syncedAt) }}
+            </p>
+          </div>
+          <AppButton
+            type="button"
+            color="neutral"
+            variant="outline"
+            :loading="guestListPending"
+            :disabled="saving"
+            @click="refreshGuestList"
+          >
+            {{ lumaGuestList.syncedAt ? 'Refresh guest list' : 'Import guest list' }}
+          </AppButton>
+        </div>
+        <AppAlert
+          v-if="guestListFailure"
+          color="error"
+          title="The guest list could not be refreshed"
+          :description="guestListFailure"
+        />
+        <AppAlert
+          v-else-if="!lumaGuestList.syncedAt"
+          color="warning"
+          title="Import the guest list"
+          description="People who are already on your Luma guest list cannot register here until you import it."
+        />
+      </template>
+    </div>
   </div>
 </template>

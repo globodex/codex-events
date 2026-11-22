@@ -106,6 +106,9 @@ It describes the intended persistent model at the level of entities, key fields,
 - `luma_webhook_status`
 - `luma_webhook_error`
 - `luma_webhook_registered_at`
+- `luma_guest_list_enabled`
+- `luma_guest_list_synced_at`
+- `luma_guest_list_sync_error`
 - `city`
 - `country`
 - `address`
@@ -195,6 +198,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `slug` is unique.
 - `luma_event_api_id` is unique when present.
 - `luma_webhook_status` is `not_configured`, `configured`, or `failed`.
+- `luma_guest_list_enabled` can be true only while `luma_event_api_id`, `luma_api_key`, `application_luma_email_visible`, and `require_luma_profile` are all set.
 - For Hackathon events, `blind_review_count` is `0`, `1`, or `2`.
 - For Hackathon events, `blind_score_weight_percent` is null or between `0` and `100`.
 - For Hackathon events, `pitch_score_weight_percent` is null or between `0` and `100`.
@@ -251,6 +255,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `luma_event_api_id` and `luma_api_key` are optional because not every event has Luma configured for approval, rejection, and attendance sync.
 - Outside simplified claiming, Luma email visibility and requirement are enabled together when an event uses Luma Sync because guest sync matches Codex participants to Luma guests by that email.
 - `luma_webhook_id`, `luma_webhook_secret`, `luma_webhook_status`, `luma_webhook_error`, and `luma_webhook_registered_at` store the event's webhook registration state. Webhook status is `not_configured` until the event has enough Luma configuration for registration, `configured` after Luma returns a webhook ID and signing secret, and `failed` when registration cannot be completed with the stored event API ID and key.
+- `luma_guest_list_enabled` defaults to false. While it is true, the event confirms registrations from its private `EventLumaGuest` rows and sends no approval, rejection, or withdrawal sync to Luma. `luma_guest_list_synced_at` records the last successful full refresh of that list. `luma_guest_list_sync_error` stores a concise message for the latest failed refresh and is cleared by the next successful refresh. Setting `luma_guest_list_enabled` back to false removes the event's `EventLumaGuest` rows and clears both refresh fields.
 - `agenda_items_json` stores a validated ordered JSON array of agenda items (`id`, `startsAt`, optional `endsAt`, `title`, optional `details`, `displayOrder`, optional `builderBlockType`, optional `builderFocusCost`, optional `builderEnergyDelta`). `builderBlockType` is a bounded string annotation written by the event builder; `builderFocusCost` (0..99) and `builderEnergyDelta` (-99..99) are organizer-declared scoring dials for custom builder blocks. A malformed annotation or dial is dropped during parsing without affecting the agenda, unknown block types resolve to a custom block in the builder, and all three annotations are suppressed from public event payloads.
 - `event_agenda_programs` stores one private program per event, its public agenda item ID, and the ordered tracks and sessions. Session IDs are unique within the program. A session stores its start offset and duration in minutes and an optional floor plan and room reference.
 - `event_floor_plans` stores each floor's name, private image object and revision, and named rooms. A room ID is unique within its floor. Room rectangles use coordinates relative to the full image. A room can store a route as an ordered list of 2 to 40 points in the same coordinates. Sessions can reference rooms in the same event.
@@ -611,7 +616,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `checked_in_at` records the first accepted Luma or simplified-claim attendance timestamp. `check_in_source` records which path supplied it.
 - `pre_approval_status` stores a staged admin review decision that is applied later to transition the canonical `status`.
 - Applications created while `auto_approve_applications` is true are stored directly as `approved` with `reviewed_at` equal to `submitted_at` and no reviewing user.
-- `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for events that show and require a Luma email and have configured Luma sync.
+- In an event with `luma_guest_list_enabled = true`, an application whose Luma guest is approved is stored as `approved` in the same way, either at submission or later when Luma approves the guest. `reviewed_at` records that approval and there is no reviewing user.
+- `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for events that show and require a Luma email, have configured Luma sync, and do not use the Luma guest list. It stays null for events with `luma_guest_list_enabled = true`.
 - `selected_track_id` stores the participant's selected Hackathon or Build track for that event when the application is `submitted` or `approved`.
 - `checked_in_at` is sticky and is not cleared or replaced by later Luma or simplified-claim activity.
 - `check_in_override_status` stores an admin attendance decision of `joined` or `not_joined` for an approved application, with `check_in_override_at` and `check_in_override_by_user_id` recording when and by whom it was set. The override wins over `checked_in_at` in both directions and is cleared back to the recorded Luma or simplified-claim check-in by repeating the active decision.
@@ -620,6 +626,28 @@ It describes the intended persistent model at the level of entities, key fields,
 - `certificate_email_queued_at` records when an event admin or platform admin reserved the application for certificate email delivery, with `certificate_email_queued_by_user_id` recording the acting admin. `certificate_email_sent_at` records successful delivery. These fields make the admin send action rerunnable without emailing the same participant again.
 - `application_terms_document_id` and `application_terms_accepted_at` are null when the event has no current application terms at submission time.
 - Withdrawal retains the application record rather than deleting it so participation history, event-terms acceptance when present, and audit context remain available.
+
+## EventLumaGuest
+
+### Key Fields
+
+- `event_id`
+- `email`
+- `approval_status`
+- `synced_at`
+
+### Constraints
+
+- `primary key (event_id, email)`
+- `event_id` references `Event(id)` with `on delete cascade`
+
+### Notes
+
+- Rows are the private copy of an event's Luma guest list and exist only while the event has `luma_guest_list_enabled = true`.
+- `email` is the trimmed, lower-case Luma guest email. It is the only stored contact detail and it matches a participant through the user's saved `luma_email`, ignoring case.
+- `approval_status` stores the Luma approval status in lower case with underscores, for example `approved`, `pending_approval`, `waitlist`, `invited`, or `declined`.
+- `synced_at` records when a guest-list refresh or a signed Luma webhook last wrote the row. A refresh removes the rows it did not see, except rows that a webhook wrote after the refresh started.
+- No API response contains these rows. Event admins and platform admins read only aggregate counts.
 
 ## TalkProposal
 
@@ -1178,6 +1206,7 @@ exists only for the secondary manual-token connection method.
 - `UserPlatformDocumentAcceptance` belongs to `User` and `PlatformDocument`
 - `EventTermsDocument` belongs to `Event`
 - `UserApplication` belongs to `Event` and `User`
+- `EventLumaGuest` belongs to `Event`
 - `TalkProposal` belongs to `Event` and `User` and may reference a reviewing `User`
 - `McpAccessToken` belongs to one `User` and is deleted with that user.
 - `Team` belongs to `Event`

@@ -96,6 +96,7 @@ Key characteristics:
 - Each event can optionally store a Luma event API ID and event-specific Luma API key used for operational sync.
 - Each event stores its Luma webhook ID, signing secret, status, registration time, and concise registration error when webhook setup has been attempted.
 - A configured Luma event API ID maps to at most one event.
+- Each event can turn on the Luma guest list while it has saved Luma credentials and a visible, required Luma email. The event then keeps a private copy of its Luma guest list and confirms registrations from it: only Luma guests can register, approved Luma guests are approved on the platform, and no approval, rejection, or withdrawal is sent to Luma.
 - Each event has a city, country, and address.
 - An event street address is visible only in account-scoped event workspace views for approved participants, judges, staff, event admins, and platform admins.
 - Each event can be hidden by an event admin or platform admin with a required reason when public and participant access must be paused.
@@ -383,16 +384,20 @@ Rules:
 - When automatic approval reaches a configured participant approval limit, later applications remain submitted for admin review.
 - A participant can withdraw their own application while they do not have an active Hackathon team membership in that event.
 - An event admin or platform admin can manually withdraw a submitted or approved application on behalf of the participant.
-- An event admin or platform admin can restore a withdrawn application while registration is open. The restored application follows the same post-registration outcome rules as a new registration: automatic approval applies when configured and capacity is available, otherwise the application returns to submitted review.
+- An event admin or platform admin can restore a withdrawn application while registration is open. The restored application follows the same post-registration outcome rules as a new registration: automatic approval applies when configured and capacity is available, otherwise the application returns to submitted review. In an event that uses the Luma guest list, the restored application is approved when the participant's Luma guest is approved and otherwise returns to submitted review.
 - Admin review uses a staged pre-approval decision (`approved` or `rejected`) that is persisted until explicitly applied.
 - Applying staged decisions updates final application outcomes and enqueues participant-facing approval or rejection emails.
 - Event admins and platform admins can apply staged approvals above the participant approval limit.
 - Auto-approved applications enqueue the same participant-facing approval email as manually approved applications.
-- If the event shows and requires a Luma email and has configured Luma sync, application submission verifies that the participant's saved Luma email is registered as a guest on that Luma event.
-- If the event auto-approves applications and shows and requires a Luma email with configured Luma sync, application submission also enqueues a Luma approval sync.
-- If the event shows and requires a Luma email and has configured Luma sync, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
-- If the event shows and requires a Luma email and has configured Luma sync, participant withdrawal and admin-managed withdrawal both enqueue the canonical Luma rejection sync so the user is removed from the event guest list.
+- If the event shows and requires a Luma email, has configured Luma sync, and does not use the Luma guest list, application submission verifies that the participant's saved Luma email is registered as a guest on that Luma event.
+- If the event auto-approves applications, shows and requires a Luma email with configured Luma sync, and does not use the Luma guest list, application submission also enqueues a Luma approval sync.
+- If the event shows and requires a Luma email, has configured Luma sync, and does not use the Luma guest list, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
+- If the event shows and requires a Luma email, has configured Luma sync, and does not use the Luma guest list, participant withdrawal and admin-managed withdrawal both enqueue the canonical Luma rejection sync so the user is removed from the event guest list.
 - Outside simplified claiming, if a valid signed Luma guest update says the participant is no longer going, the matching submitted or approved application is withdrawn through the admin-managed withdrawal behavior.
+- If the event uses the Luma guest list, application submission looks up the participant's saved Luma email in the event's private guest list and does not call Luma. A participant with no guest, or with a declined guest, cannot register and is told to register for the event on Luma first. A participant whose guest is approved is approved immediately with the same approval email as any other approval, regardless of automatic approval and the participant approval limit. Any other guest status leaves the application submitted.
+- If the event uses the Luma guest list, every signed Luma guest update and every guest-list refresh brings the matching application in line with the guest: an approved guest approves a submitted application, and a declined guest withdraws a submitted or approved application through the admin-managed withdrawal behavior. Every other combination changes nothing.
+- A Luma guest matches an application when exactly one application in the event belongs to an active user whose saved Luma email equals the guest email, ignoring case.
+- If the event uses the Luma guest list, no application approval, rejection, or withdrawal is sent to Luma.
 - Platform admins can run an event-scoped operational backfill route to resolve stored legacy Luma usernames into canonical Luma emails for already-registered users.
 - In Hackathon events, a user must be approved before creating or joining a team in that event.
 - In Meetup and Build events, an approved application is the participant's event access record.
@@ -419,8 +424,8 @@ Rules:
 - If visible proof of execution is required, at least one proof-of-execution link must be non-empty and every provided link must use `http` or `https`.
 - If visible AI Knowledge is required, the user must choose Beginner, Intermediate, or Advanced.
 - A `UserApplication` can persist a Luma sync outcome of `not_synced`, `approve_synced`, `reject_synced`, `approve_failed`, or `reject_failed`.
-- `not_synced` is used only for events where Luma sync is enabled.
-- An approved participant can verify a Luma email from the account event overview when the event has Luma sync enabled. The platform rejects a Luma email already connected to another participant in the same event. The platform saves the entered Luma email only after Luma confirms that the email belongs to a guest on the event, then retries the participant's Luma approval sync and reflects the resulting application sync state to the participant.
+- `not_synced` is used only for events where Luma sync is enabled. An application in an event that uses the Luma guest list has no Luma sync outcome.
+- An approved participant can verify a Luma email from the account event overview when the event has Luma sync enabled and does not use the Luma guest list. The platform rejects a Luma email already connected to another participant in the same event. The platform saves the entered Luma email only after Luma confirms that the email belongs to a guest on the event, then retries the participant's Luma approval sync and reflects the resulting application sync state to the participant.
 - A `UserApplication` can record `checkedInAt` when a valid signed Luma guest check-in update confirms the approved participant attended the event.
 - A `UserApplication` records whether its sticky check-in came from `luma` or `simplified_claim`.
 - Successful simplified redemption creates or approves the participant application and records a `simplified_claim` check-in when no earlier check-in exists. An earlier Luma or simplified-claim timestamp and source remain unchanged.
@@ -428,6 +433,24 @@ Rules:
 - An event admin or platform admin can override attendance for an approved application by marking the participant joined or not joined. The override records the acting admin and time, wins over the Luma check-in in both directions, and repeating the active decision clears it back to the Luma default.
 - Effective attendance is the admin override when present, otherwise the recorded Luma or simplified-claim check-in.
 - An event admin or platform admin can revoke certificate access for an approved participant who currently has certificate access. Revocation is independent of attendance, records the acting admin and time, and can be restored by an event admin or platform admin.
+
+### EventLumaGuest
+
+A private, event-scoped copy of one guest from the event's Luma guest list.
+
+The list exists only while the event uses the Luma guest list. It lets the platform confirm registrations without asking Luma during registration and recover guest updates that a webhook missed.
+
+Rules:
+
+- A guest stores only the event, the normalized lower-case guest email, the Luma approval status, and the time the guest was last refreshed. Names, tickets, registration answers, and other Luma guest data are not stored.
+- Each normalized email identifies one guest per event.
+- Guest emails and guest statuses never leave the server. Event admins and platform admins see only how many guests are approved, how many are waiting, when the list was last refreshed, and whether the list needs attention. Participants, staff, and judges see nothing from the list.
+- A guest counts as approved when its Luma status is `approved`, as declined when Luma reports the guest as declined or no longer going, and as waiting for every other status, such as pending approval, waitlist, or invited.
+- An event admin or platform admin imports the list and can refresh it at any time. A refresh fetches every guest of the Luma event across all pages, up to 10,000 guests, adds or updates each guest, and removes guests that Luma no longer returns. A failed fetch leaves the list unchanged and records the failure for the organizer.
+- Signed Luma guest registration and guest update webhooks add or update the one guest they describe. A repeated delivery or a repeated refresh leaves the same list.
+- After every webhook update and every refresh, the matching application follows the guest as described for `UserApplication`.
+- Turning the Luma guest list off removes the event's guests and its refresh history.
+- In the event builder, the Luma connection section holds the guest list setting of a connected event. Turning it on makes the Luma email a required registration field. A saved guest-list event shows the approved and waiting guest counts, the last refresh time, the import or refresh action, and a warning when the list was never imported, the last refresh failed, or Luma is not connected.
 
 ### Participation Certificate
 

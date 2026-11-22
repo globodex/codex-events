@@ -37,6 +37,11 @@ export interface LumaGuestCancellationEvent {
   approvalStatus: string
 }
 
+export type LumaGuestStatusEvent = LumaGuestCancellationEvent
+
+// Luma sends `guest.registered` for a new registration and `guest.updated` for every later change.
+const lumaGuestStatusWebhookTypes = ['guest.registered', 'guest.updated']
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
@@ -96,17 +101,59 @@ export function firstLumaTicketCheckIn(tickets: unknown) {
     .sort()[0] ?? null
 }
 
-function normalizeLumaGuestStatus(value: unknown) {
+/** Lower-case status with underscores, for example `Pending Approval` becomes `pending_approval`. */
+export function normalizeLumaGuestStatus(value: unknown) {
   const normalized = normalizeOptionalString(value)
 
   return normalized?.toLowerCase().replace(/[\s-]+/g, '_') ?? null
 }
 
-function isLumaGuestCancellationStatus(value: string | null): value is string {
+export function isLumaGuestCancellationStatus(value: string | null): value is string {
   return value === 'declined'
     || value === 'canceled'
     || value === 'cancelled'
     || value === 'not_going'
+}
+
+function readLumaEventApiId(data: unknown) {
+  return firstString(
+    getNestedValue(data, ['event', 'api_id']),
+    getNestedValue(data, ['event', 'id']),
+    getNestedValue(data, ['event_id']),
+    getNestedValue(data, ['event_api_id']),
+    getNestedValue(data, ['guest', 'event_id']),
+    getNestedValue(data, ['guest', 'event_api_id'])
+  )
+}
+
+function readLumaGuestId(data: unknown) {
+  return firstString(
+    getNestedValue(data, ['guest', 'api_id']),
+    getNestedValue(data, ['guest', 'id']),
+    getNestedValue(data, ['guest_id'])
+  )
+}
+
+function readLumaGuestEmail(data: unknown) {
+  return firstString(
+    getNestedValue(data, ['guest', 'user_email']),
+    getNestedValue(data, ['guest', 'email']),
+    getNestedValue(data, ['user_email']),
+    getNestedValue(data, ['email'])
+  )
+}
+
+function readLumaGuestApprovalStatus(data: unknown) {
+  return normalizeLumaGuestStatus(
+    firstString(
+      getNestedValue(data, ['guest', 'approval_status']),
+      getNestedValue(data, ['approval_status']),
+      getNestedValue(data, ['guest', 'approvalStatus']),
+      getNestedValue(data, ['approvalStatus']),
+      getNestedValue(data, ['guest', 'status']),
+      getNestedValue(data, ['status'])
+    )
+  )
 }
 
 function bytesToHex(bytes: Uint8Array) {
@@ -387,25 +434,6 @@ export function extractLumaAttendanceCheckInEvent(rawBody: string): {
     }
   }
 
-  const eventApiId = firstString(
-    getNestedValue(envelope.data, ['event', 'api_id']),
-    getNestedValue(envelope.data, ['event', 'id']),
-    getNestedValue(envelope.data, ['event_id']),
-    getNestedValue(envelope.data, ['event_api_id']),
-    getNestedValue(envelope.data, ['guest', 'event_id']),
-    getNestedValue(envelope.data, ['guest', 'event_api_id'])
-  )
-  const guestId = firstString(
-    getNestedValue(envelope.data, ['guest', 'api_id']),
-    getNestedValue(envelope.data, ['guest', 'id']),
-    getNestedValue(envelope.data, ['guest_id'])
-  )
-  const guestEmail = firstString(
-    getNestedValue(envelope.data, ['guest', 'user_email']),
-    getNestedValue(envelope.data, ['guest', 'email']),
-    getNestedValue(envelope.data, ['user_email']),
-    getNestedValue(envelope.data, ['email'])
-  )
   const checkedInAt = normalizeIsoTimestamp(
     firstString(
       getNestedValue(envelope.data, ['guest', 'checked_in_at']),
@@ -417,9 +445,9 @@ export function extractLumaAttendanceCheckInEvent(rawBody: string): {
   return {
     envelope,
     attendanceEvent: {
-      eventApiId,
-      guestId,
-      guestEmail,
+      eventApiId: readLumaEventApiId(envelope.data),
+      guestId: readLumaGuestId(envelope.data),
+      guestEmail: readLumaGuestEmail(envelope.data),
       checkedInAt
     }
   }
@@ -438,16 +466,7 @@ export function extractLumaGuestCancellationEvent(rawBody: string): {
     }
   }
 
-  const approvalStatus = normalizeLumaGuestStatus(
-    firstString(
-      getNestedValue(envelope.data, ['guest', 'approval_status']),
-      getNestedValue(envelope.data, ['approval_status']),
-      getNestedValue(envelope.data, ['guest', 'approvalStatus']),
-      getNestedValue(envelope.data, ['approvalStatus']),
-      getNestedValue(envelope.data, ['guest', 'status']),
-      getNestedValue(envelope.data, ['status'])
-    )
-  )
+  const approvalStatus = readLumaGuestApprovalStatus(envelope.data)
 
   if (!isLumaGuestCancellationStatus(approvalStatus)) {
     return {
@@ -459,25 +478,38 @@ export function extractLumaGuestCancellationEvent(rawBody: string): {
   return {
     envelope,
     cancellationEvent: {
-      eventApiId: firstString(
-        getNestedValue(envelope.data, ['event', 'api_id']),
-        getNestedValue(envelope.data, ['event', 'id']),
-        getNestedValue(envelope.data, ['event_id']),
-        getNestedValue(envelope.data, ['event_api_id']),
-        getNestedValue(envelope.data, ['guest', 'event_id']),
-        getNestedValue(envelope.data, ['guest', 'event_api_id'])
-      ),
-      guestId: firstString(
-        getNestedValue(envelope.data, ['guest', 'api_id']),
-        getNestedValue(envelope.data, ['guest', 'id']),
-        getNestedValue(envelope.data, ['guest_id'])
-      ),
-      guestEmail: firstString(
-        getNestedValue(envelope.data, ['guest', 'user_email']),
-        getNestedValue(envelope.data, ['guest', 'email']),
-        getNestedValue(envelope.data, ['user_email']),
-        getNestedValue(envelope.data, ['email'])
-      ),
+      eventApiId: readLumaEventApiId(envelope.data),
+      guestId: readLumaGuestId(envelope.data),
+      guestEmail: readLumaGuestEmail(envelope.data),
+      approvalStatus
+    }
+  }
+}
+
+/**
+ * Reads the guest and its Luma approval status from a registration or update delivery.
+ * Returns no event for other webhook types and for deliveries without an approval status.
+ */
+export function extractLumaGuestStatusEvent(rawBody: string): {
+  envelope: LumaWebhookEnvelope
+  guestStatusEvent: LumaGuestStatusEvent | null
+} {
+  const envelope = parseWebhookEnvelope(rawBody)
+  const approvalStatus = readLumaGuestApprovalStatus(envelope.data)
+
+  if (!lumaGuestStatusWebhookTypes.includes(envelope.type) || !approvalStatus) {
+    return {
+      envelope,
+      guestStatusEvent: null
+    }
+  }
+
+  return {
+    envelope,
+    guestStatusEvent: {
+      eventApiId: readLumaEventApiId(envelope.data),
+      guestId: readLumaGuestId(envelope.data),
+      guestEmail: readLumaGuestEmail(envelope.data),
       approvalStatus
     }
   }

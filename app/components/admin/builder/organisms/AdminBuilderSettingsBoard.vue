@@ -21,6 +21,7 @@ import AdminBuilderLumaConnection from '~/components/admin/builder/organisms/Adm
 import AdminBuilderCreditsSection from '~/components/admin/builder/organisms/AdminBuilderCreditsSection.vue'
 import AdminBuilderCreditsInfoDialog from '~/components/admin/builder/molecules/AdminBuilderCreditsInfoDialog.vue'
 import type {
+  AccountEventLumaGuestList,
   AccountEventSettingsCreditOffer,
   AccountEventSimplifiedClaimingStatus
 } from '#shared/domains/events/account-event-settings-page'
@@ -45,6 +46,7 @@ const props = defineProps<{
   currentWinnerTerms?: TermsDocument | null
   savingTermsDocumentType?: TermsDocument['documentType'] | null
   initialSimplifiedClaimingStatus?: AccountEventSimplifiedClaimingStatus | null
+  lumaGuestList?: AccountEventLumaGuestList | null
   creditOffers?: AccountEventSettingsCreditOffer[]
   hasExistingTalkProposal?: boolean
 }>()
@@ -597,6 +599,7 @@ function groupById(id: string) {
           v-model:form="form"
           :event="event"
           :saving="saving"
+          :luma-guest-list="props.lumaGuestList ?? null"
           @save="emit('save')"
           @updated="emit('updated')"
         />

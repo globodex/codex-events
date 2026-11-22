@@ -109,9 +109,9 @@ The source inventory is the shared operation registry. Eligibility is explicit:
   Meetup talk proposals, audit reads, and platform administration.
 - Exclude `/api/auth`, `/auth`, account registration/linking/email verification,
   `/api/account/mcp-tokens`, `DELETE /api/account`, all profile/event image and
-  photo binary upload/download routes, CSV imports, Luma webhooks and retry or
-  backfill integration controls, queue consumers, startup recovery, email-send
-  controls, and other system-only entrypoints.
+  photo binary upload/download routes, CSV imports, Luma webhooks and retry,
+  backfill, or guest-list refresh integration controls, queue consumers,
+  startup recovery, email-send controls, and other system-only entrypoints.
 
 The explicit manifest contains every included method/path pair, including all
 ten talk-proposal operations and the two read-only event-builder operations.

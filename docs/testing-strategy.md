@@ -245,6 +245,14 @@ state.
   matching, pre-creation credit staging for both claiming methods, draft-save retry retention and atomic creation rollback, atomic multi-giveaway allocation, link/code detection, exhausted-giveaway skipping, nullable redirects, immutable repeat claims, combined receipt delivery and escaping, redirect selection locking, email preview, attendance-source
   precedence, certificate eligibility, rate limiting, and the external coupon
   redirect.
+- Luma guest list coverage includes the event setting with its Luma
+  connection and required Luma email guards, paginated import and refresh,
+  removal of guests that Luma no longer returns, failed fetches that keep the
+  list, signed registration and status webhooks with duplicate deliveries,
+  registration outcomes for missing, declined, waiting, and approved guests,
+  approval and withdrawal reconciliation with the single-application matching
+  rule, the absence of Luma decision sync, and guest data staying out of every
+  response.
 
 Structured operation coverage uses a fresh generated-schema module and an
 instrumented `z.fromJSONSchema` constructor. It verifies that module import

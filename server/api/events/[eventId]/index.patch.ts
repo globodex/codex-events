@@ -2,6 +2,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { events, talkProposals } from '#server/database/schema'
+import { removeEventLumaGuests } from '#server/domains/applications/luma-guest-list'
 import { getSimplifiedClaimingSummary } from '#server/domains/credits/simplified-claiming'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
@@ -41,7 +42,10 @@ export const applicationOperation = defineStructuredRouteOperation({
   const body = await parseValidatedBody(h3Event, updateEventBodySchema)
   const database = getDatabase(h3Event)
   const { event } = await requireEventAdmin(h3Event, eventId)
-  const shouldReconcileLuma = Object.hasOwn(body, 'lumaApiKey') || Object.hasOwn(body, 'lumaEventApiId')
+  const shouldReconcileLuma = Object.hasOwn(body, 'lumaApiKey')
+    || Object.hasOwn(body, 'lumaEventApiId')
+    || Object.hasOwn(body, 'lumaGuestListEnabled')
+  const turnsLumaGuestListOff = event.lumaGuestListEnabled && body.lumaGuestListEnabled === false
   const simplifiedClaiming = await getSimplifiedClaimingSummary(database, event)
 
   const locksAgainstExistingProposals = (body.talkProposalsEnabled === false && event.talkProposalsEnabled)
@@ -98,6 +102,12 @@ export const applicationOperation = defineStructuredRouteOperation({
   // written, so classic edits of builder events keep the stored score honest.
   Object.assign(patch, computeEventBalanceColumns({ ...event, ...patch }))
 
+  if (turnsLumaGuestListOff) {
+    // The private guest list exists only while the switch is on. Turning it on again starts
+    // from an empty list that the organizer has to import.
+    Object.assign(patch, { lumaGuestListSyncedAt: null, lumaGuestListSyncError: null })
+  }
+
   const eventWritePredicates = [eq(events.id, eventId)]
   const preservesProgram = patch.agendaItemsJson ? preservesEventProgramParent(patch.agendaItemsJson) : null
 
@@ -134,6 +144,10 @@ export const applicationOperation = defineStructuredRouteOperation({
 
   if (replacementTracks !== undefined) {
     await replaceEventTracks(database, eventId, replacementTracks)
+  }
+
+  if (turnsLumaGuestListOff) {
+    await removeEventLumaGuests(database, eventId)
   }
 
   await writeAuditLog(database, {

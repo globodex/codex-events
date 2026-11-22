@@ -10,8 +10,12 @@ import {
   type events,
   type users
 } from '#server/database/schema'
-import { ApiError } from '#server/http/api-error'
-import { isEventLumaSyncEnabled } from '#server/domains/applications'
+import {
+  getInitialApplicationLumaSyncStatus,
+  isEventLumaGuestListEnabled,
+  isEventLumaSyncEnabled
+} from '#server/domains/applications/luma-config'
+import { findEventLumaGuestStanding } from '#server/domains/applications/luma-guest-list'
 import {
   buildApplicationLumaSyncQueueMessage,
   enqueueApplicationLumaSyncMessage,
@@ -28,7 +32,7 @@ type UserApplicationRecord = typeof userApplications.$inferSelect
 type EventRecord = typeof events.$inferSelect
 type UserRecord = typeof users.$inferSelect
 
-export type ApplicationReviewSource = 'pre_approval' | 'auto_approval'
+export type ApplicationReviewSource = 'pre_approval' | 'auto_approval' | 'luma_guest_list'
 
 function getReviewSourceMetadata(source: ApplicationReviewSource): AuditMetadata {
   return source === 'pre_approval'
@@ -44,7 +48,7 @@ function getReviewSourceMetadata(source: ApplicationReviewSource): AuditMetadata
 export async function finalizeUserApplicationReview(options: {
   h3Event: H3Event
   database: AppDatabase
-  event: Pick<EventRecord, 'id' | 'name' | 'slug' | 'simplifiedClaimingEnabled' | 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId' | 'lumaApiKey' | 'lumaWebhookSecret' | 'lumaWebhookStatus'>
+  event: Pick<EventRecord, 'id' | 'name' | 'slug' | 'simplifiedClaimingEnabled' | 'lumaGuestListEnabled' | 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId' | 'lumaApiKey' | 'lumaWebhookSecret' | 'lumaWebhookStatus'>
   application: UserApplicationRecord
   applicant: Pick<UserRecord, 'email' | 'displayName'> | null
   decision: ApplicationReviewDecision
@@ -154,86 +158,120 @@ export async function finalizeUserApplicationReview(options: {
   }
 }
 
-export async function applyPostRegistrationApplicationOutcome(options: {
+/**
+ * Approves a `submitted` application without a reviewing admin and runs the standard approval
+ * side effects (audit records, approval email, and the Luma decision sync for events that use it).
+ *
+ * The status check and the optional participant limit are part of the write. A repeated or
+ * concurrent call therefore approves the application at most once and sends one approval email.
+ *
+ * Returns the approved application, or null when this call did not approve it.
+ */
+export async function approveSubmittedApplication(options: {
   h3Event: H3Event
   database: AppDatabase
   event: EventRecord
   application: UserApplicationRecord
   applicant: Pick<UserRecord, 'email' | 'displayName'> | null
-  outcomeAt: string
+  approvedAt: string
+  source: Exclude<ApplicationReviewSource, 'pre_approval'>
+  /** Approve only while fewer applications than this are approved. Null means no limit. */
+  participantsLimit: number | null
 }) {
-  let applicationRecord = options.application
-
-  if (!options.event.autoApproveApplications) {
-    return applicationRecord
-  }
-
-  const autoApprovalWhere = options.event.participantsLimit === null
-    ? and(
-        eq(userApplications.id, options.application.id),
-        eq(userApplications.status, 'submitted')
-      )
-    : and(
-        eq(userApplications.id, options.application.id),
-        eq(userApplications.status, 'submitted'),
-        sql`(
+  const [approvedApplication] = await options.database
+    .update(userApplications)
+    .set({
+      status: 'approved',
+      preApprovalStatus: null,
+      lumaSyncStatus: getInitialApplicationLumaSyncStatus(options.event),
+      reviewedAt: options.approvedAt,
+      reviewedByUserId: null,
+      updatedAt: options.approvedAt
+    })
+    .where(and(
+      eq(userApplications.id, options.application.id),
+      eq(userApplications.status, 'submitted'),
+      options.participantsLimit === null
+        ? undefined
+        : sql`(
           select count(*)
           from ${userApplications}
           where ${userApplications.eventId} = ${options.event.id}
             and ${userApplications.status} = 'approved'
-        ) < ${options.event.participantsLimit}`
-      )
+        ) < ${options.participantsLimit}`
+    ))
+    .returning()
 
-  await options.database
-    .update(userApplications)
-    .set({
-      status: 'approved',
-      reviewedAt: options.outcomeAt,
-      reviewedByUserId: null,
-      updatedAt: options.outcomeAt
-    })
-    .where(autoApprovalWhere)
+  if (!approvedApplication) {
+    return null
+  }
 
-  const updatedApplication = await options.database.query.userApplications.findFirst({
-    where: eq(userApplications.id, options.application.id)
+  const finalizedReview = await finalizeUserApplicationReview({
+    h3Event: options.h3Event,
+    database: options.database,
+    event: options.event,
+    application: approvedApplication,
+    applicant: options.applicant,
+    decision: 'approved',
+    reviewedAt: options.approvedAt,
+    reviewedByUserId: null,
+    auditActorUserId: null,
+    source: options.source,
+    persistReview: false
   })
 
-  if (!updatedApplication) {
-    throw new ApiError({
-      statusCode: 500,
-      code: 'user_application_update_failed',
-      message: 'The application could not be updated.',
-      details: {
-        eventId: options.event.id,
-        applicationId: options.application.id,
-        userId: options.application.userId
-      }
-    })
+  return {
+    ...approvedApplication,
+    lumaSyncStatus: finalizedReview.lumaSyncStatus,
+    updatedAt: finalizedReview.updatedAt
+  }
+}
+
+/**
+ * Decides what happens to an application right after it was submitted or restored.
+ * It either stays `submitted` for organizer review or is approved at once.
+ */
+export async function applyPostRegistrationApplicationOutcome(options: {
+  h3Event: H3Event
+  database: AppDatabase
+  event: EventRecord
+  application: UserApplicationRecord
+  applicant: Pick<UserRecord, 'email' | 'displayName' | 'lumaEmail'> | null
+  outcomeAt: string
+}) {
+  const approval = {
+    h3Event: options.h3Event,
+    database: options.database,
+    event: options.event,
+    application: options.application,
+    applicant: options.applicant,
+    approvedAt: options.outcomeAt
   }
 
-  applicationRecord = updatedApplication
+  if (isEventLumaGuestListEnabled(options.event)) {
+    // Luma decides: only an approved Luma guest is approved here. The automatic approval
+    // setting and the participant limit do not apply to these events.
+    const guestStanding = await findEventLumaGuestStanding(
+      options.database,
+      options.event.id,
+      options.applicant?.lumaEmail ?? ''
+    )
 
-  if (applicationRecord.status === 'approved') {
-    const finalizedReview = await finalizeUserApplicationReview({
-      h3Event: options.h3Event,
-      database: options.database,
-      event: options.event,
-      application: applicationRecord,
-      applicant: options.applicant,
-      decision: 'approved',
-      reviewedAt: options.outcomeAt,
-      reviewedByUserId: null,
-      auditActorUserId: null,
-      source: 'auto_approval',
-      persistReview: false
-    })
-
-    applicationRecord = {
-      ...applicationRecord,
-      lumaSyncStatus: finalizedReview.lumaSyncStatus,
-      updatedAt: finalizedReview.updatedAt
+    if (guestStanding !== 'approved') {
+      return options.application
     }
+
+    return await approveSubmittedApplication({ ...approval, source: 'luma_guest_list', participantsLimit: null })
+      ?? options.application
   }
 
-  return applicationRecord
+  if (!options.event.autoApproveApplications) {
+    return options.application
+  }
+
+  return await approveSubmittedApplication({
+    ...approval,
+    source: 'auto_approval',
+    participantsLimit: options.event.participantsLimit
+  }) ?? options.application
 }

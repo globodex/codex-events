@@ -275,6 +275,7 @@ Behavior:
 - Event admins can stage a pre-approval decision (`approved` or `rejected`) without changing the canonical status until staged decisions are applied.
 - Events with automatic application approval skip this state for new applications after required submission checks pass while approved participation is below the configured participant limit when one exists.
 - Applications remain in this state when automatic approval is enabled but the configured participant limit has already been reached.
+- Events that use the Luma guest list skip this state for new applications whose Luma guest is already approved. Other applications in these events stay in this state while the guest is waiting on Luma. Automatic application approval and the participant limit do not apply to these events.
 
 #### `approved`
 
@@ -303,7 +304,7 @@ Behavior:
 
 - The user is no longer eligible to participate in the event.
 - The user is no longer eligible to attend the event in person through this application when the event is in person.
-- When Luma sync is enabled for the event, withdrawal also triggers Luma guest removal for this participant.
+- When Luma sync is enabled for the event and the event does not use the Luma guest list, withdrawal also triggers Luma guest removal for this participant.
 - Admin-managed withdrawal can also remove the participant from an active team, or dismantle the participant's team, when team invariants require that outcome.
 - Admin-managed withdrawal is blocked when dismantling the participant's team would affect an active draft, submitted, or locked submission.
 - Event admins and platform admins can restore the application while registration is open. Restoration does not restore team membership, dissolved teams, or closed join requests.
@@ -315,24 +316,30 @@ Behavior:
 
 - `submitted -> approved`
   Actor: event admin or platform admin applying staged decisions.
+  Actor: system, in an event that uses the Luma guest list, when a signed Luma guest update or a guest-list refresh shows the participant's guest as approved.
 - `new application -> approved`
   Actor: system, when automatic application approval is enabled for the event at submission time and approved participation is below the configured participant limit when one exists.
+  Actor: system, in an event that uses the Luma guest list, when the participant's Luma guest is approved at submission time.
 - `submitted -> rejected`
   Actor: event admin or platform admin applying staged decisions.
 - `submitted -> withdrawn`
   Actor: applicant, event admin, or platform admin.
+  Actor: system, when a signed Luma guest update, or a guest-list refresh in an event that uses the Luma guest list, shows the participant is declined or no longer going.
   Guard: applicant self-withdraw requires no active team membership in the event.
-  Guard: admin-managed withdrawal can remove an active team membership or dismantle the team when doing so does not affect an active draft, submitted, or locked submission.
+  Guard: admin-managed and Luma-triggered withdrawal can remove an active team membership or dismantle the team when doing so does not affect an active draft, submitted, or locked submission.
 - `approved -> withdrawn`
   Actor: participant, event admin, or platform admin.
+  Actor: system, when a signed Luma guest update, or a guest-list refresh in an event that uses the Luma guest list, shows the participant is declined or no longer going.
   Guard: participant self-withdraw requires no active team membership in the event.
-  Guard: admin-managed withdrawal can remove an active team membership or dismantle the team when doing so does not affect an active draft, submitted, or locked submission.
+  Guard: admin-managed and Luma-triggered withdrawal can remove an active team membership or dismantle the team when doing so does not affect an active draft, submitted, or locked submission.
 - `withdrawn -> submitted`
   Actor: event admin or platform admin.
-  Guard: the event is in `registration_open`, automatic approval is disabled or the participant approval limit has already been reached.
+  Guard: the event is in `registration_open`.
+  Guard: in an event that uses the Luma guest list, the participant's Luma guest is not approved. In every other event, automatic approval is disabled or the participant approval limit has already been reached.
 - `withdrawn -> approved`
   Actor: event admin or platform admin.
-  Guard: the event is in `registration_open`, automatic approval is enabled, and approved participation is below the participant approval limit when one exists.
+  Guard: the event is in `registration_open`.
+  Guard: in an event that uses the Luma guest list, the participant's Luma guest is approved. In every other event, automatic approval is enabled and approved participation is below the participant approval limit when one exists.
 
 ## Team Join Request
 

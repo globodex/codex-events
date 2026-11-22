@@ -128,7 +128,7 @@ describe('event Luma webhook registration', () => {
         expect(init?.method).toBe('POST')
         expect(JSON.parse(String(init?.body))).toEqual({
           url: 'https://test.codex-events.com/api/public/events/event_1/luma/webhooks',
-          event_types: ['guest.updated']
+          event_types: ['guest.registered', 'guest.updated']
         })
         return createLumaJsonResponse({
           id: 'wh_1',
@@ -235,7 +235,7 @@ describe('event Luma webhook registration', () => {
         expect(init?.method).toBe('POST')
         expect(JSON.parse(String(init?.body))).toEqual({
           id: 'wh_existing',
-          event_types: ['guest.updated'],
+          event_types: ['guest.registered', 'guest.updated'],
           status: 'active'
         })
         return createLumaJsonResponse({

@@ -5,6 +5,7 @@ import { describe, expect, test, vi } from 'vitest'
 import {
   buildLumaWebhookSignatureHeader,
   extractLumaGuestCancellationEvent,
+  normalizeLumaGuestStatus,
   resolveLumaAttendanceGuestEmail,
   verifyLumaWebhookRequest
 } from '../../../../../server/domains/applications/luma-webhooks'
@@ -137,6 +138,15 @@ describe('luma webhook utilities', () => {
       },
       cancellationEvent: null
     })
+  })
+
+  test('normalizes Luma guest statuses to lower case with underscores', () => {
+    expect(normalizeLumaGuestStatus('approved')).toBe('approved')
+    expect(normalizeLumaGuestStatus(' Pending Approval ')).toBe('pending_approval')
+    expect(normalizeLumaGuestStatus('Not-Going')).toBe('not_going')
+    expect(normalizeLumaGuestStatus('pending_approval')).toBe('pending_approval')
+    expect(normalizeLumaGuestStatus('   ')).toBeNull()
+    expect(normalizeLumaGuestStatus(undefined)).toBeNull()
   })
 
   test('falls back to the Luma guest lookup when the webhook payload omits the guest email', async () => {

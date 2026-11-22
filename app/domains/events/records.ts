@@ -91,6 +91,8 @@ export interface EventRecord {
   participantsLimit?: number | null
   autoApproveApplications: boolean
   simplifiedClaimingEnabled: boolean
+  /** Present only in payloads for event admins. */
+  lumaGuestListEnabled?: boolean
   talkProposalsEnabled?: boolean
   talkProposalOpensAt?: string | null
   talkProposalClosesAt?: string | null

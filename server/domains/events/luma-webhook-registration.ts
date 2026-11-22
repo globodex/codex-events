@@ -8,7 +8,9 @@ import {
 } from '#server/domains/applications/luma-sync-queue'
 import { buildEventLumaWebhookUrl } from '#shared/domains/luma/webhook-url'
 
-const desiredWebhookEventTypes = ['guest.updated'] as const
+// `guest.registered` reports new Luma registrations and feeds the private Luma guest list.
+// `guest.updated` reports status changes, cancellations, and check-ins.
+const desiredWebhookEventTypes = ['guest.registered', 'guest.updated'] as const
 const desiredWebhookStatus = 'active'
 
 interface FetchLike {

@@ -32,6 +32,8 @@ const fixtureParticipantApprovedEventId = 'event_e2e_participant_approved_fixtur
 const fixtureParticipantRejectedEventId = 'event_e2e_participant_rejected_fixture'
 export const fixtureSimplifiedClaimingEventId = 'event_e2e_simplified_claiming_fixture'
 const fixtureClosedSimplifiedClaimingEventId = 'event_e2e_closed_simplified_claiming_fixture'
+const fixtureLumaGuestListEventId = 'event_e2e_luma_guest_list_fixture'
+const fixtureLumaGuestListEmptyEventId = 'event_e2e_luma_guest_list_empty_fixture'
 const fixtureParticipantTeamCreateEventId = 'event_e2e_participant_team_create_fixture'
 const fixtureParticipantTeamJoinEventId = 'event_e2e_participant_team_join_fixture'
 const fixtureParticipantTeamSoloEventId = 'event_e2e_participant_team_solo_fixture'
@@ -113,6 +115,8 @@ export const platformFixtureIds = {
   participantApprovedEventId: fixtureParticipantApprovedEventId,
   participantRejectedEventId: fixtureParticipantRejectedEventId,
   simplifiedClaimingEventId: fixtureSimplifiedClaimingEventId,
+  lumaGuestListEventId: fixtureLumaGuestListEventId,
+  lumaGuestListEmptyEventId: fixtureLumaGuestListEmptyEventId,
   draftEventId: fixtureDraftEventId,
   operationsEventId: fixtureOperationsEventId,
   judgingEventId: fixtureJudgingEventId,
@@ -1124,6 +1128,76 @@ function buildFixtureSql(personas: StablePersona[]) {
       0,
       ${sqlLiteral(fixtureTimestamp)}
     )`,
+    // Two Build events that use the Luma guest list. The first has an imported list with the
+    // regular user as an approved guest. The second was never imported, so nobody can register.
+    // The old created_at keeps both at the end of the public event list.
+    `insert into events (
+      id, event_type, name, slug, description, city, country, address,
+      registration_opens_at, registration_closes_at, state, max_team_members,
+      application_luma_email_visible, require_luma_profile,
+      luma_event_api_id, luma_api_key, luma_webhook_secret, luma_webhook_status,
+      luma_guest_list_enabled, luma_guest_list_synced_at,
+      created_by_user_id, created_at, updated_at
+    ) values (
+      ${sqlLiteral(fixtureLumaGuestListEventId)},
+      'build',
+      'Luma Guest List Fixture Build',
+      'luma-guest-list-fixture-event',
+      'Build fixture for registrations confirmed from the Luma guest list.',
+      'Vienna',
+      'Austria',
+      'Fixture Venue',
+      '2020-01-01T00:00:00.000Z',
+      '2030-01-01T00:00:00.000Z',
+      'registration_open',
+      1,
+      1,
+      1,
+      'evt-bdd-guest-list',
+      'bdd-luma-key',
+      'whsec_bdd_guest_list',
+      'configured',
+      1,
+      ${sqlLiteral(fixtureTimestamp)},
+      ${sqlLiteral(eventAdminId)},
+      '2020-01-01T00:00:00.000Z',
+      '2020-01-01T00:00:00.000Z'
+    ),
+    (
+      ${sqlLiteral(fixtureLumaGuestListEmptyEventId)},
+      'build',
+      'Luma Guest List Empty Fixture Build',
+      'luma-guest-list-empty-fixture-event',
+      'Build fixture for a Luma guest list that was never imported.',
+      'Vienna',
+      'Austria',
+      'Fixture Venue',
+      '2020-01-01T00:00:00.000Z',
+      '2030-01-01T00:00:00.000Z',
+      'registration_open',
+      1,
+      1,
+      1,
+      'evt-bdd-guest-list-empty',
+      'bdd-luma-key',
+      'whsec_bdd_guest_list_empty',
+      'configured',
+      1,
+      null,
+      ${sqlLiteral(eventAdminId)},
+      '2020-01-01T00:00:00.000Z',
+      '2020-01-01T00:00:00.000Z'
+    )`,
+    `insert into event_luma_guests (event_id, email, approval_status, synced_at) values
+      (${sqlLiteral(fixtureLumaGuestListEventId)}, ${sqlLiteral(regularUserEmail)}, 'approved', ${sqlLiteral(fixtureTimestamp)}),
+      (${sqlLiteral(fixtureLumaGuestListEventId)}, 'approved-guest@example.com', 'approved', ${sqlLiteral(fixtureTimestamp)}),
+      (${sqlLiteral(fixtureLumaGuestListEventId)}, 'waiting-guest@example.com', 'pending_approval', ${sqlLiteral(fixtureTimestamp)}),
+      (${sqlLiteral(fixtureLumaGuestListEventId)}, 'declined-guest@example.com', 'declined', ${sqlLiteral(fixtureTimestamp)})`,
+    `insert into event_role_assignments (
+      id, event_id, user_id, role, is_in_judge_pool, created_at
+    ) values
+      ('role_event_admin_luma_guest_list_fixture', ${sqlLiteral(fixtureLumaGuestListEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)}),
+      ('role_event_admin_luma_guest_list_empty_fixture', ${sqlLiteral(fixtureLumaGuestListEmptyEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into event_terms_documents (
       id, event_id, document_type, version, title, content, published_at, created_at
     ) values

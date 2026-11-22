@@ -3,6 +3,7 @@ import {
   check,
   index,
   integer,
+  primaryKey,
   sqliteTable,
   text,
   uniqueIndex
@@ -164,6 +165,9 @@ export const events = sqliteTable(
     lumaWebhookStatus: text('luma_webhook_status', { enum: eventLumaWebhookStatuses }).notNull().default('not_configured'),
     lumaWebhookError: text('luma_webhook_error'),
     lumaWebhookRegisteredAt: text('luma_webhook_registered_at'),
+    lumaGuestListEnabled: integer('luma_guest_list_enabled', { mode: 'boolean' }).notNull().default(false),
+    lumaGuestListSyncedAt: text('luma_guest_list_synced_at'),
+    lumaGuestListSyncError: text('luma_guest_list_sync_error'),
     city: text('city').notNull(),
     country: text('country').notNull(),
     address: text('address').notNull(),
@@ -610,6 +614,23 @@ export const eventAttendeeEligibilities = sqliteTable(
       table.normalizedEmail
     ),
     index('event_attendee_eligibilities_event_created_idx').on(table.eventId, table.createdAt)
+  ]
+)
+
+// Private copy of an event's Luma guest list. Keep it to these four columns:
+// guest emails and statuses must never be returned by an API (see docs/domain-model.md).
+export const eventLumaGuests = sqliteTable(
+  'event_luma_guests',
+  {
+    eventId: text('event_id')
+      .notNull()
+      .references(() => events.id, { onDelete: 'cascade' }),
+    email: text('email').notNull(),
+    approvalStatus: text('approval_status').notNull(),
+    syncedAt: text('synced_at').notNull()
+  },
+  table => [
+    primaryKey({ columns: [table.eventId, table.email] })
   ]
 )
 
