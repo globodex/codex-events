@@ -1,10 +1,11 @@
 import { and, asc, count, desc, eq, isNull, sql } from 'drizzle-orm'
 
 import { assertEventParticipantVisibilityAccess } from '#server/auth/authorization'
-import { getAdminApplicationWithdrawalAvailability } from '#server/domains/applications'
+import { listAdminApplicationWithdrawalAvailabilityByApplicationId } from '#server/domains/applications'
 import { effectivelyCheckedInCondition } from '#server/domains/applications/check-in'
 import { parseQuestionnaireAnswersJson } from '#server/domains/applications/check-in-flow'
 import { participantSearchTextMatches } from '#shared/domains/applications/participant-search'
+import { participantListStep } from '#shared/domains/events/account-event-page-registry'
 import type { AccountEventParticipantsPage } from '#shared/domains/events/account-event-participants-page'
 import { accountEventParticipantsPageSchema } from '#shared/domains/events/account-event-participants-page'
 import type { AppDatabase } from '#server/database/client'
@@ -12,7 +13,8 @@ import { eventRoleAssignments, userApplicationStatuses, userApplications, users 
 import { listEventTracks } from '#server/domains/events'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
 
-const firstParticipantPageSize = 100
+// A search answers with at most this many of the newest matches, whatever the list asked for.
+const searchResultLimit = participantListStep
 
 /** Join condition that finds the event staff role of the registered user, when there is one. */
 function eventStaffRoleOfApplicant(eventId: string) {
@@ -121,7 +123,7 @@ const participantUserProjection = {
 
 /**
  * Finds the registrations that match the search text: the ids of the newest ones, at most
- * `firstParticipantPageSize`.
+ * `searchResultLimit`.
  *
  * The name, emails and user id of every registration of the event are read and compared here,
  * with the rule the browser uses for its loaded rows. SQLite cannot do this comparison: it keeps
@@ -151,15 +153,19 @@ async function findParticipantApplicationIds(
       [registration.displayName, registration.email, registration.lumaEmail, registration.userId],
       searchText
     ))
-    .slice(0, firstParticipantPageSize)
+    .slice(0, searchResultLimit)
     .map(registration => registration.applicationId)
 }
 
 /**
- * Reads rows of the participant list, newest first, at most `firstParticipantPageSize`. With an
- * application id, only that registration is read.
+ * Reads rows of the participant list, newest first, at most `rowLimit`. With an application id,
+ * only that registration is read.
  */
-function readParticipantRows(database: AppDatabase, eventId: string, applicationId?: string) {
+function readParticipantRows(
+  database: AppDatabase,
+  eventId: string,
+  rows: { rowLimit: number, applicationId?: string }
+) {
   return database
     .select({
       application: participantApplicationProjection,
@@ -172,10 +178,10 @@ function readParticipantRows(database: AppDatabase, eventId: string, application
     .where(and(
       isParticipantRegistration(eventId),
       // `and` leaves out `undefined`, so without an application id the whole list is read.
-      applicationId ? eq(userApplications.id, applicationId) : undefined
+      rows.applicationId ? eq(userApplications.id, rows.applicationId) : undefined
     ))
     .orderBy(...newestRegistrationFirst)
-    .limit(firstParticipantPageSize)
+    .limit(rows.rowLimit)
 }
 
 /** Reads the rows of the registrations that match the search text, one read per registration. */
@@ -186,7 +192,7 @@ async function readMatchingParticipantRows(
 ) {
   const applicationIds = await findParticipantApplicationIds(database, eventId, searchText)
   const rowsOfEachApplication = await Promise.all(
-    applicationIds.map(applicationId => readParticipantRows(database, eventId, applicationId))
+    applicationIds.map(applicationId => readParticipantRows(database, eventId, { rowLimit: 1, applicationId }))
   )
 
   // A registration that left the list between the two reads has no row.
@@ -194,29 +200,31 @@ async function readMatchingParticipantRows(
 }
 
 /**
- * Lists the newest registrations of the event, at most `firstParticipantPageSize`. With a search
- * text, only the registrations that match it are listed.
+ * Lists the newest registrations of the event, at most `rowLimit`. With a search text, the
+ * newest registrations that match it are listed instead, at most `searchResultLimit`.
  */
 async function listParticipantApplications(
   database: AppDatabase,
   eventId: string,
-  searchText?: string | null
+  list: { rowLimit: number, searchText?: string | null }
 ) {
-  const rows = searchText
-    ? await readMatchingParticipantRows(database, eventId, searchText)
-    : await readParticipantRows(database, eventId)
+  const rows = list.searchText
+    ? await readMatchingParticipantRows(database, eventId, list.searchText)
+    : await readParticipantRows(database, eventId, { rowLimit: list.rowLimit })
+  const withdrawalByApplicationId = await listAdminApplicationWithdrawalAvailabilityByApplicationId(
+    database,
+    eventId,
+    rows.map(row => row.application)
+  )
 
-  return await Promise.all(rows.map(async row => ({
+  return rows.map(row => ({
     ...row.application,
     questionnaireAnswers: parseQuestionnaireAnswersJson(row.questionnaireAnswersJson),
     isEventStaff: false,
     user: row.user,
-    adminWithdrawal: await getAdminApplicationWithdrawalAvailability(
-      database,
-      eventId,
-      row.application
-    )
-  })))
+    // The map has an entry for every registration that was passed to it.
+    adminWithdrawal: withdrawalByApplicationId.get(row.application.id)!
+  }))
 }
 
 export const accountEventParticipantsPageRoute = defineAccountEventPageRoute({
@@ -226,8 +234,12 @@ export const accountEventParticipantsPageRoute = defineAccountEventPageRoute({
     assertEventParticipantVisibilityAccess(context.authorization)
   },
   load: async (context, query): Promise<AccountEventParticipantsPage> => {
+    const rowLimit = query.participantRows ?? participantListStep
     const [applications, tracks, { statusCounts, checkedInCount }] = await Promise.all([
-      listParticipantApplications(context.database, context.event.id, query.participantSearch),
+      listParticipantApplications(context.database, context.event.id, {
+        rowLimit,
+        searchText: query.participantSearch
+      }),
       listEventTracks(context.database, context.event.id),
       getParticipantApplicationCounts(context.database, context.event.id)
     ])
@@ -248,7 +260,8 @@ export const accountEventParticipantsPageRoute = defineAccountEventPageRoute({
       applications,
       pagination: {
         page: 1,
-        pageSize: firstParticipantPageSize,
+        // The largest number of registrations that this answer can hold.
+        pageSize: query.participantSearch ? searchResultLimit : rowLimit,
         // All registrations of the event, also when a search returned fewer rows.
         total: Object.values(statusCounts).reduce((total, count) => total + count, 0)
       },

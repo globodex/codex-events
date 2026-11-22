@@ -125,8 +125,8 @@ import {
 } from '~/composables/useAccountEventPageState'
 import {
   createParticipantListRead,
-  useParticipantListSearch
-} from '~/composables/useParticipantListSearch'
+  useParticipantListRead
+} from '~/composables/useParticipantListRead'
 
 definePageMeta({
   middleware: ['require-platform-account']
@@ -548,13 +548,15 @@ const shouldLoadParticipantsPage = computed(() =>
     )
   )
 )
-// What the participant list request asks the server for. The participant search replaces it.
+// What the participant list request asks the server for. The participant search and "Load more"
+// replace it.
 const participantListRead = shallowRef(createParticipantListRead())
 const participantsPageRequest = useAccountEventPageRequest<AccountEventParticipantsPage>(slug, 'participants', {
   enabled: shouldLoadParticipantsPage,
   query: computed(() => ({
     ...pageState.queryForPage('participants'),
-    participantSearch: participantListRead.value.searchText
+    participantSearch: participantListRead.value.searchText,
+    participantRows: participantListRead.value.rows
   })),
   // A watched value is part of the request key. See `ParticipantListRead` for why it is needed.
   watch: [() => participantListRead.value.askedAt]
@@ -606,15 +608,17 @@ const assignmentPage = computed(() => assignmentPageRequest.data.value ?? null)
 const workspacePageIsLoading = computed(() => workspacePageRequest.pending.value)
 const galleryPageIsLoading = computed(() => galleryPageRequest.pending.value)
 const feedbackPageIsLoading = computed(() => feedbackPageRequest.pending.value)
-// The participant list shows its loading state only while it has nothing to show. A search or a
-// refresh keeps the loaded rows on screen until the new answer arrives.
+// The participant list shows its loading state only while it has nothing to show. A search, a
+// refresh or "Load more" keeps the loaded rows on screen until the new answer arrives.
 const participantsPageIsLoading = computed(() =>
   participantsPageRequest.pending.value && !participantsPage.value
 )
 const {
+  isLoadingMore: isLoadingMoreParticipants,
   isSearching: isSearchingParticipants,
+  loadMore: loadMoreParticipants,
   searchText: participantSearchText
-} = useParticipantListSearch({
+} = useParticipantListRead({
   page: participantsPage,
   isReading: participantsPageRequest.pending,
   serverRead: participantListRead
@@ -2017,8 +2021,10 @@ useSeoMeta({
           :can-manage="canAdmin"
           :is-loading="participantsPageIsLoading"
           :is-searching-participants="isSearchingParticipants"
+          :is-loading-more-participants="isLoadingMoreParticipants"
           :load-error-message="participantsPageErrorMessage"
           :refresh-page="participantsPageRequest.refresh"
+          @load-more-participants="loadMoreParticipants"
         />
 
         <LazyAccountEventParticipantVisibilityPanel
@@ -2028,8 +2034,10 @@ useSeoMeta({
           :page="participantsPage"
           :is-loading="participantsPageIsLoading"
           :is-searching="isSearchingParticipants"
+          :is-loading-more="isLoadingMoreParticipants"
           :error-message="participantsPageErrorMessage"
           :refresh-page="participantsPageRequest.refresh"
+          @load-more="loadMoreParticipants"
         />
       </section>
 

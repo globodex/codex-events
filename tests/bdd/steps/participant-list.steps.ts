@@ -7,7 +7,8 @@ import { signInAs } from '../support/session-state.ts'
 
 const { Given, When, Then } = createBdd()
 
-// The fixtures make the judge persona event staff of the staff check-in fixture event.
+// The fixtures make the judge persona event staff of the staff check-in fixture event and of the
+// large participant list fixture event.
 const eventStaffPersona = 'judge'
 
 // Longer than the delay after which the participant search can ask the server.
@@ -122,4 +123,29 @@ Then('the pending participant {string} should have no check-in action', async ({
 
   await expect(row).toBeVisible()
   await expect(row.getByRole('button', { name: 'Check in' })).toHaveCount(0)
+})
+
+Then('the participant list should say that it shows the newest {int} of {int} registrations', async ({ page }, shown: number, total: number) => {
+  await expect(page.getByText(`Showing the newest ${shown} of ${total} registrations.`)).toBeVisible()
+})
+
+Then('the participant {string} should not be listed', async ({ page }, participantName: string) => {
+  await expect(participantRow(page, participantName)).toHaveCount(0)
+})
+
+When('I load more registrations', async ({ page }) => {
+  await Promise.all([
+    participantListLoaded(page),
+    page.getByTestId('participant-list-load-more').click()
+  ])
+})
+
+Then('the participant {string} should be listed', async ({ page }, participantName: string) => {
+  await expect(participantRow(page, participantName)).toHaveCount(1)
+})
+
+// The list holds every registration now, so its note and "Load more" are gone.
+Then('the participant list should offer no more registrations', async ({ page }) => {
+  await expect(page.getByTestId('participant-list-load-more')).toHaveCount(0)
+  await expect(page.getByText('Showing the newest', { exact: false })).toHaveCount(0)
 })

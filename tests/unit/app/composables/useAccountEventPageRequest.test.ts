@@ -115,6 +115,25 @@ describe('useAccountEventPageRequest', () => {
     )
   })
 
+  test('follows a longer participant list in the request path and cache key', async () => {
+    const { useAccountEventPageRequest } = await import('../../../../app/composables/useAccountEventPageRequest')
+    const participantRows = ref(100)
+    const request = useAccountEventPageRequest('fixture-event', 'participants', {
+      query: computed(() => ({ participantRows: participantRows.value }))
+    })
+
+    expect(toValue(request.path)).toBe('/api/account/events/fixture-event/participants')
+
+    participantRows.value = 200
+
+    expect(toValue(request.path)).toBe(
+      '/api/account/events/fixture-event/participants?participantRows=200'
+    )
+    expect(toValue(request.requestKey)).toBe(
+      'account-event-page:fixture-event:participants:participantRows=200'
+    )
+  })
+
   test('keeps semantically unchanged query state stable across tab-only navigation', async () => {
     const { useAccountEventPageRequest } = await import('../../../../app/composables/useAccountEventPageRequest')
     const query = ref<{ selectedTeamSlug?: string }>({})

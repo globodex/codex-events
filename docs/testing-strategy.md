@@ -260,10 +260,12 @@ state.
   case and accents, `%` and `_` as plain search characters, the search text
   length limit, staff registrations staying out of the list and the search,
   the checked-in count for all approved participants with the admin override,
-  and refusal for staff of another event. Server
-  integration tests cover events with more than 100 registrations; the browser
-  fixtures hold smaller events, where the search stays in the browser and
-  sends no request.
+  a longer list asked for with `participantRows`, refused row counts, a search
+  that keeps its limit of 100 matches, and refusal for staff of another event.
+  Unit tests cover the row count in the request path and cache key. One
+  browser scenario runs on a fixture event with 105 registrations and loads
+  the rest of the list with "Load more"; the other browser fixtures hold
+  smaller events, where the search stays in the browser and sends no request.
 - Check-in flow coverage includes saving the switch and the questions for
   every event type, invalid question definitions, and refusal for staff,
   judges, and participants; the event page content before check-in, with an

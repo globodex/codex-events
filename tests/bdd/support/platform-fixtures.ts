@@ -35,6 +35,9 @@ const fixtureClosedSimplifiedClaimingEventId = 'event_e2e_closed_simplified_clai
 const fixtureLumaGuestListEventId = 'event_e2e_luma_guest_list_fixture'
 const fixtureLumaGuestListEmptyEventId = 'event_e2e_luma_guest_list_empty_fixture'
 const fixtureStaffCheckInEventId = 'event_e2e_staff_check_in_fixture'
+const fixtureLargeParticipantListEventId = 'event_e2e_large_participant_list_fixture'
+// More registrations than the participant list loads at first (100).
+const fixtureLargeParticipantListCrowdSize = 105
 const fixtureCheckInFlowEventId = 'event_e2e_check_in_flow_fixture'
 const fixtureCheckInFlowNoQuestionsEventId = 'event_e2e_check_in_flow_no_questions_fixture'
 const fixtureCheckInFlowBuilderEventId = 'event_e2e_check_in_flow_builder_fixture'
@@ -264,6 +267,20 @@ function userTuple(persona: StablePersona) {
     'null'
   ].join(', ')})`
 }
+
+/**
+ * The participants of the large participant list fixture event. Each one registered one second
+ * after the one before, so the list order is certain.
+ */
+const largeParticipantListCrowd = Array.from({ length: fixtureLargeParticipantListCrowdSize }, (_, index) => {
+  const number = String(index + 1).padStart(3, '0')
+
+  return {
+    userId: `user_large_list_crowd_${number}`,
+    displayName: `Crowd Participant ${number}`,
+    registeredAt: new Date(Date.UTC(2020, 0, 1, 0, 0, index + 1)).toISOString()
+  }
+})
 
 function buildFixtureSql(personas: StablePersona[]) {
   const platformAdminId = personaUserIds.platform_admin
@@ -1267,6 +1284,44 @@ function buildFixtureSql(personas: StablePersona[]) {
     ) values
       ('application_staff_check_in_fixture_confirmed', ${sqlLiteral(fixtureStaffCheckInEventId)}, ${sqlLiteral(judgingParticipantTwoId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
       ('application_staff_check_in_fixture_pending', ${sqlLiteral(fixtureStaffCheckInEventId)}, ${sqlLiteral(backupJudgeId)}, 'submitted', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
+    // A Build event with more registrations than the participant list loads at first, for the
+    // "Load more" scenario. The judge persona is event staff here. Every crowd participant is
+    // confirmed. "Crowd Participant 001" registered first, so it is the last row of the list.
+    `insert into events (
+      id, event_type, name, slug, description, city, country, address,
+      registration_opens_at, registration_closes_at, state, max_team_members,
+      created_by_user_id, created_at, updated_at
+    ) values (
+      ${sqlLiteral(fixtureLargeParticipantListEventId)},
+      'build',
+      'Large Participant List Fixture Build',
+      'large-participant-list-fixture-event',
+      'Build fixture for a participant list with more registrations than one load.',
+      'Vienna',
+      'Austria',
+      'Fixture Venue',
+      '2020-01-01T00:00:00.000Z',
+      '2030-01-01T00:00:00.000Z',
+      'registration_open',
+      1,
+      ${sqlLiteral(eventAdminId)},
+      '2020-01-01T00:00:00.000Z',
+      '2020-01-01T00:00:00.000Z'
+    )`,
+    `insert into event_role_assignments (
+      id, event_id, user_id, role, is_in_judge_pool, is_staff, created_at
+    ) values
+      ('role_large_participant_list_fixture', ${sqlLiteral(fixtureLargeParticipantListEventId)}, ${sqlLiteral(judgeId)}, 'staff', 0, 1, ${sqlLiteral(fixtureTimestamp)})`,
+    `insert into users (
+      id, auth0_subject, email, display_name
+    ) values ${largeParticipantListCrowd.map(member =>
+      `(${sqlLiteral(member.userId)}, ${sqlLiteral(`auth0|${member.userId}`)}, ${sqlLiteral(`${member.userId}@example.com`)}, ${sqlLiteral(member.displayName)})`
+    ).join(', ')}`,
+    `insert into user_applications (
+      id, event_id, user_id, status, submitted_at, created_at, updated_at
+    ) values ${largeParticipantListCrowd.map(member =>
+      `(${sqlLiteral(`application_${member.userId}`)}, ${sqlLiteral(fixtureLargeParticipantListEventId)}, ${sqlLiteral(member.userId)}, 'approved', ${sqlLiteral(member.registeredAt)}, ${sqlLiteral(member.registeredAt)}, ${sqlLiteral(member.registeredAt)})`
+    ).join(', ')}`,
     // Three Build events for the check-in flow scenarios. The event admin persona manages all
     // three. The old created_at keeps them at the end of the public event list.
     // 1. Flow on, two questions, an agenda with one session. The regular user and the judge

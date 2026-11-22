@@ -73,6 +73,27 @@ describe('account-event page contract boundary', () => {
     })).toBe('/api/account/events/fixture-event/teams')
   })
 
+  test('makes a longer participant list part of the typed participants request', () => {
+    expect(buildAccountEventPagePath('fixture-event', 'participants', {
+      participantRows: 200
+    })).toBe('/api/account/events/fixture-event/participants?participantRows=200')
+    expect(buildAccountEventPageCacheKey('fixture-event', 'participants', {
+      participantRows: 200
+    })).not.toBe(buildAccountEventPageCacheKey('fixture-event', 'participants', {
+      participantRows: 300
+    }))
+    // The first step is what the page lists without a value.
+    expect(buildAccountEventPagePath('fixture-event', 'participants', {
+      participantRows: 100
+    })).toBe('/api/account/events/fixture-event/participants')
+    expect(buildAccountEventPageCacheKey('fixture-event', 'participants', {
+      participantRows: 100
+    })).toBe(buildAccountEventPageCacheKey('fixture-event', 'participants'))
+    expect(buildAccountEventPagePath('fixture-event', 'teams', {
+      participantRows: 200
+    })).toBe('/api/account/events/fixture-event/teams')
+  })
+
   test('makes active admin configuration state part of entry and prizes contracts', () => {
     expect(buildAccountEventPagePath('fixture-event', 'entry', {
       includeAdminEventConfiguration: true

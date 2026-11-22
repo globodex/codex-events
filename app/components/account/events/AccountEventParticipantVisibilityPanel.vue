@@ -13,13 +13,20 @@ const props = withDefaults(defineProps<{
   isLoading?: boolean
   // True while the server is still searching all registrations for the typed text.
   isSearching?: boolean
+  // True from "Load more" until the longer list has arrived.
+  isLoadingMore?: boolean
   errorMessage?: string
   refreshPage: () => Promise<unknown> | unknown
 }>(), {
   isLoading: false,
   isSearching: false,
+  isLoadingMore: false,
   errorMessage: ''
 })
+
+const emit = defineEmits<{
+  loadMore: []
+}>()
 
 // Text of the participant search box. The page owns it, because it is part of the page request.
 const search = defineModel<string>('search', { required: true })
@@ -53,6 +60,7 @@ const checkInParticipant = useParticipantCheckIn({
     :applications="applications"
     :is-loading="props.isLoading"
     :is-searching="props.isSearching"
+    :is-loading-more="props.isLoadingMore"
     :error-message="props.errorMessage"
     :pending-action-key="pendingActionKey"
     read-only
@@ -65,5 +73,6 @@ const checkInParticipant = useParticipantCheckIn({
     :checked-in-count="props.page?.checkedInCount"
     :pagination="props.page?.pagination"
     @check-in="checkInParticipant"
+    @load-more="emit('loadMore')"
   />
 </template>

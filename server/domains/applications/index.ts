@@ -322,22 +322,6 @@ export async function getAdminApplicationWithdrawalPlan(
   }
 }
 
-export async function getAdminApplicationWithdrawalAvailability(
-  database: AppDatabase,
-  eventId: string,
-  application: AdminApplicationWithdrawalInput
-): Promise<AdminApplicationWithdrawalAvailability> {
-  const plan = await getAdminApplicationWithdrawalPlan(database, eventId, application)
-
-  return {
-    isAllowed: plan.isAllowed,
-    reason: plan.reason,
-    warning: plan.warning,
-    activeTeamId: plan.activeTeamId,
-    teamAction: plan.teamAction
-  }
-}
-
 export async function withdrawUserApplicationWithAdminPolicy(options: {
   h3Event: H3Event
   database: AppDatabase
@@ -522,10 +506,15 @@ export async function withdrawUserApplicationWithAdminPolicy(options: {
   }
 }
 
-async function listAdminApplicationWithdrawalAvailabilityByApplicationId(
+/**
+ * Says for each of the given registrations whether an event admin can withdraw it, by
+ * registration id. It reads the teams and submissions of the event with a fixed number of
+ * queries, however many registrations are given.
+ */
+export async function listAdminApplicationWithdrawalAvailabilityByApplicationId(
   database: AppDatabase,
   eventId: string,
-  applications: UserApplicationRecord[]
+  applications: AdminApplicationWithdrawalInput[]
 ) {
   if (applications.length === 0) {
     return new Map<string, AdminApplicationWithdrawalAvailability>()

@@ -14,14 +14,15 @@ import { useApiResponse } from './useApiData'
 import { useAuthorizationCache } from './useAuthorizationCache'
 import { useSessionActor } from './useSessionActor'
 
-function areAccountEventPageQueriesEqual(
-  left: AccountEventPageQuery | undefined,
-  right: AccountEventPageQuery
-) {
-  return left?.selectedTeamSlug === right.selectedTeamSlug
-    && left?.participantSearch === right.participantSearch
-    && left?.includeAdminEventConfiguration === right.includeAdminEventConfiguration
-    && left?.includeEventShell === right.includeEventShell
+/**
+ * True when two normalized queries ask for the same thing. A normalized query holds only the
+ * values that are set, so every value is compared and a new query value cannot be forgotten here.
+ */
+function areAccountEventPageQueriesEqual(left: AccountEventPageQuery, right: AccountEventPageQuery) {
+  const leftKeys = Object.keys(left) as Array<keyof AccountEventPageQuery>
+
+  return leftKeys.length === Object.keys(right).length
+    && leftKeys.every(key => left[key] === right[key])
 }
 
 export interface UseAccountEventPageRequestOptions<TPage> {

@@ -132,19 +132,28 @@ describe('TASK-462 participant list of a large event', () => {
     })
   }
 
-  /** Requests the participant list of `build-day` as the given user. */
-  function requestParticipantList(harness: Harness, actorUserId: string, participantSearch?: string) {
+  /**
+   * Requests the participant list of `build-day` as the given user, with an optional search text
+   * and an optional number of registrations to list.
+   */
+  function requestParticipantList(
+    harness: Harness,
+    actorUserId: string,
+    participantSearch?: string,
+    participantRows?: number | string
+  ) {
     stubAuth0Session(sessionFor(actorUserId))
-    const query = participantSearch === undefined
-      ? ''
-      : `?participantSearch=${encodeURIComponent(participantSearch)}`
+    const query = [
+      participantSearch === undefined ? null : `participantSearch=${encodeURIComponent(participantSearch)}`,
+      participantRows === undefined ? null : `participantRows=${encodeURIComponent(participantRows)}`
+    ].filter(part => part !== null).join('&')
 
-    return harness.request(`/api/account/events/build-day/participants${query}`)
+    return harness.request(`/api/account/events/build-day/participants${query ? `?${query}` : ''}`)
   }
 
   /** Reads the participant list of `build-day` as its staff member. */
-  async function readParticipantList(harness: Harness, participantSearch?: string) {
-    const response = await requestParticipantList(harness, 'staff', participantSearch)
+  async function readParticipantList(harness: Harness, participantSearch?: string, participantRows?: number) {
+    const response = await requestParticipantList(harness, 'staff', participantSearch, participantRows)
     const body = await response.json() as { data: { page: unknown } }
 
     expect(response.status).toBe(200)
@@ -216,6 +225,37 @@ describe('TASK-462 participant list of a large event', () => {
 
     expect(page.applications).toHaveLength(listLimit)
     expect(listedUserIds(page)[0]).toBe('crowd105')
+  })
+
+  test('lists as many of the newest registrations as the list asks for', async () => {
+    const harness = await createContext()
+    await addOldRegistration(harness, { id: 'oldguest' })
+
+    const page = await readParticipantList(harness, undefined, 200)
+
+    expect(page.applications).toHaveLength(crowdSize + 1)
+    expect(listedUserIds(page)[0]).toBe('crowd105')
+    expect(listedUserIds(page).at(-1)).toBe('oldguest')
+    // The list asked for 200 registrations and the event has fewer, so the list is not cut.
+    expect(page.pagination).toEqual({ page: 1, pageSize: 200, total: crowdSize + 1 })
+  })
+
+  test('answers a search with at most 100 matches, whatever the list asks for', async () => {
+    const harness = await createContext()
+
+    const page = await readParticipantList(harness, 'crowd', 200)
+
+    expect(page.applications).toHaveLength(listLimit)
+    expect(page.pagination.pageSize).toBe(listLimit)
+  })
+
+  test.each([50, 1001, 150.5, 'many'])('refuses %s as the number of registrations to list', async (participantRows) => {
+    const harness = await createContext()
+
+    const response = await requestParticipantList(harness, 'staff', undefined, participantRows)
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({ error: { code: 'invalid_request' } })
   })
 
   test('leaves the registration of an event staff member out of a search', async () => {

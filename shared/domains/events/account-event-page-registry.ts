@@ -24,12 +24,23 @@ export interface AccountEventPageQuery {
   selectedTeamSlug?: string | null
   /** Search text of the `participants` page. The server searches all registrations of the event. */
   participantSearch?: string | null
+  /**
+   * How many of the newest registrations the `participants` page lists. Without a value the page
+   * lists `participantListStep` registrations. "Load more" raises the value by one step.
+   */
+  participantRows?: number | null
   includeAdminEventConfiguration?: boolean
   includeEventShell?: boolean
 }
 
 // The search box and the server use the same limit for the participant search text.
 export const participantSearchMaxLength = 120
+
+// The participant list starts with this many registrations and grows by this many with every
+// "Load more".
+export const participantListStep = 100
+// The largest participant list the server returns. Search finds the registrations beyond it.
+export const participantListMaxRows = 1000
 
 export const accountEventPagePaths = {
   entry: '/api/account/events/:slug/entry',
@@ -58,12 +69,15 @@ export function normalizeAccountEventPageQuery(
 ): AccountEventPageQuery {
   const selectedTeamSlug = query?.selectedTeamSlug?.trim().toLowerCase()
   const participantSearch = query?.participantSearch?.trim()
+  const participantRows = query?.participantRows ?? participantListStep
   const includeAdminEventConfiguration = query?.includeAdminEventConfiguration === true
   const includeEventShell = query?.includeEventShell === true
 
   return {
     ...(selectedTeamSlug ? { selectedTeamSlug } : {}),
     ...(participantSearch ? { participantSearch } : {}),
+    // The first step is what the page lists without a value, so it is left out.
+    ...(participantRows > participantListStep ? { participantRows } : {}),
     ...(includeAdminEventConfiguration ? { includeAdminEventConfiguration: true } : {}),
     ...(includeEventShell ? { includeEventShell: true } : {})
   }
@@ -84,6 +98,10 @@ export function buildAccountEventPagePath(
 
   if (page === 'participants' && normalizedQuery.participantSearch) {
     searchParams.set('participantSearch', normalizedQuery.participantSearch)
+  }
+
+  if (page === 'participants' && normalizedQuery.participantRows) {
+    searchParams.set('participantRows', String(normalizedQuery.participantRows))
   }
 
   if (
@@ -113,12 +131,15 @@ export function buildAccountEventPageCacheKey(
   const participantSearchKey = page === 'participants' && normalizedQuery.participantSearch
     ? `:participantSearch=${encodeURIComponent(normalizedQuery.participantSearch)}`
     : ''
+  const participantRowsKey = page === 'participants' && normalizedQuery.participantRows
+    ? `:participantRows=${normalizedQuery.participantRows}`
+    : ''
   const adminEventConfigurationKey = (page === 'entry' || page === 'prizes')
     && normalizedQuery.includeAdminEventConfiguration
     ? ':includeAdminEventConfiguration'
     : ''
   const eventShellKey = normalizedQuery.includeEventShell ? ':includeEventShell' : ''
-  const queryKey = `${selectedTeamKey}${participantSearchKey}${adminEventConfigurationKey}${eventShellKey}`
+  const queryKey = `${selectedTeamKey}${participantSearchKey}${participantRowsKey}${adminEventConfigurationKey}${eventShellKey}`
 
   return `account-event-page:${slug}:${page}${queryKey}`
 }

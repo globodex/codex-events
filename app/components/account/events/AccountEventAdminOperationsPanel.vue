@@ -72,14 +72,22 @@ const props = withDefaults(defineProps<{
   isLoading?: boolean
   // True while the server is still searching all registrations for the typed text.
   isSearchingParticipants?: boolean
+  // True from "Load more" in the participant list until the longer list has arrived.
+  isLoadingMoreParticipants?: boolean
   loadErrorMessage?: string
   refreshPage?: () => Promise<unknown> | unknown
 }>(), {
   isLoading: false,
   isSearchingParticipants: false,
+  isLoadingMoreParticipants: false,
   loadErrorMessage: '',
   refreshPage: undefined
 })
+
+const emit = defineEmits<{
+  // The page owns the participant list request, so it loads the longer list.
+  loadMoreParticipants: []
+}>()
 
 // Text of the participant search box. The page owns it, because it is part of the page request.
 const participantSearch = defineModel<string>('participantSearch', { default: '' })
@@ -2054,6 +2062,7 @@ async function runLifecycleAction() {
           :pagination="participantPageData?.pagination"
           :is-loading="applicationsStatus === 'pending'"
           :is-searching="isSearchingParticipants"
+          :is-loading-more="isLoadingMoreParticipants"
           :error-message="applicationsStatus === 'error' ? applicationsErrorMessage : ''"
           :pending-action-key="pendingActionKey"
           :show-ai-knowledge="currentEvent.applicationAiKnowledgeVisible"
@@ -2068,6 +2077,7 @@ async function runLifecycleAction() {
           @undo-withdrawal="undoApplicationWithdrawal"
           @check-in="checkInParticipant"
           @save-decisions="applyStagedApplicationDecisions"
+          @load-more="emit('loadMoreParticipants')"
         />
       </section>
 

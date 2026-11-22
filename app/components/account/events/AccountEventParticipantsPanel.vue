@@ -17,6 +17,8 @@ const props = withDefaults(defineProps<{
   isLoading?: boolean
   // True while the server is still searching all registrations for the typed text.
   isSearching?: boolean
+  // True from "Load more" until the longer list has arrived.
+  isLoadingMore?: boolean
   errorMessage?: string
   pendingActionKey?: string | null
   readOnly?: boolean
@@ -37,6 +39,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   isLoading: false,
   isSearching: false,
+  isLoadingMore: false,
   errorMessage: '',
   pendingActionKey: null,
   readOnly: false,
@@ -60,6 +63,7 @@ const emit = defineEmits<{
   undoWithdrawal: [application: AdminApplicationRecord]
   checkIn: [application: AdminApplicationRecord]
   saveDecisions: []
+  loadMore: []
 }>()
 
 // A read-only viewer cannot review new registrations, so the list opens on confirmed participants.
@@ -229,6 +233,7 @@ const participantSummaryGridClass = computed(() =>
       :view="participantView"
       :is-loading="isLoading"
       :is-searching="isSearching"
+      :is-loading-more="isLoadingMore"
       :pagination="pagination"
       :error-message="errorMessage"
       :pending-action-key="pendingActionKey"
@@ -245,6 +250,7 @@ const participantSummaryGridClass = computed(() =>
       @undo-withdrawal="emit('undoWithdrawal', $event)"
       @check-in="emit('checkIn', $event)"
       @save-decisions="emit('saveDecisions')"
+      @load-more="emit('loadMore')"
     />
   </div>
 </template>

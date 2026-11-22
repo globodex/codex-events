@@ -111,8 +111,10 @@ export type AccountEventParticipantTrack = z.infer<typeof trackSchema>
 export type AccountEventParticipantsPage = z.infer<typeof accountEventParticipantsPageSchema>
 
 /**
- * True when the event has more registrations than the participant list loads.
- * `pagination.total` counts the whole event, also in the answer to a search.
+ * True when the event has more registrations than this answer can hold.
+ * `pagination.pageSize` is the largest number of registrations in the answer: the rows that the
+ * list asked for, or the fixed limit of a search. `pagination.total` counts the whole event,
+ * also in the answer to a search.
  */
 export function isParticipantListCut(pagination: AccountEventParticipantsPage['pagination']) {
   return pagination.total > pagination.pageSize

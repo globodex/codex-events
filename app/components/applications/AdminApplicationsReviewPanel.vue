@@ -43,7 +43,7 @@ import {
 } from '~/domains/applications/admin-application-record'
 import { formatTimestamp } from '~/lib/date-formatting'
 import CustomQuestionAnswerReview from '~/components/events/molecules/CustomQuestionAnswerReview.vue'
-import { participantSearchMaxLength } from '#shared/domains/events/account-event-page-registry'
+import { participantListMaxRows, participantSearchMaxLength } from '#shared/domains/events/account-event-page-registry'
 import { isParticipantListCut } from '#shared/domains/events/account-event-participants-page'
 
 const props = withDefaults(defineProps<{
@@ -53,6 +53,8 @@ const props = withDefaults(defineProps<{
   isLoading?: boolean
   // True while the server is still searching all registrations for the typed text.
   isSearching?: boolean
+  // True from "Load more" until the longer list has arrived.
+  isLoadingMore?: boolean
   errorMessage?: string
   pendingActionKey?: string | null
   // Hides the review actions (approve, reject, withdraw). Check-in stays available.
@@ -67,6 +69,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   isLoading: false,
   isSearching: false,
+  isLoadingMore: false,
   errorMessage: '',
   pendingActionKey: null,
   readOnly: false,
@@ -89,6 +92,7 @@ const emit = defineEmits<{
   undoWithdrawal: [application: AdminApplicationRecord]
   checkIn: [application: AdminApplicationRecord]
   saveDecisions: []
+  loadMore: []
 }>()
 
 const stagedCount = computed(() =>
@@ -192,6 +196,14 @@ const partialListNote = computed(() => {
     ? `Showing the newest ${pageSize} matches. Type more to narrow the search.`
     : null
 })
+// "Load more" adds the next registrations to the list. A search has no "Load more": it already
+// covers every registration, and the viewer narrows it by typing more.
+const canLoadMore = computed(() =>
+  props.pagination !== undefined
+  && isParticipantListCut(props.pagination)
+  && props.pagination.pageSize < participantListMaxRows
+  && !hasSearchQuery.value
+)
 const filteredReviewGroups = computed(() => {
   let groups = filterAdminApplicationReviewGroups(
     buildAdminApplicationReviewGroups(props.applications),
@@ -1283,6 +1295,22 @@ const emptyState = computed(() => {
           :title="emptyState.title"
           :description="emptyState.description"
         />
+
+        <div
+          v-if="canLoadMore"
+          class="flex justify-center"
+        >
+          <AppButton
+            color="neutral"
+            variant="soft"
+            data-testid="participant-list-load-more"
+            :loading="isLoadingMore"
+            :disabled="isLoadingMore"
+            @click="emit('loadMore')"
+          >
+            Load more
+          </AppButton>
+        </div>
       </template>
     </div>
   </AppCard>
