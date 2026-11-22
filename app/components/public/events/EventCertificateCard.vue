@@ -435,7 +435,7 @@ const participantNameSize = computed(() => {
         v-for="(spark, index) in celebrationSparks"
         :key="index"
         class="certificate-card__celebration-spark"
-        :style="{ left: spark.left, top: spark.top, color: spark.color, animationDelay: spark.delay, '--spark-dx': spark.dx, '--spark-dy': spark.dy }"
+        :style="{ 'left': spark.left, 'top': spark.top, 'color': spark.color, 'animationDelay': spark.delay, '--spark-dx': spark.dx, '--spark-dy': spark.dy }"
       />
     </div>
 

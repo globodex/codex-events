@@ -43,7 +43,6 @@ function getPodiumCup(prize: PublicPrize) {
 
   return null
 }
-
 </script>
 
 <template>
