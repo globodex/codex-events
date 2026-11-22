@@ -1,24 +1,24 @@
 <script setup lang="ts">
 import type {
-  TalkProposalQuestionDefinition,
-  TalkProposalQuestionType
-} from '#shared/domains/talk-proposals/questions'
+  CustomQuestionDefinition,
+  CustomQuestionType
+} from '#shared/domains/events/custom-questions'
 import AdminBuilderTrackRow from '~/components/admin/builder/molecules/AdminBuilderTrackRow.vue'
 
 const props = defineProps<{
-  question: TalkProposalQuestionDefinition
+  question: CustomQuestionDefinition
   index: number
   locked?: boolean
   active?: boolean
 }>()
 
 const emit = defineEmits<{
-  update: [patch: Partial<TalkProposalQuestionDefinition>]
+  update: [patch: Partial<CustomQuestionDefinition>]
   move: [direction: -1 | 1]
   remove: []
 }>()
 
-const questionTypeLabels: Record<TalkProposalQuestionType, string> = {
+const questionTypeLabels: Record<CustomQuestionType, string> = {
   short_text: 'Short text',
   long_text: 'Long text',
   single_choice: 'Single choice',
@@ -26,7 +26,7 @@ const questionTypeLabels: Record<TalkProposalQuestionType, string> = {
 }
 
 function updateType(value: string | number | undefined) {
-  const type = value as TalkProposalQuestionType
+  const type = value as CustomQuestionType
 
   emit('update', {
     type,
@@ -68,11 +68,11 @@ function removeOption(optionIndex: number) {
     <div class="space-y-3 p-1.5">
       <div class="grid items-end gap-3 md:grid-cols-[minmax(0,1fr)_12rem_auto]">
         <AppFormField
-          :name="`event-builder-talk-proposal-question-${props.question.id}`"
+          :name="`event-builder-question-${props.question.id}`"
           label="Question"
         >
           <AppInput
-            :id="`event-builder-talk-proposal-question-${props.question.id}`"
+            :id="`event-builder-question-${props.question.id}`"
             :model-value="props.question.prompt"
             :disabled="props.locked"
             size="sm"
@@ -81,11 +81,11 @@ function removeOption(optionIndex: number) {
         </AppFormField>
 
         <AppFormField
-          :name="`event-builder-talk-proposal-question-type-${props.question.id}`"
+          :name="`event-builder-question-type-${props.question.id}`"
           label="Answer type"
         >
           <AppSelect
-            :id="`event-builder-talk-proposal-question-type-${props.question.id}`"
+            :id="`event-builder-question-type-${props.question.id}`"
             :model-value="props.question.type"
             :disabled="props.locked"
             size="sm"

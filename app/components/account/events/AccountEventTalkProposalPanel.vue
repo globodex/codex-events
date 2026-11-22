@@ -5,12 +5,13 @@ import { useForm } from 'vee-validate'
 import type { ApiDataResponse } from '~/lib/api'
 import type { AccountEventEntryTalkProposal } from '#shared/domains/events/account-event-entry-page'
 import type {
-  TalkProposalAnswer,
-  TalkProposalQuestionDefinition
-} from '#shared/domains/talk-proposals/questions'
-import { getTalkProposalAnswerIssues } from '#shared/domains/talk-proposals/questions'
+  CustomQuestionAnswer,
+  CustomQuestionDefinition
+} from '#shared/domains/events/custom-questions'
+import { getEmptyCustomQuestionAnswerValue } from '#shared/domains/events/custom-questions'
+import { getTalkProposalAnswerIssues } from '#shared/domains/talk-proposals/answer-issues'
 import { normalizeApiError } from '~/lib/api'
-import TalkProposalQuestionInput from '~/components/talk-proposals/molecules/TalkProposalQuestionInput.vue'
+import CustomQuestionInput from '~/components/events/molecules/CustomQuestionInput.vue'
 import {
   isTalkProposalWindowOpen,
   talkProposalFormSchema,
@@ -23,7 +24,7 @@ const props = defineProps<{
   applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null
   opensAt: string | null
   closesAt: string | null
-  questions: TalkProposalQuestionDefinition[]
+  questions: CustomQuestionDefinition[]
   questionSetRevision: number
   proposal: AccountEventEntryTalkProposal | null
 }>()
@@ -61,11 +62,11 @@ const canEdit = computed(() => canMutate.value && (!proposal.value || proposal.v
 const statusLabel = computed(() => proposal.value ? talkProposalStatusLabels[proposal.value.status] : '')
 const questionErrors = ref<Record<string, string>>({})
 
-function answersForQuestions(source: TalkProposalAnswer[]) {
+function answersForQuestions(source: CustomQuestionAnswer[]) {
   const sourceById = new Map(source.map(answer => [answer.questionId, answer]))
   return props.questions.map(question => sourceById.get(question.id) ?? {
     questionId: question.id,
-    value: question.type === 'acknowledgement' ? false : ''
+    value: getEmptyCustomQuestionAnswerValue(question)
   })
 }
 
@@ -248,11 +249,11 @@ async function runAction(action: 'submit' | 'withdraw' | 'revise') {
         </p>
       </AppFormField>
 
-      <TalkProposalQuestionInput
+      <CustomQuestionInput
         v-for="(question, index) in props.questions"
         :key="question.id"
         :question="question"
-        :model-value="proposalAnswers[index]?.value ?? (question.type === 'acknowledgement' ? false : '')"
+        :model-value="proposalAnswers[index]?.value ?? getEmptyCustomQuestionAnswerValue(question)"
         :disabled="!canEdit"
         :error="questionErrors[question.id]"
         @update:model-value="updateAnswer(index, $event)"

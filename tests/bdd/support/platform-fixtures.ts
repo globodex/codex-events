@@ -35,6 +35,22 @@ const fixtureClosedSimplifiedClaimingEventId = 'event_e2e_closed_simplified_clai
 const fixtureLumaGuestListEventId = 'event_e2e_luma_guest_list_fixture'
 const fixtureLumaGuestListEmptyEventId = 'event_e2e_luma_guest_list_empty_fixture'
 const fixtureStaffCheckInEventId = 'event_e2e_staff_check_in_fixture'
+const fixtureCheckInFlowEventId = 'event_e2e_check_in_flow_fixture'
+const fixtureCheckInFlowNoQuestionsEventId = 'event_e2e_check_in_flow_no_questions_fixture'
+const fixtureCheckInFlowBuilderEventId = 'event_e2e_check_in_flow_builder_fixture'
+const fixtureCheckInFlowApplicationId = 'application_check_in_flow_fixture_regular_user'
+// The questions of the check-in flow fixture event: one required text and one optional choice.
+const fixtureCheckInFlowQuestions = [
+  { id: 'project', type: 'short_text', prompt: 'What do you want to build today?', required: true, options: [] },
+  { id: 'codex-level', type: 'single_choice', prompt: 'How well do you know Codex?', required: false, options: ['New to it', 'I use it every week'] }
+]
+// One agenda block. With the one session below, the check-in flow fixture event has an Agenda tab.
+const fixtureCheckInFlowAgendaItems = [
+  { id: 'check-in-flow-build-time', startsAt: '2026-11-28T12:00:00.000Z', endsAt: '2026-11-28T14:00:00.000Z', title: 'Build Time', details: null, displayOrder: 0 }
+]
+const fixtureCheckInFlowProgramTracks = [
+  { id: 'main-room', name: 'Main room', sessions: [{ id: 'kickoff', title: 'Kickoff', details: null, startsAfterMinutes: 0, durationMinutes: 30, room: null }] }
+]
 const fixtureParticipantTeamCreateEventId = 'event_e2e_participant_team_create_fixture'
 const fixtureParticipantTeamJoinEventId = 'event_e2e_participant_team_join_fixture'
 const fixtureParticipantTeamSoloEventId = 'event_e2e_participant_team_solo_fixture'
@@ -118,6 +134,8 @@ export const platformFixtureIds = {
   simplifiedClaimingEventId: fixtureSimplifiedClaimingEventId,
   lumaGuestListEventId: fixtureLumaGuestListEventId,
   lumaGuestListEmptyEventId: fixtureLumaGuestListEmptyEventId,
+  checkInFlowEventId: fixtureCheckInFlowEventId,
+  checkInFlowApplicationId: fixtureCheckInFlowApplicationId,
   draftEventId: fixtureDraftEventId,
   operationsEventId: fixtureOperationsEventId,
   judgingEventId: fixtureJudgingEventId,
@@ -1232,6 +1250,43 @@ function buildFixtureSql(personas: StablePersona[]) {
     ) values
       ('application_staff_check_in_fixture_confirmed', ${sqlLiteral(fixtureStaffCheckInEventId)}, ${sqlLiteral(judgingParticipantTwoId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
       ('application_staff_check_in_fixture_pending', ${sqlLiteral(fixtureStaffCheckInEventId)}, ${sqlLiteral(backupJudgeId)}, 'submitted', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
+    // Three Build events for the check-in flow scenarios. The event admin persona manages all
+    // three. The old created_at keeps them at the end of the public event list.
+    // 1. Flow on, two questions, an agenda with one session. The regular user and the judge
+    //    persona are confirmed and not checked in. A scenario checks in the regular user only.
+    // 2. Flow on, no questions, one credit the participant can claim. The regular user is
+    //    confirmed and already checked in.
+    // 3. Flow off, with the agenda block the event builder needs before it saves. An organizer
+    //    turns the flow on there.
+    `insert into events (
+      id, event_type, name, slug, description, city, country, address,
+      registration_opens_at, registration_closes_at, state, max_team_members,
+      agenda_items_json, check_in_flow_enabled, questionnaire_questions_json,
+      created_by_user_id, created_at, updated_at
+    ) values
+      (${sqlLiteral(fixtureCheckInFlowEventId)}, 'build', 'Check-In Flow Fixture Build', 'check-in-flow-fixture-event', 'Build fixture for the next step after check-in.', 'Vienna', 'Austria', 'Fixture Venue', '2020-01-01T00:00:00.000Z', '2030-01-01T00:00:00.000Z', 'registration_open', 1, ${sqlLiteral(JSON.stringify(fixtureCheckInFlowAgendaItems))}, 1, ${sqlLiteral(JSON.stringify(fixtureCheckInFlowQuestions))}, ${sqlLiteral(eventAdminId)}, '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z'),
+      (${sqlLiteral(fixtureCheckInFlowNoQuestionsEventId)}, 'build', 'Check-In Flow Without Questions Fixture Build', 'check-in-flow-no-questions-fixture-event', 'Build fixture for a check-in flow without questions.', 'Vienna', 'Austria', 'Fixture Venue', '2020-01-01T00:00:00.000Z', '2030-01-01T00:00:00.000Z', 'registration_open', 1, '[]', 1, '[]', ${sqlLiteral(eventAdminId)}, '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z'),
+      (${sqlLiteral(fixtureCheckInFlowBuilderEventId)}, 'build', 'Check-In Flow Builder Fixture Build', 'check-in-flow-builder-fixture-event', 'Build fixture for turning the check-in flow on in the event builder.', 'Vienna', 'Austria', 'Fixture Venue', '2020-01-01T00:00:00.000Z', '2030-01-01T00:00:00.000Z', 'registration_open', 1, ${sqlLiteral(JSON.stringify(fixtureCheckInFlowAgendaItems))}, 0, '[]', ${sqlLiteral(eventAdminId)}, '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z')`,
+    `insert into event_agenda_programs (event_id, agenda_item_id, tracks_json) values
+      (${sqlLiteral(fixtureCheckInFlowEventId)}, 'check-in-flow-build-time', ${sqlLiteral(JSON.stringify(fixtureCheckInFlowProgramTracks))})`,
+    `insert into event_role_assignments (
+      id, event_id, user_id, role, is_in_judge_pool, created_at
+    ) values
+      ('role_event_admin_check_in_flow_fixture', ${sqlLiteral(fixtureCheckInFlowEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)}),
+      ('role_event_admin_check_in_flow_no_questions_fixture', ${sqlLiteral(fixtureCheckInFlowNoQuestionsEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)}),
+      ('role_event_admin_check_in_flow_builder_fixture', ${sqlLiteral(fixtureCheckInFlowBuilderEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)})`,
+    `insert into user_applications (
+      id, event_id, user_id, status, submitted_at, checked_in_at, check_in_source, created_at, updated_at
+    ) values
+      (${sqlLiteral(fixtureCheckInFlowApplicationId)}, ${sqlLiteral(fixtureCheckInFlowEventId)}, ${sqlLiteral(regularUserId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, null, null, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('application_check_in_flow_fixture_judge', ${sqlLiteral(fixtureCheckInFlowEventId)}, ${sqlLiteral(judgeId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, null, null, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('application_check_in_flow_no_questions_fixture_regular_user', ${sqlLiteral(fixtureCheckInFlowNoQuestionsEventId)}, ${sqlLiteral(regularUserId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, 'staff', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
+    `insert into event_credit_offers (
+      id, event_id, name, description, display_order, created_at, updated_at
+    ) values
+      ('offer_check_in_flow_no_questions_fixture', ${sqlLiteral(fixtureCheckInFlowNoQuestionsEventId)}, 'Codex event credit', 'Credit for confirmed participants.', 1, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
+    `insert into event_credit_codes (id, credit_offer_id, value, created_at) values
+      ('code_check_in_flow_no_questions_fixture', 'offer_check_in_flow_no_questions_fixture', 'BDD-CHECK-IN-FLOW-CREDIT', ${sqlLiteral(fixtureTimestamp)})`,
     `insert into event_terms_documents (
       id, event_id, document_type, version, title, content, published_at, created_at
     ) values

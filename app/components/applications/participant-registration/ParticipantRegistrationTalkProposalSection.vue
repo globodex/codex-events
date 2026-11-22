@@ -4,7 +4,8 @@ import type {
   ResolvedParticipantRegistrationDefinition
 } from '~/domains/applications/participant-registration-definition'
 
-import TalkProposalQuestionInput from '~/components/talk-proposals/molecules/TalkProposalQuestionInput.vue'
+import { getEmptyCustomQuestionAnswerValue } from '#shared/domains/events/custom-questions'
+import CustomQuestionInput from '~/components/events/molecules/CustomQuestionInput.vue'
 import {
   participantRegistrationSectionDomId,
   participantRegistrationTalkQuestionFieldId
@@ -104,9 +105,9 @@ const emit = defineEmits<{
       :key="question.id"
       :data-registration-field="participantRegistrationTalkQuestionFieldId(question.id)"
     >
-      <TalkProposalQuestionInput
+      <CustomQuestionInput
         :question="question"
-        :model-value="props.draft.answers[index]?.value ?? (question.type === 'acknowledgement' ? false : '')"
+        :model-value="props.draft.answers[index]?.value ?? getEmptyCustomQuestionAnswerValue(question)"
         :disabled="props.disabled"
         :error="props.errors[participantRegistrationTalkQuestionFieldId(question.id)]"
         @update:model-value="emit('updateAnswer', index, $event)"

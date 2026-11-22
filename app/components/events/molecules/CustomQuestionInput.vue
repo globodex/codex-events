@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import type { TalkProposalQuestionDefinition } from '#shared/domains/talk-proposals/questions'
+import type { CustomQuestionDefinition } from '#shared/domains/events/custom-questions'
 
 const modelValue = defineModel<string | boolean>({ required: true })
 
 const props = defineProps<{
-  question: TalkProposalQuestionDefinition
+  question: CustomQuestionDefinition
   disabled?: boolean
   error?: string
 }>()
 
-const inputId = computed(() => `talk-proposal-question-${props.question.id}`)
+const inputId = computed(() => `custom-question-${props.question.id}`)
 const label = computed(() => `${props.question.prompt}${props.question.required ? ' *' : ''}`)
 const textValue = computed({
   get: () => typeof modelValue.value === 'string' ? modelValue.value : '',

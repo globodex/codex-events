@@ -1,27 +1,32 @@
 <script setup lang="ts">
 import type {
-  TalkProposalQuestionDefinition,
-  TalkProposalQuestionType
-} from '#shared/domains/talk-proposals/questions'
+  CustomQuestionDefinition,
+  CustomQuestionType
+} from '#shared/domains/events/custom-questions'
 import AdminSortableEditorRow from '~/components/admin/AdminSortableEditorRow.vue'
-import AdminBuilderTalkProposalQuestionCard from '~/components/admin/builder/molecules/AdminBuilderTalkProposalQuestionCard.vue'
+import AdminBuilderCustomQuestionCard from '~/components/admin/builder/molecules/AdminBuilderCustomQuestionCard.vue'
 
-const questions = defineModel<TalkProposalQuestionDefinition[]>({ required: true })
+const questions = defineModel<CustomQuestionDefinition[]>({ required: true })
 
 const props = withDefaults(defineProps<{
-  locked?: boolean
+  /** When set, the questions cannot be changed and this text tells the organizer why. */
+  lockedReason?: string
   variant?: 'classic' | 'builder'
 }>(), {
-  locked: false,
+  lockedReason: '',
   variant: 'classic'
 })
+
+const locked = computed(() => props.lockedReason.length > 0)
+// A page can show more than one question editor, so every editor needs its own heading id.
+const headingId = useId()
 
 const builderListElement = useTemplateRef<HTMLElement>('builderList')
 const activeDragId = shallowRef<string | null>(null)
 
 useAdminSortableLists({
   elements: () => [builderListElement.value],
-  enabled: () => props.variant === 'builder' && !props.locked && questions.value.length > 1,
+  enabled: () => props.variant === 'builder' && !locked.value && questions.value.length > 1,
   sources: [() => questions.value.length],
   createOptions: () => ({
     animation: 180,
@@ -50,14 +55,14 @@ useAdminSortableLists({
   }
 })
 
-const questionTypeLabels: Record<TalkProposalQuestionType, string> = {
+const questionTypeLabels: Record<CustomQuestionType, string> = {
   short_text: 'Short text',
   long_text: 'Long text',
   single_choice: 'Single choice',
   acknowledgement: 'Required acknowledgment'
 }
 
-function updateQuestion(index: number, patch: Partial<TalkProposalQuestionDefinition>) {
+function updateQuestion(index: number, patch: Partial<CustomQuestionDefinition>) {
   questions.value = questions.value.map((question, currentIndex) => currentIndex === index
     ? { ...question, ...patch }
     : question)
@@ -101,7 +106,7 @@ function reorderQuestion(oldIndex: number, newIndex: number) {
 }
 
 function updateType(index: number, value: string | number | undefined) {
-  const type = value as TalkProposalQuestionType
+  const type = value as CustomQuestionType
   updateQuestion(index, {
     type,
     required: type === 'acknowledgement' ? true : questions.value[index]?.required ?? false,
@@ -130,13 +135,13 @@ function removeOption(questionIndex: number, optionIndex: number) {
 
 <template>
   <section
-    aria-labelledby="talk-proposal-questions-heading"
+    :aria-labelledby="headingId"
     class="space-y-4"
-    data-testid="talk-proposal-question-editor"
+    data-testid="custom-question-editor"
   >
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h3
-        id="talk-proposal-questions-heading"
+        :id="headingId"
         class="text-sm font-semibold text-highlighted"
       >
         Questions
@@ -145,7 +150,7 @@ function removeOption(questionIndex: number, optionIndex: number) {
         size="sm"
         color="neutral"
         variant="outline"
-        :disabled="props.locked || questions.length >= 20"
+        :disabled="locked || questions.length >= 20"
         @click="addQuestion"
       >
         Add question
@@ -159,10 +164,10 @@ function removeOption(questionIndex: number, optionIndex: number) {
     </div>
 
     <p
-      v-if="props.locked"
+      v-if="locked"
       class="text-sm text-muted"
     >
-      Questions cannot be changed after the first Talk proposal is created.
+      {{ props.lockedReason }}
     </p>
 
     <p
@@ -177,12 +182,12 @@ function removeOption(questionIndex: number, optionIndex: number) {
       ref="builderList"
       class="space-y-2.5"
     >
-      <AdminBuilderTalkProposalQuestionCard
+      <AdminBuilderCustomQuestionCard
         v-for="(question, index) in questions"
         :key="question.id"
         :question="question"
         :index="index"
-        :locked="props.locked"
+        :locked="locked"
         :active="activeDragId === question.id"
         @update="patch => updateQuestion(index, patch)"
         @move="offset => moveQuestion(index, offset)"
@@ -198,17 +203,17 @@ function removeOption(questionIndex: number, optionIndex: number) {
         v-for="(question, index) in questions"
         :key="question.id"
         :item-id="question.id"
-        test-id="talk-proposal-question-row"
+        test-id="custom-question-row"
         item-id-attribute="data-question-id"
         row-attribute="data-question-row"
         sort-handle-attribute="data-question-sort-handle"
         :move-up-label="`Move question ${index + 1} up`"
         :move-down-label="`Move question ${index + 1} down`"
         :drag-label="`Question ${index + 1} order`"
-        :move-up-test-id="`talk-proposal-question-${index}-up`"
-        :move-down-test-id="`talk-proposal-question-${index}-down`"
-        :move-up-disabled="props.locked || index === 0"
-        :move-down-disabled="props.locked || index === questions.length - 1"
+        :move-up-test-id="`custom-question-${index}-up`"
+        :move-down-test-id="`custom-question-${index}-down`"
+        :move-up-disabled="locked || index === 0"
+        :move-down-disabled="locked || index === questions.length - 1"
         drag-disabled
         columns-class="sm:grid-cols-[4.25rem_minmax(0,1fr)_3rem]"
         @move-up="moveQuestion(index, -1)"
@@ -216,24 +221,24 @@ function removeOption(questionIndex: number, optionIndex: number) {
       >
         <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_12rem]">
           <AppFormField
-            :name="`talk-proposal-question-${question.id}`"
+            :name="`custom-question-prompt-${question.id}`"
             label="Question"
           >
             <AppInput
-              :id="`talk-proposal-question-${question.id}`"
+              :id="`custom-question-prompt-${question.id}`"
               :model-value="question.prompt"
-              :disabled="props.locked"
+              :disabled="locked"
               @update:model-value="updateQuestion(index, { prompt: String($event ?? '') })"
             />
           </AppFormField>
           <AppFormField
-            :name="`talk-proposal-question-type-${question.id}`"
+            :name="`custom-question-type-${question.id}`"
             label="Answer type"
           >
             <AppSelect
-              :id="`talk-proposal-question-type-${question.id}`"
+              :id="`custom-question-type-${question.id}`"
               :model-value="question.type"
-              :disabled="props.locked"
+              :disabled="locked"
               @update:model-value="updateType(index, $event)"
             >
               <option
@@ -250,7 +255,7 @@ function removeOption(questionIndex: number, optionIndex: number) {
         <AppCheckbox
           :model-value="question.required"
           label="Required"
-          :disabled="props.locked || question.type === 'acknowledgement'"
+          :disabled="locked || question.type === 'acknowledgement'"
           @update:model-value="updateQuestion(index, { required: $event })"
         />
 
@@ -267,7 +272,7 @@ function removeOption(questionIndex: number, optionIndex: number) {
             <AppInput
               :model-value="option"
               :aria-label="`Choice ${optionIndex + 1}`"
-              :disabled="props.locked"
+              :disabled="locked"
               @update:model-value="updateOption(index, optionIndex, $event)"
             />
             <AppButton
@@ -276,7 +281,7 @@ function removeOption(questionIndex: number, optionIndex: number) {
               variant="ghost"
               size="sm"
               :aria-label="`Remove choice ${optionIndex + 1}`"
-              :disabled="props.locked || question.options.length <= 2"
+              :disabled="locked || question.options.length <= 2"
               @click="removeOption(index, optionIndex)"
             />
           </div>
@@ -284,7 +289,7 @@ function removeOption(questionIndex: number, optionIndex: number) {
             size="sm"
             color="neutral"
             variant="ghost"
-            :disabled="props.locked || question.options.length >= 20"
+            :disabled="locked || question.options.length >= 20"
             @click="addOption(index)"
           >
             Add choice
@@ -298,7 +303,7 @@ function removeOption(questionIndex: number, optionIndex: number) {
             variant="ghost"
             size="sm"
             :aria-label="`Remove question ${index + 1}`"
-            :disabled="props.locked"
+            :disabled="locked"
             @click="removeQuestion(index)"
           />
         </template>

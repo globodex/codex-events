@@ -341,6 +341,36 @@ Behavior:
   Guard: the event is in `registration_open`.
   Guard: in an event that uses the Luma guest list, the participant's Luma guest is approved. In every other event, automatic approval is enabled and approved participation is below the participant approval limit when one exists.
 
+### Check-In Flow
+
+An event with its check-in flow on gives every `approved` application one of three positions. A position is derived from effective attendance and the questionnaire completion time. It is not a stored state.
+
+- `check-in pending`
+  The participant has no effective attendance. The account event overview tells the participant to check in at the entrance and links to the agenda.
+- `questionnaire open`
+  The participant has effective attendance, the event has a questionnaire, and the participant has not completed it. The account event overview shows the questions.
+- `finished`
+  The participant has effective attendance and has completed the questionnaire, or the event has no questionnaire. The account event overview lists the event's activities.
+
+Position changes:
+
+- `check-in pending -> questionnaire open`, or `check-in pending -> finished` when the event has no questionnaire
+  Actor: system, when a signed Luma check-in or a simplified claim is recorded.
+  Actor: staff, event admin, or platform admin recording a staff check-in.
+  Actor: event admin or platform admin marking the participant joined.
+- `questionnaire open -> finished`
+  Actor: participant completing the questionnaire.
+  Guard: every required question is answered and every choice is one of the question's choices.
+- `questionnaire open -> check-in pending` and `finished -> check-in pending`
+  Actor: event admin or platform admin marking the participant not joined.
+
+Notes:
+
+- A participant completes the questionnaire once. Changing the questions afterwards does not reopen it.
+- A `finished` participant who never completed a questionnaire moves to `questionnaire open` when an event admin adds the first question to the event.
+- Restoring a withdrawn application clears the check-in and the questionnaire completion, so the restored participant starts at `check-in pending`.
+- An event with its check-in flow off shows no next step. Its participants still finish the check-in flow as soon as they have effective attendance.
+
 ## Team Join Request
 
 Team join requests exist only for Hackathon events.

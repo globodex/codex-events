@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  getTalkProposalAnswerIssues,
-  talkProposalAnswersSchema,
-  talkProposalQuestionsSchema
-} from '../../../../../shared/domains/talk-proposals/questions'
+  customQuestionAnswersSchema,
+  customQuestionsSchema,
+  getCustomQuestionAnswerIssues
+} from '../../../../../shared/domains/events/custom-questions'
 
 const referenceQuestions = [
   { id: 'phone', type: 'short_text', prompt: 'Phone number', required: true, options: [] },
@@ -24,37 +24,43 @@ const referenceQuestions = [
   }
 ] as const
 
-describe('Talk proposal questions', () => {
+const unknownQuestionMessage = 'This question is not part of the form.'
+const asDraft = { requireComplete: false, unknownQuestionMessage }
+const asSubmission = { requireComplete: true, unknownQuestionMessage }
+
+describe('Custom questions', () => {
   it('parses supported ordered question definitions', () => {
-    expect(talkProposalQuestionsSchema.parse(referenceQuestions)).toEqual(referenceQuestions)
+    expect(customQuestionsSchema.parse(referenceQuestions)).toEqual(referenceQuestions)
   })
 
   it('requires unique IDs and valid single-choice options', () => {
-    expect(talkProposalQuestionsSchema.safeParse([
+    expect(customQuestionsSchema.safeParse([
       { ...referenceQuestions[0] },
       { ...referenceQuestions[0] }
     ]).success).toBe(false)
-    expect(talkProposalQuestionsSchema.safeParse([
+    expect(customQuestionsSchema.safeParse([
       { id: 'format', type: 'single_choice', prompt: 'Format', required: false, options: ['Same', 'Same'] }
     ]).success).toBe(false)
   })
 
   it('requires acknowledgments to be configured as required', () => {
-    expect(talkProposalQuestionsSchema.safeParse([
+    expect(customQuestionsSchema.safeParse([
       { id: 'rules', type: 'acknowledgement', prompt: 'Confirm', required: false, options: [] }
     ]).success).toBe(false)
   })
 
   it('accepts incomplete drafts but enforces required answers on submission', () => {
-    const questions = talkProposalQuestionsSchema.parse(referenceQuestions)
-    const draftAnswers = talkProposalAnswersSchema.parse([
+    const questions = customQuestionsSchema.parse(referenceQuestions)
+    const draftAnswers = customQuestionAnswersSchema.parse([
       { questionId: 'phone', value: '' },
       { questionId: 'format', value: '' },
       { questionId: 'rules', value: false }
     ])
 
-    expect(getTalkProposalAnswerIssues(questions, draftAnswers, false)).toEqual([])
-    expect(getTalkProposalAnswerIssues(questions, draftAnswers, true).map(issue => issue.questionId)).toEqual([
+    const submissionIssues = getCustomQuestionAnswerIssues(questions, draftAnswers, asSubmission)
+
+    expect(getCustomQuestionAnswerIssues(questions, draftAnswers, asDraft)).toEqual([])
+    expect(submissionIssues.map(issue => issue.questionId)).toEqual([
       'phone',
       'format',
       'rules'
@@ -62,15 +68,15 @@ describe('Talk proposal questions', () => {
   })
 
   it('rejects unknown questions, invalid choices, and mismatched answer types', () => {
-    const questions = talkProposalQuestionsSchema.parse(referenceQuestions)
-    const answers = talkProposalAnswersSchema.parse([
+    const questions = customQuestionsSchema.parse(referenceQuestions)
+    const answers = customQuestionAnswersSchema.parse([
       { questionId: 'unknown', value: 'value' },
       { questionId: 'phone', value: false },
       { questionId: 'format', value: 'Recorded only' },
       { questionId: 'rules', value: 'yes' }
     ])
 
-    expect(getTalkProposalAnswerIssues(questions, answers, false).map(issue => issue.questionId)).toEqual([
+    expect(getCustomQuestionAnswerIssues(questions, answers, asDraft).map(issue => issue.questionId)).toEqual([
       'unknown',
       'phone',
       'format',

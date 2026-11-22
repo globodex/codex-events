@@ -49,9 +49,9 @@ import type { EventBalanceBreakdown, EventBalanceScoringInput } from '#shared/do
 import { computeEventBalance } from '#shared/domains/events/builder-scoring'
 import type { AccountEventEntryTrack } from '#shared/domains/events/account-event-entry-page'
 import {
-  parseTalkProposalQuestionsJson,
-  talkProposalQuestionsSchema
-} from '#shared/domains/talk-proposals/questions'
+  parseCustomQuestionsJson,
+  customQuestionsSchema
+} from '#shared/domains/events/custom-questions'
 
 const isoTimestampSchema = z.string().refine(
   value => !Number.isNaN(Date.parse(value)),
@@ -257,6 +257,7 @@ const autoApproveApplicationsSchema = z.coerce.boolean()
 const simplifiedClaimingEnabledSchema = z.coerce.boolean()
 const lumaGuestListEnabledSchema = z.coerce.boolean()
 const talkProposalsEnabledSchema = z.coerce.boolean()
+const checkInFlowEnabledSchema = z.coerce.boolean()
 const blindReviewCountSchema = z.coerce.number().int().min(0).max(2)
 const pitchReviewEnabledSchema = z.coerce.boolean()
 const blindScoreWeightPercentSchema = z.coerce.number().int().min(0).max(100)
@@ -461,7 +462,7 @@ const eventConfigShape = {
   talkProposalsEnabled: talkProposalsEnabledSchema.default(false),
   talkProposalOpensAt: isoTimestampSchema.nullable().default(null),
   talkProposalClosesAt: isoTimestampSchema.nullable().default(null),
-  talkProposalQuestions: talkProposalQuestionsSchema.default([]),
+  talkProposalQuestions: customQuestionsSchema.default([]),
   blindReviewCount: blindReviewCountSchema.default(1),
   pitchReviewEnabled: pitchReviewEnabledSchema.default(false),
   blindScoreWeightPercent: blindScoreWeightPercentSchema.default(70),
@@ -568,7 +569,9 @@ export const updateEventBodySchema = z.object({
   talkProposalsEnabled: talkProposalsEnabledSchema.optional(),
   talkProposalOpensAt: isoTimestampSchema.nullable().optional(),
   talkProposalClosesAt: isoTimestampSchema.nullable().optional(),
-  talkProposalQuestions: talkProposalQuestionsSchema.optional(),
+  talkProposalQuestions: customQuestionsSchema.optional(),
+  checkInFlowEnabled: checkInFlowEnabledSchema.optional(),
+  questionnaireQuestions: customQuestionsSchema.optional(),
   blindReviewCount: blindReviewCountSchema.optional(),
   pitchReviewEnabled: pitchReviewEnabledSchema.optional(),
   blindScoreWeightPercent: blindScoreWeightPercentSchema.optional(),
@@ -1573,7 +1576,7 @@ export function talkProposalQuestionsChanged(
   patch: Pick<z.infer<typeof updateEventBodySchema>, 'talkProposalQuestions'>
 ) {
   return patch.talkProposalQuestions !== undefined
-    && JSON.stringify(patch.talkProposalQuestions) !== JSON.stringify(parseTalkProposalQuestionsJson(event.talkProposalQuestionsJson))
+    && JSON.stringify(patch.talkProposalQuestions) !== JSON.stringify(parseCustomQuestionsJson(event.talkProposalQuestionsJson))
 }
 
 export function buildEventUpdatePayload(
@@ -1592,7 +1595,7 @@ export function buildEventUpdatePayload(
       ? existingEvent.talkProposalClosesAt
       : patch.talkProposalClosesAt,
     talkProposalQuestions: patch.talkProposalQuestions === undefined
-      ? parseTalkProposalQuestionsJson(existingEvent.talkProposalQuestionsJson)
+      ? parseCustomQuestionsJson(existingEvent.talkProposalQuestionsJson)
       : patch.talkProposalQuestions
   }, existingEvent.id)
   const hackathonOnlyPatchFields = [
@@ -1628,6 +1631,7 @@ export function buildEventUpdatePayload(
     agendaItemsJson?: string
     talkProposalQuestionsJson?: string
     talkProposalQuestionsRevision?: SQL<unknown>
+    questionnaireQuestionsJson?: string
   } = {
     ...patch
   }
@@ -1648,6 +1652,11 @@ export function buildEventUpdatePayload(
     if (questionsChanged) {
       normalizedPatch.talkProposalQuestionsRevision = sql`${events.talkProposalQuestionsRevision} + 1`
     }
+  }
+
+  if (normalizedPatch.questionnaireQuestions !== undefined) {
+    normalizedPatch.questionnaireQuestionsJson = JSON.stringify(normalizedPatch.questionnaireQuestions)
+    Reflect.deleteProperty(normalizedPatch, 'questionnaireQuestions')
   }
 
   if (existingEvent.eventType !== 'hackathon') {
@@ -2361,8 +2370,10 @@ export function serializeAdminEvent(
     talkProposalsEnabled: event.talkProposalsEnabled,
     talkProposalOpensAt: event.talkProposalOpensAt,
     talkProposalClosesAt: event.talkProposalClosesAt,
-    talkProposalQuestions: parseTalkProposalQuestionsJson(event.talkProposalQuestionsJson),
+    talkProposalQuestions: parseCustomQuestionsJson(event.talkProposalQuestionsJson),
     talkProposalQuestionsRevision: event.talkProposalQuestionsRevision,
+    checkInFlowEnabled: event.checkInFlowEnabled,
+    questionnaireQuestions: parseCustomQuestionsJson(event.questionnaireQuestionsJson),
     slidesUrl: event.slidesUrl,
     lumaApiKey: event.lumaApiKey,
     lumaWebhookStatus: event.lumaWebhookStatus,

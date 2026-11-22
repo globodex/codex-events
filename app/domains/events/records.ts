@@ -1,6 +1,6 @@
 import type { EventState } from '~/domains/events/states'
 import type { EventBalanceBreakdown } from '#shared/domains/events/builder-scoring'
-import type { TalkProposalQuestionDefinition } from '#shared/domains/talk-proposals/questions'
+import type { CustomQuestionDefinition } from '#shared/domains/events/custom-questions'
 
 export interface TermsReference {
   id: string
@@ -96,8 +96,12 @@ export interface EventRecord {
   talkProposalsEnabled?: boolean
   talkProposalOpensAt?: string | null
   talkProposalClosesAt?: string | null
-  talkProposalQuestions?: TalkProposalQuestionDefinition[]
+  talkProposalQuestions?: CustomQuestionDefinition[]
   talkProposalQuestionsRevision?: number
+  /** Present only in payloads for event admins. */
+  checkInFlowEnabled?: boolean
+  /** Present only in payloads for event admins. */
+  questionnaireQuestions?: CustomQuestionDefinition[]
   blindReviewCount: number
   pitchReviewEnabled: boolean
   blindScoreWeightPercent: number

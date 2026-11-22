@@ -1,10 +1,11 @@
 import { z } from 'zod'
 import {
-  getTalkProposalAnswerIssues,
-  talkProposalAnswersSchema,
-  type TalkProposalAnswer,
-  type TalkProposalQuestionDefinition
-} from '#shared/domains/talk-proposals/questions'
+  customQuestionAnswersSchema,
+  getEmptyCustomQuestionAnswerValue,
+  type CustomQuestionAnswer,
+  type CustomQuestionDefinition
+} from '#shared/domains/events/custom-questions'
+import { getTalkProposalAnswerIssues } from '#shared/domains/talk-proposals/answer-issues'
 
 export const talkProposalFormSchema = z.object({
   title: z.string().trim().min(1, 'Enter a talk title.').max(200, 'Keep the title under 200 characters.'),
@@ -14,7 +15,7 @@ export const talkProposalFormSchema = z.object({
     z.string().trim().url('Enter a valid HTTP(S) URL.').refine(value => /^https?:\/\//i.test(value), 'Enter a valid HTTP(S) URL.')
   ]),
   questionSetRevision: z.number().int().min(0),
-  answers: talkProposalAnswersSchema
+  answers: customQuestionAnswersSchema
 })
 
 export interface TalkProposalFormValues {
@@ -22,7 +23,7 @@ export interface TalkProposalFormValues {
   abstract: string
   demoOrSlidesUrl: string
   questionSetRevision: number
-  answers: TalkProposalAnswer[]
+  answers: CustomQuestionAnswer[]
 }
 
 export interface TalkProposalFormErrors {
@@ -33,20 +34,20 @@ export interface TalkProposalFormErrors {
 }
 
 export function createTalkProposalAnswers(
-  questions: TalkProposalQuestionDefinition[],
-  source: TalkProposalAnswer[] = []
+  questions: CustomQuestionDefinition[],
+  source: CustomQuestionAnswer[] = []
 ) {
   const sourceById = new Map(source.map(answer => [answer.questionId, answer]))
 
   return questions.map(question => sourceById.get(question.id) ?? {
     questionId: question.id,
-    value: question.type === 'acknowledgement' ? false : ''
+    value: getEmptyCustomQuestionAnswerValue(question)
   })
 }
 
 export function validateTalkProposalSubmission(
   values: TalkProposalFormValues,
-  questions: TalkProposalQuestionDefinition[]
+  questions: CustomQuestionDefinition[]
 ) {
   const result = talkProposalFormSchema.safeParse(values)
   const errors: TalkProposalFormErrors = { questions: {} }
@@ -105,7 +106,7 @@ export interface TalkProposalRecord {
   abstract: string
   demoOrSlidesUrl: string | null
   questionSetRevision: number
-  answers: TalkProposalAnswer[]
+  answers: CustomQuestionAnswer[]
   decisionMessage: string | null
   reviewedByUserId: string | null
   submittedAt: string | null

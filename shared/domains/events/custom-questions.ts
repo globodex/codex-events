@@ -1,17 +1,21 @@
 import { z } from 'zod'
 
-export const talkProposalQuestionTypes = [
+// Custom questions are the questions an organizer writes for an event. The Call for talks and
+// the event questionnaire both use this model. Wording that fits only one of them belongs to
+// that feature and is passed in (see `getCustomQuestionAnswerIssues`).
+
+export const customQuestionTypes = [
   'short_text',
   'long_text',
   'single_choice',
   'acknowledgement'
 ] as const
 
-export const talkProposalQuestionTypeSchema = z.enum(talkProposalQuestionTypes)
+export const customQuestionTypeSchema = z.enum(customQuestionTypes)
 
-export const talkProposalQuestionDefinitionSchema = z.object({
+export const customQuestionDefinitionSchema = z.object({
   id: z.string().trim().min(1).max(64).regex(/^[A-Za-z0-9][A-Za-z0-9_-]*$/),
-  type: talkProposalQuestionTypeSchema,
+  type: customQuestionTypeSchema,
   prompt: z.string().trim().min(1).max(500),
   required: z.boolean(),
   options: z.array(z.string().trim().min(1).max(200)).max(20).default([])
@@ -49,7 +53,7 @@ export const talkProposalQuestionDefinitionSchema = z.object({
   }
 })
 
-export const talkProposalQuestionsSchema = z.array(talkProposalQuestionDefinitionSchema)
+export const customQuestionsSchema = z.array(customQuestionDefinitionSchema)
   .max(20)
   .superRefine((questions, context) => {
     const ids = new Set<string>()
@@ -65,12 +69,12 @@ export const talkProposalQuestionsSchema = z.array(talkProposalQuestionDefinitio
     }
   })
 
-export const talkProposalAnswerSchema = z.object({
+export const customQuestionAnswerSchema = z.object({
   questionId: z.string().trim().min(1).max(64),
   value: z.union([z.string().trim().max(8000), z.boolean()])
 })
 
-export const talkProposalAnswersSchema = z.array(talkProposalAnswerSchema)
+export const customQuestionAnswersSchema = z.array(customQuestionAnswerSchema)
   .max(20)
   .superRefine((answers, context) => {
     const ids = new Set<string>()
@@ -86,36 +90,52 @@ export const talkProposalAnswersSchema = z.array(talkProposalAnswerSchema)
     }
   })
 
-export type TalkProposalQuestionType = z.infer<typeof talkProposalQuestionTypeSchema>
-export type TalkProposalQuestionDefinition = z.infer<typeof talkProposalQuestionDefinitionSchema>
-export type TalkProposalAnswer = z.infer<typeof talkProposalAnswerSchema>
+export type CustomQuestionType = z.infer<typeof customQuestionTypeSchema>
+export type CustomQuestionDefinition = z.infer<typeof customQuestionDefinitionSchema>
+export type CustomQuestionAnswer = z.infer<typeof customQuestionAnswerSchema>
 
-export interface TalkProposalAnswerIssue {
+export interface CustomQuestionAnswerIssue {
   questionId: string
   message: string
 }
 
-export function parseTalkProposalQuestionsJson(value: string) {
-  return talkProposalQuestionsSchema.parse(JSON.parse(value))
+/** The value of a question nobody answered yet: unchecked for an acknowledgment, empty text otherwise. */
+export function getEmptyCustomQuestionAnswerValue(question: Pick<CustomQuestionDefinition, 'type'>) {
+  return question.type === 'acknowledgement' ? false : ''
 }
 
-export function parseTalkProposalAnswersJson(value: string) {
-  return talkProposalAnswersSchema.parse(JSON.parse(value))
+export function parseCustomQuestionsJson(value: string) {
+  return customQuestionsSchema.parse(JSON.parse(value))
 }
 
-export function getTalkProposalAnswerIssues(
-  questions: TalkProposalQuestionDefinition[],
-  answers: TalkProposalAnswer[],
-  requireComplete: boolean
+export function parseCustomQuestionAnswersJson(value: string) {
+  return customQuestionAnswersSchema.parse(JSON.parse(value))
+}
+
+/**
+ * Checks answers against the questions they belong to and returns one issue per problem.
+ *
+ * Call it through the function of the feature that owns the questions
+ * (`getTalkProposalAnswerIssues`, `getQuestionnaireAnswerIssues`). That function supplies the
+ * feature's wording for an answer to a question the feature does not have.
+ */
+export function getCustomQuestionAnswerIssues(
+  questions: CustomQuestionDefinition[],
+  answers: CustomQuestionAnswer[],
+  options: {
+    /** True when every required question must be answered, false for an unfinished draft. */
+    requireComplete: boolean
+    unknownQuestionMessage: string
+  }
 ) {
   const questionsById = new Map(questions.map(question => [question.id, question]))
   const answersById = new Map(answers.map(answer => [answer.questionId, answer]))
-  const issues: TalkProposalAnswerIssue[] = []
+  const issues: CustomQuestionAnswerIssue[] = []
 
   for (const answer of answers) {
     const question = questionsById.get(answer.questionId)
     if (!question) {
-      issues.push({ questionId: answer.questionId, message: 'This question is not part of the Call for talks.' })
+      issues.push({ questionId: answer.questionId, message: options.unknownQuestionMessage })
       continue
     }
 
@@ -140,7 +160,7 @@ export function getTalkProposalAnswerIssues(
     }
   }
 
-  if (requireComplete) {
+  if (options.requireComplete) {
     for (const question of questions) {
       if (!question.required) continue
       const answer = answersById.get(question.id)

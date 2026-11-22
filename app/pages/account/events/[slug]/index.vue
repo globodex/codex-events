@@ -40,6 +40,7 @@ import {
 } from '~/domains/events/presentation'
 import type { EventParticipationRankSummary } from '~/domains/events/participation'
 import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
+import type { CheckInFlowProgress, CheckInFlowSettings } from '#shared/domains/applications/check-in-flow'
 import { buildEventCertificatePath } from '#shared/domains/events/certificates'
 import type {
   ParticipantApiDataResponse,
@@ -71,6 +72,7 @@ import {
   LazyPublicEventsEventWinnersShowcase as LazyEventWinnersShowcase
 } from '#components'
 import AccountEventParticipationRankNotice from '~/components/account/events/AccountEventParticipationRankNotice.vue'
+import AccountEventNextStepCard from '~/components/account/events/organisms/AccountEventNextStepCard.vue'
 import EventOverviewPanel from '~/components/public/events/EventOverviewPanel.vue'
 import EventStateBadge from '~/components/public/events/EventStateBadge.vue'
 import {
@@ -797,6 +799,22 @@ const teamTabTargetSlug = computed(() =>
 const workspaceTabHref = computed(() => `/account/events/${slug.value}?tab=workspace`)
 const teamsTabHref = computed(() => buildAccountEventTeamsTabHref(slug.value, teamTabTargetSlug.value))
 const detailsTabHref = computed(() => `/account/events/${slug.value}?tab=details`)
+// Where a participant reads the agenda: the Agenda tab when the event has sessions, otherwise
+// the agenda on the Details tab.
+const agendaHref = computed(() => availableTabs.value.includes('program')
+  ? `/account/events/${slug.value}?tab=program`
+  : detailsTabHref.value)
+// What a checked-in participant can open, in the order the next-step card lists it.
+// Add one entry here for every new activity.
+const participantActivities = computed(() => {
+  const activities = [{ label: 'Agenda', to: agendaHref.value }]
+
+  if (availableTabs.value.includes('credits')) {
+    activities.push({ label: 'Credits', to: `/account/events/${slug.value}?tab=credits` })
+  }
+
+  return activities
+})
 const applicationSubmittedNoticeVisible = ref(isParticipantApplicationSubmittedNotice(route.query.notice))
 const applicationStatusLabel = computed(() =>
   applicationStatus.value ? formatParticipantApplicationStatus(applicationStatus.value) : ''
@@ -837,6 +855,22 @@ const showOverviewApplicationStatusBanner = computed(() =>
   shouldShowParticipantOverviewStatusBanner(applicationStatus.value)
 )
 const participantApplication = computed(() => participationRecord.value?.application ?? null)
+// The check-in flow of this event and how far the participant is in it, for the next-step card.
+const checkInFlowSettings = computed<CheckInFlowSettings>(() => ({
+  checkInFlowEnabled: entryPage.value?.checkInFlowEnabled ?? false,
+  questionnaireQuestions: entryPage.value?.questionnaireQuestions ?? []
+}))
+const checkInFlowProgress = computed<CheckInFlowProgress>(() => ({
+  isCheckedIn: participantApplication.value?.isCheckedIn ?? false,
+  questionnaireCompletedAt: entryPage.value?.questionnaireCompletedAt ?? null
+}))
+// The next-step card is for a confirmed participant of an event that uses the check-in flow.
+// A completed event has no next step.
+const showNextStepCard = computed(() =>
+  checkInFlowSettings.value.checkInFlowEnabled
+  && applicationStatus.value === 'approved'
+  && event.value?.state !== 'completed'
+)
 const lumaSyncStatus = computed(() => participantApplication.value?.lumaSyncStatus ?? null)
 const showLumaSyncNotice = computed(() =>
   participantApplication.value?.status === 'approved'
@@ -1216,6 +1250,16 @@ useSeoMeta({
         aria-labelledby="account-tab-overview"
         class="space-y-7"
       >
+        <AccountEventNextStepCard
+          v-if="showNextStepCard"
+          :event-id="event.id"
+          :settings="checkInFlowSettings"
+          :progress="checkInFlowProgress"
+          :agenda-href="agendaHref"
+          :activities="participantActivities"
+          :refresh-page="refreshAccountEvent"
+        />
+
         <div
           v-if="showOverviewStatusNotices"
           class="space-y-4"

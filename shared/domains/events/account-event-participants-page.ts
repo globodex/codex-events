@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { applicationCheckInSources } from '#shared/domains/applications/check-in'
+import { questionnaireAnswerRecordsSchema } from '#shared/domains/applications/check-in-flow'
 
 const eventStateSchema = z.enum([
   'draft',
@@ -66,6 +67,8 @@ const applicationSchema = z.object({
   applicationTermsDocumentId: z.string().nullable(),
   applicationTermsAcceptedAt: z.string().nullable(),
   registrationDetailsJson: z.string(),
+  // Null until the participant completes the event questionnaire.
+  questionnaireAnswers: questionnaireAnswerRecordsSchema.nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
   user: applicationUserSchema.optional(),

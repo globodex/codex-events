@@ -1,6 +1,6 @@
 import type { PublicEvent, PublicEventState } from '~/domains/events/presentation'
 import type { ApplicationCheckInSource } from '#shared/domains/applications/check-in'
-import type { TalkProposalQuestionDefinition } from '#shared/domains/talk-proposals/questions'
+import type { CustomQuestionDefinition } from '#shared/domains/events/custom-questions'
 import type {
   ApiDataResponse,
   ApiErrorShape,
@@ -119,7 +119,7 @@ export interface ParticipantApplicationRecord {
 export interface VisibleEventRecord extends Omit<PublicEvent, 'tracks'> {
   id: string
   tracks?: ParticipantRegistrationTrackOption[]
-  talkProposalQuestions?: TalkProposalQuestionDefinition[]
+  talkProposalQuestions?: CustomQuestionDefinition[]
   talkProposalQuestionsRevision?: number
 }
 

@@ -121,6 +121,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `talk_proposal_closes_at`
 - `talk_proposal_questions_json`
 - `talk_proposal_questions_revision`
+- `check_in_flow_enabled`
+- `questionnaire_questions_json`
 - `state`
 - `hidden_at`
 - `hidden_by_user_id`
@@ -211,6 +213,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - For an enabled Meetup Call for talks, `talk_proposal_opens_at < talk_proposal_closes_at`.
 - `talk_proposal_questions_json` is an ordered array with at most 20 definitions. Each definition has a stable `id`, `type`, `prompt`, `required`, and `options`; only `single_choice` uses options, and `acknowledgement` is always required.
 - Disabled Meetups and all non-Meetup events have `talk_proposals_enabled = false` with null talk-proposal timestamps.
+- `questionnaire_questions_json` is an ordered array with at most 20 definitions. The definitions follow the same rules as the definitions in `talk_proposal_questions_json`.
 
 ### Notes
 
@@ -236,6 +239,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `auto_approve_applications` controls whether newly submitted applications are approved immediately after required submission checks pass while approved participation is below `participants_limit` when one is configured. It defaults to false and does not affect already submitted applications when changed.
 - `simplified_claiming_enabled` is available only for Meetups. It requires no application terms or required registration fields. Optional paired `luma_event_api_id` and `luma_api_key` credentials connect check-ins without approval/rejection sync. It uses the event slug for redemption and the giveaway with `redirect_on_claim = true` as the redirect destination.
 - `talk_proposals_enabled` defaults to false. `talk_proposal_questions_json` defaults to `[]`, and `talk_proposal_questions_revision` defaults to `0`. After the first `TalkProposal` exists for the event, the feature cannot be disabled and the question definition cannot change. Its closing timestamp can change until the event is completed.
+- `check_in_flow_enabled` defaults to false and is available for every event type. While it is true, the account event overview shows approved participants their next step around check-in. `questionnaire_questions_json` defaults to `[]`. The event has a questionnaire when `check_in_flow_enabled = true` and `questionnaire_questions_json` holds at least one definition. Both fields can change at any time; a change does not rewrite stored `questionnaire_answers_json` payloads.
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
 - Application field visibility columns control whether each optional application field appears on the participant application form. First name and family name are always visible and required.
 - `require_x_profile`, `require_linkedin_profile`, `require_github_profile`, `require_chatgpt_email`, `require_openai_org_id`, `require_luma_profile`, `require_why_this_event`, `require_proof_of_execution`, `require_team_intent`, and `require_ai_knowledge` control whether the corresponding visible field is required.
@@ -575,6 +579,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `application_terms_document_id`
 - `application_terms_accepted_at`
 - `registration_details_json`
+- `questionnaire_answers_json`
+- `questionnaire_completed_at`
 - `created_at`
 - `updated_at`
 
@@ -622,6 +628,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `selected_track_id` stores the participant's selected Hackathon or Build track for that event when the application is `submitted` or `approved`.
 - `checked_in_at` is sticky and is not cleared or replaced by later Luma, simplified-claim, or staff check-in activity.
 - `check_in_override_status` stores an admin attendance decision of `joined` or `not_joined` for an approved application, with `check_in_override_at` and `check_in_override_by_user_id` recording when and by whom it was set. The override wins over `checked_in_at` in both directions and is cleared back to the recorded check-in by repeating the active decision.
+- `questionnaire_completed_at` records when the participant completed the event questionnaire. It is null until then and is set once. `questionnaire_answers_json` is null until then and afterwards stores an ordered JSON array with one entry per question of that moment: `questionId`, `prompt` (the question text the participant answered), and `value` (text, or a boolean for an acknowledgment). A question the participant skipped is stored with an empty text. Restoring a withdrawn application sets both fields back to null.
 - `certificate_hidden_at` records when the participant disabled certificate generation. Null means the certificate is generated and publicly reachable when the participant is otherwise certificate-eligible.
 - `certificate_revoked_at` records when an event admin or platform admin revoked certificate access for an approved participant, with `certificate_revoked_by_user_id` recording the acting admin. Null means admin revocation does not block certificate access when the participant is otherwise certificate-eligible.
 - `certificate_email_queued_at` records when an event admin or platform admin reserved the application for certificate email delivery, with `certificate_email_queued_by_user_id` recording the acting admin. `certificate_email_sent_at` records successful delivery. These fields make the admin send action rerunnable without emailing the same participant again.

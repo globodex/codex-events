@@ -63,6 +63,8 @@ function buildEventRecord(
     talkProposalClosesAt: null,
     talkProposalQuestionsJson: '[]',
     talkProposalQuestionsRevision: 0,
+    checkInFlowEnabled: false,
+    questionnaireQuestionsJson: '[]',
     inPersonEvent: false,
     applicationXProfileVisible: true,
     applicationLinkedinProfileVisible: true,

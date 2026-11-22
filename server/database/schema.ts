@@ -182,6 +182,10 @@ export const events = sqliteTable(
     talkProposalClosesAt: text('talk_proposal_closes_at'),
     talkProposalQuestionsJson: text('talk_proposal_questions_json').notNull().default('[]'),
     talkProposalQuestionsRevision: integer('talk_proposal_questions_revision').notNull().default(0),
+    // The steps a participant sees around check-in. The event has a questionnaire when the
+    // flow is on and it has at least one question (`eventHasQuestionnaire`).
+    checkInFlowEnabled: integer('check_in_flow_enabled', { mode: 'boolean' }).notNull().default(false),
+    questionnaireQuestionsJson: text('questionnaire_questions_json').notNull().default('[]'),
     state: text('state', { enum: eventStates }).notNull().default('draft'),
     hiddenAt: text('hidden_at'),
     hiddenByUserId: text('hidden_by_user_id').references(() => users.id),
@@ -671,6 +675,9 @@ export const userApplications = sqliteTable(
     registrationDetailsJson: text('registration_details_json')
       .notNull()
       .default('{"teamIntent":"unknown","teamMembers":[],"inPersonAttendanceCommitment":false,"whyThisEvent":"","proofOfExecutionUrl":"","aiKnowledgeLevel":""}'),
+    // Both stay null until the participant completes the event questionnaire.
+    questionnaireAnswersJson: text('questionnaire_answers_json'),
+    questionnaireCompletedAt: text('questionnaire_completed_at'),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn()
   },

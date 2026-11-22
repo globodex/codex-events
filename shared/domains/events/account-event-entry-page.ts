@@ -1,12 +1,12 @@
 import { z } from 'zod'
 import {
-  talkProposalAnswersSchema,
-  talkProposalQuestionDefinitionSchema
-} from '#shared/domains/talk-proposals/questions'
+  customQuestionAnswersSchema,
+  customQuestionDefinitionSchema
+} from '#shared/domains/events/custom-questions'
 import type {
-  TalkProposalAnswer,
-  TalkProposalQuestionDefinition
-} from '#shared/domains/talk-proposals/questions'
+  CustomQuestionAnswer,
+  CustomQuestionDefinition
+} from '#shared/domains/events/custom-questions'
 
 import {
   accountOverviewApplicationStatusSchema,
@@ -100,7 +100,7 @@ export interface AccountEventEntryEvent {
   talkProposalsEnabled: boolean
   talkProposalOpensAt: string | null
   talkProposalClosesAt: string | null
-  talkProposalQuestions: TalkProposalQuestionDefinition[]
+  talkProposalQuestions: CustomQuestionDefinition[]
   talkProposalQuestionsRevision: number
   blindReviewCount: number
   pitchReviewEnabled: boolean
@@ -204,7 +204,7 @@ export interface AccountEventEntryTalkProposal {
   abstract: string
   demoOrSlidesUrl: string | null
   questionSetRevision: number
-  answers: TalkProposalAnswer[]
+  answers: CustomQuestionAnswer[]
   decisionMessage: string | null
   reviewedByUserId: string | null
   submittedAt: string | null
@@ -286,6 +286,12 @@ export interface AccountEventEntryPage {
   tabVisibility: AccountEventEntryTabVisibility
   applicationStatus: AccountOverviewApplicationStatus | null
   lumaSyncStatus: AccountOverviewLumaSyncStatus
+  // The check-in flow: the event's settings and the caller's own questionnaire completion time.
+  // Together with `participation.application.isCheckedIn` they decide the next step that the
+  // overview shows (see `shared/domains/applications/check-in-flow.ts`).
+  checkInFlowEnabled: boolean
+  questionnaireQuestions: CustomQuestionDefinition[]
+  questionnaireCompletedAt: string | null
 }
 
 const accountEventEntryAgendaItemSchema = z.object({
@@ -365,7 +371,7 @@ const accountEventEntryEventSchema = z.object({
   talkProposalsEnabled: z.boolean(),
   talkProposalOpensAt: z.string().nullable(),
   talkProposalClosesAt: z.string().nullable(),
-  talkProposalQuestions: z.array(talkProposalQuestionDefinitionSchema),
+  talkProposalQuestions: z.array(customQuestionDefinitionSchema),
   talkProposalQuestionsRevision: z.number().int(),
   blindReviewCount: z.number().int(),
   pitchReviewEnabled: z.boolean(),
@@ -472,7 +478,7 @@ const accountEventEntryTalkProposalSchema = z.object({
   abstract: z.string(),
   demoOrSlidesUrl: z.string().nullable(),
   questionSetRevision: z.number().int(),
-  answers: talkProposalAnswersSchema,
+  answers: customQuestionAnswersSchema,
   decisionMessage: z.string().nullable(),
   reviewedByUserId: z.string().nullable(),
   submittedAt: z.string().nullable(),
@@ -530,5 +536,8 @@ export const accountEventEntryPageSchema = z.object({
   participantRank: accountEventEntryRankSummarySchema.nullable(),
   tabVisibility: accountEventEntryTabVisibilitySchema,
   applicationStatus: accountOverviewApplicationStatusSchema.nullable(),
-  lumaSyncStatus: accountOverviewLumaSyncStatusSchema
+  lumaSyncStatus: accountOverviewLumaSyncStatusSchema,
+  checkInFlowEnabled: z.boolean(),
+  questionnaireQuestions: z.array(customQuestionDefinitionSchema),
+  questionnaireCompletedAt: z.string().nullable()
 })

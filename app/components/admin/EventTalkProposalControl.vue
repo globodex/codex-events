@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { TalkProposalQuestionDefinition } from '#shared/domains/talk-proposals/questions'
-import AdminTalkProposalQuestionEditor from '~/components/admin/talk-proposals/organisms/AdminTalkProposalQuestionEditor.vue'
+import type { CustomQuestionDefinition } from '#shared/domains/events/custom-questions'
+import AdminCustomQuestionEditor from '~/components/admin/organisms/AdminCustomQuestionEditor.vue'
 
 const enabled = defineModel<boolean>('enabled', { required: true })
 const opensAt = defineModel<string>('opensAt', { required: true })
 const closesAt = defineModel<string>('closesAt', { required: true })
-const questions = defineModel<TalkProposalQuestionDefinition[]>('questions', { required: true })
+const questions = defineModel<CustomQuestionDefinition[]>('questions', { required: true })
 
 const props = withDefaults(defineProps<{
   hasExistingProposal?: boolean
@@ -66,9 +66,9 @@ const configurationLocked = computed(() => props.hasExistingProposal)
         </AppFormField>
       </div>
 
-      <AdminTalkProposalQuestionEditor
+      <AdminCustomQuestionEditor
         v-model="questions"
-        :locked="configurationLocked"
+        :locked-reason="configurationLocked ? 'Questions cannot be changed after the first Talk proposal is created.' : ''"
         :variant="props.questionEditorVariant"
       />
     </div>

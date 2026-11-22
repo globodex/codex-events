@@ -15,7 +15,7 @@ import {
 } from '#server/domains/events'
 import { parseValidatedParams } from '#server/http/validation'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
-import { parseTalkProposalQuestionsJson } from '#shared/domains/talk-proposals/questions'
+import { parseCustomQuestionsJson } from '#shared/domains/events/custom-questions'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.events.slug.by-slug',
@@ -56,7 +56,7 @@ export const applicationOperation = defineStructuredRouteOperation({
     ...restrictedFields,
     ...(event.eventType === 'meetup' && event.talkProposalsEnabled
       ? {
-          talkProposalQuestions: parseTalkProposalQuestionsJson(event.talkProposalQuestionsJson),
+          talkProposalQuestions: parseCustomQuestionsJson(event.talkProposalQuestionsJson),
           talkProposalQuestionsRevision: event.talkProposalQuestionsRevision
         }
       : {}),

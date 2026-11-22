@@ -106,7 +106,7 @@ BDD and the local load runner use four stable personas defined in source:
 | --- | --- | --- |
 | `platform_admin` | `platform-admin@bdd.codex-events.test` | Platform admin |
 | `event_admin` | `event-admin@bdd.codex-events.test` | Event admin for fixture events |
-| `judge` | `judge@bdd.codex-events.test` | Judge for fixture events; event staff for the staff check-in fixture event |
+| `judge` | `judge@bdd.codex-events.test` | Judge for fixture events; event staff for the staff check-in fixture event; confirmed participant of the check-in flow fixture event |
 | `regular_user` | `regular-user@bdd.codex-events.test` | No administrative role |
 
 Each identity subject has the form:
@@ -151,7 +151,7 @@ Role-specific coverage includes:
 | Product area | Primary coverage |
 | --- | --- |
 | Public entry and discovery | Signed-out homepage and public event flows |
-| Participant account and application | Registration, applications, teams, and submissions |
+| Participant account and application | Registration, applications, teams, submissions, and the next step around check-in |
 | Judge workspace | Assigned blind-review workflow |
 | Staff workspace | Search and check-in of confirmed participants from the participant list |
 | Admin workspace | Event configuration, operations, judging oversight, and outcomes |
@@ -264,6 +264,20 @@ state.
   integration tests cover events with more than 100 registrations; the browser
   fixtures hold smaller events, where the search stays in the browser and
   sends no request.
+- Check-in flow coverage includes saving the switch and the questions for
+  every event type, invalid question definitions, and refusal for staff,
+  judges, and participants; the event page content before check-in, with an
+  open questionnaire, after completion, without questions, and with the flow
+  off; the questionnaire operation for a missing check-in, the admin joined
+  and not-joined overrides, a pending registration, an event without a
+  questionnaire, missing required answers, invalid choices, answers to
+  unknown questions, a repeated request, and an audit record without answer
+  text; the same steps after a Luma check-in and a staff check-in; stored
+  answers that stay readable after the questions change; restoring a
+  withdrawn registration; and who reads the answers in the participant list.
+  Browser scenarios run on dedicated fixture events and cover the three next
+  steps of a participant, the answers in the admin participant list, and the
+  event builder setting.
 
 Structured operation coverage uses a fresh generated-schema module and an
 instrumented `z.fromJSONSchema` constructor. It verifies that module import

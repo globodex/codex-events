@@ -12,9 +12,9 @@ import type {
 } from '~/domains/applications/participant-application'
 import type { PublicEvent } from '~/domains/events/presentation'
 import type {
-  TalkProposalAnswer,
-  TalkProposalQuestionDefinition
-} from '#shared/domains/talk-proposals/questions'
+  CustomQuestionAnswer,
+  CustomQuestionDefinition
+} from '#shared/domains/events/custom-questions'
 
 import {
   isAccountProfileUrlValid,
@@ -30,7 +30,7 @@ import {
   createTalkProposalAnswers,
   talkProposalFormSchema
 } from '~/domains/talk-proposals'
-import { getTalkProposalAnswerIssues } from '#shared/domains/talk-proposals/questions'
+import { getTalkProposalAnswerIssues } from '#shared/domains/talk-proposals/answer-issues'
 import { aiKnowledgeLevelValues } from '#ai-knowledge'
 
 export const participantRegistrationProfileFieldKeys = [
@@ -53,7 +53,7 @@ export interface ParticipantRegistrationTalkProposalDraft {
   abstract: string
   demoOrSlidesUrl: string
   questionSetRevision: number
-  answers: TalkProposalAnswer[]
+  answers: CustomQuestionAnswer[]
 }
 
 export interface ParticipantRegistrationDraft {
@@ -172,7 +172,7 @@ export interface ParticipantRegistrationDefinitionInput {
   maxTeamMembers: number
   currentApplicationTerms: ParticipantApplicationTermsDocument | null
   talkProposal: {
-    questions: TalkProposalQuestionDefinition[]
+    questions: CustomQuestionDefinition[]
     questionSetRevision: number
   } | null
 }

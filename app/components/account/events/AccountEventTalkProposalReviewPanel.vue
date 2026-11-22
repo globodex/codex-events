@@ -3,18 +3,19 @@ import type { ApiDataResponse } from '~/lib/api'
 import type { PublicEventState } from '~/domains/events/presentation'
 import type { TalkProposalStatus } from '~/domains/talk-proposals'
 import type { AccountEventEntryTalkProposalReview } from '#shared/domains/events/account-event-entry-page'
-import type { TalkProposalQuestionDefinition } from '#shared/domains/talk-proposals/questions'
+import type { CustomQuestionDefinition } from '#shared/domains/events/custom-questions'
+import { getEmptyCustomQuestionAnswerValue } from '#shared/domains/events/custom-questions'
 import { normalizeApiError } from '~/lib/api'
 import { talkProposalStatusLabels } from '~/domains/talk-proposals'
 import { useApiClient } from '~/composables/useApiClient'
-import TalkProposalAnswerReview from '~/components/talk-proposals/molecules/TalkProposalAnswerReview.vue'
+import CustomQuestionAnswerReview from '~/components/events/molecules/CustomQuestionAnswerReview.vue'
 
 const props = defineProps<{
   eventId: string
   eventState: PublicEventState
   canDecide: boolean
   entries: AccountEventEntryTalkProposalReview[]
-  questions: TalkProposalQuestionDefinition[]
+  questions: CustomQuestionDefinition[]
 }>()
 const emit = defineEmits<{
   updated: []
@@ -41,8 +42,11 @@ function ownerName(entry: AccountEventEntryTalkProposalReview) {
     || entry.owner.email
 }
 
-function answerFor(questionId: string) {
-  return selectedEntry.value?.proposal.answers.find(answer => answer.questionId === questionId)
+/** The selected proposal's answer to a question, or the empty value when it has none. */
+function answerValueFor(question: CustomQuestionDefinition) {
+  const answer = selectedEntry.value?.proposal.answers.find(answer => answer.questionId === question.id)
+
+  return answer?.value ?? getEmptyCustomQuestionAnswerValue(question)
 }
 
 watch(() => props.entries, (nextEntries) => {
@@ -187,11 +191,12 @@ watch(selectedId, () => {
           v-if="props.questions.length > 0"
           class="space-y-5 border-t border-black/8 pt-5 dark:border-white/[0.08]"
         >
-          <TalkProposalAnswerReview
+          <CustomQuestionAnswerReview
             v-for="question in props.questions"
             :key="question.id"
-            :question="question"
-            :answer="answerFor(question.id)"
+            :prompt="question.prompt"
+            :required="question.required"
+            :value="answerValueFor(question)"
           />
         </div>
 

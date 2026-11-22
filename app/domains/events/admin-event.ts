@@ -5,9 +5,9 @@ import type {
   EventType
 } from '~/domains/events/records'
 import {
-  talkProposalQuestionsSchema,
-  type TalkProposalQuestionDefinition
-} from '#shared/domains/talk-proposals/questions'
+  customQuestionsSchema,
+  type CustomQuestionDefinition
+} from '#shared/domains/events/custom-questions'
 
 export interface EventFormState {
   eventType: EventType
@@ -39,7 +39,11 @@ export interface EventFormState {
   talkProposalsEnabled: boolean
   talkProposalOpensAt: string
   talkProposalClosesAt: string
-  talkProposalQuestions: TalkProposalQuestionDefinition[]
+  talkProposalQuestions: CustomQuestionDefinition[]
+  /** Shows participants their next step around check-in. Edited in the builder's "After check-in" group. */
+  checkInFlowEnabled: boolean
+  /** The questions a participant answers after check-in. Edited in the same builder group. */
+  questionnaireQuestions: CustomQuestionDefinition[]
   blindReviewCount: number
   pitchReviewEnabled: boolean
   blindScoreWeightPercent: number
@@ -373,7 +377,9 @@ const eventConfigFormBaseSchema = z.object({
   talkProposalsEnabled: z.boolean(),
   talkProposalOpensAt: z.string().trim(),
   talkProposalClosesAt: z.string().trim(),
-  talkProposalQuestions: talkProposalQuestionsSchema,
+  talkProposalQuestions: customQuestionsSchema,
+  checkInFlowEnabled: z.boolean(),
+  questionnaireQuestions: customQuestionsSchema,
   blindReviewCount: z.number().int().min(0).max(2),
   pitchReviewEnabled: z.boolean(),
   blindScoreWeightPercent: z.number().int().min(0).max(100),
@@ -669,6 +675,8 @@ export function createEmptyEventFormState(): EventFormState {
     talkProposalOpensAt: '',
     talkProposalClosesAt: '',
     talkProposalQuestions: [],
+    checkInFlowEnabled: false,
+    questionnaireQuestions: [],
     blindReviewCount: 1,
     pitchReviewEnabled: false,
     blindScoreWeightPercent: 70,
@@ -789,6 +797,8 @@ export function createEventFormState(event: EventRecord): EventFormState {
     talkProposalOpensAt: toDateTimeLocalValue(event.talkProposalOpensAt),
     talkProposalClosesAt: toDateTimeLocalValue(event.talkProposalClosesAt),
     talkProposalQuestions: event.talkProposalQuestions ?? [],
+    checkInFlowEnabled: event.checkInFlowEnabled ?? false,
+    questionnaireQuestions: event.questionnaireQuestions ?? [],
     blindReviewCount: event.blindReviewCount,
     pitchReviewEnabled: event.pitchReviewEnabled,
     blindScoreWeightPercent: event.blindScoreWeightPercent,
@@ -854,6 +864,10 @@ export function buildEventConfigurationPatch(configForm: EventFormState, eventTy
     talkProposalQuestions: eventType === 'meetup' && configForm.talkProposalsEnabled
       ? configForm.talkProposalQuestions
       : [],
+    checkInFlowEnabled: configForm.checkInFlowEnabled,
+    // The question editor is hidden while the switch is off. The questions are not sent then, so
+    // the event keeps its stored questions and an unfinished hidden question cannot block the save.
+    ...(configForm.checkInFlowEnabled ? { questionnaireQuestions: configForm.questionnaireQuestions } : {}),
     inPersonEvent: configForm.inPersonEvent,
     applicationXProfileVisible: configForm.applicationXProfileVisible,
     applicationLinkedinProfileVisible: configForm.applicationLinkedinProfileVisible,

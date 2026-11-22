@@ -21,12 +21,12 @@ import {
 import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
 import { ApiError } from '#server/http/api-error'
 import {
-  getTalkProposalAnswerIssues,
-  parseTalkProposalAnswersJson,
-  parseTalkProposalQuestionsJson,
-  talkProposalAnswersSchema,
-  type TalkProposalAnswer
-} from '#shared/domains/talk-proposals/questions'
+  parseCustomQuestionAnswersJson,
+  parseCustomQuestionsJson,
+  customQuestionAnswersSchema,
+  type CustomQuestionAnswer
+} from '#shared/domains/events/custom-questions'
+import { getTalkProposalAnswerIssues } from '#shared/domains/talk-proposals/answer-issues'
 
 type EventRecord = typeof events.$inferSelect
 type TalkProposalRecord = typeof talkProposals.$inferSelect
@@ -48,7 +48,7 @@ export const talkProposalContentBodySchema = z.object({
   abstract: z.string().trim().min(1).max(8000),
   demoOrSlidesUrl: z.union([httpUrlSchema, z.literal(''), z.null()]).optional(),
   questionSetRevision: z.number().int().min(0),
-  answers: talkProposalAnswersSchema
+  answers: customQuestionAnswersSchema
 })
 
 export const talkProposalDecisionBodySchema = z.object({
@@ -76,7 +76,7 @@ export function serializeTalkProposal(proposal: TalkProposalRecord) {
     abstract: proposal.abstract,
     demoOrSlidesUrl: proposal.demoOrSlidesUrl,
     questionSetRevision: proposal.questionSetRevision,
-    answers: parseTalkProposalAnswersJson(proposal.answersJson),
+    answers: parseCustomQuestionAnswersJson(proposal.answersJson),
     decisionMessage: proposal.decisionMessage,
     reviewedByUserId: proposal.reviewedByUserId,
     submittedAt: proposal.submittedAt,
@@ -210,7 +210,7 @@ async function assertCurrentOwnerMutationEligibility(
 export function assertTalkProposalAnswers(
   event: Pick<EventRecord, 'talkProposalQuestionsJson' | 'talkProposalQuestionsRevision'>,
   questionSetRevision: number,
-  answers: TalkProposalAnswer[],
+  answers: CustomQuestionAnswer[],
   requireComplete: boolean
 ) {
   assertGuard(event.talkProposalQuestionsRevision === questionSetRevision, {
@@ -219,7 +219,7 @@ export function assertTalkProposalAnswers(
     message: 'The Call for talks questions changed. Review them before saving your proposal.'
   })
   const issues = getTalkProposalAnswerIssues(
-    parseTalkProposalQuestionsJson(event.talkProposalQuestionsJson),
+    parseCustomQuestionsJson(event.talkProposalQuestionsJson),
     answers,
     requireComplete
   )
@@ -342,7 +342,7 @@ async function transitionOwnTalkProposal(
     assertTalkProposalAnswers(
       event,
       proposal!.questionSetRevision,
-      parseTalkProposalAnswersJson(proposal!.answersJson),
+      parseCustomQuestionAnswersJson(proposal!.answersJson),
       true
     )
   }

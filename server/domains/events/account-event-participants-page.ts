@@ -3,6 +3,7 @@ import { and, asc, count, desc, eq, isNull, sql } from 'drizzle-orm'
 import { assertEventParticipantVisibilityAccess } from '#server/auth/authorization'
 import { getAdminApplicationWithdrawalAvailability } from '#server/domains/applications'
 import { effectivelyCheckedInCondition } from '#server/domains/applications/check-in'
+import { parseQuestionnaireAnswersJson } from '#server/domains/applications/check-in-flow'
 import { participantSearchTextMatches } from '#shared/domains/applications/participant-search'
 import type { AccountEventParticipantsPage } from '#shared/domains/events/account-event-participants-page'
 import { accountEventParticipantsPageSchema } from '#shared/domains/events/account-event-participants-page'
@@ -162,7 +163,8 @@ function readParticipantRows(database: AppDatabase, eventId: string, application
   return database
     .select({
       application: participantApplicationProjection,
-      user: participantUserProjection
+      user: participantUserProjection,
+      questionnaireAnswersJson: userApplications.questionnaireAnswersJson
     })
     .from(userApplications)
     .innerJoin(users, eq(users.id, userApplications.userId))
@@ -206,6 +208,7 @@ async function listParticipantApplications(
 
   return await Promise.all(rows.map(async row => ({
     ...row.application,
+    questionnaireAnswers: parseQuestionnaireAnswersJson(row.questionnaireAnswersJson),
     isEventStaff: false,
     user: row.user,
     adminWithdrawal: await getAdminApplicationWithdrawalAvailability(

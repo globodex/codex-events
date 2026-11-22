@@ -48,7 +48,7 @@ import { defineAccountEventPageRoute } from './account-event-page-contract'
 import { buildAccountEventTabVisibility } from './account-event-tab-visibility'
 import { resolveEventCertificateDateIso } from '#shared/domains/events/certificates'
 import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
-import { parseTalkProposalQuestionsJson } from '#shared/domains/talk-proposals/questions'
+import { parseCustomQuestionsJson } from '#shared/domains/events/custom-questions'
 
 type EventRecord = typeof events.$inferSelect
 type ApplicationRecord = typeof userApplications.$inferSelect
@@ -404,7 +404,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
       discordServerUrl: canViewRestrictedDetails ? event.discordServerUrl : null,
       slidesUrl: canViewRestrictedDetails ? event.slidesUrl : null,
       simplifiedClaimingEnabled: event.simplifiedClaimingEnabled,
-      talkProposalQuestions: parseTalkProposalQuestionsJson(event.talkProposalQuestionsJson),
+      talkProposalQuestions: parseCustomQuestionsJson(event.talkProposalQuestionsJson),
       talkProposalQuestionsRevision: event.talkProposalQuestionsRevision,
       hasGallery: galleryExists
     }
@@ -450,7 +450,10 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
       participantRank: participation.rankSummary as AccountEventEntryRankSummary | null,
       tabVisibility,
       applicationStatus: application?.status ?? null,
-      lumaSyncStatus: application?.lumaSyncStatus ?? null
+      lumaSyncStatus: application?.lumaSyncStatus ?? null,
+      checkInFlowEnabled: event.checkInFlowEnabled,
+      questionnaireQuestions: parseCustomQuestionsJson(event.questionnaireQuestionsJson),
+      questionnaireCompletedAt: application?.questionnaireCompletedAt ?? null
     }
   }
 })

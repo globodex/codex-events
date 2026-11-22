@@ -42,6 +42,7 @@ import {
   serializeEventTermsDocument
 } from '#server/domains/events'
 import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
+import { parseQuestionnaireAnswersJson } from '#server/domains/applications/check-in-flow'
 import {
   buildApplicationLumaSyncQueueMessage,
   enqueueApplicationLumaSyncMessage,
@@ -763,6 +764,8 @@ export function serializeUserApplication(
     applicationTermsDocumentId: application.applicationTermsDocumentId,
     applicationTermsAcceptedAt: application.applicationTermsAcceptedAt,
     registrationDetailsJson: application.registrationDetailsJson,
+    questionnaireCompletedAt: application.questionnaireCompletedAt,
+    questionnaireAnswers: parseQuestionnaireAnswersJson(application.questionnaireAnswersJson),
     createdAt: application.createdAt,
     updatedAt: application.updatedAt,
     ...(options?.user

@@ -120,7 +120,7 @@ describe('account event parent page request topology', () => {
     expect(talkControlSource).toContain('hasExistingProposal')
     expect(talkControlSource).toContain('<AppDateTimePicker')
     expect(talkControlSource).not.toContain('<AppDateTimeInput')
-    expect(talkControlSource).toContain('<AdminTalkProposalQuestionEditor')
+    expect(talkControlSource).toContain('<AdminCustomQuestionEditor')
     expect(talkControlSource).not.toContain('useApiClient')
     expect(talkControlSource).not.toContain('onMounted')
     expect(simplifiedClaimingPanelSource).toContain('initialStatus: AccountEventSimplifiedClaimingStatus')

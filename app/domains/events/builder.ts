@@ -588,6 +588,7 @@ export type EventBuilderSettingsGroupId
     | 'submission-requirements'
     | 'luma-sync'
     | 'credits'
+    | 'after-check-in'
     | 'images'
     | 'terms'
 
@@ -724,6 +725,17 @@ export const eventBuilderSettingsGroupDefinitions: readonly EventBuilderSettings
     parity: true,
     editOnly: false,
     isComplete: (_form, event) => event !== null
+  },
+  {
+    id: 'after-check-in',
+    icon: 'i-lucide-list-checks',
+    title: 'After check-in',
+    description: 'Tell participants what to do when they arrive, and ask them a few questions.',
+    appliesTo: allTypes,
+    parity: false,
+    // These settings are saved with an event update, so the group needs an existing event.
+    editOnly: true,
+    isComplete: form => form.checkInFlowEnabled
   },
   {
     id: 'images',
