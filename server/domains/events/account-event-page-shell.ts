@@ -135,7 +135,7 @@ export async function loadAccountEventPageShell(
     authorization: context.authorization,
     applicationStatus: application?.status ?? null,
     hasRetainedTalkProposal: Boolean(talkProposal),
-    hasProgram: Boolean(programItemId),
+    hasAgenda: serializedEvent.agendaItems.length > 0,
     hasReadableChallenges: listReadableEventChallenges({
       event: context.event,
       authorization: context.authorization,

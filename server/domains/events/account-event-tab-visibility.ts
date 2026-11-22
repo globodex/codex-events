@@ -11,7 +11,8 @@ export function buildAccountEventTabVisibility(input: {
   hasGallery: boolean
   /** The caller adds photos as a participant (`mayAddParticipantPhotos`). */
   canAddParticipantPhotos: boolean
-  hasProgram: boolean
+  /** The event has at least one public agenda block. */
+  hasAgenda: boolean
   /** The caller can read at least one published challenge (`listReadableEventChallenges`). */
   hasReadableChallenges: boolean
   hasPublishedPrizes: boolean
@@ -25,7 +26,7 @@ export function buildAccountEventTabVisibility(input: {
     hasCreditInventory,
     hasGallery,
     canAddParticipantPhotos,
-    hasProgram,
+    hasAgenda,
     hasReadableChallenges,
     hasPublishedPrizes,
     hasPublishedStaff
@@ -47,9 +48,9 @@ export function buildAccountEventTabVisibility(input: {
     availableTabs.push('prizes')
   }
 
-  availableTabs.push('details')
-
-  if (hasProgram) {
+  // The Agenda tab shows the public agenda blocks to everyone, and the sessions to people who
+  // may read the program.
+  if (hasAgenda) {
     availableTabs.push('program')
   }
 
@@ -134,7 +135,6 @@ export function buildAccountEventTabVisibility(input: {
     showPrizeConfiguration: isCompetitionEvent
       && authorization.isEventAdmin
       && !['winners_announced', 'completed'].includes(event.state),
-    showAgendaConfigurationInDetails: authorization.isEventAdmin,
     hasPublishedPrizes,
     hasPublishedStaff,
     hasCreditInventory,

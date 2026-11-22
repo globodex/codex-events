@@ -443,7 +443,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
       hasCreditInventory: credits.participantCredits.some(offer => offer.totalCount > 0),
       hasGallery: galleryExists,
       canAddParticipantPhotos: mayAddParticipantPhotos({ event, viewer: photoViewer, application }),
-      hasProgram: Boolean(programItemId),
+      hasAgenda: serializedEvent.agendaItems.length > 0,
       hasReadableChallenges: challenges.length > 0,
       hasPublishedPrizes: Boolean(publishedPrize),
       hasPublishedStaff: Boolean(publishedStaffAssignment)

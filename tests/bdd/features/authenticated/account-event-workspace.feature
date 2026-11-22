@@ -69,7 +69,7 @@ Feature: Account event workspace browser topology
     Examples:
       | persona        | entry    | tab        | family     |
       | event_admin    | overview | operations | operations |
-      | platform_admin | details  | gallery    | gallery    |
+      | platform_admin | credits  | gallery    | gallery    |
 
   Scenario Outline: global account workspaces use one critical read
     Given the saved "<persona>" local session state exists for account topology

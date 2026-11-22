@@ -5,10 +5,24 @@ import type { ParticipantEventProgram, ProgramSession } from '#shared/domains/ev
 
 import AccountEventProgramFloorPlan from '~/components/account/events/molecules/AccountEventProgramFloorPlan.vue'
 import AccountEventProgramTimeline from '~/components/account/events/organisms/AccountEventProgramTimeline.vue'
+import type { PublicEventAgendaItem } from '~/domains/events/presentation'
 
 const props = defineProps<{
   program: ParticipantEventProgram
+  /** The event's public agenda blocks. One of them holds the program. */
+  agendaItems: PublicEventAgendaItem[]
 }>()
+
+// The public agenda blocks before and after the program's block. The sessions cover the block itself.
+const outsideItems = computed(() => {
+  const programStart = Date.parse(props.program.agendaItem.startsAt)
+  const programEnd = Date.parse(props.program.agendaItem.endsAt)
+
+  return props.agendaItems.filter((item) => {
+    const start = Date.parse(item.startsAt)
+    return item.id !== props.program.agendaItem.id && (start < programStart || start >= programEnd)
+  })
+})
 
 const selectedSessionId = shallowRef<string | null>(null)
 const mapSelection = shallowRef<{ floorPlanId: string, roomId: string | null } | null>(null)
@@ -73,6 +87,7 @@ function returnToSession() {
         v-if="hasSessions"
         :tracks="program.tracks"
         :floor-plans="program.floorPlans"
+        :outside-items="outsideItems"
         :starts-at="program.agendaItem.startsAt"
         :ends-at="program.agendaItem.endsAt"
         :selected-session-id="selectedSessionId"

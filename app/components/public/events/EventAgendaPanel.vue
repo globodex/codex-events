@@ -128,7 +128,7 @@ const agendaTimeChipClasses = 'flex min-w-0 items-center justify-center rounded-
                 </p>
                 <p
                   v-if="item.details"
-                  class="mt-2 max-w-[62ch] text-sm leading-6 text-neutral-600 dark:text-[#AFAFAF]"
+                  class="mt-2 max-w-[62ch] whitespace-pre-line text-sm leading-6 text-neutral-600 dark:text-[#AFAFAF]"
                 >
                   {{ item.details }}
                 </p>

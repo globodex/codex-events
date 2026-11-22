@@ -13,6 +13,8 @@ const props = defineProps<{
   discordServerUrl?: string | null
   slidesUrl?: string | null
   showAddress?: boolean
+  /** The event workspace shows registered people the event details only. */
+  hideRegistrationWindow?: boolean
 }>()
 
 function formatAttendanceLabel(event: Pick<PublicEvent, 'inPersonEvent'>) {
@@ -108,13 +110,14 @@ const timelineEntries = computed(() => [
     title: null,
     rows: eventDetailRows.value
   }
-])
+].filter(entry => entry.id !== 'registration' || !props.hideRegistrationWindow))
 </script>
 
 <template>
   <section
     data-testid="public-event-timeline"
-    class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]"
+    class="grid grid-cols-1 gap-6"
+    :class="{ 'lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]': timelineEntries.length > 1 }"
   >
     <div
       v-for="entry in timelineEntries"

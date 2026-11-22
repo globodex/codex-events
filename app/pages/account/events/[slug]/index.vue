@@ -31,7 +31,7 @@ import type {
   AccountJudgeAssignmentWorkspacePage
 } from '#shared/domains/events/account-event-judging-page'
 import type { AccountEventSettingsPage } from '#shared/domains/events/account-event-settings-page'
-import type { ParticipantEventProgram } from '#shared/domains/events/program'
+import type { AccountEventAgendaPage } from '#shared/domains/events/program'
 import type { AccountEventPageVisibility } from '~/domains/events/account-workspace-page'
 import {
   buildVersionedEventImageUrl,
@@ -168,10 +168,7 @@ const isDirectNonEntryNavigation = computed(() =>
   && getAccountEventPageForTab(requestedWorkspaceTab.value) !== 'entry'
 )
 const entryPageRequest = useAccountEventPageRequest<AccountEventEntryPage>(slug, 'entry', {
-  enabled: () => !isDirectNonEntryNavigation.value,
-  query: computed(() => requestedTab.value === 'details'
-    ? { includeAdminEventConfiguration: true }
-    : {})
+  enabled: () => !isDirectNonEntryNavigation.value
 })
 const initialPageFamily = resolveInitialAccountEventPageFamily({
   isDirectNonEntryNavigation: isDirectNonEntryNavigation.value,
@@ -225,9 +222,6 @@ const talkProposalReviews = shallowRef<AccountEventEntryTalkProposalReview[]>([]
 const participantRank = shallowRef<AccountEventEntryRankSummary | null>(null)
 const isEntryPending = computed(() => entryPageRequest.pending.value || selectedPagePending.value)
 const entryError = computed(() => entryPageRequest.error.value ?? selectedPageError.value)
-const entryErrorMessage = computed(() => entryError.value
-  ? normalizeParticipantApiError(entryError.value).message
-  : '')
 watch([entryPage, pageShell], ([page, shell]) => {
   if (!page) {
     accessRecord.value = shell?.access ?? null
@@ -355,24 +349,14 @@ const canManageParticipantCertificateGeneration = computed(() => {
 const isCertificateGenerationDisabled = computed(() => Boolean(participationRecord.value?.application?.certificateHiddenAt))
 const selectedTrackId = computed(() => participationRecord.value?.application?.selectedTrackId ?? null)
 const accountEventTracks = computed(() => event.value?.tracks ?? [])
-const selectedParticipantTrack = computed(() => {
-  const normalizedSelectedTrackId = selectedTrackId.value?.trim() ?? ''
-
-  if (!normalizedSelectedTrackId) {
-    return null
-  }
-
-  return accountEventTracks.value.find(track => track.id === normalizedSelectedTrackId) ?? null
-})
 const canSelectParticipantTrack = computed(() =>
   accountTrackViewerMode.value === 'participant'
   && (applicationStatus.value === 'submitted' || applicationStatus.value === 'approved')
   && event.value?.state !== 'completed'
   && accountEventTracks.value.length > 0
 )
-const showTrackSelectionOverviewPrompt = computed(() =>
-  canSelectParticipantTrack.value && !selectedParticipantTrack.value
-)
+// The track list on Overview. The selected track notice links to it.
+const eventTracksPanelId = 'event-tracks'
 const selectedBuildTrackOverviewTrack = computed(() => {
   const currentEvent = event.value
 
@@ -442,7 +426,6 @@ async function setCertificateGenerationDisabled(disabled: boolean) {
 const tabAccess = computed(() => entryPage.value?.tabVisibility ?? pageShell.value?.tabVisibility ?? {
   availableTabs: ['overview'] as AccountEventWorkspaceTab[],
   showPrizeConfiguration: false,
-  showAgendaConfigurationInDetails: false,
   hasPublishedPrizes: false,
   hasPublishedStaff: false,
   hasCreditInventory: false,
@@ -525,7 +508,7 @@ const workspacePageRequest = useAccountEventPageRequest<AccountEventWorkspacePag
   enabled: () => activeSection.value === 'workspace',
   query: pageState.queryForPage('workspace')
 })
-const programPageRequest = useAccountEventPageRequest<ParticipantEventProgram>(slug, 'program', {
+const programPageRequest = useAccountEventPageRequest<AccountEventAgendaPage>(slug, 'program', {
   enabled: () => activeSection.value === 'program',
   query: pageState.queryForPage('program')
 })
@@ -806,17 +789,15 @@ const teamTabTargetSlug = computed(() =>
 )
 const workspaceTabHref = computed(() => `/account/events/${slug.value}?tab=workspace`)
 const teamsTabHref = computed(() => buildAccountEventTeamsTabHref(slug.value, teamTabTargetSlug.value))
-const detailsTabHref = computed(() => `/account/events/${slug.value}?tab=details`)
-// Where a participant reads the agenda: the Agenda tab when the event has sessions, otherwise
-// the agenda on the Details tab.
-const agendaHref = computed(() => availableTabs.value.includes('program')
-  ? `/account/events/${slug.value}?tab=program`
-  : detailsTabHref.value)
 // What a participant can open at the event, in the order the next-step card lists it.
 // The card shows every entry after check-in, and the entries that are open before check-in
 // already while the participant still has to check in. Add one entry here for every new activity.
 const participantActivities = computed(() => {
-  const activities = [{ label: 'Agenda', to: agendaHref.value, openBeforeCheckIn: true }]
+  const activities: Array<{ label: string, to: string, openBeforeCheckIn: boolean }> = []
+
+  if (availableTabs.value.includes('program')) {
+    activities.push({ label: 'Agenda', to: `/account/events/${slug.value}?tab=program`, openBeforeCheckIn: true })
+  }
 
   if (availableTabs.value.includes('credits')) {
     activities.push({ label: 'Credits', to: `/account/events/${slug.value}?tab=credits`, openBeforeCheckIn: false })
@@ -974,7 +955,6 @@ const approvedOverviewTeamActionDescription = computed(() => {
 
   return 'Everyone participates through a team. Workspace is where you confirm solo participation or create a team, while Teams is where you browse the wider directory.'
 })
-const approvedOverviewDetailsActionDescription = 'Check the schedule, location, and full address before the event starts.'
 const showTeamAndSubmissionCards = computed(() =>
   isCompetitionEvent.value && event.value !== null && hasEventEnteredSubmissionPhase(event.value)
 )
@@ -1342,16 +1322,16 @@ useSeoMeta({
                     {{ selectedBuildTrackOverviewTrack?.name }}
                   </p>
                   <p class="max-w-[56rem] text-sm leading-6 text-current/85">
-                    This is the track you'll follow for this Build event. Open Details to review track resources or choose another track.
+                    This is the track you'll follow for this Build event. Review its resources or choose another track below.
                   </p>
                 </div>
               </div>
 
               <AppButton
-                :to="detailsTabHref"
+                :to="`#${eventTracksPanelId}`"
                 color="neutral"
                 variant="solid"
-                trailing-icon="i-lucide-arrow-up-right"
+                trailing-icon="i-lucide-arrow-down"
                 class="w-fit shrink-0 rounded-lg bg-white px-4 py-2 text-sky-950 hover:bg-white/90 dark:bg-white dark:text-sky-950 dark:hover:bg-sky-50"
               >
                 Change track
@@ -1520,38 +1500,29 @@ useSeoMeta({
           trailing-icon="i-lucide-arrow-right"
         />
 
-        <section
-          v-if="showTrackSelectionOverviewPrompt"
-          class="rounded-xl !border !border-sky-500/20 !bg-sky-500/[0.08] px-5 py-5 !shadow-[0_12px_32px_-28px_rgba(2,132,199,0.55)] !backdrop-blur-xl dark:!border-sky-300/25 dark:!bg-sky-300/[0.08]"
-          data-testid="account-event-track-selection-prompt"
-        >
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div class="space-y-1">
-              <h2 class="text-lg font-semibold text-highlighted dark:text-white">
-                Choose your track
-              </h2>
-              <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                Open Details and choose the track you want to participate in before reviewing track resources.
-              </p>
-            </div>
+        <LazyEventTimeline
+          :event="event"
+          :discord-server-url="event.discordServerUrl ?? null"
+          :slides-url="event.slidesUrl ?? null"
+          :show-address="canViewRestrictedEventDetails"
+          hide-registration-window
+        />
 
-            <AppButton
-              :to="detailsTabHref"
-              color="neutral"
-              variant="solid"
-              trailing-icon="i-lucide-arrow-up-right"
-              class="w-fit rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-            >
-              Open Details
-            </AppButton>
-          </div>
-        </section>
+        <LazyAccountEventTracksPanel
+          :id="eventTracksPanelId"
+          class="scroll-mt-6"
+          :event-type="event.eventType"
+          :tracks="accountEventTracks"
+          :selected-track-id="selectedTrackId"
+          :can-select-track="canSelectParticipantTrack"
+          :pending-track-id="pendingSelectedTrackId"
+          :viewer-mode="accountTrackViewerMode"
+          :staff-track-id="currentStaffTrackId"
+          @select-track="selectParticipantTrack"
+        />
 
         <template v-if="applicationStatus === 'approved'">
-          <section
-            v-if="showApprovedOverviewActions"
-            class="grid gap-4 lg:grid-cols-2"
-          >
+          <section v-if="showApprovedOverviewActions">
             <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
               <div class="flex h-full flex-col gap-4">
                 <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
@@ -1572,31 +1543,6 @@ useSeoMeta({
                     class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                   >
                     Open Workspace
-                  </AppButton>
-                </div>
-              </div>
-            </div>
-
-            <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
-              <div class="flex h-full flex-col gap-4">
-                <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
-                  <h2 class="text-lg font-semibold text-highlighted dark:text-white">
-                    Review the event details
-                  </h2>
-                  <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                    {{ approvedOverviewDetailsActionDescription }}
-                  </p>
-                </div>
-
-                <div>
-                  <AppButton
-                    :to="detailsTabHref"
-                    color="neutral"
-                    variant="solid"
-                    trailing-icon="i-lucide-arrow-up-right"
-                    class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-                  >
-                    Open Details
                   </AppButton>
                 </div>
               </div>
@@ -1817,51 +1763,6 @@ useSeoMeta({
       </section>
 
       <section
-        v-else-if="activeSection === 'details'"
-        id="account-tab-panel-details"
-        role="tabpanel"
-        aria-labelledby="account-tab-details"
-        class="space-y-7"
-      >
-        <LazyEventTimeline
-          :event="event"
-          :discord-server-url="event.discordServerUrl ?? null"
-          :slides-url="event.slidesUrl ?? null"
-          :show-address="canViewRestrictedEventDetails"
-        />
-
-        <LazyAccountEventTracksPanel
-          :event-type="event.eventType"
-          :tracks="accountEventTracks"
-          :selected-track-id="selectedTrackId"
-          :can-select-track="canSelectParticipantTrack"
-          :pending-track-id="pendingSelectedTrackId"
-          :viewer-mode="accountTrackViewerMode"
-          :staff-track-id="currentStaffTrackId"
-          @select-track="selectParticipantTrack"
-        />
-
-        <LazyEventAgendaPanel
-          :agenda-items="event.agendaItems"
-          :program="programLink"
-        />
-
-        <LazyAccountEventAdminSettingsPanel
-          v-if="tabAccess.showAgendaConfigurationInDetails"
-          :event-id="workspaceEventId"
-          :event-data="entryPage?.adminSettingsEvent ?? null"
-          :can-manage="canAdmin"
-          :is-loading="isEntryPending"
-          :load-error-message="entryErrorMessage"
-          program-settings-mode="details"
-          :show-terms-management="false"
-          :show-criteria-configuration="false"
-          :show-prize-configuration="false"
-          @updated="refreshAccountEvent"
-        />
-      </section>
-
-      <section
         v-else-if="activeSection === 'program'"
         id="account-tab-panel-program"
         role="tabpanel"
@@ -1873,11 +1774,18 @@ useSeoMeta({
           title="Agenda unavailable"
           :description="normalizeParticipantApiError(programPageRequest.error.value).message"
         />
-        <LazyAccountEventProgramAgenda
-          v-else-if="programPage"
-          :key="programPage.eventId"
-          :program="programPage"
-        />
+        <template v-else-if="programPage">
+          <LazyAccountEventProgramAgenda
+            v-if="programPage.program"
+            :key="programPage.program.eventId"
+            :program="programPage.program"
+            :agenda-items="event.agendaItems"
+          />
+          <LazyEventAgendaPanel
+            v-else
+            :agenda-items="event.agendaItems"
+          />
+        </template>
         <p
           v-else
           role="status"
@@ -2116,6 +2024,7 @@ useSeoMeta({
         id="account-tab-panel-settings"
         role="tabpanel"
         aria-labelledby="account-tab-settings"
+        class="space-y-8"
       >
         <LazyAccountEventAdminSettingsPanel
           :event-id="workspaceEventId"
@@ -2126,6 +2035,18 @@ useSeoMeta({
           program-settings-mode="settings"
           :show-terms-management="true"
           :show-criteria-configuration="true"
+          :show-prize-configuration="false"
+          @updated="refreshSettingsPage"
+        />
+        <LazyAccountEventAdminSettingsPanel
+          :event-id="workspaceEventId"
+          :event-data="settingsPage?.event ?? null"
+          :can-manage="canAdmin"
+          :is-loading="settingsPageIsLoading"
+          :load-error-message="settingsPageErrorMessage"
+          program-settings-mode="details"
+          :show-terms-management="false"
+          :show-criteria-configuration="false"
           :show-prize-configuration="false"
           @updated="refreshSettingsPage"
         />

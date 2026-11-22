@@ -2,12 +2,14 @@
 import type { EventFloorPlan, ProgramSession, ProgramTrack } from '#shared/domains/events/program'
 
 import AccountEventProgramSession from '~/components/account/events/molecules/AccountEventProgramSession.vue'
-import { formatEventTime, getAgendaItemPresentation } from '~/domains/events/presentation'
+import { formatEventTime, getAgendaItemPresentation, type PublicEventAgendaItem } from '~/domains/events/presentation'
 import { formatMinutes, getSessionPhase, type SessionPhase } from '~/domains/events/program-timeline'
 
 const props = defineProps<{
   tracks: ProgramTrack[]
   floorPlans: EventFloorPlan[]
+  /** Public agenda blocks before and after the program, for example "Networking starts". */
+  outsideItems: PublicEventAgendaItem[]
   startsAt: string
   endsAt: string
   selectedSessionId: string | null
@@ -37,13 +39,22 @@ const trackSessions = computed(() => props.tracks.flatMap((track, index) =>
   track.sessions.map(session => ({ session, column: index + 3 }))
 ).sort((left, right) => left.session.startsAfterMinutes - right.session.startsAfterMinutes || left.column - right.column))
 
+// Where each public block outside the program sits, in minutes since the program started.
+const outsideEntries = computed(() => props.outsideItems.map(item => ({
+  item,
+  offset: (Date.parse(item.startsAt) - baseTime.value) / minuteMs
+})))
+
 const nextStart = computed(() => Math.min(...trackSessions.value
   .map(({ session }) => session.startsAfterMinutes)
   .filter(start => start > nowMinutes.value)))
 
-// Every moment a session starts or ends. Each boundary opens one grid row.
+// Every moment a session or an outside block starts, or a session ends. Each boundary opens one grid row.
 const boundaries = computed(() => {
-  const starts = new Set(trackSessions.value.map(({ session }) => session.startsAfterMinutes))
+  const starts = new Set([
+    ...trackSessions.value.map(({ session }) => session.startsAfterMinutes),
+    ...outsideEntries.value.map(({ offset }) => offset)
+  ])
   const offsets = new Set(starts)
   for (const { session } of trackSessions.value) {
     offsets.add(session.startsAfterMinutes + session.durationMinutes)
@@ -99,8 +110,16 @@ function phaseLabel(phase: SessionPhase, session: ProgramSession) {
   return undefined
 }
 
+// The grid row that starts at each boundary.
+const rows = computed(() => new Map(boundaries.value.map(({ offset }, index) => [offset, index + 2])))
+
+// The outside blocks span all tracks.
+const outsidePlacements = computed(() => outsideEntries.value.map(({ item, offset }) => ({
+  item,
+  style: { gridColumn: '3 / -1', gridRow: rows.value.get(offset) }
+})))
+
 const placements = computed(() => {
-  const rows = new Map(boundaries.value.map(({ offset }, index) => [offset, index + 2]))
   const rooms = new Map(props.floorPlans.flatMap(plan =>
     plan.rooms.map(room => [`${plan.id}/${room.id}`, room.name] as const)
   ))
@@ -118,7 +137,7 @@ const placements = computed(() => {
         endsAt: atOffset(end)
       }, false).timeLabel,
       roomName: session.room ? rooms.get(`${session.room.floorPlanId}/${session.room.roomId}`) : undefined,
-      style: { gridColumn: column, gridRow: `${rows.get(session.startsAfterMinutes)} / ${rows.get(end)}` }
+      style: { gridColumn: column, gridRow: `${rows.value.get(session.startsAfterMinutes)} / ${rows.value.get(end)}` }
     }
   })
 })
@@ -186,6 +205,24 @@ const placements = computed(() => {
           class="absolute left-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-success ring-4 ring-success/25"
           :style="{ top: nowMarker.top }"
         />
+      </div>
+
+      <!-- A public block outside the program has no room, so it is shown but cannot be selected. -->
+      <div
+        v-for="entry in outsidePlacements"
+        :key="entry.item.id"
+        class="m-1 rounded-xl border border-default bg-default px-3 py-2.5"
+        :style="entry.style"
+      >
+        <p class="break-words text-sm font-semibold leading-snug text-highlighted">
+          {{ entry.item.title }}
+        </p>
+        <p
+          v-if="entry.item.details"
+          class="mt-1 whitespace-pre-line break-words text-xs text-muted"
+        >
+          {{ entry.item.details }}
+        </p>
       </div>
 
       <AccountEventProgramSession

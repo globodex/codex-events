@@ -97,6 +97,7 @@ describe('account-event page shell request topology', () => {
     serializeAccountEvent.mockReturnValue({
       id: 'event_1',
       slug: 'fixture-meetup',
+      agendaItems: [],
       name: 'Fixture Meetup',
       eventType: 'meetup',
       state: 'registration_open',

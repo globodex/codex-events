@@ -11,7 +11,6 @@ export const accountEventWorkspacePageByTab: Readonly<Record<AccountEventWorkspa
   'overview': 'entry',
   'credits': 'entry',
   'prizes': 'prizes',
-  'details': 'entry',
   'program': 'program',
   'challenges': 'entry',
   'call-for-talks': 'entry',
@@ -63,7 +62,6 @@ export interface AccountEventTabAccessOptions {
 export interface AccountEventTabAccess {
   availableTabs: AccountEventWorkspaceTab[]
   showPrizeConfiguration: boolean
-  showAgendaConfigurationInDetails: boolean
 }
 
 export interface AccountEventWorkspaceBackLink {
@@ -76,7 +74,6 @@ const defaultAccountEventTabLabels: Record<AccountEventWorkspaceTab, string> = {
   'credits': 'Credits',
   'workspace': 'Workspace',
   'prizes': 'Prizes',
-  'details': 'Details',
   'program': 'Agenda',
   'challenges': 'Challenges',
   'call-for-talks': 'Call for talks',
@@ -179,8 +176,6 @@ export function getAccountEventTabAccess(
     availableTabs.push('prizes')
   }
 
-  availableTabs.push('details')
-
   if (eventType === 'meetup' && options.talkProposalsEnabled && (
     hasEligibleTalkProposalApplicant
     || hasRetainedTalkProposal
@@ -246,7 +241,6 @@ export function getAccountEventTabAccess(
 
   return {
     availableTabs,
-    showPrizeConfiguration: isCompetitionEvent && canManage && !['winners_announced', 'completed'].includes(eventState ?? ''),
-    showAgendaConfigurationInDetails: canManage
+    showPrizeConfiguration: isCompetitionEvent && canManage && !['winners_announced', 'completed'].includes(eventState ?? '')
   }
 }

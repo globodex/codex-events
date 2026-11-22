@@ -14,8 +14,13 @@ import { measureRequestPhase } from '#server/http/request-timing'
 
 type EventRecord = typeof events.$inferSelect
 
+/** Event admins and confirmed participants read the program. */
+export function canViewEventProgram(isEventAdmin: boolean, approved: boolean) {
+  return isEventAdmin || approved
+}
+
 export function assertProgramViewAccess(isEventAdmin: boolean, approved: boolean) {
-  if (!isEventAdmin && !approved) {
+  if (!canViewEventProgram(isEventAdmin, approved)) {
     throw new ApiError({ statusCode: 403, code: 'event_program_access_required', message: 'Only confirmed participants can open this agenda.' })
   }
 }
@@ -145,11 +150,12 @@ export async function deleteAdminEventProgram(h3Event: H3Event, eventId: string)
   return { program: null, floorPlans: await listEventFloorPlans(database, eventId) }
 }
 
-export async function loadParticipantEventProgram(database: AppDatabase, event: EventRecord): Promise<ParticipantEventProgram> {
+/** The event's program for a person who may read it, or null when the event has none. */
+export async function loadParticipantEventProgram(database: AppDatabase, event: EventRecord): Promise<ParticipantEventProgram | null> {
   const row = await findEventProgramRow(database, event.id)
   const agendaItem = row && getProgramAgendaItem(event, row.agendaItemId)
   if (!row || !agendaItem) {
-    throw new ApiError({ statusCode: 404, code: 'event_program_not_found', message: 'This agenda is unavailable.' })
+    return null
   }
 
   return {

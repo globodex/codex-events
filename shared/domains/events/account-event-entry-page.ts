@@ -243,7 +243,6 @@ export const accountEventEntryTabs = [
   'overview',
   'credits',
   'prizes',
-  'details',
   'program',
   'challenges',
   'call-for-talks',
@@ -266,7 +265,6 @@ export type AccountEventEntryTab = (typeof accountEventEntryTabs)[number]
 export interface AccountEventEntryTabVisibility {
   availableTabs: AccountEventEntryTab[]
   showPrizeConfiguration: boolean
-  showAgendaConfigurationInDetails: boolean
   hasPublishedPrizes: boolean
   hasPublishedStaff: boolean
   hasCreditInventory: boolean
@@ -520,7 +518,6 @@ const accountEventEntryRankSummarySchema = z.object({
 const accountEventEntryTabVisibilitySchema = z.object({
   availableTabs: z.array(z.enum(accountEventEntryTabs)),
   showPrizeConfiguration: z.boolean(),
-  showAgendaConfigurationInDetails: z.boolean(),
   hasPublishedPrizes: z.boolean(),
   hasPublishedStaff: z.boolean(),
   hasCreditInventory: z.boolean(),

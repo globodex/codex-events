@@ -40,7 +40,7 @@ describe('isShellNavigationLinkActive', () => {
     expect(isShellNavigationLinkActive('/account/events/berlin', 'teams', '/account/staff', {
       accountEventNavigationMode: 'staff'
     })).toBe(true)
-    expect(isShellNavigationLinkActive('/account/events/berlin', 'details', '/account/staff', {
+    expect(isShellNavigationLinkActive('/account/events/berlin', 'program', '/account/staff', {
       accountEventNavigationMode: 'staff'
     })).toBe(true)
     expect(isShellNavigationLinkActive('/account/events/berlin', 'judging', '/account/staff', {
@@ -55,7 +55,7 @@ describe('isShellNavigationLinkActive', () => {
     expect(isShellNavigationLinkActive('/account/events/berlin', undefined, '/account/admin', {
       accountEventNavigationMode: 'admin'
     })).toBe(true)
-    expect(isShellNavigationLinkActive('/account/events/berlin', 'details', '/account/admin', {
+    expect(isShellNavigationLinkActive('/account/events/berlin', 'program', '/account/admin', {
       accountEventNavigationMode: 'admin'
     })).toBe(true)
     expect(isShellNavigationLinkActive('/account/events/berlin', 'prizes', '/account/admin', {

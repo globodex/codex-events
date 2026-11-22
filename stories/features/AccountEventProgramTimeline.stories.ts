@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from '@storybook-vue/nuxt'
 import AccountEventProgramTimeline from '~/components/account/events/organisms/AccountEventProgramTimeline.vue'
-import { buildDayProgram } from './fixtures/build-day.fixtures'
+import { buildDayAgendaItems, buildDayProgram } from './fixtures/build-day.fixtures'
 
 const meta = {
   title: 'Participant/Build Time/Timeline',
   component: AccountEventProgramTimeline,
   args: {
     tracks: buildDayProgram.tracks,
+    outsideItems: buildDayAgendaItems.slice(1),
     floorPlans: buildDayProgram.floorPlans,
     startsAt: buildDayProgram.agendaItem.startsAt,
     endsAt: buildDayProgram.agendaItem.endsAt,

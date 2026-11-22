@@ -94,3 +94,11 @@ export const participantEventProgramSchema = z.object({
 })
 
 export type ParticipantEventProgram = z.infer<typeof participantEventProgramSchema>
+
+// The page behind the Agenda tab. `program` is null when the event has no program, and for
+// people who may not read it. They see the public agenda blocks instead.
+export const accountEventAgendaPageSchema = z.object({
+  program: participantEventProgramSchema.nullable()
+})
+
+export type AccountEventAgendaPage = z.infer<typeof accountEventAgendaPageSchema>

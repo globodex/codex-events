@@ -25,15 +25,10 @@ export function getAccountEventSeoContent(
         title: `Prizes | ${eventName} | Codex Events`,
         description: `See the prizes for ${eventName}.`
       }
-    case 'details':
-      return {
-        title: `Details | ${eventName} | Codex Events`,
-        description: `See the schedule, location, and judging details for ${eventName}.`
-      }
     case 'program':
       return {
         title: `Agenda | ${eventName} | Codex Events`,
-        description: `See session times and rooms for ${eventName}.`
+        description: `See the schedule for ${eventName}.`
       }
     case 'challenges':
       return {

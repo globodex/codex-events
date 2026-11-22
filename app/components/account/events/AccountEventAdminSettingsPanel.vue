@@ -1259,7 +1259,9 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
         v-if="props.showProgramSettings"
         class="space-y-6"
       >
+        <!-- Settings also shows this panel in its details mode, so only the settings form carries the link to the event builder. -->
         <div
+          v-if="props.programSettingsMode !== 'details'"
           data-testid="event-builder-settings-banner"
           class="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-black/8 bg-white/78 p-4 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] dark:border-white/[0.08] dark:bg-[#151515]/64"
         >

@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from '@storybook-vue/nuxt'
 import AccountEventProgramAgenda from '~/components/account/events/organisms/AccountEventProgramAgenda.vue'
-import { buildDayProgram } from './fixtures/build-day.fixtures'
+import { buildDayAgendaItems, buildDayProgram } from './fixtures/build-day.fixtures'
 
 const meta = {
   title: 'Participant/Build Time/Agenda',
   component: AccountEventProgramAgenda,
-  args: { program: buildDayProgram },
+  args: { program: buildDayProgram, agendaItems: buildDayAgendaItems },
   parameters: { controls: { disable: true } }
 } satisfies Meta<typeof AccountEventProgramAgenda>
 

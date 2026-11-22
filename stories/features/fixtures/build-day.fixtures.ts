@@ -29,6 +29,23 @@ export const buildDayUpperFloor: EventFloorPlan = {
   }]
 }
 
+/** The event's public agenda: the block that holds the program, and one block after it. */
+export const buildDayAgendaItems = [{
+  id: 'build-time',
+  title: 'Build Time',
+  details: null,
+  startsAt: '2026-10-17T10:00:00Z',
+  endsAt: '2026-10-17T12:00:00Z',
+  displayOrder: 0
+}, {
+  id: 'networking',
+  title: 'Networking starts',
+  details: null,
+  startsAt: '2026-10-17T12:00:00Z',
+  endsAt: null,
+  displayOrder: 1
+}]
+
 export const buildDayProgram: ParticipantEventProgram = {
   eventId: 'storybook-build-day',
   eventName: 'Build Day',

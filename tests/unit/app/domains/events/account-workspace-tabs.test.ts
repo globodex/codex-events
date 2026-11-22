@@ -19,7 +19,6 @@ describe('getAccountEventTabAccess', () => {
       'overview': 'entry',
       'credits': 'entry',
       'prizes': 'prizes',
-      'details': 'entry',
       'program': 'program',
       'challenges': 'entry',
       'call-for-talks': 'entry',
@@ -123,9 +122,8 @@ describe('getAccountEventTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: false
     })).toEqual({
-      availableTabs: ['overview', 'details', 'judges', 'staff'],
-      showPrizeConfiguration: false,
-      showAgendaConfigurationInDetails: false
+      availableTabs: ['overview', 'judges', 'staff'],
+      showPrizeConfiguration: false
     })
   })
 
@@ -139,9 +137,8 @@ describe('getAccountEventTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: false
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'prizes', 'details', 'judges', 'staff', 'workspace', 'teams'],
-      showPrizeConfiguration: false,
-      showAgendaConfigurationInDetails: false
+      availableTabs: ['overview', 'credits', 'prizes', 'judges', 'staff', 'workspace', 'teams'],
+      showPrizeConfiguration: false
     })
   })
 
@@ -155,9 +152,8 @@ describe('getAccountEventTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: false
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'details', 'gallery', 'judges', 'staff', 'workspace', 'teams'],
-      showPrizeConfiguration: false,
-      showAgendaConfigurationInDetails: false
+      availableTabs: ['overview', 'credits', 'gallery', 'judges', 'staff', 'workspace', 'teams'],
+      showPrizeConfiguration: false
     })
   })
 
@@ -172,9 +168,8 @@ describe('getAccountEventTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'prizes', 'details', 'gallery', 'judges', 'staff', 'feedback', 'participants', 'certificates', 'teams', 'submissions', 'operations', 'settings'],
-      showPrizeConfiguration: true,
-      showAgendaConfigurationInDetails: true
+      availableTabs: ['overview', 'credits', 'prizes', 'gallery', 'judges', 'staff', 'feedback', 'participants', 'certificates', 'teams', 'submissions', 'operations', 'settings'],
+      showPrizeConfiguration: true
     })
   })
 
@@ -204,9 +199,8 @@ describe('getAccountEventTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: false
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'details', 'judges', 'workspace', 'teams'],
-      showPrizeConfiguration: false,
-      showAgendaConfigurationInDetails: false
+      availableTabs: ['overview', 'credits', 'judges', 'workspace', 'teams'],
+      showPrizeConfiguration: false
     })
   })
 
@@ -220,9 +214,8 @@ describe('getAccountEventTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'details', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams', 'participants'],
-      showPrizeConfiguration: false,
-      showAgendaConfigurationInDetails: false
+      availableTabs: ['overview', 'credits', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams', 'participants'],
+      showPrizeConfiguration: false
     })
   })
 
@@ -356,9 +349,8 @@ describe('getAccountEventTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'prizes', 'details', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams', 'participants', 'certificates', 'submissions', 'judging', 'operations', 'settings'],
-      showPrizeConfiguration: true,
-      showAgendaConfigurationInDetails: true
+      availableTabs: ['overview', 'credits', 'prizes', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams', 'participants', 'certificates', 'submissions', 'judging', 'operations', 'settings'],
+      showPrizeConfiguration: true
     })
   })
 
@@ -375,9 +367,8 @@ describe('getAccountEventTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'details', 'gallery', 'staff', 'feedback', 'participants', 'certificates', 'operations', 'settings'],
-      showPrizeConfiguration: false,
-      showAgendaConfigurationInDetails: true
+      availableTabs: ['overview', 'credits', 'gallery', 'staff', 'feedback', 'participants', 'certificates', 'operations', 'settings'],
+      showPrizeConfiguration: false
     })
   })
 
@@ -392,7 +383,7 @@ describe('getAccountEventTabAccess', () => {
       canJudge: false,
       canManage: false,
       canViewParticipantsAndTeams: false
-    }).availableTabs).toEqual(['overview', 'credits', 'details', 'staff'])
+    }).availableTabs).toEqual(['overview', 'credits', 'staff'])
 
     expect(getAccountEventTabAccess({
       eventType: 'meetup',
@@ -404,7 +395,7 @@ describe('getAccountEventTabAccess', () => {
       canJudge: false,
       canManage: false,
       canViewParticipantsAndTeams: false
-    }).availableTabs).toEqual(['overview', 'details', 'staff'])
+    }).availableTabs).toEqual(['overview', 'staff'])
   })
 
   test.each(['meetup', 'build'] as const)('shows credits to %s event admins without participant inventory', (eventType) => {
@@ -440,9 +431,8 @@ describe('getAccountEventTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: false
     })).toEqual({
-      availableTabs: ['overview', 'prizes', 'details', 'gallery', 'judges', 'staff', 'feedback', 'judging'],
-      showPrizeConfiguration: false,
-      showAgendaConfigurationInDetails: false
+      availableTabs: ['overview', 'prizes', 'gallery', 'judges', 'staff', 'feedback', 'judging'],
+      showPrizeConfiguration: false
     })
   })
 
@@ -456,9 +446,8 @@ describe('getAccountEventTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: false
     })).toEqual({
-      availableTabs: ['overview', 'prizes', 'details', 'judges', 'staff'],
-      showPrizeConfiguration: false,
-      showAgendaConfigurationInDetails: false
+      availableTabs: ['overview', 'prizes', 'judges', 'staff'],
+      showPrizeConfiguration: false
     })
   })
 
@@ -472,9 +461,8 @@ describe('getAccountEventTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'details', 'gallery', 'judges', 'staff', 'feedback', 'participants', 'teams'],
-      showPrizeConfiguration: false,
-      showAgendaConfigurationInDetails: false
+      availableTabs: ['overview', 'credits', 'gallery', 'judges', 'staff', 'feedback', 'participants', 'teams'],
+      showPrizeConfiguration: false
     })
   })
 
@@ -489,9 +477,8 @@ describe('getAccountEventTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'prizes', 'details', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams', 'participants', 'certificates', 'submissions', 'judging', 'operations', 'settings'],
-      showPrizeConfiguration: false,
-      showAgendaConfigurationInDetails: true
+      availableTabs: ['overview', 'credits', 'prizes', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams', 'participants', 'certificates', 'submissions', 'judging', 'operations', 'settings'],
+      showPrizeConfiguration: false
     })
   })
 
@@ -506,9 +493,8 @@ describe('getAccountEventTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: false
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'prizes', 'details', 'judges', 'staff', 'workspace', 'teams'],
-      showPrizeConfiguration: false,
-      showAgendaConfigurationInDetails: false
+      availableTabs: ['overview', 'credits', 'prizes', 'judges', 'staff', 'workspace', 'teams'],
+      showPrizeConfiguration: false
     })
   })
 })

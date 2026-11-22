@@ -15,7 +15,7 @@ import publicEvent from '../../../../server/api/public/events/[slug]/index.get'
 import { eventRoleAssignments, events, userApplications, users } from '../../../../server/database/schema'
 import type { AccountEventEntryPage } from '../../../../shared/domains/events/account-event-entry-page'
 import type { AccountEventPageShell } from '../../../../shared/domains/events/account-event-page-shell'
-import type { AdminEventProgram, EventFloorPlan, EventProgram, ParticipantEventProgram } from '../../../../shared/domains/events/program'
+import type { AdminEventProgram, EventFloorPlan, EventProgram, AccountEventAgendaPage } from '../../../../shared/domains/events/program'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 import { stubAuth0Session } from '../../../support/backend/runtime'
 
@@ -92,9 +92,14 @@ describe('event program routes', () => {
     await harness.d1Database.close()
   })
 
-  async function readAgenda() {
-    const { page } = await readData<{ page: ParticipantEventProgram }>(await harness.request(`${accountPath}/program`))
+  // The Agenda page of the signed-in person. Its program is null for a person who may not read it.
+  async function readAgendaPage() {
+    const { page } = await readData<{ page: AccountEventAgendaPage }>(await harness.request(`${accountPath}/program`))
     return page
+  }
+
+  async function readAgenda() {
+    return (await readAgendaPage()).program!
   }
 
   async function publishProgram(program: EventProgram) {
@@ -204,7 +209,7 @@ describe('event program routes', () => {
 
     for (const viewer of ['pending', 'staff']) {
       signIn(viewer)
-      expect((await harness.request(`${accountPath}/program`)).status).toBe(403)
+      expect((await readAgendaPage()).program).toBeNull()
       expect((await harness.request(replacement.imageUrl)).status).toBe(403)
     }
     signIn('pending')
@@ -214,7 +219,8 @@ describe('event program routes', () => {
       await harness.request(`${accountPath}/rosters?includeEventShell=true`)
     )
     expect(pendingRosters.shell.event.programItemId).toBeNull()
-    expect(pendingRosters.shell.tabVisibility.availableTabs).not.toContain('program')
+    // A pending participant gets the Agenda tab too. It shows the public agenda blocks only.
+    expect(pendingRosters.shell.tabVisibility.availableTabs).toContain('program')
 
     signIn('participant')
     const entry = await readData<{ page: AccountEventEntryPage }>(await harness.request(`${accountPath}/entry`))
@@ -284,6 +290,6 @@ describe('event program routes', () => {
     expect(deleted.program).toBeNull()
     await readData(await harness.request(eventPath, json('PATCH', { agendaItems: [] })))
     signIn('participant')
-    expect((await harness.request(`${accountPath}/program`)).status).toBe(404)
+    expect((await readAgendaPage()).program).toBeNull()
   })
 })
