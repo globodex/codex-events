@@ -240,50 +240,17 @@ export function getParticipationStatusColor(record: EventParticipationRecord) {
   return 'neutral'
 }
 
-export function formatParticipationStageLabel(record: EventParticipationRecord) {
-  if (record.application) {
-    if (record.application.status === 'withdrawn') {
-      return 'Application withdrawn'
-    }
-
-    return 'Application submitted'
-  }
-
-  if (record.latestSubmission?.status === 'submitted' || record.latestSubmission?.status === 'locked') {
-    return 'Project submitted'
-  }
-
-  if (record.latestSubmission?.status === 'draft') {
-    return 'Draft saved'
-  }
-
-  if (record.activeTeam) {
-    return 'Team active'
-  }
-
-  return null
-}
-
-export function getParticipationStageColor(record: EventParticipationRecord) {
-  if (record.application) {
-    return 'neutral'
-  }
-
-  if (record.latestSubmission?.status === 'submitted') {
-    return 'primary'
-  }
-
-  if (record.latestSubmission?.status === 'locked') {
-    return 'info'
-  }
-
-  if (record.latestSubmission?.status === 'draft') {
-    return 'warning'
-  }
-
-  if (record.activeTeam) {
-    return 'primary'
-  }
-
-  return 'neutral'
+/**
+ * Whether a person's own pages show the state of the event beside the person's own status.
+ *
+ * While registration is open, a registered person learns nothing new from "Registration open":
+ * their own status ("Pending review", "Approved") says where they stand. In every other case the
+ * state of the event is shown.
+ */
+export function showsEventStateBesideOwnStatus(
+  eventState: string,
+  applicationStatus: string | null | undefined
+) {
+  return eventState !== 'registration_open'
+    || (applicationStatus !== 'submitted' && applicationStatus !== 'approved')
 }

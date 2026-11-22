@@ -86,7 +86,8 @@ import {
 import { getAccountEventSeoContent } from '~/domains/events/account-workspace-seo'
 import {
   getEventParticipationOutcomeNotice,
-  getSelectedBuildTrackOverviewTrack
+  getSelectedBuildTrackOverviewTrack,
+  showsEventStateBesideOwnStatus
 } from '~/domains/events/participation'
 import {
   formatParticipantApplicationStatus,
@@ -796,11 +797,9 @@ const participantRankTeamName = computed(() =>
   ?? participationRecord.value?.latestTeam?.name
   ?? null
 )
-// While registration is the current event state, a registered person sees only their own status
-// in the header. The registration state tells them nothing new.
+// The header shows the state of the event only when it tells this person something new.
 const showEventStateBadge = computed(() =>
-  event.value?.state !== 'registration_open'
-  || (applicationStatus.value !== 'submitted' && applicationStatus.value !== 'approved')
+  showsEventStateBesideOwnStatus(event.value?.state ?? 'draft', applicationStatus.value)
 )
 const showOverviewApplicationStatusBanner = computed(() =>
   shouldShowParticipantOverviewStatusBanner(applicationStatus.value)

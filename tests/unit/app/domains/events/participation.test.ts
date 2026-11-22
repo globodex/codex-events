@@ -6,9 +6,7 @@ import type {
 } from '../../../../../app/domains/events/participation'
 
 import {
-  formatParticipationStageLabel,
   formatParticipationStatusLabel,
-  getParticipationStageColor,
   getParticipationStatusColor
 } from '../../../../../app/domains/events/participation'
 
@@ -63,11 +61,9 @@ function buildRecord(
 }
 
 describe('event participation badge helpers', () => {
-  test('uses application submitted plus pending when review is still outstanding', () => {
+  test('uses pending review when review is still outstanding', () => {
     const record = buildRecord()
 
-    expect(formatParticipationStageLabel(record)).toBe('Application submitted')
-    expect(getParticipationStageColor(record)).toBe('neutral')
     expect(formatParticipationStatusLabel(record)).toBe('Pending review')
     expect(getParticipationStatusColor(record)).toBe('warning')
   })
@@ -81,7 +77,6 @@ describe('event participation badge helpers', () => {
       })
     })
 
-    expect(formatParticipationStageLabel(record)).toBe('Application submitted')
     expect(formatParticipationStatusLabel(record)).toBe('Approved')
     expect(getParticipationStatusColor(record)).toBe('success')
   })
@@ -95,7 +90,6 @@ describe('event participation badge helpers', () => {
       })
     })
 
-    expect(formatParticipationStageLabel(record)).toBe('Application submitted')
     expect(formatParticipationStatusLabel(record)).toBe('Not approved')
     expect(getParticipationStatusColor(record)).toBe('error')
   })
@@ -120,8 +114,6 @@ describe('event participation badge helpers', () => {
       }
     })
 
-    expect(formatParticipationStageLabel(record)).toBe('Project submitted')
-    expect(getParticipationStageColor(record)).toBe('primary')
     expect(formatParticipationStatusLabel(record)).toBe('Project submitted')
     expect(getParticipationStatusColor(record)).toBe('primary')
   })

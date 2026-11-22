@@ -9,12 +9,11 @@ import {
   getEventDashboardTeamSizeMetaItems
 } from '~/domains/events/presentation'
 import {
-  formatParticipationStageLabel,
   formatParticipationStatusLabel,
   getEventParticipationCertificateAction,
   getEventParticipationPrimaryAction,
-  getParticipationStageColor,
-  getParticipationStatusColor
+  getParticipationStatusColor,
+  showsEventStateBesideOwnStatus
 } from '~/domains/events/participation'
 
 const props = defineProps<{
@@ -24,17 +23,17 @@ const props = defineProps<{
 const primaryAction = computed(() => getEventParticipationPrimaryAction(props.record))
 const certificateAction = computed(() => getEventParticipationCertificateAction(props.record))
 const eventMetaItems = computed(() => [
-  `Type: ${formatEventTypeLabel(props.record.event.eventType)}`,
-  `Date: ${formatEventDateWithWeekday(props.record.event.startsAt)}`,
+  formatEventTypeLabel(props.record.event.eventType),
+  formatEventDateWithWeekday(props.record.event.startsAt),
   formatEventLocation(props.record.event),
   ...getEventDashboardTeamSizeMetaItems(props.record.event)
 ])
-const participationStageLabel = computed(() => formatParticipationStageLabel(props.record))
-const participationStageColor = computed(() => getParticipationStageColor(props.record))
+// The card shows the person's own status. The state of the event stands beside it only when it
+// tells the person something new.
 const participationStatusLabel = computed(() => formatParticipationStatusLabel(props.record))
 const participationStatusColor = computed(() => getParticipationStatusColor(props.record))
-const showParticipationStageBadge = computed(() =>
-  Boolean(participationStageLabel.value) && participationStageLabel.value !== participationStatusLabel.value
+const showEventState = computed(() =>
+  showsEventStateBesideOwnStatus(props.record.event.state, props.record.application?.status)
 )
 </script>
 
@@ -60,6 +59,7 @@ const showParticipationStageBadge = computed(() =>
         </div>
 
         <EventStateBadge
+          v-if="showEventState"
           :state="props.record.event.state"
           :registration-opens-at="props.record.event.registrationOpensAt"
           :registration-closes-at="props.record.event.registrationClosesAt"
@@ -68,15 +68,6 @@ const showParticipationStageBadge = computed(() =>
 
       <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
         <div class="flex flex-wrap items-center gap-2">
-          <AppBadge
-            v-if="showParticipationStageBadge"
-            :color="participationStageColor"
-            variant="subtle"
-            class="rounded-full px-3 py-1 font-semibold tracking-[0.16em] uppercase"
-          >
-            {{ participationStageLabel }}
-          </AppBadge>
-
           <AppBadge
             :color="participationStatusColor"
             variant="soft"
