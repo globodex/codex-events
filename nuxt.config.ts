@@ -167,7 +167,9 @@ export default defineNuxtConfig({
         'md-editor-v3',
         'prettier/plugins/markdown',
         'prettier/standalone',
-        'screenfull'
+        'screenfull',
+        'photoswipe',
+        'photoswipe/lightbox'
       ]
     }
   },
