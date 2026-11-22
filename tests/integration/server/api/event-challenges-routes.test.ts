@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 
 import entryPageGetHandler from '../../../../server/api/account/events/[slug]/entry.get'
+import agendaPageGetHandler from '../../../../server/api/account/events/[slug]/program.get'
 import rostersPageGetHandler from '../../../../server/api/account/events/[slug]/rosters.get'
 import settingsPageGetHandler from '../../../../server/api/account/events/[slug]/settings.get'
 import eventPatchHandler from '../../../../server/api/events/[eventId]/index.patch'
@@ -16,6 +17,7 @@ import {
 import { accountEventEntryPageSchema } from '../../../../shared/domains/events/account-event-entry-page'
 import type { AccountEventPageShell } from '../../../../shared/domains/events/account-event-page-shell'
 import { accountEventSettingsPageSchema } from '../../../../shared/domains/events/account-event-settings-page'
+import { accountEventAgendaPageSchema } from '../../../../shared/domains/events/program'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 import { stubAuth0Session } from '../../../support/backend/runtime'
 
@@ -54,7 +56,10 @@ const reviewChallenge = {
   title: 'Review a pull request',
   instructions: 'Let Codex review one of your pull requests.',
   resources: [],
-  isPublished: true
+  isPublished: true,
+  // An open track. The Agenda tab lists it in its own group, so the mark is stored and sent
+  // like every other field.
+  isOpenTrack: true
 }
 // The stored order: a draft sits between the two published challenges.
 const storedChallenges = [skillChallenge, draftChallenge, reviewChallenge]
@@ -86,6 +91,7 @@ describe('TASK-450 event challenges', () => {
       routes: [
         { method: 'patch', path: '/api/events/:eventId', handler: eventPatchHandler },
         { method: 'get', path: '/api/account/events/:slug/entry', handler: entryPageGetHandler },
+        { method: 'get', path: '/api/account/events/:slug/program', handler: agendaPageGetHandler },
         { method: 'get', path: '/api/account/events/:slug/rosters', handler: rostersPageGetHandler },
         { method: 'get', path: '/api/account/events/:slug/settings', handler: settingsPageGetHandler }
       ],
@@ -185,22 +191,35 @@ describe('TASK-450 event challenges', () => {
     return harness.request(`/api/account/events/build-day/entry${query}`)
   }
 
-  /** Reads what the event page of `event_1` gives the given user for the Challenges tab. */
-  async function readChallengesOnEventPage(harness: Harness, userId: string) {
-    const response = await requestEventPage(harness, userId)
-    const body = await response.json() as { data: { page: unknown } }
+  /** Requests the Agenda page of `event_1` as the given user. The challenges travel with it. */
+  function requestAgendaPage(harness: Harness, userId: string) {
+    stubAuth0Session(sessionFor(userId))
 
-    expect(response.status).toBe(200)
-    const page = accountEventEntryPageSchema.parse(body.data.page)
+    return harness.request('/api/account/events/build-day/program')
+  }
+
+  /**
+   * Reads what the event page of `event_1` gives the given user: whether the tab list has the
+   * Agenda tab, and the challenges on that tab. `event_1` has no agenda, so the Agenda tab is
+   * there only for a person who reads a challenge.
+   */
+  async function readChallengesOnEventPage(harness: Harness, userId: string) {
+    const entryResponse = await requestEventPage(harness, userId)
+    const entryBody = await entryResponse.json() as { data: { page: unknown } }
+    const agendaResponse = await requestAgendaPage(harness, userId)
+    const agendaBody = await agendaResponse.json() as { data: { page: unknown } }
+
+    expect(entryResponse.status).toBe(200)
+    expect(agendaResponse.status).toBe(200)
 
     return {
-      hasChallengesTab: page.tabVisibility.availableTabs.includes('challenges'),
-      challenges: page.challenges
+      hasAgendaTab: accountEventEntryPageSchema.parse(entryBody.data.page).tabVisibility.availableTabs.includes('program'),
+      challenges: accountEventAgendaPageSchema.parse(agendaBody.data.page).challenges
     }
   }
 
-  const noChallenges = { hasChallengesTab: false, challenges: [] }
-  const allPublishedChallenges = { hasChallengesTab: true, challenges: publishedChallenges }
+  const noChallenges = { hasAgendaTab: false, challenges: [] }
+  const allPublishedChallenges = { hasAgendaTab: true, challenges: publishedChallenges }
 
   describe('saving challenges', () => {
     test.each(['event_admin', 'platform_admin'])('%s saves the challenge list in the given order', async (actorUserId) => {
@@ -332,7 +351,7 @@ describe('TASK-450 event challenges', () => {
       expect(await readChallengesOnEventPage(harness, 'participant')).toEqual(allPublishedChallenges)
     })
 
-    test('an event with draft challenges only: no Challenges tab and no challenge', async () => {
+    test('an event with draft challenges only: no Agenda tab and no challenge', async () => {
       const harness = await createContext({ challengesJson: JSON.stringify([draftChallenge]) })
       await addCheckedInApplication(harness, completedQuestionnaire)
 
@@ -347,7 +366,7 @@ describe('TASK-450 event challenges', () => {
       expect(await readChallengesOnEventPage(harness, userId)).toEqual(allPublishedChallenges)
     })
 
-    test('an event admin has no Challenges tab while every challenge is a draft', async () => {
+    test('an event admin has no Agenda tab while every challenge is a draft', async () => {
       const harness = await createContext({ challengesJson: JSON.stringify([draftChallenge]) })
 
       expect(await readChallengesOnEventPage(harness, 'event_admin')).toEqual(noChallenges)
@@ -390,20 +409,32 @@ describe('TASK-450 event challenges', () => {
       }
     }
 
-    test('lists the Challenges tab for a confirmed participant who is not checked in', async () => {
+    test('puts the Agenda before Credits on Overview and a direct link', async () => {
+      const harness = await createContext({ agendaItemsJson: JSON.stringify([{
+        id: 'intro', title: 'Welcome', startsAt: '2026-11-28T10:00:00.000Z', endsAt: null, details: null, displayOrder: 0
+      }]) })
+      await addApplication(harness)
+      const { tabs } = await readDirectLinkResponse(harness, 'participant')
+      const response = await requestEventPage(harness, 'participant')
+      const { data } = await response.json() as { data: { page: unknown } }
+      expect(tabs.slice(0, 3)).toEqual(['overview', 'program', 'credits'])
+      expect(accountEventEntryPageSchema.parse(data.page).tabVisibility.availableTabs).toEqual(tabs)
+    })
+
+    test('lists the Agenda tab of an event without an agenda for a confirmed participant who is not checked in', async () => {
       const harness = await createContext()
       await addApplication(harness)
 
-      expect((await readDirectLinkResponse(harness, 'participant')).tabs).toContain('challenges')
+      expect((await readDirectLinkResponse(harness, 'participant')).tabs).toContain('program')
     })
 
-    test('has no Challenges tab and no challenge for a participant whose registration is not confirmed', async () => {
+    test('has no Agenda tab and no challenge for a participant whose registration is not confirmed', async () => {
       const harness = await createContext()
       await addApplication(harness, { status: 'submitted' })
 
       const { tabs, text } = await readDirectLinkResponse(harness, 'participant')
 
-      expect(tabs).not.toContain('challenges')
+      expect(tabs).not.toContain('program')
       expect(text).not.toContain(skillChallenge.title)
     })
   })
@@ -422,16 +453,18 @@ describe('TASK-450 event challenges', () => {
       expect(accountEventSettingsPageSchema.parse(body.data.page).event.challenges).toEqual(storedChallenges)
     })
 
-    test('the event page carries every challenge for an event admin and only published ones for reading', async () => {
+    test('the Agenda page exposes only published challenges to the event admin, and the entry page none', async () => {
       const harness = await createContext()
 
-      const response = await requestEventPage(harness, 'event_admin', '?includeAdminEventConfiguration=true')
-      const body = await response.json() as { data: { page: unknown } }
+      const entryResponse = await requestEventPage(harness, 'event_admin', '?includeAdminEventConfiguration=true')
+      const entryBody = await entryResponse.json() as { data: { page: unknown } }
+      const agendaResponse = await requestAgendaPage(harness, 'event_admin')
+      const agendaBody = await agendaResponse.json() as { data: { page: unknown } }
 
-      expect(response.status).toBe(200)
-      const page = accountEventEntryPageSchema.parse(body.data.page)
-      expect(page.adminSettingsEvent?.challenges).toEqual(storedChallenges)
-      expect(page.challenges).toEqual(publishedChallenges)
+      expect(entryResponse.status).toBe(200)
+      expect(entryBody.data.page).not.toHaveProperty('adminSettingsEvent')
+      expect(entryBody.data.page).not.toHaveProperty('challenges')
+      expect(accountEventAgendaPageSchema.parse(agendaBody.data.page).challenges).toEqual(publishedChallenges)
     })
 
     test('a save that sends the loaded challenges back keeps them unchanged', async () => {

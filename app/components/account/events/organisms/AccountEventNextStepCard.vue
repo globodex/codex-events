@@ -105,14 +105,14 @@ async function sendAnswers() {
       class="space-y-4"
     >
       <h2 class="text-lg font-semibold text-highlighted">
-        Check in at the entrance
+        Check in with the event team
       </h2>
       <p
         v-if="hasReloaded && !isReloading"
         role="status"
         class="text-sm text-muted"
       >
-        Your check-in is not recorded yet. Ask the event team at the entrance.
+        Your check-in is not recorded yet. Ask the event team at the check-in desk.
       </p>
       <div class="flex flex-wrap items-center gap-3">
         <AppButton

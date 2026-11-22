@@ -19,6 +19,10 @@ import {
   userApplications,
   users
 } from '../../../../server/database/schema'
+import { isEventLinkedToLuma } from '../../../../server/domains/applications/luma-config'
+import * as emailOwnership from '../../../../server/domains/applications/luma-email'
+import * as review from '../../../../server/domains/applications/review-finalization'
+import * as applications from '../../../../server/domains/applications'
 import { buildLumaWebhookSignatureHeader } from '../../../../server/domains/applications/luma-webhooks'
 import { accountEventSettingsPageSchema } from '../../../../shared/domains/events/account-event-settings-page'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
@@ -33,6 +37,7 @@ describe('TASK-443 Luma guest list', () => {
   const harnesses: Harness[] = []
 
   afterEach(async () => {
+    vi.restoreAllMocks()
     vi.unstubAllGlobals()
     while (harnesses.length > 0) {
       await harnesses.pop()?.d1Database.close()
@@ -316,13 +321,9 @@ describe('TASK-443 Luma guest list', () => {
       await saveGuests(harness, { 'changed@luma.example': 'pending_approval' })
       // While the refresh reads Luma, a webhook approves one guest and registers another.
       vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => {
-        const afterRefreshStart = new Date(Date.now() + 60_000).toISOString()
-        await harness.database.update(eventLumaGuests)
-          .set({ approvalStatus: 'approved', syncedAt: afterRefreshStart })
-          .where(eq(eventLumaGuests.email, 'changed@luma.example'))
-        await harness.database.insert(eventLumaGuests)
-          .values({ eventId: 'event_1', email: 'new@luma.example', approvalStatus: 'approved', syncedAt: afterRefreshStart })
-
+        for (const email of ['changed@luma.example', 'new@luma.example']) {
+          expect((await deliverGuestWebhook(harness, 'guest.updated', { email, approvalStatus: 'approved' })).status).toBe(200)
+        }
         return Response.json({ entries: [lumaGuest('changed@luma.example', 'pending_approval')], has_more: false })
       }))
 
@@ -331,6 +332,42 @@ describe('TASK-443 Luma guest list', () => {
         'changed@luma.example': 'approved',
         'new@luma.example': 'approved'
       })
+    })
+
+    test.each(['disable', 'relink', 'newer refresh'])('discards a refresh superseded by %s', async (change) => {
+      const { harness, reviewEmailQueue } = await createContext()
+      await addApplication(harness, 'participant', 'submitted')
+      vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => {
+        if (change === 'newer refresh') {
+          stubLumaGuestList([lumaGuest('current@luma.example', 'approved')])
+          expect((await syncGuestList(harness)).status).toBe(200)
+        } else {
+          await harness.database.update(events).set(change === 'disable'
+            ? { lumaGuestListEnabled: false }
+            : { lumaEventApiId: 'evt-next' }).where(eq(events.id, 'event_1'))
+        }
+        return Response.json({ entries: [lumaGuest('guest@luma.example', 'approved')], has_more: false })
+      }))
+      const response = await syncGuestList(harness)
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({ error: { code: 'luma_guest_list_changed' } })
+      expect(await readGuests(harness)).toEqual(change === 'newer refresh' ? { 'current@luma.example': 'approved' } : {})
+      expect((await readApplication(harness, 'participant'))?.status).toBe('submitted')
+      expect(reviewEmailQueue.send).not.toHaveBeenCalled()
+    })
+
+    test('a late fetch failure preserves the newer refresh and its success status', async () => {
+      const { harness } = await createContext()
+      vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => {
+        stubLumaGuestList([lumaGuest('current@luma.example', 'approved')])
+        expect((await syncGuestList(harness)).status).toBe(200)
+        return new Response(null, { status: 503 })
+      }))
+      const response = await syncGuestList(harness)
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({ error: { code: 'luma_guest_list_changed' } })
+      expect(await readEvent(harness)).toMatchObject({ lumaGuestListSyncedAt: expect.any(String), lumaGuestListSyncError: null })
+      expect(await readGuests(harness)).toEqual({ 'current@luma.example': 'approved' })
     })
 
     test('requires the guest list setting and event admin access', async () => {
@@ -349,15 +386,38 @@ describe('TASK-443 Luma guest list', () => {
   })
 
   describe('reconciliation after a refresh', () => {
-    test('approves and withdraws matching applications once and leaves unclear matches alone', async () => {
+    test.each(['approved', 'declined'])('rechecks the source before applying a %s guest decision', async (approvalStatus) => {
+      const { harness, reviewEmailQueue } = await createContext()
+      await addApplication(harness, 'participant', 'submitted')
+      const relink = () => harness.database.update(events).set({ lumaEventApiId: 'next-event' }).where(eq(events.id, 'event_1'))
+      if (approvalStatus === 'approved') {
+        const approve = review.approveSubmittedApplication
+        vi.spyOn(review, 'approveSubmittedApplication').mockImplementationOnce(async (options) => {
+          await relink()
+          return approve(options)
+        })
+      } else {
+        const withdraw = applications.withdrawUserApplicationWithAdminPolicy
+        vi.spyOn(applications, 'withdrawUserApplicationWithAdminPolicy').mockImplementationOnce(async (options) => {
+          await relink()
+          return withdraw(options)
+        })
+      }
+      stubLumaGuestList([lumaGuest('guest@luma.example', approvalStatus)])
+      const response = await syncGuestList(harness)
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({ error: { code: 'luma_guest_list_changed' } })
+      expect(await readGuests(harness)).toEqual({})
+      expect((await readApplication(harness, 'participant'))?.status).toBe('submitted')
+      expect(reviewEmailQueue.send).not.toHaveBeenCalled()
+    })
+
+    test('approves and withdraws matching applications once and leaves unmatched registrations alone', async () => {
       const { harness, reviewEmailQueue, lumaSyncQueue } = await createContext()
       await addParticipant(harness, 'approved_on_luma', 'approved@luma.example', 'submitted')
       await addParticipant(harness, 'declined_on_luma', 'DECLINED@luma.example', 'approved')
       await addParticipant(harness, 'waiting_on_luma', 'waiting@luma.example', 'submitted')
       await addParticipant(harness, 'not_on_luma', 'missing@luma.example', 'submitted')
-      // Two accounts use the same Luma email, so the guest does not identify one application.
-      await addParticipant(harness, 'shared_one', 'shared@luma.example', 'submitted')
-      await addParticipant(harness, 'shared_two', 'shared@luma.example', 'submitted')
       stubLumaGuestList([
         lumaGuest('approved@luma.example', 'approved'),
         lumaGuest('declined@luma.example', 'declined'),
@@ -380,7 +440,7 @@ describe('TASK-443 Luma guest list', () => {
         withdrawnAt: expect.any(String),
         lumaSyncStatus: null
       })
-      for (const userId of ['waiting_on_luma', 'not_on_luma', 'shared_one', 'shared_two']) {
+      for (const userId of ['waiting_on_luma', 'not_on_luma']) {
         expect(await readApplication(harness, userId)).toMatchObject({ status: 'submitted', reviewedAt: null })
       }
       expect(reviewEmailQueue.send).toHaveBeenCalledTimes(1)
@@ -633,6 +693,72 @@ describe('TASK-443 Luma guest list', () => {
       return (await harness.database.query.users.findFirst({ where: eq(users.id, 'participant') }))!.lumaEmail
     }
 
+    describe('which events are linked to Luma', () => {
+      const attendanceSync = {
+        lumaGuestListEnabled: false,
+        lumaEventApiId: 'evt-123',
+        lumaApiKey: 'luma_test_key',
+        lumaWebhookSecret: 'whsec_test',
+        lumaWebhookStatus: 'configured'
+      } as const
+
+      // The rule exists twice: in `isEventLinkedToLuma`, and in SQL in the database view
+      // `active_application_luma_emails` (migration 0085). Every case after the first two
+      // switches off one part of the rule. The test fails when one copy changes alone.
+      test.each([
+        { lumaGuestListEnabled: true, lumaEventApiId: null, lumaApiKey: null, lumaWebhookSecret: null, lumaWebhookStatus: 'not_configured' },
+        attendanceSync,
+        { ...attendanceSync, lumaEventApiId: null },
+        { ...attendanceSync, lumaEventApiId: '  ' },
+        { ...attendanceSync, lumaApiKey: null },
+        { ...attendanceSync, lumaApiKey: '  ' },
+        { ...attendanceSync, lumaWebhookSecret: null },
+        { ...attendanceSync, lumaWebhookSecret: '  ' },
+        { ...attendanceSync, lumaWebhookStatus: 'failed' },
+        { ...attendanceSync, lumaWebhookStatus: 'not_configured' }
+      ] as const)('the database and isEventLinkedToLuma agree for %j', async (lumaFields) => {
+        const { harness } = await createContext(lumaFields)
+        await addApplication(harness, 'participant', 'approved')
+
+        // The database fills the active Luma email of a registration only in a linked event.
+        const linkedInDatabase = (await readApplication(harness, 'participant'))!.activeLumaEmail !== null
+
+        expect(linkedInDatabase).toBe(isEventLinkedToLuma(await readEvent(harness)))
+      })
+    })
+
+    test.each(['registration', 'restore', 'profile'])('refuses a concurrent email claim during %s', async (operation) => {
+      const { harness } = await createContext()
+      await saveGuests(harness, { 'guest@luma.example': 'approved' })
+      const occupy = () => addParticipant(harness, 'winner', '  GUEST@luma.example ', 'approved')
+      if (operation === 'profile') {
+        await harness.database.update(users).set({ lumaEmail: 'original@luma.example' }).where(eq(users.id, 'participant'))
+        await addApplication(harness, 'participant', 'approved')
+        const check = emailOwnership.assertLumaEmailChangeIsFree
+        vi.spyOn(emailOwnership, 'assertLumaEmailChangeIsFree').mockImplementationOnce(async (...args) => {
+          await check(...args)
+          await occupy()
+        })
+      } else {
+        if (operation === 'restore') await addApplication(harness, 'participant', 'withdrawn')
+        const check = emailOwnership.assertLumaEmailFreeInEvent
+        vi.spyOn(emailOwnership, 'assertLumaEmailFreeInEvent').mockImplementationOnce(async (...args) => {
+          await check(...args)
+          await occupy()
+        })
+      }
+      const response = operation === 'profile'
+        ? await changeParticipantLumaEmail(harness, 'Guest@luma.example')
+        : operation === 'restore' ? await restoreParticipant(harness) : await register(harness)
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({ error: { code: 'luma_email_already_used' } })
+      expect((await readApplication(harness, 'winner'))?.activeLumaEmail).toBe('guest@luma.example')
+      const participant = await readApplication(harness, 'participant')
+      if (operation === 'registration') expect(participant).toBeUndefined()
+      if (operation === 'restore') expect(participant?.status).toBe('withdrawn')
+      if (operation === 'profile') expect(await readParticipantLumaEmail(harness)).toBe('original@luma.example')
+    })
+
     test.each(['submitted', 'approved'] as const)('refuses a second account while a %s registration holds the Luma email', async (status) => {
       const { harness } = await createContext()
       await addParticipant(harness, 'first_account', 'guest@luma.example', status)
@@ -830,7 +956,10 @@ describe('TASK-443 Luma guest list', () => {
       })
     })
 
-    test('turning it off removes the private guest list and its refresh history', async () => {
+    test.each([
+      { change: 'disabling the list', patch: { lumaGuestListEnabled: false }, enabled: false },
+      { change: 'relinking the external event', patch: { lumaEventApiId: 'evt-next' }, enabled: true }
+    ])('$change clears the private guest list and its refresh history', async ({ patch, enabled }) => {
       const { harness } = await createContext({
         lumaGuestListSyncedAt: '2026-11-20T09:00:00.000Z',
         lumaGuestListSyncError: 'Luma did not return the guest list. Check the connection details and try again.'
@@ -838,14 +967,68 @@ describe('TASK-443 Luma guest list', () => {
       await saveGuests(harness, { 'guest@luma.example': 'approved' })
       stubLumaWebhookRegistration()
 
-      const response = await patchEvent(harness, { lumaGuestListEnabled: false })
+      const response = await patchEvent(harness, patch)
 
       expect(response.status).toBe(200)
       expect(await readGuests(harness)).toEqual({})
       expect(await readEvent(harness)).toMatchObject({
-        lumaGuestListEnabled: false,
+        lumaGuestListEnabled: enabled,
         lumaGuestListSyncedAt: null,
         lumaGuestListSyncError: null
+      })
+    })
+
+    describe('two active registrations share a Luma email', () => {
+      // The database decides the order of the two names.
+      const sharedLumaEmailMessage = /^These people registered with the same Luma email: (anna, ben|ben, anna)\. Withdraw all but one of their registrations, then save again\.$/
+
+      /** An event with a Luma connection that is not linked to Luma yet. Only such an event can hold a shared Luma email. */
+      async function createUnlinkedContext() {
+        const { harness } = await createContext({
+          lumaGuestListEnabled: false,
+          lumaWebhookSecret: null,
+          lumaWebhookStatus: 'not_configured'
+        })
+        await addParticipant(harness, 'anna', 'shared@luma.example', 'approved')
+        await addParticipant(harness, 'ben', 'Shared@Luma.example', 'submitted')
+
+        return harness
+      }
+
+      test('the guest list stays off and the organizer reads who the two people are', async () => {
+        const harness = await createUnlinkedContext()
+        const webhookRequests = stubLumaWebhookRegistration()
+
+        const response = await patchEvent(harness, { lumaGuestListEnabled: true })
+
+        expect(response.status).toBe(409)
+        const { error } = await response.json()
+        expect(error.code).toBe('luma_email_shared_in_event')
+        expect(error.message).toMatch(sharedLumaEmailMessage)
+        expect((await readEvent(harness)).lumaGuestListEnabled).toBe(false)
+        expect(webhookRequests).toEqual([])
+
+        // The organizer withdraws one of the two registrations. Then the guest list turns on.
+        await harness.database
+          .update(userApplications)
+          .set({ status: 'withdrawn' })
+          .where(eq(userApplications.userId, 'ben'))
+        expect((await patchEvent(harness, { lumaGuestListEnabled: true })).status).toBe(200)
+        expect((await readEvent(harness)).lumaGuestListEnabled).toBe(true)
+      })
+
+      test('the Luma webhook is not registered and its status shows who the two people are', async () => {
+        const harness = await createUnlinkedContext()
+        const webhookRequests = stubLumaWebhookRegistration()
+
+        // Saving a Luma setting registers the webhook again.
+        const response = await patchEvent(harness, { lumaEventApiId: 'evt-123' })
+
+        expect(response.status).toBe(200)
+        const { data } = await response.json()
+        expect(data.lumaWebhookStatus).toBe('failed')
+        expect(data.lumaWebhookError).toMatch(sharedLumaEmailMessage)
+        expect(webhookRequests).toEqual([])
       })
     })
   })

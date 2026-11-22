@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { eventChallengesSchema } from '#shared/domains/events/challenges'
+
 const id = z.string().trim().min(1).max(100)
 const name = z.string().trim().min(1).max(120)
 const coordinate = z.number().min(0).max(1)
@@ -21,6 +23,14 @@ const floorPlanPointSchema = z.object({ x: coordinate, y: coordinate })
 export const programRoomSchema = z.object({
   id,
   name,
+  // The room's number at the venue, as its door sign or the venue's own map shows it. The
+  // participant map writes it under the room name.
+  number: z.string().trim().min(1).max(30).optional(),
+  // The challenge that takes place in the room, by its id in the event's challenge list
+  // (`shared/domains/events/challenges.ts`). The Agenda tab names this room on the card of that
+  // challenge, and selecting the card shows the room on the map. Several rooms can name one
+  // challenge. An id that names no published challenge shows nothing.
+  challengeId: z.string().trim().min(1).max(64).optional(),
   area: floorPlanRoomAreaSchema,
   // The way to the room, as points on the floor plan image from the starting point to the room.
   route: z.array(floorPlanPointSchema).min(2).max(40).optional()
@@ -34,13 +44,23 @@ export const eventFloorPlanMetadataSchema = z.object({
   message: 'Room IDs must be unique within a floor plan.'
 })
 
+// A room on one of the event's floor plans.
+const sessionRoomSchema = z.object({ floorPlanId: id, roomId: id })
+
 const programSessionSchema = z.object({
   id,
   title: name,
   details: z.string().trim().max(2000).nullable(),
   startsAfterMinutes: z.int().min(0).max(maxProgramMinutes),
   durationMinutes: z.int().min(1).max(maxProgramMinutes),
-  room: z.object({ floorPlanId: id, roomId: id }).nullable()
+  room: sessionRoomSchema.nullable(),
+  // A second title and room for participants who are checked in. A checked-in participant sees
+  // them in place of the title and room above and sees no details. Nobody else sees them.
+  // Example: "Doors open and check-in" becomes "Breakfast" in the breakfast room.
+  afterCheckIn: z.object({
+    title: z.string().trim().min(1, 'Enter the title after check-in.').max(120),
+    room: sessionRoomSchema.nullable()
+  }).optional()
 })
 
 const programTrackSchema = z.object({
@@ -95,10 +115,19 @@ export const participantEventProgramSchema = z.object({
 
 export type ParticipantEventProgram = z.infer<typeof participantEventProgramSchema>
 
-// The page behind the Agenda tab. `program` is null when the event has no program, and for
-// people who may not read it. They see the public agenda blocks instead.
+/** Event admins and confirmed participants read the program. */
+export function canViewEventProgram(isEventAdmin: boolean, approved: boolean) {
+  return isEventAdmin || approved
+}
+
+// The page behind the Agenda tab.
 export const accountEventAgendaPageSchema = z.object({
-  program: participantEventProgramSchema.nullable()
+  // Null when the event has no program, and for people who may not read it. They see the
+  // public agenda blocks instead.
+  program: participantEventProgramSchema.nullable(),
+  // The published challenges that the caller may read, in display order. Empty for a caller who
+  // may not read them (`canReadEventChallenges`). A room of a floor plan names its challenge.
+  challenges: eventChallengesSchema
 })
 
 export type AccountEventAgendaPage = z.infer<typeof accountEventAgendaPageSchema>

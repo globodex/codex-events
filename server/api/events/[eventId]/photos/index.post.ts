@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm'
 import { readMultipartFormData } from 'h3'
 
 import { writeAuditLog } from '#server/database/audit-log'
@@ -16,6 +17,7 @@ import {
   putEventPhotoObject,
   requireEventPhotoUploadAccess
 } from '#server/domains/events/photos'
+import { getEventImagesBucket } from '#server/domains/events/images'
 import { routeIdParamsSchema } from '#server/domains/events'
 import { assertAuthenticatedUploadRateLimit } from '#server/utils/rate-limit'
 import { parseValidatedParams } from '#server/http/validation'
@@ -86,18 +88,35 @@ export default defineApiHandler(async (h3Event) => {
     }
   })
 
-  for (const [index, row] of createdRows.entries()) {
-    const file = preparedFiles[index]!
-    await putEventPhotoObject(h3Event, row.objectKey!, {
-      contentType: file.contentType,
-      data: file.data
-    })
-  }
+  const stagedKeys: string[] = []
+  let submitted = false
+  try {
+    for (const [index, row] of createdRows.entries()) {
+      const file = preparedFiles[index]!
+      stagedKeys.push(row.objectKey)
+      await putEventPhotoObject(h3Event, row.objectKey, {
+        contentType: file.contentType,
+        data: file.data
+      })
+    }
 
-  // D1 limits the bound parameters of one statement, so the rows are inserted in small groups
-  // (`eventPhotoMaxRowsPerInsert`).
-  for (const rowBatch of chunkEventPhotoRowsForInsert(createdRows)) {
-    await database.insert(eventPhotos).values(rowBatch)
+    // One D1 transaction covers every chunk. The quota trigger sees every preceding row.
+    const [first, ...rest] = chunkEventPhotoRowsForInsert(createdRows)
+    submitted = true
+    await database.batch([
+      database.insert(eventPhotos).values(first!),
+      ...rest.map(chunk => database.insert(eventPhotos).values(chunk))
+    ])
+  } catch (error) {
+    // A lost acknowledgement can follow a successful D1 commit. All rows share one transaction.
+    const committed = submitted && await database.query.eventPhotos.findFirst({
+      columns: { id: true }, where: eq(eventPhotos.id, createdRows[0]!.id)
+    })
+    if (!committed) {
+      const bucket = getEventImagesBucket(h3Event)
+      await Promise.all(stagedKeys.map(key => bucket.delete(key)))
+      throw error
+    }
   }
 
   for (const row of createdRows) {

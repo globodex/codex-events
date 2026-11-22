@@ -32,6 +32,31 @@ describe('event config form schema', () => {
     expect(result.success).toBe(true)
   })
 
+  test('requires a location only for an in-person event', () => {
+    const withoutLocation = {
+      ...createValidEventFormState(),
+      city: '',
+      country: '',
+      address: ''
+    }
+
+    expect(eventConfigFormSchema.safeParse({ ...withoutLocation, inPersonEvent: false }).success).toBe(true)
+
+    const inPersonResult = eventConfigFormSchema.safeParse({ ...withoutLocation, inPersonEvent: true })
+
+    expect(inPersonResult.success).toBe(false)
+
+    if (inPersonResult.success) {
+      return
+    }
+
+    expect(inPersonResult.error.flatten().fieldErrors).toMatchObject({
+      city: ['City is required for an in-person event.'],
+      country: ['Country is required for an in-person event.'],
+      address: ['Address is required for an in-person event.']
+    })
+  })
+
   test('validates the simplified Meetup claiming toggle and includes it in patches', () => {
     const meetup = {
       ...createValidEventFormState(),

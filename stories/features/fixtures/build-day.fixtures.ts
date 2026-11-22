@@ -1,3 +1,4 @@
+import type { EventChallenge } from '#shared/domains/events/challenges'
 import type { EventFloorPlan, ParticipantEventProgram } from '#shared/domains/events/program'
 import groundFloorImage from './build-day-ground-floor.svg?inline'
 import upperFloorImage from './build-day-upper-floor.svg?inline'
@@ -9,11 +10,13 @@ export const buildDayGroundFloor: EventFloorPlan = {
   rooms: [{
     id: 'main-hall',
     name: 'Main Hall',
+    challengeId: 'own-idea',
     area: { x: 0.1, y: 0.1, width: 0.42, height: 0.4, rotation: 0 },
     route: [{ x: 0.5, y: 0.82 }, { x: 0.5, y: 0.62 }, { x: 0.31, y: 0.62 }, { x: 0.31, y: 0.48 }]
   }, {
     id: 'studio',
     name: 'Studio',
+    challengeId: 'sites',
     area: { x: 0.62, y: 0.1, width: 0.28, height: 0.4, rotation: 0 }
   }]
 }
@@ -29,7 +32,24 @@ export const buildDayUpperFloor: EventFloorPlan = {
   }]
 }
 
-/** The event's public agenda: the block that holds the program, and one block after it. */
+/** The event's public agenda: the block that holds the program, and two blocks that start when it ends. */
+// A published challenge and a published open track. The rooms above name them: "Build your own
+// idea" has the Main Hall, "Build a site someone can use" has the Studio.
+export const buildDayChallenges: EventChallenge[] = [{
+  id: 'sites',
+  title: 'Build a site someone can use',
+  instructions: 'Publish a small site that one real person can open and use today.',
+  resources: [{ label: 'Site guide', url: 'https://example.com/sites' }],
+  isPublished: true
+}, {
+  id: 'own-idea',
+  title: 'Build your own idea',
+  instructions: 'Bring your own idea and build it.',
+  resources: [],
+  isPublished: true,
+  isOpenTrack: true
+}]
+
 export const buildDayAgendaItems = [{
   id: 'build-time',
   title: 'Build Time',
@@ -44,6 +64,13 @@ export const buildDayAgendaItems = [{
   startsAt: '2026-10-17T12:00:00Z',
   endsAt: null,
   displayOrder: 1
+}, {
+  id: 'dinner',
+  title: 'Dinner',
+  details: null,
+  startsAt: '2026-10-17T12:00:00Z',
+  endsAt: '2026-10-17T13:00:00Z',
+  displayOrder: 2
 }]
 
 export const buildDayProgram: ParticipantEventProgram = {

@@ -61,7 +61,6 @@ function clearAgendaReads(slug: string, includeParent: boolean) {
   ])
   if (includeParent) {
     reads.add(buildAccountEventPageCacheKey(slug, 'entry'))
-    reads.add(buildAccountEventPageCacheKey(slug, 'entry', { includeAdminEventConfiguration: true }))
     for (const page of accountEventPageNames) {
       if (page !== 'entry') {
         reads.add(buildAccountEventPageCacheKey(slug, page, { includeEventShell: true }))
@@ -395,6 +394,7 @@ useSeoMeta({
               :agenda-items="currentEvent.agendaItems"
               :program="programRequest.data.value.program"
               :floor-plans="programRequest.data.value.floorPlans"
+              :challenges="currentEvent.challenges ?? []"
               :saving="isProgramSaving"
               :save-error="programSaveError"
               @save="writeProgram"

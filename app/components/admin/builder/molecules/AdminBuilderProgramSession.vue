@@ -21,6 +21,8 @@ const startId = useId()
 const endId = useId()
 const roomId = useId()
 const detailsId = useId()
+const afterCheckInTitleId = useId()
+const afterCheckInRoomId = useId()
 
 function timeInputValue(minutes: number) {
   return Number.isFinite(minutes) ? addMinutesToLocalValue(props.startsAt, minutes) : ''
@@ -29,22 +31,35 @@ function timeInputValue(minutes: number) {
 const startValue = computed(() => timeInputValue(props.session.startsAfterMinutes))
 const endValue = computed(() => timeInputValue(props.session.startsAfterMinutes + props.session.durationMinutes))
 const latestTime = computed(() => toDateTimeLocalValue(props.endsAt))
-const roomValue = computed(() => {
-  const room = props.session.room
+
+/** The value of a room in a room select. It equals the `key` of the matching room option. */
+function roomSelectValue(room: ProgramSession['room'] | undefined) {
   return room ? JSON.stringify([room.floorPlanId, room.roomId]) : ''
-})
+}
+
+/** The room behind a value of a room select, or null for "No room". */
+function selectedRoom(value: string | number | undefined) {
+  return props.roomOptions.find(option => option.key === value)?.room ?? null
+}
 
 function updateSession(changes: Partial<ProgramSession>) {
   emit('update', { ...props.session, ...changes })
 }
 
-function minutesAfterStart(value: string | number | undefined) {
-  return Math.round((Date.parse(String(value)) - Date.parse(props.startsAt)) / 60_000)
+// A session can have a second title and room that participants see once they are checked in.
+// The second version starts with an empty title and the room of the session.
+function setChangesAfterCheckIn(changes: boolean) {
+  updateSession({ afterCheckIn: changes ? { title: '', room: props.session.room } : undefined })
 }
 
-function updateRoom(value: string | number | undefined) {
-  const room = props.roomOptions.find(option => option.key === value)?.room ?? null
-  updateSession({ room })
+function updateAfterCheckIn(changes: Partial<NonNullable<ProgramSession['afterCheckIn']>>) {
+  if (props.session.afterCheckIn) {
+    updateSession({ afterCheckIn: { ...props.session.afterCheckIn, ...changes } })
+  }
+}
+
+function minutesAfterStart(value: string | number | undefined) {
+  return Math.round((Date.parse(String(value)) - Date.parse(props.startsAt)) / 60_000)
 }
 </script>
 
@@ -116,9 +131,9 @@ function updateRoom(value: string | number | undefined) {
     >
       <AppSelect
         :id="roomId"
-        :model-value="roomValue"
+        :model-value="roomSelectValue(session.room)"
         :disabled="disabled"
-        @update:model-value="updateRoom"
+        @update:model-value="value => updateSession({ room: selectedRoom(value) })"
       >
         <option value="">
           No room
@@ -146,5 +161,54 @@ function updateRoom(value: string | number | undefined) {
         @update:model-value="value => updateSession({ details: value ? String(value) : null })"
       />
     </AppFormField>
+
+    <AppCheckbox
+      :model-value="Boolean(session.afterCheckIn)"
+      label="Changes after check-in"
+      :disabled="disabled"
+      @update:model-value="setChangesAfterCheckIn"
+    />
+
+    <div
+      v-if="session.afterCheckIn"
+      class="grid gap-3 sm:grid-cols-2"
+    >
+      <AppFormField
+        :name="afterCheckInTitleId"
+        label="Title after check-in"
+      >
+        <AppInput
+          :id="afterCheckInTitleId"
+          :model-value="session.afterCheckIn.title"
+          :disabled="disabled"
+          :maxlength="120"
+          required
+          @update:model-value="value => updateAfterCheckIn({ title: String(value ?? '') })"
+        />
+      </AppFormField>
+      <AppFormField
+        v-if="roomOptions.length"
+        :name="afterCheckInRoomId"
+        label="Room after check-in"
+      >
+        <AppSelect
+          :id="afterCheckInRoomId"
+          :model-value="roomSelectValue(session.afterCheckIn.room)"
+          :disabled="disabled"
+          @update:model-value="value => updateAfterCheckIn({ room: selectedRoom(value) })"
+        >
+          <option value="">
+            No room
+          </option>
+          <option
+            v-for="option in roomOptions"
+            :key="option.key"
+            :value="option.key"
+          >
+            {{ option.label }}
+          </option>
+        </AppSelect>
+      </AppFormField>
+    </div>
   </li>
 </template>

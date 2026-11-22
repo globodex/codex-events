@@ -7,10 +7,8 @@ import type {
   PublicPrize
 } from '~/domains/events/presentation'
 import {
-  formatEventDateWithWeekday,
-  formatEventLocation,
+  formatEventHeaderSummary,
   formatEventTypeLabel,
-  getEventEarliestStartAt,
   resolveEventDetailBackgroundImageUrl
 } from '~/domains/events/presentation'
 import type { EventPhotoRecord } from '#shared/domains/events/photos'
@@ -207,10 +205,7 @@ const detailBackgroundImageUrl = computed(() => resolveEventDetailBackgroundImag
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
   : undefined)
-const detailSummary = computed(() => [
-  formatEventDateWithWeekday(getEventEarliestStartAt(event.value)),
-  formatEventLocation(event.value)
-].filter(Boolean).join(' - '))
+const detailSummary = computed(() => formatEventHeaderSummary(event.value))
 const eventTypeLabel = computed(() => formatEventTypeLabel(event.value.eventType))
 const primaryAction = computed(() =>
   resolvePublicEventPrimaryAction({
@@ -248,7 +243,7 @@ const talkProposalAction = computed(() => hasEventWorkspaceAccess.value
     ? { ...talkProposalRegistrationAction.value, label: 'Propose a talk' }
     : primaryAction.value
 )
-const publicSectionTabs = ['overview', 'prizes', 'details', 'gallery'] as const
+const publicSectionTabs = ['overview', 'prizes', 'gallery'] as const
 type PublicSectionTab = (typeof publicSectionTabs)[number]
 const activePublicSection = computed<PublicSectionTab>(() =>
   resolveTabQueryValue(route.query.tab, publicSectionTabs, 'overview')
@@ -257,9 +252,10 @@ const activePublicSection = computed<PublicSectionTab>(() =>
 const visiblePublicTabs = computed(() => ([
   { id: 'overview', label: 'Overview', visible: true },
   { id: 'prizes', label: publicPrizeTabLabel.value, visible: hasPublishedPrizes.value || isWinnerRevealVisible.value },
-  { id: 'details', label: 'Details', visible: true },
   { id: 'gallery', label: 'Gallery', visible: hasPublicGallery.value }
 ] satisfies { id: PublicSectionTab, label: string, visible: boolean }[]).filter(tab => tab.visible))
+// An event without prizes and public photos has only the Overview, so the page shows no tab bar.
+const showPublicTabs = computed(() => visiblePublicTabs.value.length > 1)
 
 async function selectPublicSection(nextSection: PublicSectionTab) {
   if (normalizeTabQueryValue(route.query.tab) === nextSection) {
@@ -377,7 +373,7 @@ useSeoMeta({
                   :external="isPrimaryActionExternal"
                   color="neutral"
                   variant="solid"
-                  class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                  class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                 >
                   {{ primaryActionLabel }}
                   <template #trailing>
@@ -396,6 +392,7 @@ useSeoMeta({
           </div>
 
           <nav
+            v-if="showPublicTabs"
             aria-label="Event detail sections"
             role="tablist"
             class="flex items-center gap-5 overflow-x-auto"
@@ -419,8 +416,8 @@ useSeoMeta({
       <section
         v-if="activePublicSection === 'overview'"
         id="public-tab-panel-overview"
-        role="tabpanel"
-        aria-labelledby="public-tab-overview"
+        :role="showPublicTabs ? 'tabpanel' : undefined"
+        :aria-labelledby="showPublicTabs ? 'public-tab-overview' : undefined"
         class="space-y-7"
       >
         <EventTalkProposalCallout
@@ -433,6 +430,15 @@ useSeoMeta({
         />
 
         <EventOverviewPanel :description="event.description" />
+
+        <EventTimeline :event="event" />
+
+        <EventTracksPanel
+          :event-type="event.eventType"
+          :tracks="event.tracks ?? []"
+        />
+
+        <EventAgendaPanel :agenda-items="event.agendaItems" />
       </section>
 
       <section
@@ -455,25 +461,6 @@ useSeoMeta({
           v-else
           :prizes="prizes"
         />
-      </section>
-
-      <section
-        v-else-if="activePublicSection === 'details'"
-        id="public-tab-panel-details"
-        role="tabpanel"
-        aria-labelledby="public-tab-details"
-        class="space-y-7"
-      >
-        <EventTimeline
-          :event="event"
-        />
-
-        <EventTracksPanel
-          :event-type="event.eventType"
-          :tracks="event.tracks ?? []"
-        />
-
-        <EventAgendaPanel :agenda-items="event.agendaItems" />
       </section>
 
       <section

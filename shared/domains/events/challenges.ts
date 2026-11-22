@@ -44,7 +44,12 @@ export const eventChallengeSchema = z.object({
   resources: z.array(eventChallengeResourceSchema)
     .max(eventChallengeLimits.maxResources, `Use ${eventChallengeLimits.maxResources} resources or fewer.`),
   /** False for a draft. Only the event builder shows a draft. */
-  isPublished: z.boolean()
+  isPublished: z.boolean(),
+  /**
+   * True for an open track: an entry where participants bring their own idea and no task is
+   * given. The Agenda tab lists the open tracks in their own group, below the challenges.
+   */
+  isOpenTrack: z.boolean().optional()
 })
 
 /** The challenges of one event, drafts included, in display order. */

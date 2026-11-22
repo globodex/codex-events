@@ -16,9 +16,3 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const PublicAgenda: Story = {}
-
-export const LinkedFromAccountOverview: Story = {
-  args: {
-    program: { itemId: 'build-time', href: '/account/events/storybook-build-day?tab=program' }
-  }
-}

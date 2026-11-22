@@ -1,7 +1,8 @@
-import { and, count, eq, lt, sql } from 'drizzle-orm'
+import { and, count, eq, sql, type SQL } from 'drizzle-orm'
 
-import type { AppDatabase, AppDatabaseBatch } from '#server/database/client'
-import { eventLumaGuests } from '#server/database/schema'
+import { ApiError } from '#server/http/api-error'
+import type { AppDatabase } from '#server/database/client'
+import { eventLumaGuests, events, userApplications } from '#server/database/schema'
 import { isLumaGuestCancellationStatus } from '#server/domains/applications/luma-webhooks'
 import { normalizeLumaEmail } from '#server/domains/credits/simplified-claiming'
 
@@ -46,71 +47,66 @@ export async function findEventLumaGuestStanding(
   return guest ? getLumaGuestStanding(guest.approvalStatus) : null
 }
 
-// D1 accepts 100 bound values per statement and every guest binds 4 values.
-const guestsPerStatement = 20
-const statementsPerBatch = 50
+type GuestListSource = Pick<typeof events.$inferSelect, 'id' | 'lumaEventApiId'>
 
-/**
- * Adds or updates guests. `syncedAt` is the time their data was read from Luma.
- *
- * A stored guest that is newer than `syncedAt` stays as it is: a webhook wrote it after the
- * refresh started, so it already holds a more recent Luma status than the fetched list.
- */
-export async function saveEventLumaGuests(
-  database: AppDatabase,
-  eventId: string,
-  guests: LumaGuestListEntry[],
-  syncedAt: string
-) {
-  const statements: AppDatabaseBatch[number][] = []
-
-  for (let index = 0; index < guests.length; index += guestsPerStatement) {
-    statements.push(
-      database
-        .insert(eventLumaGuests)
-        .values(guests.slice(index, index + guestsPerStatement).map(guest => ({ ...guest, eventId, syncedAt })))
-        .onConflictDoUpdate({
-          target: [eventLumaGuests.eventId, eventLumaGuests.email],
-          set: {
-            approvalStatus: sql`excluded.approval_status`,
-            syncedAt: sql`excluded.synced_at`
-          },
-          setWhere: sql`${eventLumaGuests.syncedAt} <= excluded.synced_at`
-        })
-    )
-  }
-
-  for (let index = 0; index < statements.length; index += statementsPerBatch) {
-    const [first, ...rest] = statements.slice(index, index + statementsPerBatch)
-    await database.batch([first!, ...rest])
-  }
+export function guestListSource(event: GuestListSource, revision?: number) {
+  return and(
+    eq(events.id, event.id),
+    eq(events.lumaGuestListEnabled, true),
+    sql`${events.lumaEventApiId} = ${event.lumaEventApiId}`,
+    revision === undefined ? undefined : eq(events.lumaGuestListRevision, revision)
+  )!
 }
 
-/** Removes the guests that a full refresh started at `syncedAt` did not see: Luma no longer returns them. */
-export async function removeEventLumaGuestsNotSeenSince(database: AppDatabase, eventId: string, syncedAt: string) {
-  await database
-    .delete(eventLumaGuests)
-    .where(and(
-      eq(eventLumaGuests.eventId, eventId),
-      lt(eventLumaGuests.syncedAt, syncedAt)
-    ))
+export function guestListChangedError() {
+  return new ApiError({
+    statusCode: 409,
+    code: 'luma_guest_list_changed',
+    message: 'The Luma connection or refresh changed.'
+  })
 }
 
-export async function removeEventLumaGuests(database: AppDatabase, eventId: string) {
-  await database.delete(eventLumaGuests).where(eq(eventLumaGuests.eventId, eventId))
+/** Keep the source, guest decision and current account email in the application write. */
+export function guestDecisionGuard(event: GuestListSource, email: string, status: string, revision?: number) {
+  return and(eq(userApplications.activeLumaEmail, email), sql`exists (
+    select 1 from ${events}
+    join ${eventLumaGuests} on ${eventLumaGuests.eventId} = ${events.id}
+    where ${guestListSource(event, revision)} and ${eventLumaGuests.email} = ${email}
+      and ${eventLumaGuests.approvalStatus} = ${status}
+  )`)!
+}
+
+/** A webhook uses the current refresh revision. A refresh preserves webhooks from its own revision. */
+export function upsertGuestListRows(database: AppDatabase, rows: LumaGuestListEntry[], syncedAt: string, source: SQL, fromRefresh: boolean) {
+  return database.insert(eventLumaGuests).select(sql`
+    select ${events.id}, json_extract(guest.value, '$.email'), json_extract(guest.value, '$.approvalStatus'),
+      ${syncedAt}, ${events.lumaGuestListRevision}
+    from ${events}, json_each(${JSON.stringify(rows)}) as guest where ${source}
+  `).onConflictDoUpdate({
+    target: [eventLumaGuests.eventId, eventLumaGuests.email],
+    set: {
+      approvalStatus: sql`excluded.approval_status`,
+      syncedAt: sql`excluded.synced_at`,
+      refreshRevision: sql`excluded.refresh_revision`
+    },
+    setWhere: fromRefresh ? sql`${eventLumaGuests.refreshRevision} < excluded.refresh_revision` : undefined
+  })
 }
 
 /** The only guest list data an organizer sees: how many guests are approved and how many are waiting. */
-export async function countEventLumaGuests(database: AppDatabase, eventId: string) {
+export async function countEventLumaGuests(database: AppDatabase, eventId: string, source?: SQL) {
   const rows = await database
-    .select({ approvalStatus: eventLumaGuests.approvalStatus, total: count() })
-    .from(eventLumaGuests)
-    .where(eq(eventLumaGuests.eventId, eventId))
+    .select({ approvalStatus: eventLumaGuests.approvalStatus, total: count(eventLumaGuests.email) })
+    .from(events)
+    .leftJoin(eventLumaGuests, eq(eventLumaGuests.eventId, events.id))
+    .where(and(eq(events.id, eventId), source))
     .groupBy(eventLumaGuests.approvalStatus)
+  if (source && !rows.length) throw guestListChangedError()
+
   const totals: Record<LumaGuestStanding, number> = { approved: 0, waiting: 0, declined: 0 }
 
   for (const row of rows) {
-    totals[getLumaGuestStanding(row.approvalStatus)] += row.total
+    if (row.approvalStatus !== null) totals[getLumaGuestStanding(row.approvalStatus)] += row.total
   }
 
   return {

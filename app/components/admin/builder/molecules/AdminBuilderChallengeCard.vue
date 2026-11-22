@@ -153,6 +153,12 @@ function removeResource(resourceIndex: number) {
         label="Published"
         @update:model-value="emit('update', { isPublished: $event })"
       />
+      <!-- The Agenda tab lists an open track in its own group "Open track", below the challenges. -->
+      <AppCheckbox
+        :model-value="props.challenge.isOpenTrack ?? false"
+        label="List as open track, below the challenges"
+        @update:model-value="emit('update', { isOpenTrack: $event })"
+      />
     </div>
   </AdminBuilderTrackRow>
 </template>

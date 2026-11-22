@@ -92,7 +92,7 @@ const showParticipationStageBadge = computed(() =>
             color="neutral"
             variant="solid"
             trailing-icon="i-lucide-arrow-up-right"
-            class="w-full justify-center rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 sm:w-auto dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+            class="w-full justify-center rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 hover:text-white sm:w-auto dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
           >
             {{ primaryAction.label }}
           </AppButton>

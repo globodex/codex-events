@@ -1,11 +1,16 @@
 import { afterEach, describe, expect, test } from 'vitest'
 
+import { eq } from 'drizzle-orm'
+import { stubAuth0Session } from '../../../support/backend/runtime'
+import selectTrack from '../../../../server/api/events/[eventId]/applications/me/actions/select-track.post'
+import type { AccountEventPageShell } from '../../../../shared/domains/events/account-event-page-shell'
 import entryPageGetHandler from '../../../../server/api/account/events/[slug]/entry.get'
 import prizesPageGetHandler from '../../../../server/api/account/events/[slug]/prizes.get'
 import {
   eventCreditCodes,
   eventCreditOffers,
   eventRoleAssignments,
+  eventTracks,
   events,
   prizes,
   userApplications,
@@ -72,6 +77,62 @@ describe('account event entry and prizes page reads', () => {
       updatedAt: now
     })
   }
+
+  test('scopes track details in both Overview and the shell and lets registered staff choose their own track', async () => {
+    const harness = createApiRouteTestHarness({ routes: [
+      { method: 'get', path: '/api/account/events/:slug/entry', handler: entryPageGetHandler },
+      { method: 'post', path: '/api/events/:eventId/applications/me/actions/select-track', handler: selectTrack }
+    ] })
+    harnesses.push(harness)
+    for (const id of ['participant', 'staff', 'admin', 'platform']) await seedUser(harness, id)
+    await harness.database.update(users).set({ isPlatformAdmin: true }).where(eq(users.id, 'platform'))
+    await seedEvent(harness, { eventId: 'tracks', slug: 'tracks', userId: 'admin', eventType: 'build' })
+    for (const [displayOrder, id] of ['a', 'b', 'c'].entries()) {
+      await harness.database.insert(eventTracks).values({
+        id, displayOrder, eventId: 'tracks', name: id, shortDescription: id, fullDescription: `guide-${id}`,
+        staffInstructions: `staff-${id}`, resourcesJson: JSON.stringify([
+          { id, title: id, url: `https://example.com/${id}`, description: null, displayOrder: 0 }
+        ])
+      })
+    }
+    await harness.database.insert(eventRoleAssignments).values([
+      { id: 'role-a', eventId: 'tracks', userId: 'admin', role: 'event_admin' },
+      { id: 'role-s', eventId: 'tracks', userId: 'staff', role: 'staff', isStaff: true, staffTrackId: 'a' }
+    ])
+    for (const id of ['participant', 'staff']) {
+      await harness.database.insert(userApplications).values({
+        id, eventId: 'tracks', userId: id, status: 'submitted', submittedAt: now, selectedTrackId: 'b'
+      })
+    }
+
+    for (const id of ['participant', 'staff', 'admin', 'platform']) {
+      stubAuth0Session({ sub: `auth0|${id}`, email: `${id}@example.com` })
+      const response = await harness.request('/api/account/events/tracks/entry?includeEventShell=true')
+      expect(response.status).toBe(200)
+      const { data } = await response.json() as { data: { page: unknown, shell: AccountEventPageShell } }
+      const tracks = accountEventEntryPageSchema.parse(data.page).event.tracks
+      expect(data.shell.event.tracks).toEqual(tracks)
+      for (const track of tracks) {
+        const staffAccess = id === 'admin' || id === 'platform' || (id === 'staff' && track.id === 'a')
+        if (staffAccess) expect(track.staffInstructions).toBe(`staff-${track.id}`)
+        else expect(track).not.toHaveProperty('staffInstructions')
+        if (staffAccess || track.id === 'b') {
+          expect(track.fullDescription).toBe(`guide-${track.id}`)
+          expect(track.resources?.[0]?.id).toBe(track.id)
+        } else {
+          expect(track).not.toHaveProperty('fullDescription')
+          expect(track).not.toHaveProperty('resources')
+        }
+      }
+      if (id === 'staff') {
+        const selection = await harness.request('/api/events/tracks/applications/me/actions/select-track', {
+          method: 'POST', body: JSON.stringify({ trackId: 'c' })
+        })
+        expect(selection.status).toBe(200)
+        expect(await selection.json()).toMatchObject({ data: { selectedTrackId: 'c' } })
+      }
+    }
+  })
 
   test('returns one entry page model in one strong request session without leaking admin credit data', async () => {
     const harness = createApiRouteTestHarness({

@@ -15,6 +15,11 @@ export function roomAreaStyle(area: ProgramRoom['area']) {
   }
 }
 
+/** A room by its name and, when it has one, its number at the venue: "U1-1 · AEU103". */
+export function roomLabel(room: Pick<ProgramRoom, 'name' | 'number'>) {
+  return room.number ? `${room.name} · ${room.number}` : room.name
+}
+
 /**
  * Returns evenly spaced arrow positions along a route.
  * Points and spacing use the same unit. `angle` is the walking direction in degrees.

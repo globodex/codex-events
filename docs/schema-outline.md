@@ -109,6 +109,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `luma_guest_list_enabled`
 - `luma_guest_list_synced_at`
 - `luma_guest_list_sync_error`
+- `luma_guest_list_revision`
 - `city`
 - `country`
 - `address`
@@ -216,7 +217,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `talk_proposal_questions_json` is an ordered array with at most 20 definitions. Each definition has a stable `id`, `type`, `prompt`, `required`, and `options`; only `single_choice` uses options, and `acknowledgement` is always required.
 - Disabled Meetups and all non-Meetup events have `talk_proposals_enabled = false` with null talk-proposal timestamps.
 - `questionnaire_questions_json` is an ordered array with at most 20 definitions. The definitions follow the same rules as the definitions in `talk_proposal_questions_json`.
-- `challenges_json` is an ordered array with at most 20 challenges. Each challenge has an `id` that is unique in the array, a `title` of 1 to 120 characters, `instructions` of 1 to 4,000 characters, a `resources` array with at most 10 entries, and a boolean `isPublished`. Each resource has a `label` of 1 to 80 characters and a `url` of at most 2,048 characters that is a valid `https` URL without embedded credentials.
+- `challenges_json` is an ordered array with at most 20 challenges. Each challenge has an `id` that is unique in the array, a `title` of 1 to 120 characters, `instructions` of 1 to 4,000 characters, a `resources` array with at most 10 entries, a boolean `isPublished`, and an optional boolean `isOpenTrack`. Each resource has a `label` of 1 to 80 characters and a `url` of at most 2,048 characters that is a valid `https` URL without embedded credentials.
 
 ### Notes
 
@@ -243,7 +244,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `simplified_claiming_enabled` is available only for Meetups. It requires no application terms or required registration fields. Optional paired `luma_event_api_id` and `luma_api_key` credentials connect check-ins without approval/rejection sync. It uses the event slug for redemption and the giveaway with `redirect_on_claim = true` as the redirect destination.
 - `talk_proposals_enabled` defaults to false. `talk_proposal_questions_json` defaults to `[]`, and `talk_proposal_questions_revision` defaults to `0`. After the first `TalkProposal` exists for the event, the feature cannot be disabled and the question definition cannot change. Its closing timestamp can change until the event is completed.
 - `check_in_flow_enabled` defaults to false and is available for every event type. While it is true, the account event overview shows approved participants their next step around check-in. `questionnaire_questions_json` defaults to `[]`. The event has a questionnaire when `check_in_flow_enabled = true` and `questionnaire_questions_json` holds at least one definition. Both fields can change at any time; a change does not rewrite stored `questionnaire_answers_json` payloads.
-- `challenges_json` defaults to `[]` and is available for every event type. `instructions` holds Markdown. `isPublished = false` marks a draft that only the event builder shows. The array order is the display order. No other table stores challenge data, and no participant record refers to a challenge.
+- `challenges_json` defaults to `[]` and is available for every event type. `instructions` holds Markdown. `isPublished = false` marks a draft that only the event builder shows. The array order is the display order. No other table stores challenge data, and no participant record refers to a challenge. A floor plan room can name a challenge by its `id`.
 - `participant_photos_enabled` defaults to false and is available for every event type. While it is true, an approved participant who finished the check-in flow can add photos to the event gallery. It does not depend on `check_in_flow_enabled`: with the check-in flow off, a participant has finished the check-in flow as soon as they have effective attendance.
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
 - Application field visibility columns control whether each optional application field appears on the participant application form. First name and family name are always visible and required.
@@ -264,10 +265,10 @@ It describes the intended persistent model at the level of entities, key fields,
 - `luma_event_api_id` and `luma_api_key` are optional because not every event has Luma configured for approval, rejection, and attendance sync.
 - Outside simplified claiming, Luma email visibility and requirement are enabled together when an event uses Luma Sync because guest sync matches Codex participants to Luma guests by that email.
 - `luma_webhook_id`, `luma_webhook_secret`, `luma_webhook_status`, `luma_webhook_error`, and `luma_webhook_registered_at` store the event's webhook registration state. Webhook status is `not_configured` until the event has enough Luma configuration for registration, `configured` after Luma returns a webhook ID and signing secret, and `failed` when registration cannot be completed with the stored event API ID and key.
-- `luma_guest_list_enabled` defaults to false. While it is true, the event confirms registrations from its private `EventLumaGuest` rows and sends no approval, rejection, or withdrawal sync to Luma. `luma_guest_list_synced_at` records the last successful full refresh of that list. `luma_guest_list_sync_error` stores a concise message for the latest failed refresh and is cleared by the next successful refresh. Setting `luma_guest_list_enabled` back to false removes the event's `EventLumaGuest` rows and clears both refresh fields.
+- `luma_guest_list_enabled` defaults to false. While it is true, the event confirms registrations from its private `EventLumaGuest` rows and sends no approval, rejection, or withdrawal sync to Luma. `luma_guest_list_synced_at` records the last successful full refresh of that list. `luma_guest_list_sync_error` stores a concise message for the latest failed refresh and is cleared by the next successful refresh. Disabling the list or changing its external event ID clears its guest rows and both refresh fields atomically. The event revision advances on invalidation and at the start of each refresh.
 - `agenda_items_json` stores a validated ordered JSON array of agenda items (`id`, `startsAt`, optional `endsAt`, `title`, optional `details`, `displayOrder`, optional `builderBlockType`, optional `builderFocusCost`, optional `builderEnergyDelta`). `builderBlockType` is a bounded string annotation written by the event builder; `builderFocusCost` (0..99) and `builderEnergyDelta` (-99..99) are organizer-declared scoring dials for custom builder blocks. A malformed annotation or dial is dropped during parsing without affecting the agenda, unknown block types resolve to a custom block in the builder, and all three annotations are suppressed from public event payloads.
 - `event_agenda_programs` stores one private program per event, its public agenda item ID, and the ordered tracks and sessions. Session IDs are unique within the program. A session stores its start offset and duration in minutes and an optional floor plan and room reference.
-- `event_floor_plans` stores each floor's name, private image object and revision, and named rooms. A room ID is unique within its floor. Room rectangles use coordinates relative to the full image. A room rectangle can store a rotation in degrees, clockwise around its center, from -180 to 180; without one it is upright. A room can store a route as an ordered list of 2 to 40 points in the same coordinates. Sessions can reference rooms in the same event.
+- `event_floor_plans` stores each floor's name, private image object and revision, and named rooms. A room ID is unique within its floor. Room rectangles use coordinates relative to the full image. A room rectangle can store a rotation in degrees, clockwise around its center, from -180 to 180; without one it is upright. A room can store a route as an ordered list of 2 to 40 points in the same coordinates. A room can store a `number`, its number at the venue in up to 30 characters, and a `challengeId`, the `id` of the challenge in `events.challenges_json` that takes place in it. Several rooms can store the same `challengeId`. A `challengeId` without a published challenge of that id has no effect. Sessions can reference rooms in the same event. A session can store `afterCheckIn`, a second title and an optional second room for participants who are checked in; both rooms of a session must exist on a floor plan of the event, and neither can be removed from its plan while the session names it.
 - `creation_flow` records which flow created the event (`classic` or `builder`). It is set at creation, immutable through updates, and used only to route builder-created events to the builder editor — it never changes how event data is interpreted. Builder events remain fully editable in the classic form.
 - `balance_score` (0–100) and `balance_breakdown_json` persist the Event Balance Score computed by the shared builder scoring engine from the event's own fields. They are recomputed server-side on every create and update for all events regardless of flow, are never accepted from clients, embed an `engineVersion` for staleness detection, and are exposed only in admin event payloads. `NULL` means the row has not been written since the feature shipped.
 
@@ -336,7 +337,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `created_at` stores the image creation time when the upload can read it from image metadata, otherwise the upload time.
 - `is_publicly_visible` controls whether a gallery photo appears in the public event Gallery tab.
 - `is_highlighted` controls whether a photo of the event team appears in the highlighted account-scoped gallery view. Participant photos are listed in their own section in every view, whatever the value.
-- `is_participant_upload` defaults to false. It is true for a photo that an approved participant added, is set when the row is created, and never changes. Such a row is a participant photo. One user can have at most 20 participant photos in one event; hidden rows count.
+- `is_participant_upload` defaults to false. It is true for a photo that an approved participant added, is set when the row is created, and never changes. Such a row is a participant photo. A database insert trigger enforces the limit of 20 participant photos per uploader and event, including hidden rows. All database chunks of one upload commit together.
 - `is_hidden` defaults to false. While it is true, the row is returned only to judges, staff, event admins, and platform admins. Only a participant photo can be hidden, and a hidden photo is never public: hiding sets `is_publicly_visible = false`, and showing the photo again leaves it false. `is_highlighted` keeps its value while a row is hidden.
 - Preview variants are derived at read time from the stored private object and are not stored as separate canonical rows. Public `preview` is capped at 720px and public `original` is a bounded 2400px full-display transform; neither exposes the stored original for display. An explicit `download=1` request returns the uploaded original as a non-cacheable attachment under the same gallery access and revision rules.
 - Approved participants can read the gallery rows of their events that are not hidden. An approved participant who finished the check-in flow can create participant photos while `events.participant_photos_enabled = true`. Judges, staff, event admins, and platform admins can read every row and can create, delete, highlight, hide, and mark rows public.
@@ -592,6 +593,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `registration_details_json`
 - `questionnaire_answers_json`
 - `questionnaire_completed_at`
+- `active_luma_email`
 - `created_at`
 - `updated_at`
 
@@ -640,6 +642,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `selected_track_id` stores the participant's selected Hackathon or Build track for that event when the application is `submitted` or `approved`.
 - `checked_in_at` is sticky and is not cleared or replaced by later Luma, simplified-claim, or staff check-in activity.
 - `check_in_override_status` stores an admin attendance decision of `joined` or `not_joined` for an approved application, with `check_in_override_at` and `check_in_override_by_user_id` recording when and by whom it was set. The override wins over `checked_in_at` in both directions and is cleared back to the recorded check-in by repeating the active decision.
+- A partial unique index on `(event_id, active_luma_email)` covers non-null values. Database triggers derive the trimmed lower-case email from active accounts with submitted or approved registrations in Luma-linked events. Registration, account, and event configuration writes update this key in the same transaction.
 - `questionnaire_completed_at` records when the participant completed the event questionnaire. It is null until then and is set once. `questionnaire_answers_json` is null until then and afterwards stores an ordered JSON array with one entry per question of that moment: `questionId`, `prompt` (the question text the participant answered), and `value` (text, or a boolean for an acknowledgment). A question the participant skipped is stored with an empty text. Restoring a withdrawn application sets both fields back to null. Account deletion sets `questionnaire_answers_json` back to null and keeps `questionnaire_completed_at`.
 - `certificate_hidden_at` records when the participant disabled certificate generation. Null means the certificate is generated and publicly reachable when the participant is otherwise certificate-eligible.
 - `certificate_revoked_at` records when an event admin or platform admin revoked certificate access for an approved participant, with `certificate_revoked_by_user_id` recording the acting admin. Null means admin revocation does not block certificate access when the participant is otherwise certificate-eligible.
@@ -655,6 +658,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `email`
 - `approval_status`
 - `synced_at`
+- `refresh_revision`
 
 ### Constraints
 
@@ -666,7 +670,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - Rows are the private copy of an event's Luma guest list and exist only while the event has `luma_guest_list_enabled = true`.
 - `email` is the trimmed, lower-case Luma guest email. It is the only stored contact detail and it matches a participant through the user's saved `luma_email`, ignoring case.
 - `approval_status` stores the Luma approval status in lower case with underscores, for example `approved`, `pending_approval`, `waitlist`, `invited`, or `declined`.
-- `synced_at` records when a guest-list refresh or a signed Luma webhook last wrote the row. A refresh removes the rows it did not see, except rows that a webhook wrote after the refresh started.
+- `synced_at` records when a guest-list refresh or a signed Luma webhook last wrote the row. Guest rows carry the current event refresh revision. A full refresh replaces older rows and preserves webhook changes bearing its own revision.
 - No API response contains these rows. Event admins and platform admins read only aggregate counts.
 
 ## TalkProposal

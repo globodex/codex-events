@@ -639,9 +639,9 @@ describe('event management utilities', () => {
     }).tracks?.[0]).toMatchObject({
       staffInstructions: 'Help participants find the right starter guide.'
     })
-    const accountEventTrack = serializeAccountEvent(buildEventRecord(), tracks, {
-      trackStaffInstructionIds: 'all'
-    }).tracks?.[0]
+    const accountEventTrack = serializeAccountEvent(buildEventRecord(), tracks, {}, {
+      isPlatformAdmin: false, isEventAdmin: true, isStaff: false, staffTrackId: null
+    }, null).tracks?.[0]
     expect(accountEventTrack).toEqual({
       id: 'track_1',
       name: 'Agents',

@@ -3,6 +3,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
+import { splitSqlStatements } from '../../../support/backend/migrations'
 import { createTestD1Database, type TestD1Database } from '../../../support/backend/fake-d1'
 
 const migrationSql = readdirSync(join(process.cwd(), 'drizzle'))
@@ -79,6 +80,37 @@ describe('shared database migration', () => {
 
   afterEach(async () => {
     await database.close()
+  })
+
+  test.each([false, true])('migrates existing Luma registrations with duplicate active ownership=%s', async (duplicate) => {
+    const migration = '0085_build_day_guards.sql'
+    const files = readdirSync(join(process.cwd(), 'drizzle')).filter(name => /^\d+.*\.sql$/.test(name) && name < migration).sort()
+    const db = createTestD1Database({ applyMigrations: false })
+    try {
+      await db.exec(files.map(name => readFileSync(join(process.cwd(), 'drizzle', name), 'utf8')).join('\n'))
+      const now = isoTimestamp(0)
+      for (const id of ['first', 'second']) await seedUser(db, id, now)
+      await seedEvent(db, 'linked', 'registration_open', now, 'first')
+      await db.exec(`
+        update events set luma_guest_list_enabled = 1, luma_event_api_id = 'external', luma_api_key = 'key';
+        update users set luma_email = '  Guest@Example.com ';
+        insert into user_applications (id,event_id,user_id,status) values ('a','linked','first','submitted');
+      `)
+      await db.prepare('insert into user_applications (id,event_id,user_id,status) values (?,?,?,?)')
+        .run('b', 'linked', 'second', duplicate ? 'approved' : 'withdrawn')
+      const statements = splitSqlStatements(readFileSync(join(process.cwd(), 'drizzle', migration), 'utf8'))
+      const apply = db.batch(statements.map(statement => db.prepare(statement)))
+      if (duplicate) {
+        await expect(apply).rejects.toThrow(/UNIQUE constraint failed/)
+        expect(await db.prepare('select count(*) as n from pragma_table_info(?) where name = ?').bind('user_applications', 'active_luma_email').first('n')).toBe(0)
+      } else {
+        await apply
+        expect(await db.prepare('select active_luma_email from user_applications where id = ?').bind('a').first('active_luma_email')).toBe('guest@example.com')
+        expect(await db.prepare('select active_luma_email from user_applications where id = ?').bind('b').first('active_luma_email')).toBeNull()
+      }
+    } finally {
+      await db.close()
+    }
   })
 
   test('migrates the existing simplified giveaway without changing assigned credits', async () => {

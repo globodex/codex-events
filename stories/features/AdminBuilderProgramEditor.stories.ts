@@ -3,7 +3,7 @@ import { shallowRef } from 'vue'
 import type { EventProgram } from '#shared/domains/events/program'
 import type { EventAgendaItem } from '~/domains/events/records'
 import AdminBuilderProgramEditor from '~/components/admin/builder/organisms/AdminBuilderProgramEditor.vue'
-import { buildDayProgram } from './fixtures/build-day.fixtures'
+import { buildDayChallenges, buildDayProgram } from './fixtures/build-day.fixtures'
 
 interface ProgramEditorStoryArgs {
   hasAgenda: boolean
@@ -40,6 +40,7 @@ const meta = {
       return {
         agendaItems: hasAgenda ? agendaItems : [],
         floorPlans: hasProgram ? buildDayProgram.floorPlans : [],
+        challenges: buildDayChallenges,
         eventId: buildDayProgram.eventId,
         program
       }
@@ -51,6 +52,7 @@ const meta = {
           :agenda-items="agendaItems"
           :program="program"
           :floor-plans="floorPlans"
+          :challenges="challenges"
           :saving="false"
           save-error=""
           @save="program = $event"

@@ -39,11 +39,17 @@ const trackSessions = computed(() => props.tracks.flatMap((track, index) =>
   track.sessions.map(session => ({ session, column: index + 3 }))
 ).sort((left, right) => left.session.startsAfterMinutes - right.session.startsAfterMinutes || left.column - right.column))
 
-// Where each public block outside the program sits, in minutes since the program started.
-const outsideEntries = computed(() => props.outsideItems.map(item => ({
-  item,
-  offset: (Date.parse(item.startsAt) - baseTime.value) / minuteMs
-})))
+// The public blocks outside the program, grouped by their start in minutes since the program started.
+// Blocks that start at the same time share one group, in display order.
+const outsideGroups = computed(() => {
+  const groups = new Map<number, PublicEventAgendaItem[]>()
+  const items = [...props.outsideItems].sort((left, right) => left.displayOrder - right.displayOrder)
+  for (const item of items) {
+    const offset = (Date.parse(item.startsAt) - baseTime.value) / minuteMs
+    groups.set(offset, [...(groups.get(offset) ?? []), item])
+  }
+  return groups
+})
 
 const nextStart = computed(() => Math.min(...trackSessions.value
   .map(({ session }) => session.startsAfterMinutes)
@@ -53,7 +59,7 @@ const nextStart = computed(() => Math.min(...trackSessions.value
 const boundaries = computed(() => {
   const starts = new Set([
     ...trackSessions.value.map(({ session }) => session.startsAfterMinutes),
-    ...outsideEntries.value.map(({ offset }) => offset)
+    ...outsideGroups.value.keys()
   ])
   const offsets = new Set(starts)
   for (const { session } of trackSessions.value) {
@@ -113,9 +119,16 @@ function phaseLabel(phase: SessionPhase, session: ProgramSession) {
 // The grid row that starts at each boundary.
 const rows = computed(() => new Map(boundaries.value.map(({ offset }, index) => [offset, index + 2])))
 
-// The outside blocks span all tracks.
-const outsidePlacements = computed(() => outsideEntries.value.map(({ item, offset }) => ({
-  item,
+// Each group of outside blocks spans all tracks. Its blocks are stacked in one grid cell.
+const outsidePlacements = computed(() => [...outsideGroups.value].map(([offset, items]) => ({
+  offset,
+  blocks: items.map(item => ({
+    item,
+    // The time column shows when a block starts, so a block shows its time range only when it ends later.
+    timeRange: item.endsAt && Date.parse(item.endsAt) > Date.parse(item.startsAt)
+      ? getAgendaItemPresentation(item, false).timeLabel
+      : null
+  })),
   style: { gridColumn: '3 / -1', gridRow: rows.value.get(offset) }
 })))
 
@@ -209,20 +222,32 @@ const placements = computed(() => {
 
       <!-- A public block outside the program has no room, so it is shown but cannot be selected. -->
       <div
-        v-for="entry in outsidePlacements"
-        :key="entry.item.id"
-        class="m-1 rounded-xl border border-default bg-default px-3 py-2.5"
-        :style="entry.style"
+        v-for="group in outsidePlacements"
+        :key="group.offset"
+        class="m-1 flex flex-col gap-2"
+        :style="group.style"
       >
-        <p class="break-words text-sm font-semibold leading-snug text-highlighted">
-          {{ entry.item.title }}
-        </p>
-        <p
-          v-if="entry.item.details"
-          class="mt-1 whitespace-pre-line break-words text-xs text-muted"
+        <div
+          v-for="{ item, timeRange } in group.blocks"
+          :key="item.id"
+          class="rounded-xl border border-default bg-default px-3 py-2.5"
         >
-          {{ entry.item.details }}
-        </p>
+          <p class="break-words text-sm font-semibold leading-snug text-highlighted">
+            {{ item.title }}
+          </p>
+          <p
+            v-if="timeRange"
+            class="mt-0.5 text-xs tabular-nums leading-tight text-muted"
+          >
+            {{ timeRange }}
+          </p>
+          <p
+            v-if="item.details"
+            class="mt-1 whitespace-pre-line break-words text-xs text-muted"
+          >
+            {{ item.details }}
+          </p>
+        </div>
       </div>
 
       <AccountEventProgramSession

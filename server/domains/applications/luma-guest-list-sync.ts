@@ -1,17 +1,19 @@
 import type { H3Event } from 'h3'
 
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, eq, exists, lt, sql } from 'drizzle-orm'
 
-import type { AppDatabase } from '#server/database/client'
-import { eventLumaGuests, events, userApplications, users } from '#server/database/schema'
+import type { AppDatabase, AppDatabaseBatch } from '#server/database/client'
+import { eventLumaGuests, events, userApplications } from '#server/database/schema'
 import { withdrawUserApplicationWithAdminPolicy } from '#server/domains/applications'
 import { findEventApplicationByLumaEmail } from '#server/domains/applications/luma-email'
 import { fetchLumaEventGuests, LumaEventGuestLimitError } from '#server/domains/applications/luma-event-guests'
 import {
-  findEventLumaGuestStanding,
+  countEventLumaGuests,
+  guestDecisionGuard,
+  guestListChangedError,
+  guestListSource,
   getLumaGuestStanding,
-  removeEventLumaGuestsNotSeenSince,
-  saveEventLumaGuests,
+  upsertGuestListRows,
   type LumaGuestListEntry,
   type LumaGuestStanding
 } from '#server/domains/applications/luma-guest-list'
@@ -52,17 +54,20 @@ async function reconcileLumaGuestApplication(options: {
   database: AppDatabase
   event: EventRecord
   guestEmail: string
+  revision?: number
 }) {
-  const [guestStanding, match] = await Promise.all([
-    findEventLumaGuestStanding(options.database, options.event.id, options.guestEmail),
+  const [guest, match] = await Promise.all([
+    options.database.select({ approvalStatus: eventLumaGuests.approvalStatus }).from(eventLumaGuests)
+      .where(and(eq(eventLumaGuests.eventId, options.event.id), eq(eventLumaGuests.email, options.guestEmail))).get(),
     findEventApplicationByLumaEmail(options.database, options.event.id, options.guestEmail)
   ])
 
-  if (!guestStanding || !match) {
+  if (!guest || !match) {
     return 'unchanged'
   }
 
-  const reconciliation = getLumaGuestReconciliation(guestStanding, match.application.status)
+  const writeGuard = guestDecisionGuard(options.event, options.guestEmail, guest.approvalStatus, options.revision)
+  const reconciliation = getLumaGuestReconciliation(getLumaGuestStanding(guest.approvalStatus), match.application.status)
 
   if (reconciliation === 'approve') {
     const approvedApplication = await approveSubmittedApplication({
@@ -73,6 +78,7 @@ async function reconcileLumaGuestApplication(options: {
       applicant: match.applicant,
       approvedAt: new Date().toISOString(),
       source: 'luma_guest_list',
+      writeGuard,
       participantsLimit: null
     })
 
@@ -87,7 +93,8 @@ async function reconcileLumaGuestApplication(options: {
       event: options.event,
       application: match.application,
       actorUserId: null,
-      trigger: 'luma_cancellation'
+      trigger: 'luma_cancellation',
+      writeGuard
     })
 
     return withdrawal.status === 'withdrawn' ? 'withdrawn' : 'unchanged'
@@ -110,7 +117,7 @@ export async function applyLumaGuestWebhookUpdate(options: {
     approvalStatus: options.approvalStatus
   }
 
-  await saveEventLumaGuests(options.database, options.event.id, [guest], new Date().toISOString())
+  await upsertGuestListRows(options.database, [guest], new Date().toISOString(), guestListSource(options.event), false)
   await reconcileLumaGuestApplication({
     h3Event: options.h3Event,
     database: options.database,
@@ -161,21 +168,15 @@ async function listLumaGuestEmailsToReconcile(database: AppDatabase, eventId: st
       applicationStatus: userApplications.status
     })
     .from(userApplications)
-    .innerJoin(users, eq(users.id, userApplications.userId))
     .innerJoin(eventLumaGuests, and(
       eq(eventLumaGuests.eventId, userApplications.eventId),
-      sql`${eventLumaGuests.email} = lower(${users.lumaEmail})`
+      eq(eventLumaGuests.email, userApplications.activeLumaEmail)
     ))
-    .where(and(
-      eq(userApplications.eventId, eventId),
-      isNull(users.deletedAt)
-    ))
+    .where(eq(userApplications.eventId, eventId))
 
-  return [...new Set(
-    rows
-      .filter(row => getLumaGuestReconciliation(getLumaGuestStanding(row.approvalStatus), row.applicationStatus) !== 'none')
-      .map(row => row.guestEmail)
-  )]
+  return rows
+    .filter(row => getLumaGuestReconciliation(getLumaGuestStanding(row.approvalStatus), row.applicationStatus) !== 'none')
+    .map(row => row.guestEmail)
 }
 
 /**
@@ -192,9 +193,12 @@ export async function syncEventLumaGuestList(options: {
   apiBaseUrl: string | undefined
 }) {
   const { database, event } = options
-  // Taken before the first request to Luma: a guest that a webhook writes after this moment is
-  // newer than the fetched list and must survive this refresh.
-  const syncedAt = new Date().toISOString()
+  const [started] = await database.update(events)
+    .set({ lumaGuestListRevision: sql`${events.lumaGuestListRevision} + 1` })
+    .where(guestListSource(event))
+    .returning({ revision: events.lumaGuestListRevision })
+  if (!started) throw guestListChangedError()
+  const source = guestListSource(event, started.revision)
   let guests: LumaGuestListEntry[]
 
   try {
@@ -202,28 +206,41 @@ export async function syncEventLumaGuestList(options: {
   } catch (error) {
     const failure = toLumaGuestListFetchFailure(error)
 
-    await database
+    const result = await database
       .update(events)
-      .set({ lumaGuestListSyncError: failure.message, updatedAt: syncedAt })
-      .where(eq(events.id, event.id))
+      .set({ lumaGuestListSyncError: failure.message, updatedAt: new Date().toISOString() })
+      .where(source)
+    if (!result.meta.changes) throw guestListChangedError()
     throw failure
   }
 
-  await saveEventLumaGuests(database, event.id, guests, syncedAt)
-  await removeEventLumaGuestsNotSeenSince(database, event.id, syncedAt)
-  await database
-    .update(events)
-    .set({ lumaGuestListSyncedAt: syncedAt, lumaGuestListSyncError: null, updatedAt: syncedAt })
-    .where(eq(events.id, event.id))
+  // Chunk the JSON bindings, then publish the entire snapshot in one D1 transaction.
+  const syncedAt = new Date().toISOString()
+  const upserts: AppDatabaseBatch[number][] = []
+  for (let index = 0; index < guests.length; index += 100) {
+    upserts.push(upsertGuestListRows(database, guests.slice(index, index + 100), syncedAt, source, true))
+  }
+  const [published] = await database.batch([
+    database.update(events)
+      .set({ lumaGuestListSyncedAt: syncedAt, lumaGuestListSyncError: null, updatedAt: syncedAt })
+      .where(source),
+    ...upserts,
+    database.delete(eventLumaGuests).where(and(
+      eq(eventLumaGuests.eventId, event.id), lt(eventLumaGuests.refreshRevision, started.revision),
+      exists(database.select({ id: events.id }).from(events).where(source))
+    ))
+  ])
+  if (!published.meta.changes) throw guestListChangedError()
 
   const applicationCounts = { approved: 0, withdrawn: 0, unchanged: 0 }
 
   for (const guestEmail of await listLumaGuestEmailsToReconcile(database, event.id)) {
-    const result = await reconcileLumaGuestApplication({ h3Event: options.h3Event, database, event, guestEmail })
+    const result = await reconcileLumaGuestApplication({ h3Event: options.h3Event, database, event, guestEmail, revision: started.revision })
     applicationCounts[result] += 1
   }
 
   return {
+    ...await countEventLumaGuests(database, event.id, source),
     approvedApplicationCount: applicationCounts.approved,
     withdrawnApplicationCount: applicationCounts.withdrawn
   }

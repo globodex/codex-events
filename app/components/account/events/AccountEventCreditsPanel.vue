@@ -8,6 +8,7 @@ import type {
   AccountEventEntryAdminCreditOffer,
   AccountEventEntryParticipantCreditOffer
 } from '#shared/domains/events/account-event-entry-page'
+import AccountEventNextStepNotice from '~/components/account/events/molecules/AccountEventNextStepNotice.vue'
 import {
   createEventCreditOfferWithInventory,
   isEventCreditLink,
@@ -36,10 +37,6 @@ const apiFetch = useApiClient()
 const toast = useToast()
 const participantCredits = shallowRef<ParticipantEventCreditOffer[]>(props.participantCredits)
 const adminCredits = shallowRef<AdminEventCreditOffer[]>(props.adminCredits)
-const participantCreditsError = ref<unknown>(null)
-const adminCreditsError = ref<unknown>(null)
-const participantCreditsStatus = ref<'success' | 'pending'>('success')
-const adminCreditsStatus = ref<'success' | 'pending'>('success')
 
 watch(() => props.participantCredits, (offers) => {
   participantCredits.value = offers
@@ -60,7 +57,6 @@ const createPending = ref(false)
 const claimPendingById = reactive<Record<string, boolean>>({})
 const claimErrorById = reactive<Record<string, string>>({})
 const expandedInventoryOfferIds = ref(new Set<string>())
-const expandedParticipantOfferIds = ref(new Set<string>())
 const revealedClaimedCodeIds = ref(new Set<string>())
 const editingOfferNameIds = ref(new Set<string>())
 const savePendingById = reactive<Record<string, boolean>>({})
@@ -150,10 +146,6 @@ watch(adminCredits, (offers) => {
 })
 
 watch(participantCredits, (offers) => {
-  const nextIds = new Set(offers.map(offer => offer.id))
-  const nextExpandedParticipantOfferIds = new Set(
-    [...expandedParticipantOfferIds.value].filter(offerId => nextIds.has(offerId))
-  )
   const nextClaimedCodeIds = new Set(
     offers
       .map(offer => offer.claimedCode?.id)
@@ -163,7 +155,6 @@ watch(participantCredits, (offers) => {
     [...revealedClaimedCodeIds.value].filter(codeId => nextClaimedCodeIds.has(codeId))
   )
 
-  expandedParticipantOfferIds.value = nextExpandedParticipantOfferIds
   revealedClaimedCodeIds.value = nextRevealedClaimedCodeIds
 }, {
   immediate: true
@@ -201,20 +192,12 @@ function cancelEditingOfferName(offer: AdminEventCreditOffer) {
   stopEditingOfferName(offer.id)
 }
 
-function formatCreditClaimedAt(value: string | null) {
-  if (!value) {
-    return 'Saved'
-  }
-
+function formatCreditClaimedAt(value: string) {
   return `${formatEventDate(value)} at ${formatEventTime(value)}`
 }
 
 function isInventoryExpanded(offerId: string) {
   return expandedInventoryOfferIds.value.has(offerId)
-}
-
-function isParticipantOfferExpanded(offerId: string) {
-  return expandedParticipantOfferIds.value.has(offerId)
 }
 
 function isClaimedCodeRevealed(codeId: string) {
@@ -228,7 +211,7 @@ function describeOfferWithoutFreeCode(offer: ParticipantEventCreditOffer) {
 }
 
 // True when an offer that the participant has not claimed still has a free code. Only then is
-// there something to claim, so only then does the note about finishing the check-in make sense.
+// there something to claim, so only then does a note about why the claim is locked make sense.
 const hasOfferToClaim = computed(() =>
   participantCredits.value.some(offer => !offer.claimedCode && offer.availableCount > 0)
 )
@@ -243,18 +226,6 @@ function toggleInventoryExpanded(offerId: string) {
   }
 
   expandedInventoryOfferIds.value = nextExpandedInventoryOfferIds
-}
-
-function toggleParticipantOfferExpanded(offerId: string) {
-  const nextExpandedParticipantOfferIds = new Set(expandedParticipantOfferIds.value)
-
-  if (nextExpandedParticipantOfferIds.has(offerId)) {
-    nextExpandedParticipantOfferIds.delete(offerId)
-  } else {
-    nextExpandedParticipantOfferIds.add(offerId)
-  }
-
-  expandedParticipantOfferIds.value = nextExpandedParticipantOfferIds
 }
 
 function toggleClaimedCodeVisibility(codeId: string) {
@@ -465,11 +436,7 @@ async function claimOffer(offerId: string) {
       offer.id === offerId ? response.data : offer
     )
 
-    toast.add({
-      title: 'Credit claimed',
-      description: 'Your assigned credit is now available in this tab.',
-      color: 'success'
-    })
+    toast.add({ title: 'Credit claimed', color: 'success' })
   } catch (error) {
     claimErrorById[offerId] = normalizeEventCreditApiError(error).message
   } finally {
@@ -485,13 +452,13 @@ async function copyCreditValue(value: string) {
     await navigator.clipboard.writeText(value)
     toast.add({
       title: 'Code copied',
-      description: 'The credit value was copied to your clipboard.',
+      description: 'The code was copied to your clipboard.',
       color: 'success'
     })
   } catch {
     toast.add({
       title: 'Copy failed',
-      description: 'This browser could not copy the credit value right now.',
+      description: 'This browser could not copy the code right now.',
       color: 'error'
     })
   }
@@ -539,23 +506,7 @@ async function copyCreditValue(value: string) {
 
       <div class="space-y-6">
         <AppAlert
-          v-if="adminCreditsError"
-          color="error"
-          variant="soft"
-          title="Credits unavailable"
-          :description="normalizeEventCreditApiError(adminCreditsError).message"
-        />
-
-        <AppAlert
-          v-else-if="adminCreditsStatus === 'pending'"
-          color="neutral"
-          variant="soft"
-          title="Loading credit inventory"
-          description="Resolving the current offers, uploaded values, and claim records for this event."
-        />
-
-        <AppAlert
-          v-else-if="adminCredits.length === 0"
+          v-if="adminCredits.length === 0"
           color="neutral"
           variant="soft"
           title="No active offers yet"
@@ -994,219 +945,153 @@ async function copyCreditValue(value: string) {
             Claim credits
           </h2>
           <p class="text-sm text-muted">
-            Claim one value from each offer while inventory remains available. Once claimed, the assigned code or link stays attached to your account for this event.
+            One per person. Your code stays here after you claim it.
           </p>
         </div>
       </template>
 
-      <div class="space-y-6">
-        <AppAlert
-          v-if="participantCreditsError"
-          color="error"
-          variant="soft"
-          title="Credits unavailable"
-          :description="normalizeEventCreditApiError(participantCreditsError).message"
+      <AppAlert
+        v-if="participantCredits.length === 0"
+        color="neutral"
+        variant="soft"
+        title="No credits available yet"
+        description="Credits appear here when the event team adds them."
+      />
+
+      <div
+        v-else
+        class="space-y-5"
+      >
+        <AccountEventNextStepNotice
+          v-if="props.claimAccess === 'must_finish_check_in_flow' && hasOfferToClaim"
+          data-testid="participant-credits-finish-check-in"
+          title="Finish your next step to claim your credits"
+          :next-step-href="props.nextStepHref"
         />
 
         <AppAlert
-          v-else-if="participantCreditsStatus === 'pending'"
-          color="neutral"
-          variant="soft"
-          title="Loading credits"
-          description="Resolving your available and already claimed credit offers."
+          v-else-if="props.claimAccess === 'event_completed' && hasOfferToClaim"
+          title="Credit claims are closed for this event."
         />
 
-        <AppAlert
-          v-else-if="participantCredits.length === 0"
-          color="neutral"
-          variant="soft"
-          title="No credits available yet"
-          description="Credits appear here once this event has uploaded values to claim."
-        />
-
-        <div
-          v-else
-          class="grid gap-4"
-        >
-          <AppAlert
-            v-if="props.claimAccess === 'must_finish_check_in_flow' && hasOfferToClaim"
-            data-testid="participant-credits-finish-check-in"
-            color="neutral"
-            variant="soft"
-            class="block"
-          >
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <p class="font-semibold text-highlighted">
-                Finish your check-in to claim credits
-              </p>
-              <AppButton
-                v-if="props.nextStepHref"
-                :to="props.nextStepHref"
-                color="neutral"
-                variant="solid"
-                trailing-icon="i-lucide-arrow-right"
-              >
-                See your next step
-              </AppButton>
-            </div>
-          </AppAlert>
-
+        <!-- The offers are rows of this card with a line between them, not cards of their own. -->
+        <div class="divide-y divide-black/8 dark:divide-white/[0.08]">
           <article
             v-for="offer in participantCredits"
             :key="offer.id"
             :data-testid="`participant-credit-offer-${offer.id}`"
-            class="rounded-xl border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#151515]/64 px-5 py-5"
+            class="space-y-4 py-5 first:pt-0 last:pb-0"
           >
-            <div class="flex h-full flex-col gap-4">
-              <div
-                :class="[
-                  'space-y-3',
-                  isParticipantOfferExpanded(offer.id) ? 'border-b border-black/8 pb-4 dark:border-white/[0.08]' : ''
-                ]"
+            <div class="flex flex-wrap items-center gap-2">
+              <h3 class="text-lg font-semibold text-highlighted">
+                {{ offer.name }}
+              </h3>
+              <AppBadge
+                v-if="offer.claimedCode"
+                color="primary"
+                variant="soft"
               >
-                <div class="flex items-center justify-between gap-3">
-                  <div class="flex min-w-0 flex-wrap items-center gap-2">
-                    <h3 class="text-lg font-semibold text-highlighted">
-                      {{ offer.name }}
-                    </h3>
-                    <AppBadge
-                      v-if="offer.claimedCode"
-                      color="primary"
-                      variant="soft"
-                    >
-                      Redeemed
-                    </AppBadge>
-                    <AppBadge
-                      v-else
-                      :color="offer.availableCount > 0 ? 'success' : 'neutral'"
-                      variant="soft"
-                    >
-                      {{ offer.availableCount > 0 ? 'Available' : describeOfferWithoutFreeCode(offer) }}
-                    </AppBadge>
-                  </div>
+                Claimed
+              </AppBadge>
+              <AppBadge
+                v-else-if="offer.availableCount === 0"
+                color="neutral"
+                variant="soft"
+              >
+                {{ describeOfferWithoutFreeCode(offer) }}
+              </AppBadge>
+              <!-- An offer that the participant cannot claim yet shows no "Available" badge. -->
+              <AppBadge
+                v-else-if="props.claimAccess === 'can_claim'"
+                color="success"
+                variant="soft"
+              >
+                Available
+              </AppBadge>
+            </div>
 
+            <AppMarkdownRenderer :source="offer.description" />
+
+            <div
+              v-if="offer.claimedCode"
+              class="space-y-2"
+            >
+              <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+                {{ isEventCreditLink(offer.claimedCode.value) ? 'Your link' : 'Your code' }}
+              </p>
+
+              <AppButton
+                v-if="isEventCreditLink(offer.claimedCode.value)"
+                :to="offer.claimedCode.value"
+                color="neutral"
+                variant="soft"
+                external
+                trailing-icon="i-lucide-external-link"
+              >
+                Open link
+              </AppButton>
+
+              <div
+                v-else
+                class="flex flex-wrap items-center gap-3"
+              >
+                <code class="min-w-0 break-all font-mono text-sm text-highlighted">
+                  {{ isClaimedCodeRevealed(offer.claimedCode.id) ? offer.claimedCode.value : maskedCreditValue }}
+                </code>
+
+                <div class="flex shrink-0 items-center gap-2">
                   <AppButton
                     color="neutral"
-                    variant="outline"
-                    :label="isParticipantOfferExpanded(offer.id) ? 'Collapse' : 'Expand'"
-                    :trailing-icon="isParticipantOfferExpanded(offer.id) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                    :aria-expanded="isParticipantOfferExpanded(offer.id)"
-                    :aria-controls="`participant-credit-offer-body-${offer.id}`"
-                    class="gap-1.5 self-center rounded-full px-3.5"
-                    @click="toggleParticipantOfferExpanded(offer.id)"
+                    variant="soft"
+                    size="sm"
+                    icon="i-lucide-copy"
+                    @click="copyCreditValue(offer.claimedCode.value)"
+                  >
+                    Copy code
+                  </AppButton>
+
+                  <AppButton
+                    type="button"
+                    color="neutral"
+                    variant="ghost"
+                    size="sm"
+                    :icon="isClaimedCodeRevealed(offer.claimedCode.id) ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                    class="h-8 w-8 gap-0 px-0"
+                    :aria-label="isClaimedCodeRevealed(offer.claimedCode.id) ? 'Hide code' : 'Show code'"
+                    :aria-pressed="isClaimedCodeRevealed(offer.claimedCode.id)"
+                    :title="isClaimedCodeRevealed(offer.claimedCode.id) ? 'Hide code' : 'Show code'"
+                    @click="toggleClaimedCodeVisibility(offer.claimedCode.id)"
                   />
                 </div>
               </div>
 
-              <div
-                v-if="isParticipantOfferExpanded(offer.id)"
-                :id="`participant-credit-offer-body-${offer.id}`"
-                class="space-y-5"
+              <p
+                v-if="offer.claimedCode.claimedAt"
+                class="text-sm text-muted"
               >
-                <AppMarkdownRenderer :source="offer.description" />
-
-                <template v-if="offer.claimedCode">
-                  <div
-                    class="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(12rem,1fr)]"
-                  >
-                    <div class="rounded-xl border border-black/8 bg-white/62 px-4 py-3 dark:border-white/[0.08] dark:bg-black/10">
-                      <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-                        Your assigned value
-                      </p>
-
-                      <AppButton
-                        v-if="isEventCreditLink(offer.claimedCode.value)"
-                        :to="offer.claimedCode.value"
-                        color="neutral"
-                        variant="soft"
-                        external
-                        trailing-icon="i-lucide-external-link"
-                        class="mt-3"
-                      >
-                        Open redemption link
-                      </AppButton>
-
-                      <div
-                        v-else
-                        class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <code class="min-w-0 break-all font-mono text-sm text-highlighted">
-                          {{ isClaimedCodeRevealed(offer.claimedCode.id) ? offer.claimedCode.value : maskedCreditValue }}
-                        </code>
-
-                        <div class="flex shrink-0 items-center gap-2 self-start sm:self-auto">
-                          <AppButton
-                            color="neutral"
-                            variant="soft"
-                            size="sm"
-                            icon="i-lucide-copy"
-                            @click="copyCreditValue(offer.claimedCode.value)"
-                          >
-                            Copy code
-                          </AppButton>
-
-                          <AppButton
-                            type="button"
-                            color="neutral"
-                            variant="ghost"
-                            size="sm"
-                            :icon="isClaimedCodeRevealed(offer.claimedCode.id) ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                            class="h-8 w-8 gap-0 px-0"
-                            :aria-label="isClaimedCodeRevealed(offer.claimedCode.id) ? 'Hide assigned code' : 'Show assigned code'"
-                            :aria-pressed="isClaimedCodeRevealed(offer.claimedCode.id)"
-                            :title="isClaimedCodeRevealed(offer.claimedCode.id) ? 'Hide code' : 'Show code'"
-                            @click="toggleClaimedCodeVisibility(offer.claimedCode.id)"
-                          >
-                            <span class="sr-only">
-                              {{ isClaimedCodeRevealed(offer.claimedCode.id) ? 'Hide assigned code' : 'Show assigned code' }}
-                            </span>
-                          </AppButton>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="rounded-xl border border-black/8 bg-white/62 px-4 py-3 dark:border-white/[0.08] dark:bg-black/10">
-                      <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-                        Claimed
-                      </p>
-                      <p class="mt-1 text-base font-semibold text-highlighted">
-                        {{ formatCreditClaimedAt(offer.claimedCode.claimedAt) }}
-                      </p>
-                    </div>
-                  </div>
-                </template>
-
-                <template v-else>
-                  <AppAlert
-                    v-if="claimErrorById[offer.id]"
-                    color="error"
-                    variant="soft"
-                    title="Credit could not be claimed"
-                    :description="claimErrorById[offer.id]"
-                  />
-
-                  <AppAlert
-                    v-else-if="offer.availableCount === 0"
-                    color="neutral"
-                    variant="soft"
-                    :title="describeOfferWithoutFreeCode(offer)"
-                  />
-
-                  <div
-                    v-else-if="props.claimAccess === 'can_claim'"
-                    class="mt-auto"
-                  >
-                    <AppButton
-                      color="primary"
-                      :loading="claimPendingById[offer.id]"
-                      @click="claimOffer(offer.id)"
-                    >
-                      Redeem credit
-                    </AppButton>
-                  </div>
-                </template>
-              </div>
+                Claimed {{ formatCreditClaimedAt(offer.claimedCode.claimedAt) }}
+              </p>
             </div>
+
+            <template v-else>
+              <AppAlert
+                v-if="claimErrorById[offer.id]"
+                color="error"
+                variant="soft"
+                title="Credit could not be claimed"
+                :description="claimErrorById[offer.id]"
+              />
+
+              <!-- The button stays below a refused claim, so the participant can try again. -->
+              <AppButton
+                v-if="offer.availableCount > 0 && props.claimAccess === 'can_claim'"
+                color="primary"
+                :loading="claimPendingById[offer.id]"
+                @click="claimOffer(offer.id)"
+              >
+                Claim credit
+              </AppButton>
+            </template>
           </article>
         </div>
       </div>

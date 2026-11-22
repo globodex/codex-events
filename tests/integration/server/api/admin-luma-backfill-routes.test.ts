@@ -23,7 +23,7 @@ describe('admin luma backfill routes', () => {
     }
   })
 
-  test('platform admins can backfill Luma emails for legacy usernames in an event with a configured Luma event API id', async () => {
+  test.each([false, true])('backfills an active registration with a Luma email conflict of %s', async (conflict) => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/admin/events/:eventId/actions/backfill-luma-emails', handler: backfillLumaEmailsHandler }
@@ -147,7 +147,7 @@ describe('admin luma backfill routes', () => {
               guest: {
                 id: 'gst-123',
                 user_id: 'usr-123',
-                user_email: 'legacy@luma.example'
+                user_email: conflict ? 'MIGRATED@luma.example' : 'legacy@luma.example'
               }
             }
           ],
@@ -169,6 +169,26 @@ describe('admin luma backfill routes', () => {
       method: 'POST'
     })
 
+    if (conflict) {
+      // The account is reported as failed and keeps its empty Luma email. The backfill itself succeeds.
+      expect(response.status).toBe(200)
+      expect(await response.json()).toMatchObject({
+        data: {
+          candidateCount: 1,
+          updatedCount: 0,
+          failedCount: 1,
+          results: [
+            {
+              userId: 'legacy_user',
+              status: 'failed',
+              reason: 'This Luma email is already connected to another registration for this event.'
+            }
+          ]
+        }
+      })
+      expect((await harness.database.query.users.findFirst({ where: eq(users.id, 'legacy_user') }))?.lumaEmail).toBeNull()
+      return
+    }
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       data: {

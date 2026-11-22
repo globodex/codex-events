@@ -8,7 +8,7 @@ const contractSource = readFileSync(
   new URL('../../../../../server/domains/events/account-event-page-contract.ts', import.meta.url),
   'utf8'
 )
-const requestEvent = (path = '/') => ({ path }) as never
+const requestEvent = (path = '/') => ({ path, context: {} }) as never
 
 vi.mock('../../../../../server/domains/events/account-event-page-context', () => ({
   resolveAccountEventPageContext
@@ -52,7 +52,7 @@ describe('account-event page route contract', () => {
     expect(contractSource).toContain('schema: TSchema')
     expect(contractSource).toContain('authorize: AccountEventPageAuthorizer')
     expect(contractSource).toContain('accountEventPageParamsSchema.parse')
-    expect(contractSource).toContain('validateWithSchema(accountEventPageQuerySchema, getQuery(h3Event), \'query\')')
+    expect(contractSource).toContain('parseValidatedQuery(h3Event, accountEventPageQuerySchema)')
     expect(contractSource).toContain('definition.load(context, query)')
     expect(contractSource).toContain('d1')
     expect(contractSource).toContain('() => Promise.all([')

@@ -50,9 +50,13 @@ const eventDetailRows = computed(() => {
   const address = props.event.address.trim()
 
   if (props.showAddress && address) {
+    // The link opens a map search for the address, with the city and country to find the right place.
+    const mapQuery = [address, formatEventLocation(props.event)].filter(Boolean).join(', ')
+
     rows.push({
       label: 'Address',
-      value: address
+      value: address,
+      href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`
     })
   }
 
@@ -119,10 +123,10 @@ const timelineEntries = computed(() => [
     class="grid grid-cols-1 gap-6"
     :class="{ 'lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]': timelineEntries.length > 1 }"
   >
-    <div
+    <AppCard
       v-for="entry in timelineEntries"
       :key="entry.id"
-      class="!border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60 rounded-xl p-6"
+      class="!border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60 rounded-xl"
     >
       <template v-if="entry.start && entry.end">
         <div class="mb-3 flex items-start justify-between gap-4">
@@ -197,7 +201,7 @@ const timelineEntries = computed(() => [
           <div
             v-for="row in entry.rows"
             :key="row.label"
-            class="flex items-start justify-between gap-5 text-[13px]"
+            class="grid grid-cols-[7rem_minmax(0,1fr)] items-start gap-4 text-[13px]"
           >
             <span class="text-neutral-500 dark:text-[#8C8C8C]">
               {{ row.label }}
@@ -207,7 +211,7 @@ const timelineEntries = computed(() => [
               :href="row.href"
               target="_blank"
               rel="noreferrer"
-              class="inline-flex max-w-[16rem] items-center justify-end gap-1.5 text-right font-medium text-highlighted transition-colors hover:text-black dark:text-white dark:hover:text-white/80"
+              class="inline-flex items-center gap-1.5 justify-self-start font-medium text-highlighted transition-colors hover:text-black dark:text-white dark:hover:text-white/80"
             >
               <span>{{ row.value }}</span>
               <AppIcon
@@ -217,13 +221,13 @@ const timelineEntries = computed(() => [
             </a>
             <span
               v-else
-              class="max-w-[16rem] text-right font-medium leading-5 text-highlighted dark:text-white"
+              class="font-medium leading-5 text-highlighted dark:text-white"
             >
               {{ row.value }}
             </span>
           </div>
         </div>
       </template>
-    </div>
+    </AppCard>
   </section>
 </template>

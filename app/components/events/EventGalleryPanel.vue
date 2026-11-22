@@ -21,9 +21,9 @@ type PhotoSwipeLightboxInstance = {
 type PhotoSwipeLightboxCtor = new (options: Record<string, unknown>) => PhotoSwipeLightboxInstance
 
 const props = withDefaults(defineProps<{
-  description: string
+  description?: string
   photos: EventPhotoRecord[]
-  /** Photos that participants added. Listed after `photos`, under "Uploaded by participants". */
+  /** Photos that participants added. Listed after `photos`, under "Photos from participants". */
   participantPhotos?: EventPhotoRecord[]
   totalPhotoCount?: number | null
   filterOptions?: ReadonlyArray<EventGalleryFilterOption>
@@ -49,6 +49,7 @@ const props = withDefaults(defineProps<{
   emptyFilteredStateTitle?: string
   emptyFilteredStateDescription?: string
 }>(), {
+  description: '',
   participantPhotos: () => [],
   totalPhotoCount: null,
   filterOptions: () => [],
@@ -130,6 +131,11 @@ const hasFilteredEmptyState = computed(() =>
 const resolvedEmptyStateTitle = computed(() => hasFilteredEmptyState.value ? props.emptyFilteredStateTitle : props.emptyStateTitle)
 const resolvedEmptyStateDescription = computed(() => hasFilteredEmptyState.value ? props.emptyFilteredStateDescription : props.emptyStateDescription)
 const canUseEmptyUploadTarget = computed(() => props.canManage && !hasFilteredEmptyState.value)
+// A gallery without photos has one empty state. For a participant who can add photos it is the
+// invitation in the participant section, next to their upload action.
+const invitesFirstParticipantPhoto = computed(() =>
+  props.canAddParticipantPhotos && listedPhotos.value.length === 0 && !hasFilteredEmptyState.value
+)
 const hasPendingMutation = computed(() =>
   props.pendingDeletePhotoId !== null
   || props.pendingPublicVisibilityPhotoId !== null
@@ -285,7 +291,10 @@ onBeforeUnmount(() => {
               {{ photoCountLabel }}
             </AppBadge>
           </div>
-          <p class="max-w-3xl text-sm text-muted">
+          <p
+            v-if="description"
+            class="max-w-3xl text-sm text-muted"
+          >
             {{ description }}
           </p>
         </div>
@@ -317,6 +326,9 @@ onBeforeUnmount(() => {
     </template>
 
     <div class="space-y-5">
+      <!-- A notice of the page that shows the gallery, for example what a participant does before adding photos. -->
+      <slot name="notice" />
+
       <AppAlert
         v-if="mutationErrorMessage"
         color="error"
@@ -363,7 +375,7 @@ onBeforeUnmount(() => {
 
       <template v-else>
         <div
-          v-if="listedPhotos.length === 0"
+          v-if="listedPhotos.length === 0 && !invitesFirstParticipantPhoto"
           class="rounded-2xl border border-dashed px-6 py-10 text-center transition-colors dark:border-white/[0.08]"
           :class="canUseEmptyUploadTarget
             ? [
@@ -433,7 +445,7 @@ onBeforeUnmount(() => {
               >
                 <div class="space-y-1">
                   <h3 class="text-base font-semibold text-highlighted">
-                    Uploaded by participants
+                    Photos from participants
                   </h3>
                   <p
                     v-if="canAddParticipantPhotos"
@@ -454,6 +466,13 @@ onBeforeUnmount(() => {
                   {{ addButtonLabel }}
                 </AppButton>
               </div>
+
+              <p
+                v-if="invitesFirstParticipantPhoto"
+                class="text-sm text-muted"
+              >
+                No photos yet. Add the first one.
+              </p>
 
               <div
                 v-if="group.photos.length > 0"

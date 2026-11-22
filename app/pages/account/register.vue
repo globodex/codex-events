@@ -372,7 +372,7 @@ useSeoMeta({
             variant="solid"
             :loading="identityEmailVerificationState.pending"
             :disabled="identityEmailVerificationState.pending"
-            class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+            class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
             @click="resendIdentityEmailVerification"
           >
             Resend confirmation email
@@ -432,7 +432,7 @@ useSeoMeta({
               variant="solid"
               :loading="submitState.pending"
               :disabled="isSubmitLocked || accountRegistrationBlocked"
-              class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+              class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
             >
               {{ missingDocumentsCopy.submitButtonLabel }}
             </AppButton>
@@ -552,7 +552,7 @@ useSeoMeta({
               variant="solid"
               :loading="submitState.pending"
               :disabled="isSubmitLocked || accountRegistrationBlocked"
-              class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+              class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
             >
               Continue
             </AppButton>

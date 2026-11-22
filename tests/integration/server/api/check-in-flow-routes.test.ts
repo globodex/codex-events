@@ -15,6 +15,7 @@ import {
   userApplications,
   users
 } from '../../../../server/database/schema'
+import * as checkInFlow from '../../../../server/domains/applications/check-in-flow'
 import { buildLumaWebhookSignatureHeader } from '../../../../server/domains/applications/luma-webhooks'
 import { hasParticipantFinishedCheckInFlow } from '../../../../shared/domains/applications/check-in-flow'
 import { accountEventEntryPageSchema } from '../../../../shared/domains/events/account-event-entry-page'
@@ -55,6 +56,7 @@ describe('TASK-448 check-in flow', () => {
   const harnesses: Harness[] = []
 
   afterEach(async () => {
+    vi.restoreAllMocks()
     vi.unstubAllGlobals()
     while (harnesses.length > 0) {
       await harnesses.pop()?.d1Database.close()
@@ -450,6 +452,27 @@ describe('TASK-448 check-in flow', () => {
 
       expect(response.status).toBe(200)
       expect((await readApplication(harness, 'participant')).questionnaireCompletedAt).not.toBeNull()
+    })
+
+    test.each(['attendance', 'approval', 'questions'])('rejects an answer when %s changes before the write', async (change) => {
+      const harness = await createContext()
+      await addCheckedInApplication(harness, 'participant')
+      const record = checkInFlow.recordQuestionnaireCompletion
+      vi.spyOn(checkInFlow, 'recordQuestionnaireCompletion').mockImplementationOnce(async (db, completion) => {
+        if (change === 'questions') {
+          await db.update(events).set({ questionnaireQuestionsJson: '[]' }).where(eq(events.id, 'event_1'))
+        } else {
+          await db.update(userApplications).set(change === 'attendance'
+            ? { checkedInAt: null, checkInSource: null }
+            : { status: 'withdrawn' }).where(eq(userApplications.id, completion.applicationId))
+        }
+        return record(db, completion)
+      })
+      const response = await answerQuestionnaire(harness, 'participant')
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({ error: { code: 'questionnaire_changed' } })
+      expect((await readApplication(harness, 'participant'))?.questionnaireCompletedAt).toBeNull()
+      expect(await readQuestionnaireAuditRecords(harness)).toEqual([])
     })
 
     test('a second request answers with a conflict and keeps the first answers', async () => {

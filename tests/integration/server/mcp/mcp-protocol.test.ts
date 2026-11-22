@@ -186,6 +186,25 @@ describe('stateless MCP protocol', () => {
     return new Set(selected.flatMap(tool => tool.inputSchema.properties?.action?.enum ?? []))
   }
 
+  test('the Agenda tool accepts the shell flag in structured input', async () => {
+    const { harness, credential } = await setup({ eventRole: 'staff' })
+    for (const includeEventShell of [true, false]) {
+      const payload = await rpcPayload(await rpc(harness, credential, {
+        jsonrpc: '2.0', id: 1, method: 'tools/call', params: {
+          name: 'participation_read',
+          arguments: {
+            action: 'get.account.events.by-slug.program',
+            input: { params: { slug: 'mcp-event-staff-0' }, query: { includeEventShell } }
+          }
+        }
+      })) as { result: { structuredContent: { data: { page: unknown, shell?: unknown } } } }
+      const { data } = payload.result.structuredContent
+      // Event staff do not read the sessions. This event has no challenges.
+      expect(data.page).toEqual({ program: null, challenges: [] })
+      expect(Boolean(data.shell)).toBe(includeEventShell)
+    }
+  })
+
   test('negotiates 2026-07-28, initializes legacy clients, lists tools, and calls a public discovery operation', async () => {
     const { harness, credential, rateLimiter } = await setup()
 

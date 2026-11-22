@@ -1,5 +1,4 @@
 import type { PublicEventState } from '~/domains/events/presentation'
-import type { EventType } from '~/domains/events/records'
 import type { AccountEventPageName } from '~/domains/events/account-workspace-page'
 import { accountEventEntryTabs, type AccountEventEntryTab } from '#shared/domains/events/account-event-entry-page'
 
@@ -12,7 +11,6 @@ export const accountEventWorkspacePageByTab: Readonly<Record<AccountEventWorkspa
   'credits': 'entry',
   'prizes': 'prizes',
   'program': 'program',
-  'challenges': 'entry',
   'call-for-talks': 'entry',
   'gallery': 'gallery',
   'feedback': 'feedback',
@@ -42,28 +40,6 @@ export function shouldPreserveAccountEventTabSelection(options: {
     && getAccountEventPageForTab(options.tab) === 'entry'
 }
 
-export interface AccountEventTabAccessOptions {
-  hasApprovedParticipantAccess: boolean
-  hasEligibleTalkProposalApplicant?: boolean
-  hasRetainedTalkProposal?: boolean
-  hasCreditInventory?: boolean
-  hasGallery: boolean
-  hasPublishedPrizes: boolean
-  hasPublishedStaff: boolean
-  eventType?: EventType | null
-  eventState?: PublicEventState | null
-  talkProposalsEnabled?: boolean
-  canJudge: boolean
-  canManage: boolean
-  showCredits?: boolean
-  canViewParticipantsAndTeams: boolean
-}
-
-export interface AccountEventTabAccess {
-  availableTabs: AccountEventWorkspaceTab[]
-  showPrizeConfiguration: boolean
-}
-
 export interface AccountEventWorkspaceBackLink {
   to: string
   label: string
@@ -75,7 +51,6 @@ const defaultAccountEventTabLabels: Record<AccountEventWorkspaceTab, string> = {
   'workspace': 'Workspace',
   'prizes': 'Prizes',
   'program': 'Agenda',
-  'challenges': 'Challenges',
   'call-for-talks': 'Call for talks',
   'gallery': 'Gallery',
   'feedback': 'Feedback',
@@ -144,103 +119,5 @@ export function getAccountEventWorkspaceBackLink(options: {
   return {
     to: '/account',
     label: 'Back to my events'
-  }
-}
-
-export function getAccountEventTabAccess(
-  options: AccountEventTabAccessOptions
-): AccountEventTabAccess {
-  const {
-    hasApprovedParticipantAccess,
-    hasEligibleTalkProposalApplicant = hasApprovedParticipantAccess,
-    hasRetainedTalkProposal = false,
-    hasCreditInventory = false,
-    hasGallery,
-    hasPublishedPrizes,
-    hasPublishedStaff,
-    eventType,
-    eventState,
-    canJudge,
-    canManage,
-    showCredits = true,
-    canViewParticipantsAndTeams
-  } = options
-  const isCompetitionEvent = eventType === 'hackathon'
-  const availableTabs: AccountEventWorkspaceTab[] = ['overview']
-
-  if (showCredits && (canManage || ((hasApprovedParticipantAccess || canViewParticipantsAndTeams) && hasCreditInventory))) {
-    availableTabs.push('credits')
-  }
-
-  if (isCompetitionEvent && (hasPublishedPrizes || canManage || eventState === 'completed')) {
-    availableTabs.push('prizes')
-  }
-
-  if (eventType === 'meetup' && options.talkProposalsEnabled && (
-    hasEligibleTalkProposalApplicant
-    || hasRetainedTalkProposal
-    || canManage
-    || canViewParticipantsAndTeams
-  )) {
-    availableTabs.push('call-for-talks')
-  }
-
-  if (canJudge || canManage || canViewParticipantsAndTeams || (hasApprovedParticipantAccess && hasGallery)) {
-    availableTabs.push('gallery')
-  }
-
-  if (isCompetitionEvent) {
-    availableTabs.push('judges')
-  }
-
-  if (hasPublishedStaff || canManage) {
-    availableTabs.push('staff')
-  }
-
-  if (canJudge || canManage || canViewParticipantsAndTeams) {
-    availableTabs.push('feedback')
-  }
-
-  if (isCompetitionEvent && hasApprovedParticipantAccess) {
-    availableTabs.push('workspace', 'teams')
-  }
-
-  if (canManage || canViewParticipantsAndTeams) {
-    availableTabs.push('participants')
-  }
-
-  if (canManage) {
-    availableTabs.push('certificates')
-
-    if (!hasApprovedParticipantAccess) {
-      if (isCompetitionEvent) {
-        availableTabs.push('teams')
-      }
-    }
-
-    if (isCompetitionEvent) {
-      availableTabs.push('submissions')
-
-      if (canJudge) {
-        availableTabs.push('judging')
-      }
-    }
-
-    availableTabs.push('operations', 'settings')
-  } else if (canViewParticipantsAndTeams) {
-    if (isCompetitionEvent && canJudge) {
-      availableTabs.push('judging')
-    }
-
-    if (isCompetitionEvent && !hasApprovedParticipantAccess) {
-      availableTabs.push('teams')
-    }
-  } else if (isCompetitionEvent && canJudge) {
-    availableTabs.push('judging')
-  }
-
-  return {
-    availableTabs,
-    showPrizeConfiguration: isCompetitionEvent && canManage && !['winners_announced', 'completed'].includes(eventState ?? '')
   }
 }

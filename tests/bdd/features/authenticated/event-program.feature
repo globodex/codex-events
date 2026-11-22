@@ -4,7 +4,7 @@ Feature: Parallel event agenda
   Scenario: A confirmed participant can find rooms in a parallel agenda
     Given the event has two parallel sessions with rooms on "Ground floor"
     And the event has open rooms on "Upper floor"
-    When I open Build Time from my event agenda
+    When I open the Agenda tab from my event overview
     Then both tracks should show their sessions at the same start time
     When I select each session in the program
     Then the floor plan should highlight the selected room

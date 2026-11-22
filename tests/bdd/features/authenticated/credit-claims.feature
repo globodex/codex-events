@@ -14,7 +14,7 @@ Feature: Credits after check-in
     Then I should be told to finish my check-in before I claim credits
     And the credit "Codex event credit" should have no claim button
     When I follow the link to my next step
-    Then my next step should be to check in at the entrance
+    Then my next step should be to check in with the event team
 
   Scenario: Participant sees that no credits are left and keeps the other activities
     Given I open my event page of "credit-sold-out-fixture-event" as "regular_user"

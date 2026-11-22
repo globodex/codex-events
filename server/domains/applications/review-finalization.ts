@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, sql, type SQL } from 'drizzle-orm'
 
 import { writeAuditLog } from '#server/database/audit-log'
 import type { AppDatabase } from '#server/database/client'
@@ -15,7 +15,8 @@ import {
   isEventLumaGuestListEnabled,
   isEventLumaSyncEnabled
 } from '#server/domains/applications/luma-config'
-import { findEventLumaGuestStanding } from '#server/domains/applications/luma-guest-list'
+import { normalizeLumaEmail } from '#server/domains/credits/simplified-claiming'
+import { guestDecisionGuard } from '#server/domains/applications/luma-guest-list'
 import {
   buildApplicationLumaSyncQueueMessage,
   enqueueApplicationLumaSyncMessage,
@@ -177,6 +178,7 @@ export async function approveSubmittedApplication(options: {
   source: Exclude<ApplicationReviewSource, 'pre_approval'>
   /** Approve only while fewer applications than this are approved. Null means no limit. */
   participantsLimit: number | null
+  writeGuard?: SQL
 }) {
   const [approvedApplication] = await options.database
     .update(userApplications)
@@ -191,6 +193,7 @@ export async function approveSubmittedApplication(options: {
     .where(and(
       eq(userApplications.id, options.application.id),
       eq(userApplications.status, 'submitted'),
+      options.writeGuard,
       options.participantsLimit === null
         ? undefined
         : sql`(
@@ -251,18 +254,15 @@ export async function applyPostRegistrationApplicationOutcome(options: {
   if (isEventLumaGuestListEnabled(options.event)) {
     // Luma decides: only an approved Luma guest is approved here. The automatic approval
     // setting and the participant limit do not apply to these events.
-    const guestStanding = await findEventLumaGuestStanding(
-      options.database,
-      options.event.id,
-      options.applicant?.lumaEmail ?? ''
-    )
-
-    if (guestStanding !== 'approved') {
-      return options.application
-    }
-
-    return await approveSubmittedApplication({ ...approval, source: 'luma_guest_list', participantsLimit: null })
-      ?? options.application
+    const email = options.applicant?.lumaEmail
+    if (!email) return options.application
+    const approved = await approveSubmittedApplication({
+      ...approval,
+      source: 'luma_guest_list',
+      participantsLimit: null,
+      writeGuard: guestDecisionGuard(options.event, normalizeLumaEmail(email), 'approved')
+    })
+    return approved ?? options.application
   }
 
   if (!options.event.autoApproveApplications) {

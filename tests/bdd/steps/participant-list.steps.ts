@@ -79,7 +79,7 @@ Given('I open the participant list of event {string} as event staff', async ({ p
 
 // The staff list opens on confirmed participants, so the step chooses no filter first.
 When('I search the confirmed participants for {string}', async ({ page }, participantName: string) => {
-  await page.getByPlaceholder('Search participants').fill(participantName)
+  await page.getByPlaceholder('Search name or email').fill(participantName)
   await expect(participantRow(page, participantName)).toHaveCount(1)
 })
 

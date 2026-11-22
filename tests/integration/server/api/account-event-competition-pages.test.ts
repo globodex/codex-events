@@ -181,6 +181,7 @@ describe('account event operations, submissions, and judging page reads', () => 
       name: 'Operations track',
       shortDescription: 'Track description.',
       fullDescription: 'Track guidelines.',
+      staffInstructions: 'Staff guidance.',
       resources: [],
       displayOrder: 1
     }])
@@ -483,8 +484,6 @@ describe('account event operations, submissions, and judging page reads', () => 
       id: 'rosters_track',
       name: 'Rosters track',
       shortDescription: 'Roster track description.',
-      fullDescription: 'Roster track guidelines.',
-      resources: [],
       displayOrder: 1
     }])
     expect(rawPage.publishedJudges).not.toEqual(expect.arrayContaining([

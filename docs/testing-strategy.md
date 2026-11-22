@@ -256,8 +256,15 @@ state.
   response. Coverage of one active application per Luma email includes a
   refused second registration, a withdrawn or rejected application that frees
   its Luma email, a Luma update that reaches only the active application, an
-  event that is not linked to Luma, a refused restore, and an allowed and a
-  refused Luma email change on the account.
+  event that is not linked to Luma, a refused restore, an allowed and a
+  refused Luma email change on the account, and a refused link of an event
+  whose active applications share a Luma email. Two rules exist in TypeScript
+  and in SQL: which events are linked to Luma, and the participant photo
+  limit. One test for each compares the two copies and fails when they differ.
+  Race tests cover relinking, disabling the list,
+  overlapping imports, newer webhooks, stale reconciliation, and email conflicts during
+  registration, restore, profile updates, and admin backfill.
+- Account-page tests compare participant, staff, event-admin, and platform-admin track fields in Overview and its shell. MCP tests request Agenda with and without its shell. Gallery tests exercise hidden-event access and verify that a failed upload rolls back every chunk and deletes its staged objects.
 - Participant list coverage includes the newest 100 registrations with the
   total of the whole event, search by participant name, account email, and
   Luma email for a registration outside those 100, a match that ignores letter
@@ -281,6 +288,7 @@ state.
   text; the same steps after a Luma check-in and a staff check-in; stored
   answers that stay readable after the questions change; restoring a
   withdrawn registration; and who reads the answers in the participant list.
+  Server tests change approval, effective attendance, and the questions between validation and the write.
   Browser scenarios run on dedicated fixture events and cover the three next
   steps of a participant, the answers in the admin participant list, and the
   event builder setting.
@@ -290,25 +298,25 @@ state.
   unchanged claims in an event with the check-in flow off, event staff
   claiming without the check-in flow, a claimed value that stays visible to a
   participant who has not finished the check-in flow, and the last value of
-  an offer. Browser scenarios run on dedicated fixture events and cover a
+  an offer. Server tests cover unfinished check-in after completion. Browser scenarios run on dedicated fixture events and cover a
   claim opened from the next step, the Credits tab of a participant who has
   not finished the check-in flow, and an offer with no credits left.
 - Challenge coverage includes saving a challenge list for every event type,
   a list with too many challenges, a link that is not `https`, a challenge
-  without a title, and refusal for staff, judges, and participants; the event
-  page content for a confirmed participant before check-in and after
+  without a title, and refusal for staff, judges, and participants; the
+  Agenda page content for a confirmed participant before check-in and after
   finishing the check-in flow, where it holds the published challenges only
   and needs no credit claim; an event with only draft challenges; event
   staff, event admins, and judges; a pending registration and a user without a
-  registration; the direct-link event shell; and the admin event of the
-  settings page and of the event page, which carries drafts for the event
-  builder. Unit tests cover the builder checklist lines for an unfinished
+  registration; the Agenda tab of an event without an agenda; the direct-link
+  event shell; and the admin event of the settings page, which carries drafts
+  for the event builder. Unit tests cover the builder checklist lines for an unfinished
   challenge and an unfinished questionnaire question, and a settings form
   save that sends neither challenges nor the check-in flow settings, which
   only the event builder edits. Browser scenarios run on dedicated fixture
   events and cover an organizer publishing a challenge in the event builder,
-  and a participant opening Challenges from the next step after check-in
-  and before check-in.
+  and a participant reading a challenge and its details on the Agenda, opened
+  from the next step after check-in and before check-in.
 - Participant photo coverage includes an upload before check-in, with an open
   questionnaire, after finishing the check-in flow without a credit claim, in
   an event without a questionnaire, with the check-in flow off, with

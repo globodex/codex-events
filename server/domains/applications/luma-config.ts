@@ -45,6 +45,12 @@ export function isEventLumaGuestListEnabled(event: Pick<EventRecord, 'lumaGuestL
  * True when Luma can change registrations of this event: the Luma guest list confirms and
  * withdraws them, or signed Luma webhooks record cancellations and check-ins. In such an event
  * a Luma email belongs to one active registration (`luma-email.ts`).
+ *
+ * The database repeats this rule in SQL. Its view `active_application_luma_emails` (migration
+ * `0085_build_day_guards.sql`) fills `user_applications.active_luma_email` only in a linked
+ * event. Change the two together: this function, and the view through a new migration. The
+ * tests "which events are linked to Luma" in `luma-guest-list-routes.test.ts` fail when the
+ * two differ.
  */
 export function isEventLinkedToLuma(
   event: Pick<EventRecord, 'lumaGuestListEnabled' | 'lumaEventApiId' | 'lumaApiKey' | 'lumaWebhookSecret' | 'lumaWebhookStatus'>

@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 
 import type { AppDatabase } from '#server/database/client'
 import { events } from '#server/database/schema'
+import { assertNoSharedLumaEmailInEvent } from '#server/domains/applications/luma-email'
 import {
   defaultLumaApiBaseUrl,
   defaultLumaRequestUserAgent
@@ -249,6 +250,10 @@ export async function reconcileEventLumaWebhook(options: {
   const webhookUrl = getEventLumaWebhookUrl(options.event, options.runtimeConfig)
 
   try {
+    // A registered webhook links the event to Luma. This refusal stops the registration before
+    // Luma is called, and the organizer reads it as the reason of the failed status below.
+    await assertNoSharedLumaEmailInEvent(options.database, options.event.id)
+
     await verifyLumaEventAccess({
       runtimeConfig: options.runtimeConfig,
       apiKey,

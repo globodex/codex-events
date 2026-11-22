@@ -15,10 +15,23 @@ import {
   resolveLumaEmailFromUsername
 } from '#server/domains/applications/luma-sync-queue'
 import { isEventLumaSyncEnabled } from '#server/domains/applications'
-import { ApiError } from '#server/http/api-error'
+import { ApiError, toApiError } from '#server/http/api-error'
 import { routeIdParamsSchema } from '#server/domains/events'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 import { parseValidatedParams } from '#server/http/validation'
+
+/** The reason one account was not updated, as the platform admin reads it in the report. */
+function getBackfillFailureReason(error: unknown) {
+  // The database refuses a Luma email that another active registration of the event already
+  // uses. `toApiError` turns that refusal into a sentence a person can read.
+  const apiError = toApiError(error)
+
+  if (apiError.code === 'luma_email_already_used') {
+    return apiError.message
+  }
+
+  return error instanceof Error ? error.message : 'Unexpected Luma backfill error'
+}
 
 export default defineApiHandler(async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
@@ -88,13 +101,16 @@ export default defineApiHandler(async (h3Event) => {
         runtimeConfig: useRuntimeConfig(h3Event)
       })
 
-      await database
+      const [updated] = await database
         .update(users)
         .set({
           lumaEmail: guestEmail,
           updatedAt: new Date().toISOString()
         })
-        .where(eq(users.id, row.userId))
+        .where(and(eq(users.id, row.userId), isNull(users.lumaEmail), eq(users.lumaUsername, lumaUsername)))
+        .returning({ id: users.id })
+
+      if (!updated) throw new Error('The account changed during backfill.')
 
       updatedCount += 1
       results.push({
@@ -106,6 +122,7 @@ export default defineApiHandler(async (h3Event) => {
         lumaEmail: guestEmail
       })
     } catch (error) {
+      // One account that fails never stops the backfill. The report lists it with its reason.
       failedCount += 1
       results.push({
         userId: row.userId,
@@ -113,7 +130,7 @@ export default defineApiHandler(async (h3Event) => {
         displayName: row.displayName,
         lumaUsername: row.lumaUsername,
         status: 'failed',
-        reason: error instanceof Error ? error.message : 'Unexpected Luma backfill error'
+        reason: getBackfillFailureReason(error)
       })
     }
   }

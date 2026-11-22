@@ -89,7 +89,7 @@ export const applicationOperation = defineStructuredRouteOperation({
   })
   assertGuard(isApplicationEffectivelyCheckedIn(application), {
     code: 'application_not_checked_in',
-    message: 'Check in at the entrance before you answer the event questions.'
+    message: 'Check in with the event team before you answer the event questions.'
   })
 
   if (application.questionnaireCompletedAt) {
@@ -108,13 +108,21 @@ export const applicationOperation = defineStructuredRouteOperation({
   const completedAt = new Date().toISOString()
   const completedApplication = await recordQuestionnaireCompletion(database, {
     applicationId: application.id,
+    questionsJson: event.questionnaireQuestionsJson,
     answers: buildQuestionnaireAnswerRecords(questions, answers),
     completedAt
   })
 
   if (!completedApplication) {
-    // Another request of the same participant completed the questionnaire a moment earlier.
-    throw questionnaireAlreadyCompletedError()
+    const current = await getOwnUserApplication(database, eventId, actor.platformUser.id)
+    if (current?.questionnaireCompletedAt) {
+      throw questionnaireAlreadyCompletedError()
+    }
+    throw new ApiError({
+      statusCode: 409,
+      code: 'questionnaire_changed',
+      message: 'Your registration or the event questions changed. Refresh the event page.'
+    })
   }
 
   // The audit record says who completed the questionnaire. It never holds the answers.

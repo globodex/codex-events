@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { EventChallenge } from '#shared/domains/events/challenges'
 import type { EventFloorPlan } from '#shared/domains/events/program'
 import type { ApiDataResponse } from '~/lib/api'
 import { normalizeApiError } from '~/lib/api'
@@ -7,6 +8,8 @@ import AdminBuilderFloorPlanEditor from '~/components/admin/builder/molecules/Ad
 const props = defineProps<{
   eventId: string
   plans: EventFloorPlan[]
+  /** The saved challenges of the event, drafts included. A room can name one of them. */
+  challenges: Pick<EventChallenge, 'id' | 'title' | 'isPublished'>[]
 }>()
 const emit = defineEmits<{
   updated: [plan: EventFloorPlan]
@@ -153,6 +156,7 @@ async function addPlan(event: SubmitEvent) {
         <AdminBuilderFloorPlanEditor
           :event-id="eventId"
           :plan="plan"
+          :challenges="challenges"
           class="pb-4"
           @updated="emit('updated', $event)"
         />

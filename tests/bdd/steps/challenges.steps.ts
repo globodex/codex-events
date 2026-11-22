@@ -10,11 +10,14 @@ function challengeSettings(page: Page) {
   return page.getByTestId('event-builder-settings-challenges')
 }
 
-/** One challenge on the Challenges tab of the participant's event page. */
-function challengeOnEventPage(page: Page, title: string) {
-  return page.getByTestId('account-event-challenges').locator('article').filter({
-    has: page.getByRole('heading', { name: title })
-  })
+/** The challenges on the Agenda tab of the participant's event page. */
+function challengesOnEventPage(page: Page) {
+  return page.getByTestId('program-challenges')
+}
+
+/** The popup with the instructions and links of one challenge. Its Details button opens it. */
+function challengeDetails(page: Page, title: string) {
+  return page.getByRole('dialog', { name: title })
 }
 
 When('I add a challenge in the builder', async ({ page }) => {
@@ -58,18 +61,25 @@ Then('the builder should keep the published challenge {string} with the link {st
 })
 
 Then('I should see the challenge {string} with the instructions {string}', async ({ page }, title: string, instructions: string) => {
-  await expect(page).toHaveURL(/tab=challenges/)
-  await expect(challengeOnEventPage(page, title).getByText(instructions)).toBeVisible()
+  await expect(page).toHaveURL(/tab=program/)
+  const challenge = challengesOnEventPage(page).getByRole('listitem').filter({ hasText: title })
+
+  // The card shows the title. The instructions are in the details of the challenge.
+  await challenge.getByRole('button', { name: 'Details' }).click()
+  await expect(challengeDetails(page, title).getByText(instructions)).toBeVisible()
 })
 
+// The details of the challenge are open from the step before. This step closes them.
 Then('the challenge {string} should link to {string} at {string}', async ({ page }, title: string, name: string, link: string) => {
-  const resource = challengeOnEventPage(page, title).getByRole('link', { name })
+  const resource = challengeDetails(page, title).getByRole('link', { name })
 
   await expect(resource).toHaveAttribute('href', link)
   // A resource opens in a new tab, so the participant keeps the event page.
   await expect(resource).toHaveAttribute('target', '_blank')
+  await challengeDetails(page, title).getByRole('button', { name: 'Close' }).click()
 })
 
 Then('I should not see the challenge {string}', async ({ page }, title: string) => {
-  await expect(page.getByRole('heading', { name: title })).toHaveCount(0)
+  await expect(challengesOnEventPage(page).getByRole('listitem')).not.toHaveCount(0)
+  await expect(challengesOnEventPage(page).getByText(title)).toHaveCount(0)
 })

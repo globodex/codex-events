@@ -3,10 +3,14 @@ import type { PublicEventTrackResource } from '~/domains/events/presentation'
 
 type TrackResource = PublicEventTrackResource & { id?: string }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   description?: string | null
   resources?: readonly TrackResource[]
-}>()
+  /** Draws a line between these details and the content above them. */
+  separated?: boolean
+}>(), {
+  separated: true
+})
 
 const hasDescription = computed(() => Boolean(props.description?.trim()))
 const sortedResources = computed(() => [...(props.resources ?? [])].sort((left, right) =>
@@ -22,7 +26,8 @@ function resourceKey(resource: TrackResource) {
 <template>
   <div
     v-if="hasDescription || sortedResources.length > 0 || $slots.default"
-    class="mt-5 space-y-5 border-t border-black/8 pt-5 dark:border-white/[0.08]"
+    class="space-y-5"
+    :class="props.separated ? 'mt-5 border-t border-black/8 pt-5 dark:border-white/[0.08]' : 'mt-3'"
   >
     <AppMarkdownRenderer
       v-if="hasDescription"

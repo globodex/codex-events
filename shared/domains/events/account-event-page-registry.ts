@@ -105,7 +105,7 @@ export function buildAccountEventPagePath(
   }
 
   if (
-    (page === 'entry' || page === 'prizes')
+    page === 'prizes'
     && normalizedQuery.includeAdminEventConfiguration
   ) {
     searchParams.set('includeAdminEventConfiguration', 'true')
@@ -134,7 +134,7 @@ export function buildAccountEventPageCacheKey(
   const participantRowsKey = page === 'participants' && normalizedQuery.participantRows
     ? `:participantRows=${normalizedQuery.participantRows}`
     : ''
-  const adminEventConfigurationKey = (page === 'entry' || page === 'prizes')
+  const adminEventConfigurationKey = page === 'prizes'
     && normalizedQuery.includeAdminEventConfiguration
     ? ':includeAdminEventConfiguration'
     : ''

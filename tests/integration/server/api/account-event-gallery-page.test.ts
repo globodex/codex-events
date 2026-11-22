@@ -104,7 +104,11 @@ describe('account event gallery page reads', () => {
     }
 
     expect(response.status).toBe(200)
-    expect(accountEventGalleryPageSchema.parse(body.data.page)).toEqual({ photos: [], canAddParticipantPhotos: false })
+    expect(accountEventGalleryPageSchema.parse(body.data.page)).toEqual({
+      photos: [],
+      canAddParticipantPhotos: false,
+      mustFinishCheckInFlowToAddPhotos: false
+    })
     expect(body.data.shell).toBeDefined()
 
     const requestQueries = harness.d1Database.queries.slice(queryOffset)

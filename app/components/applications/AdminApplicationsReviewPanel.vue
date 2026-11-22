@@ -382,7 +382,7 @@ function getQuestionnaireAnswers(applicant: AdminApplicationReviewGroup['applica
 
 function shouldShowApplicantMetadata(applicant: AdminApplicationReviewGroup['applicants'][number]) {
   return Boolean(
-    applicant.application.user?.lumaEmail
+    getApplicantLumaEmail(applicant.application)
     || applicant.application.user?.githubProfileUrl
     || applicant.application.user?.chatgptEmail
     || applicant.application.user?.openaiOrgId
@@ -410,19 +410,13 @@ function getVisibleProofOfExecutionLinks(applicant: AdminApplicationReviewGroup[
   return proofLinks.slice(0, proofLinksPreviewCount)
 }
 
-function getApplicantIdentityLabel(application: AdminApplicationRecord) {
-  if (application.user?.displayName && application.user?.email && application.user.displayName !== application.user.email) {
-    return `${application.user.displayName} - ${application.user.email}`
-  }
-
+/** The name shown for a person. Without a display name, the email or the user ID stands in for it. */
+function getApplicantName(application: AdminApplicationRecord) {
   return application.user?.displayName ?? application.user?.email ?? application.userId
 }
 
-function getFailedLumaSyncParticipantPrimaryLabel(application: AdminApplicationRecord) {
-  return application.user?.displayName ?? application.user?.email ?? application.userId
-}
-
-function getFailedLumaSyncParticipantSecondaryLabel(application: AdminApplicationRecord) {
+/** The email shown under the name. Null when the email already stands in for the name. */
+function getApplicantEmail(application: AdminApplicationRecord) {
   if (application.user?.displayName && application.user?.email && application.user.displayName !== application.user.email) {
     return application.user.email
   }
@@ -430,8 +424,11 @@ function getFailedLumaSyncParticipantSecondaryLabel(application: AdminApplicatio
   return null
 }
 
-function getApplicantAvatarAlt(application: AdminApplicationRecord) {
-  return application.user?.displayName ?? application.user?.email ?? application.userId
+/** The Luma email, only when it differs from the account email that the row already shows. */
+function getApplicantLumaEmail(application: AdminApplicationRecord) {
+  const lumaEmail = application.user?.lumaEmail
+
+  return lumaEmail && lumaEmail !== application.user?.email ? lumaEmail : null
 }
 
 function getApplicantProfileIconHref(application: AdminApplicationRecord) {
@@ -512,18 +509,14 @@ const reviewContent = computed(() => {
   if (props.view === 'approved') {
     return {
       title: 'Approved Participants',
-      description: props.readOnly
-        ? 'Browse approved participants and inferred teammate groupings.'
-        : 'Browse approved participants, filter to checked-in attendees, and review inferred teammate groupings.'
+      description: null
     }
   }
 
   if (props.view === 'rejected') {
     return {
       title: 'Rejected Participants',
-      description: props.readOnly
-        ? 'Browse rejected participant records and inferred teammate groupings.'
-        : 'Browse rejected participant records and inferred teammate groupings.'
+      description: 'Browse rejected participant records and inferred teammate groupings.'
     }
   }
 
@@ -668,7 +661,10 @@ const emptyState = computed(() => {
         <h2 class="text-lg font-semibold text-highlighted">
           {{ reviewContent.title }}
         </h2>
-        <p class="text-sm text-muted">
+        <p
+          v-if="reviewContent.description"
+          class="text-sm text-muted"
+        >
           {{ reviewContent.description }}
         </p>
       </div>
@@ -751,13 +747,13 @@ const emptyState = computed(() => {
                     <td class="py-3 pr-4">
                       <div class="space-y-0.5">
                         <p class="font-medium text-current">
-                          {{ getFailedLumaSyncParticipantPrimaryLabel(application) }}
+                          {{ getApplicantName(application) }}
                         </p>
                         <p
-                          v-if="getFailedLumaSyncParticipantSecondaryLabel(application)"
+                          v-if="getApplicantEmail(application)"
                           class="break-all text-current/75"
                         >
-                          {{ getFailedLumaSyncParticipantSecondaryLabel(application) }}
+                          {{ getApplicantEmail(application) }}
                         </p>
                       </div>
                     </td>
@@ -810,32 +806,19 @@ const emptyState = computed(() => {
             data-1p-ignore="true"
             data-lpignore="true"
             data-bwignore="true"
-            placeholder="Search participants by name, email, user ID, or teammate hint"
+            placeholder="Search name or email"
             class="min-w-0 flex-1 md:min-w-[28rem]"
           />
 
-          <AppButton
+          <AppFilterButton
             v-if="showApprovedAttendance"
-            :color="checkedInOnly ? 'success' : 'neutral'"
-            :variant="checkedInOnly ? 'soft' : 'outline'"
             data-testid="admin-approved-checked-in-filter"
-            :aria-pressed="checkedInOnly"
-            class="h-[46px] min-w-max shrink-0 rounded-lg"
+            :pressed="checkedInOnly"
+            class="self-start py-2 md:self-center"
             @click="checkedInOnly = !checkedInOnly"
           >
-            <span
-              aria-hidden="true"
-              class="inline-flex size-4 shrink-0 items-center justify-center rounded border transition"
-              :class="checkedInOnly ? 'border-success bg-success text-white' : 'border-current/40 text-transparent'"
-            >
-              <AppIcon
-                v-if="checkedInOnly"
-                name="i-lucide-check"
-                class="size-3"
-              />
-            </span>
-            <span>Checked in</span>
-          </AppButton>
+            Checked in
+          </AppFilterButton>
 
           <div
             v-if="showTrackFilter"
@@ -931,24 +914,14 @@ const emptyState = computed(() => {
                         <AppAvatar
                           size="lg"
                           :src="getApplicantProfileIconHref(applicant.application)"
-                          :alt="getApplicantAvatarAlt(applicant.application)"
+                          :alt="getApplicantName(applicant.application)"
                           class="shrink-0"
                         />
                         <div class="min-w-0 space-y-1">
-                          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                            Participant
-                          </p>
                           <div class="flex flex-wrap items-center gap-2">
                             <h4 class="min-w-0 break-words text-lg font-semibold text-highlighted">
-                              {{ getApplicantIdentityLabel(applicant.application) }}
+                              {{ getApplicantName(applicant.application) }}
                             </h4>
-                            <AppBadge
-                              v-if="applicant.application.status === 'approved'"
-                              :color="getApplicationStatusColor(applicant.application.status)"
-                              variant="soft"
-                            >
-                              Approved
-                            </AppBadge>
                             <AppBadge
                               v-if="getSelectedTrackName(applicant.application)"
                               color="primary"
@@ -1007,12 +980,17 @@ const emptyState = computed(() => {
                               Fuzzy teammate match
                             </AppBadge>
                           </div>
+                          <p
+                            v-if="getApplicantEmail(applicant.application)"
+                            class="break-all text-sm text-muted"
+                          >
+                            {{ getApplicantEmail(applicant.application) }}
+                          </p>
                         </div>
                       </div>
 
                       <AppButton
                         v-if="canCheckIn(applicant.application)"
-                        variant="soft"
                         icon="i-lucide-user-check"
                         label="Check in"
                         class="w-full shrink-0 sm:w-auto"
@@ -1028,10 +1006,10 @@ const emptyState = computed(() => {
                       class="flex flex-wrap gap-2 text-xs text-muted"
                     >
                       <span
-                        v-if="applicant.application.user?.lumaEmail"
+                        v-if="getApplicantLumaEmail(applicant.application)"
                         class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
                       >
-                        Luma: {{ applicant.application.user.lumaEmail }}
+                        Luma: {{ getApplicantLumaEmail(applicant.application) }}
                       </span>
                       <a
                         v-if="applicant.application.user?.githubProfileUrl"
@@ -1239,11 +1217,11 @@ const emptyState = computed(() => {
 
                   <AppButton
                     v-if="shouldShowWithdrawAction(applicant.application)"
-                    color="warning"
-                    variant="outline"
-                    icon="i-lucide-undo-2"
+                    color="neutral"
+                    variant="ghost"
+                    icon="i-lucide-user-x"
                     label="Withdraw"
-                    class="w-full flex-row-reverse justify-between"
+                    class="justify-self-start"
                     :data-testid="`admin-application-withdraw-${applicant.application.id}`"
                     :loading="pendingActionKey === `withdraw:${applicant.application.id}`"
                     :disabled="!getAdminWithdrawalAvailability(applicant.application).isAllowed || pendingActionKey !== null"

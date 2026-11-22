@@ -19,7 +19,6 @@ import type { AccountEventSimplifiedClaimingStatus } from '#shared/domains/event
 import {
   applyEventTypeApplicationFieldDefaults,
   createEventSlug,
-  eventDetailsFormSchema,
   formatParticipantsLimitInput,
   getAgendaItemEndAfterStartChange,
   getNextAgendaItemDefaultTimes,
@@ -27,7 +26,6 @@ import {
   parseParticipantsLimitInput
 } from '~/domains/events/admin-event'
 import { cloneFormValues } from '~/utils/form-values'
-import { getEventConfigFormModeView } from '~/domains/events/program-settings'
 import { moveListItemByIndex } from '~/utils/reorder-list'
 
 const form = defineModel<EventFormState>('form', {
@@ -78,17 +76,11 @@ const props = defineProps<{
 
 const toast = useToast()
 const formMode = computed<EventProgramSettingsMode>(() => props.mode ?? 'full')
-const formModeView = computed(() => getEventConfigFormModeView(formMode.value))
-const showBasicInformationFields = computed(() => formModeView.value.showBasicInformationFields)
-const showAgendaItemsSection = computed(() => formModeView.value.showAgendaItemsSection)
-const showProgramIdentitySection = computed(() => formModeView.value.showProgramIdentitySection)
-const showProgramSettingsSections = computed(() => formModeView.value.showProgramSettingsSections)
 const isHackathon = computed(() => form.value.eventType === 'hackathon')
 const isBuildEvent = computed(() => form.value.eventType === 'build')
 const isMeetup = computed(() => form.value.eventType === 'meetup')
-const showEventTypeField = computed(() => formMode.value === 'full' && showBasicInformationFields.value)
-const showTracksSection = computed(() => formMode.value !== 'details' && (isHackathon.value || isBuildEvent.value))
-const showInlineDetailsActions = computed(() => formMode.value === 'details')
+const showEventTypeField = computed(() => formMode.value === 'full')
+const showTracksSection = computed(() => isHackathon.value || isBuildEvent.value)
 const isSettingsMode = computed(() => formMode.value === 'settings')
 const isLumaApiKeyRevealed = ref(false)
 const lumaApiKeyInputType = computed(() => isLumaApiKeyRevealed.value ? 'text' : 'password')
@@ -148,9 +140,10 @@ const showLumaRetryButton = computed(() =>
     )
   )
 )
-const basicsHeading = computed(() => formModeView.value.basicsHeading)
-const basicsDescription = computed(() => formModeView.value.basicsDescription)
-const programIdentityDescription = computed(() => formModeView.value.programIdentityDescription)
+const basicsDescription = computed(() => isSettingsMode.value
+  ? 'Edit name, slug, and description.'
+  : 'Set the public basics for this event: name, slug, description, and agenda.'
+)
 const eventTypeOptions = [
   { value: 'hackathon', label: 'Hackathon' },
   { value: 'meetup', label: 'Meetup' },
@@ -168,12 +161,6 @@ const trackListElement = ref<HTMLElement | null>(null)
 let agendaSortable: SortableInstance | null = null
 let trackSortable: SortableInstance | null = null
 let sortableConstructor: SortableConstructor | null = null
-
-const validationSchema = computed(() =>
-  formMode.value === 'details'
-    ? eventDetailsFormSchema
-    : eventConfigFormSchema
-)
 
 const participantsLimitInput = computed({
   get: () => formatParticipantsLimitInput(form.value.participantsLimit),
@@ -415,14 +402,14 @@ async function loadSortableConstructor() {
 }
 
 async function initializeAgendaSortable() {
-  if (!import.meta.client || !showAgendaItemsSection.value || !agendaListElement.value || form.value.agendaItems.length === 0) {
+  if (!import.meta.client || !agendaListElement.value || form.value.agendaItems.length === 0) {
     destroyAgendaSortable()
     return
   }
 
   const Sortable = await loadSortableConstructor()
 
-  if (!showAgendaItemsSection.value || !agendaListElement.value || form.value.agendaItems.length === 0) {
+  if (!agendaListElement.value || form.value.agendaItems.length === 0) {
     destroyAgendaSortable()
     return
   }
@@ -512,7 +499,7 @@ const {
   setValues,
   handleSubmit
 } = useForm({
-  validationSchema: computed(() => toTypedSchema(validationSchema.value)),
+  validationSchema: toTypedSchema(eventConfigFormSchema),
   initialValues: cloneFormValues(form.value)
 })
 
@@ -606,7 +593,7 @@ const validationErrorMessages = computed(() => {
 const agendaItemsOrderKey = computed(() => form.value.agendaItems.map(item => item.id).join('|'))
 const tracksOrderKey = computed(() => form.value.tracks.map(track => track.id).join('|'))
 
-watch([agendaItemsOrderKey, showAgendaItemsSection], async () => {
+watch(agendaItemsOrderKey, async () => {
   await nextTick()
   await initializeAgendaSortable()
 }, {
@@ -645,7 +632,7 @@ const submitConfigForm = handleSubmit(() => {
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
-              {{ basicsHeading }}
+              Basic Information
             </h2>
             <p class="text-sm text-muted">
               {{ basicsDescription }}
@@ -654,237 +641,235 @@ const submitConfigForm = handleSubmit(() => {
         </template>
 
         <div class="grid grid-cols-1 gap-5">
-          <template v-if="showBasicInformationFields">
-            <label
-              v-if="showEventTypeField"
-              class="grid gap-2"
+          <label
+            v-if="showEventTypeField"
+            class="grid gap-2"
+          >
+            <span class="text-sm font-medium text-toned">Event type</span>
+            <AppSelect
+              v-model="form.eventType"
+              required
             >
-              <span class="text-sm font-medium text-toned">Event type</span>
-              <AppSelect
-                v-model="form.eventType"
-                required
+              <option
+                v-for="option in eventTypeOptions"
+                :key="option.value"
+                :value="option.value"
               >
-                <option
-                  v-for="option in eventTypeOptions"
-                  :key="option.value"
-                  :value="option.value"
-                >
-                  {{ option.label }}
-                </option>
-              </AppSelect>
-            </label>
+                {{ option.label }}
+              </option>
+            </AppSelect>
+          </label>
 
-            <label class="grid gap-2">
-              <span class="text-sm font-medium text-toned">Event name</span>
-              <AppInput
-                v-model="form.name"
-                type="text"
-                placeholder="Codex Spring Builders 2026"
-                required
-              />
-            </label>
-
-            <label class="grid gap-2">
-              <span class="text-sm font-medium text-toned">Slug</span>
-              <AppInput
-                v-model="form.slug"
-                type="text"
-                placeholder="codex-spring-builders-2026"
-                required
-              />
-            </label>
-
-            <label class="grid gap-2">
-              <span class="text-sm font-medium text-toned">Discord server URL</span>
-              <AppInput
-                v-model="form.discordServerUrl"
-                type="url"
-                placeholder="https://discord.gg/your-invite"
-              />
-              <span class="text-xs text-muted">Shown only in the account workspace for approved participants, judges, staff, and admins.</span>
-            </label>
-
-            <label class="grid gap-2">
-              <span class="text-sm font-medium text-toned">Luma event URL</span>
-              <AppInput
-                v-model="form.lumaEventUrl"
-                type="url"
-                placeholder="https://lu.ma/your-event"
-              />
-              <span class="text-xs text-muted">Optional public Luma link.</span>
-            </label>
-
-            <label class="grid gap-2">
-              <span class="text-sm font-medium text-toned">Slides URL</span>
-              <AppInput
-                v-model="form.slidesUrl"
-                type="url"
-                placeholder="https://docs.google.com/presentation/..."
-              />
-              <span class="text-xs text-muted">Shown in the account workspace for approved participants, judges, staff, and admins.</span>
-            </label>
-
-            <section class="grid gap-4 border-t border-black/8 pt-5 dark:border-white/[0.08]">
-              <div class="space-y-1">
-                <h3 class="text-base font-semibold text-highlighted">
-                  Luma Sync
-                </h3>
-                <p class="text-sm text-muted">
-                  Keep participant approval, cancellation, and attendance updates aligned with this Luma event.
-                </p>
-              </div>
-
-              <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-                <input
-                  v-model="lumaSyncEnabled"
-                  type="checkbox"
-                  class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-                >
-                <span class="grid gap-0.5">
-                  <span>Enable Luma Sync</span>
-                  <span class="text-xs text-muted">Register event webhooks and sync Codex participant decisions with Luma guests.</span>
-                </span>
-              </label>
-
-              <div
-                v-if="lumaSyncEnabled"
-                class="grid gap-5"
-                :class="lumaWebhookUrl ? 'md:grid-cols-[minmax(0,1fr)_minmax(16rem,0.9fr)] md:items-start' : ''"
-              >
-                <div class="grid gap-5">
-                  <label class="grid gap-2">
-                    <span class="text-sm font-medium text-toned">Luma event API ID</span>
-                    <AppInput
-                      v-model="form.lumaEventApiId"
-                      type="text"
-                      placeholder="evt-FSlTqAmG9QanU4s"
-                      required
-                    />
-                    <span class="text-xs text-muted">Use the Luma API ID, not the public URL.</span>
-                  </label>
-
-                  <div class="grid gap-2">
-                    <label
-                      for="event-luma-api-key"
-                      class="text-sm font-medium text-toned"
-                    >
-                      Luma API key
-                    </label>
-                    <span class="relative">
-                      <AppInput
-                        id="event-luma-api-key"
-                        v-model="form.lumaApiKey"
-                        :type="lumaApiKeyInputType"
-                        placeholder="luma_..."
-                        class="pr-12"
-                        required
-                      />
-                      <AppButton
-                        type="button"
-                        color="neutral"
-                        variant="ghost"
-                        size="sm"
-                        :icon="isLumaApiKeyRevealed ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                        class="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 gap-0 px-0"
-                        :aria-label="isLumaApiKeyRevealed ? 'Hide Luma API key' : 'Show Luma API key'"
-                        :aria-pressed="isLumaApiKeyRevealed"
-                        :title="isLumaApiKeyRevealed ? 'Hide key' : 'Show key'"
-                        @click="isLumaApiKeyRevealed = !isLumaApiKeyRevealed"
-                      >
-                        <span class="sr-only">
-                          {{ isLumaApiKeyRevealed ? 'Hide Luma API key' : 'Show Luma API key' }}
-                        </span>
-                      </AppButton>
-                    </span>
-                    <span class="text-xs text-muted">Use a key that can manage this Luma event.</span>
-                  </div>
-
-                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-                    <input
-                      type="checkbox"
-                      class="size-4 rounded border-black/20 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white/[0.3]"
-                      checked
-                      disabled
-                    >
-                    <span class="grid gap-0.5">
-                      <span>Require Luma email during registration</span>
-                      <span class="text-xs text-muted">Luma Sync needs the participant's Luma email to match Codex users with Luma guests.</span>
-                    </span>
-                  </label>
-                </div>
-
-                <div
-                  v-if="lumaWebhookUrl"
-                  class="grid gap-3 md:border-l md:border-black/8 md:pl-5 md:dark:border-white/[0.08]"
-                >
-                  <div class="flex items-start gap-3">
-                    <span
-                      class="mt-1.5 size-2.5 rounded-full"
-                      :class="lumaWebhookStatusDotClass"
-                      aria-hidden="true"
-                    />
-                    <div class="min-w-0 space-y-1">
-                      <p class="text-sm font-medium text-highlighted">
-                        {{ lumaWebhookStatusLabel }}
-                      </p>
-                      <p class="text-xs text-muted">
-                        {{ lumaWebhookStatusDescription }}
-                      </p>
-                      <p
-                        v-if="lumaWebhookRegisteredAt && lumaWebhookStatus === 'configured'"
-                        class="text-xs text-muted"
-                      >
-                        Last registered at {{ lumaWebhookRegisteredAt }}.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div class="grid gap-2">
-                    <span class="text-sm font-medium text-toned">Webhook URL</span>
-                    <code class="min-w-0 break-all rounded-lg bg-black/[0.04] px-3 py-2 font-mono text-xs text-highlighted dark:bg-white/[0.06]">
-                      {{ lumaWebhookUrl }}
-                    </code>
-                    <div class="flex flex-wrap gap-2">
-                      <AppButton
-                        type="button"
-                        color="neutral"
-                        variant="soft"
-                        size="sm"
-                        icon="i-lucide-copy"
-                        @click="copyLumaWebhookUrl"
-                      >
-                        Copy webhook URL
-                      </AppButton>
-
-                      <AppButton
-                        v-if="showLumaRetryButton"
-                        type="button"
-                        color="neutral"
-                        variant="ghost"
-                        size="sm"
-                        icon="i-lucide-refresh-cw"
-                        :loading="isRetryingLumaConfiguration"
-                        :disabled="isRetryingLumaConfiguration || isSubmitting"
-                        @click="emit('retryLumaConfiguration')"
-                      >
-                        Retry Luma configuration
-                      </AppButton>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <LazyAdminMarkdownEditorField
-              v-model="form.description"
-              name="event-description-editor"
-              editor-id="event-description-editor"
-              label="Description"
-              description="Shown on the public event page."
-              placeholder="Describe the event, focus areas, and expectations for participants."
+          <label class="grid gap-2">
+            <span class="text-sm font-medium text-toned">Event name</span>
+            <AppInput
+              v-model="form.name"
+              type="text"
+              placeholder="Codex Spring Builders 2026"
               required
             />
-          </template>
+          </label>
+
+          <label class="grid gap-2">
+            <span class="text-sm font-medium text-toned">Slug</span>
+            <AppInput
+              v-model="form.slug"
+              type="text"
+              placeholder="codex-spring-builders-2026"
+              required
+            />
+          </label>
+
+          <label class="grid gap-2">
+            <span class="text-sm font-medium text-toned">Discord server URL</span>
+            <AppInput
+              v-model="form.discordServerUrl"
+              type="url"
+              placeholder="https://discord.gg/your-invite"
+            />
+            <span class="text-xs text-muted">Shown only in the account workspace for approved participants, judges, staff, and admins.</span>
+          </label>
+
+          <label class="grid gap-2">
+            <span class="text-sm font-medium text-toned">Luma event URL</span>
+            <AppInput
+              v-model="form.lumaEventUrl"
+              type="url"
+              placeholder="https://lu.ma/your-event"
+            />
+            <span class="text-xs text-muted">Optional public Luma link.</span>
+          </label>
+
+          <label class="grid gap-2">
+            <span class="text-sm font-medium text-toned">Slides URL</span>
+            <AppInput
+              v-model="form.slidesUrl"
+              type="url"
+              placeholder="https://docs.google.com/presentation/..."
+            />
+            <span class="text-xs text-muted">Shown in the account workspace for approved participants, judges, staff, and admins.</span>
+          </label>
+
+          <section class="grid gap-4 border-t border-black/8 pt-5 dark:border-white/[0.08]">
+            <div class="space-y-1">
+              <h3 class="text-base font-semibold text-highlighted">
+                Luma Sync
+              </h3>
+              <p class="text-sm text-muted">
+                Keep participant approval, cancellation, and attendance updates aligned with this Luma event.
+              </p>
+            </div>
+
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+              <input
+                v-model="lumaSyncEnabled"
+                type="checkbox"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+              >
+              <span class="grid gap-0.5">
+                <span>Enable Luma Sync</span>
+                <span class="text-xs text-muted">Register event webhooks and sync Codex participant decisions with Luma guests.</span>
+              </span>
+            </label>
+
+            <div
+              v-if="lumaSyncEnabled"
+              class="grid gap-5"
+              :class="lumaWebhookUrl ? 'md:grid-cols-[minmax(0,1fr)_minmax(16rem,0.9fr)] md:items-start' : ''"
+            >
+              <div class="grid gap-5">
+                <label class="grid gap-2">
+                  <span class="text-sm font-medium text-toned">Luma event API ID</span>
+                  <AppInput
+                    v-model="form.lumaEventApiId"
+                    type="text"
+                    placeholder="evt-FSlTqAmG9QanU4s"
+                    required
+                  />
+                  <span class="text-xs text-muted">Use the Luma API ID, not the public URL.</span>
+                </label>
+
+                <div class="grid gap-2">
+                  <label
+                    for="event-luma-api-key"
+                    class="text-sm font-medium text-toned"
+                  >
+                    Luma API key
+                  </label>
+                  <span class="relative">
+                    <AppInput
+                      id="event-luma-api-key"
+                      v-model="form.lumaApiKey"
+                      :type="lumaApiKeyInputType"
+                      placeholder="luma_..."
+                      class="pr-12"
+                      required
+                    />
+                    <AppButton
+                      type="button"
+                      color="neutral"
+                      variant="ghost"
+                      size="sm"
+                      :icon="isLumaApiKeyRevealed ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                      class="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 gap-0 px-0"
+                      :aria-label="isLumaApiKeyRevealed ? 'Hide Luma API key' : 'Show Luma API key'"
+                      :aria-pressed="isLumaApiKeyRevealed"
+                      :title="isLumaApiKeyRevealed ? 'Hide key' : 'Show key'"
+                      @click="isLumaApiKeyRevealed = !isLumaApiKeyRevealed"
+                    >
+                      <span class="sr-only">
+                        {{ isLumaApiKeyRevealed ? 'Hide Luma API key' : 'Show Luma API key' }}
+                      </span>
+                    </AppButton>
+                  </span>
+                  <span class="text-xs text-muted">Use a key that can manage this Luma event.</span>
+                </div>
+
+                <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                  <input
+                    type="checkbox"
+                    class="size-4 rounded border-black/20 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white/[0.3]"
+                    checked
+                    disabled
+                  >
+                  <span class="grid gap-0.5">
+                    <span>Require Luma email during registration</span>
+                    <span class="text-xs text-muted">Luma Sync needs the participant's Luma email to match Codex users with Luma guests.</span>
+                  </span>
+                </label>
+              </div>
+
+              <div
+                v-if="lumaWebhookUrl"
+                class="grid gap-3 md:border-l md:border-black/8 md:pl-5 md:dark:border-white/[0.08]"
+              >
+                <div class="flex items-start gap-3">
+                  <span
+                    class="mt-1.5 size-2.5 rounded-full"
+                    :class="lumaWebhookStatusDotClass"
+                    aria-hidden="true"
+                  />
+                  <div class="min-w-0 space-y-1">
+                    <p class="text-sm font-medium text-highlighted">
+                      {{ lumaWebhookStatusLabel }}
+                    </p>
+                    <p class="text-xs text-muted">
+                      {{ lumaWebhookStatusDescription }}
+                    </p>
+                    <p
+                      v-if="lumaWebhookRegisteredAt && lumaWebhookStatus === 'configured'"
+                      class="text-xs text-muted"
+                    >
+                      Last registered at {{ lumaWebhookRegisteredAt }}.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="grid gap-2">
+                  <span class="text-sm font-medium text-toned">Webhook URL</span>
+                  <code class="min-w-0 break-all rounded-lg bg-black/[0.04] px-3 py-2 font-mono text-xs text-highlighted dark:bg-white/[0.06]">
+                    {{ lumaWebhookUrl }}
+                  </code>
+                  <div class="flex flex-wrap gap-2">
+                    <AppButton
+                      type="button"
+                      color="neutral"
+                      variant="soft"
+                      size="sm"
+                      icon="i-lucide-copy"
+                      @click="copyLumaWebhookUrl"
+                    >
+                      Copy webhook URL
+                    </AppButton>
+
+                    <AppButton
+                      v-if="showLumaRetryButton"
+                      type="button"
+                      color="neutral"
+                      variant="ghost"
+                      size="sm"
+                      icon="i-lucide-refresh-cw"
+                      :loading="isRetryingLumaConfiguration"
+                      :disabled="isRetryingLumaConfiguration || isSubmitting"
+                      @click="emit('retryLumaConfiguration')"
+                    >
+                      Retry Luma configuration
+                    </AppButton>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <LazyAdminMarkdownEditorField
+            v-model="form.description"
+            name="event-description-editor"
+            editor-id="event-description-editor"
+            label="Description"
+            description="Shown on the public event page."
+            placeholder="Describe the event, focus areas, and expectations for participants."
+            required
+          />
 
           <section
             v-if="showTracksSection"
@@ -1177,10 +1162,16 @@ const submitConfigForm = handleSubmit(() => {
             </div>
           </section>
 
-          <div
-            v-if="showAgendaItemsSection"
-            class="grid grid-cols-1 gap-3"
-          >
+          <section class="grid grid-cols-1 gap-3 border-t border-black/8 pt-5 dark:border-white/[0.08]">
+            <div class="space-y-1">
+              <h3 class="text-base font-semibold text-highlighted">
+                Schedule
+              </h3>
+              <p class="text-sm text-muted">
+                Set the schedule participants see on the event page. Drag items or use the arrow controls to reorder them.
+              </p>
+            </div>
+
             <div
               v-if="form.agendaItems.length === 0"
               class="grid gap-3 rounded-xl border border-dashed border-black/10 px-4 py-4 text-sm text-muted dark:border-white/[0.08]"
@@ -1318,9 +1309,9 @@ const submitConfigForm = handleSubmit(() => {
                 {{ form.agendaItems.length === 0 ? 'Add first item' : 'Add item' }}
               </AppButton>
             </div>
-          </div>
+          </section>
 
-          <template v-if="showProgramSettingsSections && isSettingsMode">
+          <template v-if="isSettingsMode">
             <section class="border-t border-black/8 pt-6 dark:border-white/[0.08]">
               <div class="space-y-1">
                 <h3 class="text-lg font-semibold text-highlighted">
@@ -1586,51 +1577,13 @@ const submitConfigForm = handleSubmit(() => {
                 </div>
               </div>
             </section>
-
-            <div class="border-t border-black/8 pt-6 dark:border-white/[0.08]">
-              <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div class="max-w-3xl space-y-3">
-                  <p class="text-sm text-muted">
-                    {{ helperText ?? 'Save your changes to update this event.' }}
-                  </p>
-
-                  <AppAlert
-                    v-if="submitError"
-                    color="error"
-                    variant="soft"
-                    :title="submitErrorTitle ?? 'Unable to save changes'"
-                    :description="submitError"
-                  />
-
-                  <AppAlert
-                    v-if="validationErrorMessages.length > 0"
-                    color="error"
-                    variant="soft"
-                    title="Form validation failed"
-                    :description="validationErrorMessages[0]"
-                  />
-                </div>
-
-                <AppButton
-                  type="submit"
-                  :loading="isSubmitting"
-                  :disabled="isSubmitting"
-                  color="primary"
-                  size="lg"
-                  class="justify-center"
-                >
-                  {{ submitLabel }}
-                </AppButton>
-              </div>
-            </div>
           </template>
         </div>
       </AppCard>
 
       <EventConfigProgramIdentitySection
-        v-if="showProgramIdentitySection"
         v-model:form="form"
-        :description="programIdentityDescription"
+        description="Set the location and the images shown on the event page."
         :can-upload-managed-images="props.canUploadManagedImages"
         :background-image-upload-pending="props.backgroundImageUploadPending"
         :background-image-upload-error="props.backgroundImageUploadError"
@@ -1642,50 +1595,10 @@ const submitConfigForm = handleSubmit(() => {
         @upload-banner-image="emit('uploadBannerImage', $event)"
         @remove-banner-image="emit('removeBannerImage')"
       />
-
-      <AppCard
-        v-if="showProgramIdentitySection && showInlineDetailsActions"
-        class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
-      >
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div class="max-w-3xl space-y-3">
-            <p class="text-sm text-muted">
-              {{ helperText ?? 'Save your changes to update this event.' }}
-            </p>
-
-            <AppAlert
-              v-if="submitError"
-              color="error"
-              variant="soft"
-              :title="submitErrorTitle ?? 'Unable to save changes'"
-              :description="submitError"
-            />
-
-            <AppAlert
-              v-if="validationErrorMessages.length > 0"
-              color="error"
-              variant="soft"
-              title="Form validation failed"
-              :description="validationErrorMessages[0]"
-            />
-          </div>
-
-          <AppButton
-            type="submit"
-            :loading="isSubmitting"
-            :disabled="isSubmitting"
-            color="primary"
-            size="lg"
-            class="justify-center"
-          >
-            {{ submitLabel }}
-          </AppButton>
-        </div>
-      </AppCard>
     </section>
 
     <section
-      v-if="showProgramSettingsSections && !isSettingsMode"
+      v-if="!isSettingsMode"
       class="space-y-6"
     >
       <AppCard
@@ -1968,10 +1881,7 @@ const submitConfigForm = handleSubmit(() => {
       </AppCard>
     </section>
 
-    <div
-      v-if="!showInlineDetailsActions && !isSettingsMode"
-      class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex flex-col gap-4 rounded-xl px-5 py-5 sm:flex-row sm:items-center sm:justify-between"
-    >
+    <div class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex flex-col gap-4 rounded-xl px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
       <div class="max-w-3xl space-y-3">
         <p class="text-sm text-muted">
           {{ helperText ?? 'Save your changes to update this event.' }}

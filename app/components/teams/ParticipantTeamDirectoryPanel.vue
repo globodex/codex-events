@@ -107,7 +107,7 @@ function selectDirectoryFilter(nextFilter: string) {
           variant="solid"
           trailing-icon="i-lucide-arrow-up-right"
           data-testid="participant-team-directory-create-team"
-          class="self-start bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+          class="self-start bg-black text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
         >
           Create Team
         </AppButton>
@@ -243,7 +243,7 @@ function selectDirectoryFilter(nextFilter: string) {
                 v-if="entry.detailHref?.trim() && !entry.isOwnTeam"
                 :to="entry.detailHref"
                 color="neutral"
-                class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:border-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC] dark:hover:text-black"
+                class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 hover:text-white dark:border-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC] dark:hover:text-black"
                 trailing-icon="i-lucide-arrow-up-right"
               >
                 View team
@@ -253,7 +253,7 @@ function selectDirectoryFilter(nextFilter: string) {
                 v-else-if="entry.isOwnTeam && props.ownTeamWorkspaceHref"
                 :to="props.ownTeamWorkspaceHref"
                 color="neutral"
-                class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:border-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC] dark:hover:text-black"
+                class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 hover:text-white dark:border-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC] dark:hover:text-black"
                 trailing-icon="i-lucide-arrow-up-right"
               >
                 Your team

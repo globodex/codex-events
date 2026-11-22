@@ -664,7 +664,8 @@ function groupById(id: string) {
       >
         <EventConfigProgramIdentitySection
           v-model:form="form"
-          description="Location fields live in the basics section above. Manage imagery here."
+          description="Upload a background image and a banner image."
+          :show-location="false"
           :can-upload-managed-images="true"
           :background-image-upload-pending="backgroundImageUploadPending"
           :background-image-upload-error="backgroundImageUploadError"

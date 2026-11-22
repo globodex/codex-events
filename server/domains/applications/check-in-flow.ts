@@ -1,8 +1,8 @@
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, exists, isNull } from 'drizzle-orm'
 
 import type { AppDatabase } from '#server/database/client'
-import type { events } from '#server/database/schema'
-import { userApplications } from '#server/database/schema'
+import { events, userApplications } from '#server/database/schema'
+import { effectivelyCheckedInCondition } from './check-in'
 import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
 import {
   hasParticipantFinishedCheckInFlow,
@@ -67,18 +67,12 @@ export function parseQuestionnaireAnswersJson(value: string | null) {
   return value === null ? null : questionnaireAnswerRecordsSchema.parse(JSON.parse(value))
 }
 
-/**
- * Stores the answers of a participant who completes the questionnaire.
- *
- * A questionnaire is completed once. The update only matches an application without a
- * completion time, so a second request changes nothing, also when it arrives at the same moment.
- *
- * Returns the updated application, or null when the questionnaire was already completed.
- */
+/** Store answers only while the registration and the questions are still eligible. */
 export async function recordQuestionnaireCompletion(
   database: AppDatabase,
   completion: {
     applicationId: string
+    questionsJson: string
     answers: QuestionnaireAnswerRecord[]
     completedAt: string
   }
@@ -92,7 +86,14 @@ export async function recordQuestionnaireCompletion(
     })
     .where(and(
       eq(userApplications.id, completion.applicationId),
-      isNull(userApplications.questionnaireCompletedAt)
+      eq(userApplications.status, 'approved'),
+      effectivelyCheckedInCondition(),
+      isNull(userApplications.questionnaireCompletedAt),
+      exists(database.select({ id: events.id }).from(events).where(and(
+        eq(events.id, userApplications.eventId),
+        eq(events.checkInFlowEnabled, true),
+        eq(events.questionnaireQuestionsJson, completion.questionsJson)
+      )))
     ))
     .returning()
 

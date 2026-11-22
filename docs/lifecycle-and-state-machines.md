@@ -346,7 +346,7 @@ Behavior:
 An event with its check-in flow on gives every `approved` application one of three positions. A position is derived from effective attendance and the questionnaire completion time. It is not a stored state.
 
 - `check-in pending`
-  The participant has no effective attendance. The account event overview tells the participant to check in at the entrance and links to the agenda and, when the participant can read them, the event's challenges.
+  The participant has no effective attendance. The account event overview tells the participant to check in with the event team and links to the agenda, which also holds the event's challenges when the participant can read them.
 - `questionnaire open`
   The participant has effective attendance, the event has a questionnaire, and the participant has not completed it. The account event overview shows the questions.
 - `finished`
@@ -573,7 +573,7 @@ Behavior:
 
 - Event credits are independent from winner prizes and do not require `winners_announced`.
 - Approved participants can claim at most one uploaded value from each event credit offer while inventory remains available.
-- In an event with its check-in flow on, an approved participant can claim only in the `finished` position of the check-in flow. Event staff can claim without it.
+- In an event with its check-in flow on, an approved participant can claim only in the `finished` position of the check-in flow. A completed event refuses a new claim from an unfinished participant. Previously claimed values remain visible, and staff can still claim without check-in.
 - A simplified-claiming Meetup accepts redemption only during its open registration window. The first claim waits for the participant to confirm or edit the prefilled saved Luma email. A matching eligible attendee added by Luma check-in or approved CSV import moves an absent or submitted application to `approved`, assigns one available code or HTTPS link from each giveaway, records attendance in one transaction, and queues one receipt with all assigned credits to the participant's account email.
 - Exhausted giveaways are skipped. If all are exhausted, no claim or application change occurs. If the selected redirect giveaway is exhausted, the page confirms the claim and the receipt contains the remaining assigned credits. New giveaways and refills do not change previous claims.
 - A configured redemption page identifies an ended registration window as closed. Disabled or incomplete setup remains unavailable without exposing organizer configuration to participants.

@@ -3,12 +3,15 @@ import { useElementSize } from '@vueuse/core'
 
 import type { EventFloorPlan } from '#shared/domains/events/program'
 
-import { roomAreaStyle, routeArrows } from '~/domains/events/program-map'
+import { roomAreaStyle, roomLabel, routeArrows } from '~/domains/events/program-map'
 
 const props = defineProps<{
   plan: EventFloorPlan
   floors?: readonly Pick<EventFloorPlan, 'id' | 'name'>[]
-  selectedRoom: EventFloorPlan['rooms'][number] | null
+  /** The rooms of this plan that the map highlights. A challenge can have several rooms. */
+  selectedRooms: EventFloorPlan['rooms']
+  /** Shown in place of the room names while no room is selected. */
+  roomHint?: string
 }>()
 
 const emit = defineEmits<{
@@ -26,8 +29,11 @@ function setImageRatio(event: Event) {
   imageRatio.value = image.naturalWidth / image.naturalHeight
 }
 
+const selectedRoomIds = computed(() => new Set(props.selectedRooms.map(room => room.id)))
+// The way to a room is shown while that room alone is selected.
+const routeRoom = computed(() => props.selectedRooms.length === 1 ? props.selectedRooms[0] : undefined)
 // The route in screen pixels, so the line and its arrows keep the same size at every map width.
-const route = computed(() => (props.selectedRoom?.route ?? []).map(point => ({
+const route = computed(() => (routeRoom.value?.route ?? []).map(point => ({
   x: point.x * width.value,
   y: point.y * height.value
 })))
@@ -73,9 +79,10 @@ function selectFloor(value: string | number | undefined) {
       </h2>
       <p
         aria-live="polite"
-        class="text-sm font-medium text-highlighted"
+        class="text-sm"
+        :class="props.selectedRooms.length ? 'font-medium text-highlighted' : 'text-muted'"
       >
-        {{ props.selectedRoom?.name }}
+        {{ props.selectedRooms.length ? props.selectedRooms.map(roomLabel).join(', ') : props.roomHint }}
       </p>
     </figcaption>
 
@@ -96,7 +103,7 @@ function selectFloor(value: string | number | undefined) {
         class="pointer-events-none absolute inset-0 size-full"
         :viewBox="`0 0 ${width} ${height}`"
         role="img"
-        :aria-label="`Route to ${props.selectedRoom?.name}`"
+        :aria-label="`Route to ${routeRoom?.name}`"
         data-testid="program-room-route"
       >
         <polyline
@@ -139,21 +146,25 @@ function selectFloor(value: string | number | undefined) {
         color="neutral"
         variant="ghost"
         size="xs"
-        :aria-pressed="room.id === props.selectedRoom?.id"
-        :data-testid="room.id === props.selectedRoom?.id ? 'program-room-highlight' : undefined"
+        :aria-pressed="selectedRoomIds.has(room.id)"
+        :data-testid="selectedRoomIds.has(room.id) ? 'program-room-highlight' : undefined"
         :style="roomAreaStyle(room.area)"
         class="group absolute rounded-none bg-transparent p-0 hover:bg-primary/10
           focus-visible:z-20 focus-visible:outline-2 focus-visible:outline-primary
           aria-pressed:z-10 aria-pressed:bg-primary aria-pressed:hover:bg-primary"
         @click="emit('selectRoom', room.id)"
       >
-        <!-- The name stays level when the room area is turned. -->
+        <!-- The name stays level when the room area is turned. The venue's room number stands under it. -->
         <span
           :style="{ rotate: `${-room.area.rotation}deg` }"
-          class="room-name rounded px-1 py-0.5 text-[0.625rem] leading-none text-highlighted
+          class="room-name flex flex-col items-center rounded px-1 py-0.5 text-[0.625rem] leading-none text-highlighted
             group-aria-pressed:bg-primary group-aria-pressed:text-primary-foreground @md:text-xs"
         >
           {{ room.name }}
+          <span
+            v-if="room.number"
+            class="mt-0.5 text-[0.5625rem] font-normal opacity-80 @md:text-[0.625rem]"
+          >{{ room.number }}</span>
         </span>
       </AppButton>
     </div>

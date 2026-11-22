@@ -170,7 +170,7 @@ useSeoMeta({
                   color="neutral"
                   variant="solid"
                   data-testid="admin-create-event-menu"
-                  class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                  class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                 >
                   Create event
                   <template #trailing>

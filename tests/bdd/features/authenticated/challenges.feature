@@ -12,15 +12,15 @@ Feature: Event challenges
     And I save the event in the builder
     Then the builder should keep the published challenge "Ship a Codex skill" with the link "https://example.com/skills" after a reload
 
-  Scenario: Participant who finished the check-in opens Challenges from the next step
+  Scenario: Participant who finished the check-in reads the challenges on the Agenda
     Given I open my event page of "challenges-fixture-event" as "regular_user"
-    When I open the activity "Challenges" from my next step
+    When I open the activity "Agenda" from my next step
     Then I should see the challenge "Ship a Codex skill" with the instructions "Write one skill and share it with your table."
     And the challenge "Ship a Codex skill" should link to "Skill guide" at "https://example.com/skills"
     And I should not see the challenge "Unfinished idea"
 
-  Scenario: Participant who has not checked in opens Challenges from the next step
+  Scenario: Participant who has not checked in reads the challenges on the Agenda
     Given I open my event page of "challenges-fixture-event" as "judge"
-    Then my next step should be to check in at the entrance
-    When I open the activity "Challenges" from my next step
+    Then my next step should be to check in with the event team
+    When I open the activity "Agenda" from my next step
     Then I should see the challenge "Ship a Codex skill" with the instructions "Write one skill and share it with your table."

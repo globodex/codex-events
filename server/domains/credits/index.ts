@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, eq, getTableColumns, isNotNull, sql } from 'drizzle-orm'
+import { and, asc, eq, getTableColumns, isNotNull, isNull, notExists, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { resolveEventAuthorization } from '#server/auth/authorization'
@@ -255,6 +255,7 @@ export function getEventCreditClaimAccess(input: {
   const { event, application } = input
 
   return resolveEventCreditClaimAccess({
+    eventCompleted: event.state === 'completed',
     isEventStaff: input.isEventStaff,
     isApprovedParticipant: application?.status === 'approved',
     checkInFlowEnabled: event.checkInFlowEnabled,
@@ -322,6 +323,15 @@ export async function requireEventCreditClaimAccess(h3Event: H3Event, eventId: s
     })
   }
 
+  if (claimAccess === 'event_completed') {
+    throw new ApiError({
+      statusCode: 409,
+      code: 'event_credit_event_completed',
+      message: 'This event ended before you finished check-in.',
+      details: { eventId, creditId }
+    })
+  }
+
   if (claimAccess === 'must_finish_check_in_flow') {
     throw new ApiError({
       statusCode: 409,
@@ -368,11 +378,36 @@ export function parseSingleColumnCreditCsv(content: string) {
   return rows
 }
 
-export function isEventCreditClaimConflict(error: unknown) {
-  if (!(error instanceof Error)) {
-    return false
-  }
+/**
+ * Gives the person the oldest free code of the offer, unless they already hold a code of it.
+ *
+ * The caller decides first whether the person may claim (`requireEventCreditClaimAccess`).
+ * Finding the free code and taking it is one database write. So two people who claim at the
+ * same moment never get the same code, and one person never gets two codes of one offer.
+ *
+ * Returns the code that was taken. Returns undefined when nothing was taken: the person
+ * already holds a code of this offer, or the offer has no free code left.
+ */
+export async function allocateEventCreditCode(
+  database: ReturnType<typeof getDatabase>,
+  claim: { creditId: string, userId: string, claimedAt: string }
+) {
+  const oldestFreeCode = database
+    .select({ id: eventCreditCodes.id })
+    .from(eventCreditCodes)
+    .where(and(eq(eventCreditCodes.creditOfferId, claim.creditId), isNull(eventCreditCodes.claimedByUserId)))
+    .orderBy(asc(eventCreditCodes.createdAt), asc(eventCreditCodes.id))
+    .limit(1)
+  const codeOfThisPerson = database
+    .select({ id: eventCreditCodes.id })
+    .from(eventCreditCodes)
+    .where(and(eq(eventCreditCodes.creditOfferId, claim.creditId), eq(eventCreditCodes.claimedByUserId, claim.userId)))
 
-  return error.message.includes('UNIQUE constraint failed')
-    || error.message.includes('unique constraint failed')
+  const [claimedCode] = await database
+    .update(eventCreditCodes)
+    .set({ claimedByUserId: claim.userId, claimedAt: claim.claimedAt })
+    .where(and(eq(eventCreditCodes.id, oldestFreeCode), notExists(codeOfThisPerson)))
+    .returning({ id: eventCreditCodes.id })
+
+  return claimedCode
 }

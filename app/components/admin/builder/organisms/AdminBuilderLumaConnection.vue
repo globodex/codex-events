@@ -25,6 +25,15 @@ const importPending = shallowRef(false)
 const importError = shallowRef('')
 const canImport = computed(() => connected.value && form.value.simplifiedClaimingEnabled && props.event?.simplifiedClaimingEnabled)
 const guestListSaved = computed(() => props.event?.lumaGuestListEnabled ?? false)
+// What the organizer reads while the saved connection does not work. The server stores why the
+// last attempt failed, for example the names of two people who registered with one Luma email.
+const notConnectedDescription = computed(() => {
+  const reason = props.event?.lumaWebhookError || 'Check the connection details and save again.'
+
+  return guestListSaved.value
+    ? `New Luma registrations and approvals do not reach this event. ${reason}`
+    : reason
+})
 // Turning the guest list on needs a working connection. While it is on (saved or not), the
 // controls always stay visible, so the organizer can refresh the list or turn it off again
 // even when the connection is broken.
@@ -191,9 +200,7 @@ async function refreshGuestList() {
       v-if="hasSavedCredentials && event?.lumaWebhookStatus !== 'configured'"
       color="warning"
       title="Luma is not connected"
-      :description="guestListSaved
-        ? 'New Luma registrations and approvals do not reach this event. Check the connection details and save again.'
-        : 'Check the connection details and save again.'"
+      :description="notConnectedDescription"
     />
     <template v-if="connected && !editing">
       <p class="text-sm text-muted">

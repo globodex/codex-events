@@ -1,17 +1,8 @@
 <script setup lang="ts">
-import {
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogOverlay,
-  DialogPortal,
-  DialogRoot,
-  DialogTitle,
-  DialogTrigger
-} from 'reka-ui'
-
 import type { ProgramSession } from '#shared/domains/events/program'
 
+import AppButton from '~/components/AppButton.vue'
+import AccountEventDetailsDialog from '~/components/account/events/molecules/AccountEventDetailsDialog.vue'
 import { formatMinutes, type SessionPhase } from '~/domains/events/program-timeline'
 
 const props = defineProps<{
@@ -24,13 +15,28 @@ const props = defineProps<{
   phaseLabel?: string
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
+  /** Only a session with a room can be selected. */
   select: [session: ProgramSession]
 }>()
 
 const accessibleLabel = computed(() =>
   [props.phaseLabel, props.session.title, props.timeLabel, props.roomName].filter(Boolean).join(', ')
 )
+
+// A session with a room is a button: selecting it shows the room on the map.
+// A session without a room has nothing to show on the map, so it is plain text.
+const summaryElement = computed(() => props.session.room ? AppButton : 'div')
+const summaryAttributes = computed(() => props.session.room
+  ? {
+      'color': 'neutral',
+      'variant': 'ghost',
+      'class': 'h-auto w-full min-w-0 flex-col items-start justify-start gap-1 whitespace-normal rounded-xl px-3 py-2.5 text-left hover:bg-primary/5 focus-visible:ring-inset',
+      'aria-label': accessibleLabel.value,
+      'aria-pressed': props.selected,
+      'onClick': () => emit('select', props.session)
+    }
+  : { class: 'flex min-w-0 flex-col items-start gap-1 px-3 py-2.5 font-medium' })
 
 const cardClass = computed(() => {
   if (props.selected) return 'border-primary bg-primary/5'
@@ -44,15 +50,11 @@ const cardClass = computed(() => {
     class="relative m-1 flex min-w-0 flex-col rounded-xl border transition-colors"
     :class="[cardClass, { 'opacity-60': phase === 'past' && !selected }]"
   >
-    <AppButton
+    <component
+      :is="summaryElement"
+      v-bind="summaryAttributes"
       :id="`program-session-${encodeURIComponent(session.id)}`"
-      color="neutral"
-      variant="ghost"
-      class="h-auto w-full min-w-0 flex-col items-start justify-start gap-1 whitespace-normal rounded-xl px-3 py-2.5 text-left hover:bg-primary/5 focus-visible:ring-inset"
-      :aria-label="accessibleLabel"
-      :aria-pressed="selected"
       :data-testid="`program-session-${session.id}`"
-      @click="$emit('select', session)"
     >
       <span
         v-if="phaseLabel"
@@ -86,51 +88,16 @@ const cardClass = computed(() => {
           <span class="truncate">{{ roomName }}</span>
         </span>
       </span>
-    </AppButton>
+    </component>
 
-    <DialogRoot v-if="session.details">
-      <!-- The button sits in the free corner of the item, so it does not change the item's size. -->
-      <DialogTrigger as-child>
-        <AppButton
-          label="Details"
-          variant="soft"
-          size="xs"
-          class="absolute right-2 bottom-2 h-6"
-        />
-      </DialogTrigger>
-
-      <DialogPortal>
-        <DialogOverlay class="fixed inset-0 z-50 bg-black/45 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=open]:fade-in-0" />
-        <DialogContent
-          class="fixed top-1/2 left-1/2 z-50 max-h-[85dvh] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2
-            overflow-y-auto rounded-xl border bg-popover p-5 text-popover-foreground shadow-lg outline-none
-            data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
-        >
-          <div class="flex items-start justify-between gap-4">
-            <div class="min-w-0">
-              <DialogTitle class="break-words text-base font-semibold text-highlighted">
-                {{ session.title }}
-              </DialogTitle>
-              <DialogDescription class="mt-1 text-sm text-muted">
-                {{ [timeLabel, roomName].filter(Boolean).join(' · ') }}
-              </DialogDescription>
-            </div>
-            <DialogClose as-child>
-              <AppButton
-                icon="i-lucide-x"
-                aria-label="Close"
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                class="shrink-0 px-1.5"
-              />
-            </DialogClose>
-          </div>
-          <p class="mt-4 whitespace-pre-wrap break-words text-sm text-toned">
-            {{ session.details }}
-          </p>
-        </DialogContent>
-      </DialogPortal>
-    </DialogRoot>
+    <AccountEventDetailsDialog
+      v-if="session.details"
+      :title="session.title"
+      :summary="[timeLabel, roomName].filter(Boolean).join(' · ')"
+    >
+      <p class="whitespace-pre-wrap break-words text-sm text-toned">
+        {{ session.details }}
+      </p>
+    </AccountEventDetailsDialog>
   </div>
 </template>

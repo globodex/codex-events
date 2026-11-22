@@ -89,7 +89,7 @@ const emit = defineEmits<{
         variant="solid"
         :loading="props.submitting"
         :disabled="props.submitting"
-        class="w-full justify-center bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+        class="w-full justify-center bg-black text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
       >
         {{ props.submitLabel }}
       </AppButton>

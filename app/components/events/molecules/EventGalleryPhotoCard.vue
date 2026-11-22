@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// One photo of the event gallery: the picture that opens in the photo viewer, its file name and
-// date, a download link, and the controls of the people who manage the gallery.
+// One photo of the event gallery: the picture that opens in the photo viewer, its date and a
+// download link. The people who manage the gallery also get the file name and their controls.
 import type { EventPhotoRecord } from '#shared/domains/events/photos'
 
 import { Switch as UiSwitch } from '~/components/ui/switch'
@@ -70,7 +70,7 @@ function highlightStatusLabel(photo: EventPhotoRecord) {
       :data-photoswipe-photo="photo.id"
       :data-pswp-width="photo.width"
       :data-pswp-height="photo.height"
-      :aria-label="`Open ${photo.fileName ?? 'gallery photo'}`"
+      aria-label="Open photo"
       class="block"
     >
       <div
@@ -79,7 +79,7 @@ function highlightStatusLabel(photo: EventPhotoRecord) {
       >
         <img
           :src="photo.previewUrl"
-          :alt="photo.fileName ?? 'Gallery photo'"
+          alt="Event photo"
           loading="lazy"
           class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
           :class="{ 'opacity-50': photo.isHidden }"
@@ -89,7 +89,10 @@ function highlightStatusLabel(photo: EventPhotoRecord) {
 
     <div class="space-y-4 p-4">
       <div class="space-y-1">
-        <p class="truncate text-sm font-semibold text-highlighted dark:text-white">
+        <p
+          v-if="canManage"
+          class="truncate text-sm font-semibold text-highlighted dark:text-white"
+        >
           {{ photo.fileName ?? 'Gallery photo' }}
         </p>
         <p class="text-xs text-muted">
@@ -143,9 +146,8 @@ function highlightStatusLabel(photo: EventPhotoRecord) {
         color="neutral"
         variant="outline"
         size="sm"
-        :aria-label="`Download original ${photo.fileName ?? 'gallery photo'}`"
       >
-        Download original
+        Download
       </AppButton>
 
       <div

@@ -370,9 +370,9 @@ const eventConfigFormBaseSchema = z.object({
   tracks: tracksFormSchema,
   backgroundImageUrl: createOptionalHttpUrlSchema('Enter a valid background image URL.'),
   bannerImageUrl: createOptionalHttpUrlSchema('Enter a valid banner image URL.'),
-  city: requiredTextSchema,
-  country: requiredTextSchema,
-  address: requiredTextSchema,
+  city: z.string().trim(),
+  country: z.string().trim(),
+  address: z.string().trim(),
   registrationOpensAt: z.string().trim().min(1),
   registrationClosesAt: z.string().trim().min(1),
   submissionOpensAt: z.string().trim(),
@@ -431,6 +431,19 @@ const eventConfigFormBaseSchema = z.object({
   const hasLumaRegistrationEmail = input.applicationLumaEmailVisible && input.requireLumaEmail
   const hasRequiredRegistrationFields = applicationFieldRequirementPairs
     .some(([, requiredKey]) => input[requiredKey])
+
+  // An online event has no venue, so its location may stay empty.
+  if (input.inPersonEvent) {
+    for (const [field, label] of [['city', 'City'], ['country', 'Country'], ['address', 'Address']] as const) {
+      if (input[field].length === 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [field],
+          message: `${label} is required for an in-person event.`
+        })
+      }
+    }
+  }
 
   if (Number.isNaN(registrationOpensAt)) {
     context.addIssue({
@@ -610,13 +623,6 @@ export const eventConfigFormSchema: z.ZodType<EventFormState> = z.preprocess(
   normalizeEventConfigFormInput,
   eventConfigFormBaseSchema
 ) as z.ZodType<EventFormState>
-
-export const eventDetailsFormSchema = z.object({
-  agendaItems: agendaItemsFormSchema,
-  city: requiredTextSchema,
-  country: requiredTextSchema,
-  address: requiredTextSchema
-})
 
 export function createEventSlug(name: string) {
   return name

@@ -1,6 +1,6 @@
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { routeSlugParamsSchema } from '#server/domains/events'
-import { executeAccountEventPageRoute } from '#server/domains/events/account-event-page-contract'
+import { accountEventPageQuerySchema, executeAccountEventPageRoute } from '#server/domains/events/account-event-page-contract'
 import { accountEventProgramPageRoute } from '#server/domains/events/account-event-program-page'
 import { parseValidatedParams } from '#server/http/validation'
 
@@ -9,7 +9,7 @@ export const applicationOperation = defineStructuredRouteOperation({
   domain: 'participation',
   description: 'GET /api/account/events/:slug/program',
   rest: { method: 'GET', path: '/api/account/events/:slug/program' },
-  input: { params: routeSlugParamsSchema },
+  input: { params: routeSlugParamsSchema, query: accountEventPageQuerySchema.pick({ includeEventShell: true }).strip().optional() },
   output: 'data',
   capabilities: ['platform_user'],
   effect: 'read'

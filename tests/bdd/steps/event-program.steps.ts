@@ -119,13 +119,14 @@ Given('the event has open rooms on {string}', async ({ request }, floorName: str
   }
 })
 
-When('I open Build Time from my event agenda', async ({ page }) => {
+When('I open the Agenda tab from my event overview', async ({ page }) => {
   await signInAs('regular_user', page)
   await page.goto(`${workspacePath}?tab=overview`)
   await expect(page.getByRole('tab', { name: 'Overview', exact: true })).toHaveAttribute('aria-selected', 'true')
-  await page.getByRole('link', { name: 'Build Time', exact: true }).click()
+  const agendaTab = page.getByRole('tab', { name: 'Agenda', exact: true })
+  await agendaTab.click()
   await expect(page).toHaveURL(url => url.pathname + url.search === agendaTabPath)
-  await expect(page.getByRole('tab', { name: 'Agenda', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(agendaTab).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('region', { name: 'Agenda timeline' })).toBeVisible()
 })
 

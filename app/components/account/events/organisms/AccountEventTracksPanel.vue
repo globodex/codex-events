@@ -42,9 +42,9 @@ const orderedParticipantTracks = computed(() => {
   ]
 })
 const visibleTracks = computed(() => {
-  if (viewerMode.value === 'track-staff') {
+  if (viewerMode.value === 'track-staff' && !props.canSelectTrack) {
     return props.staffTrackId
-      ? sortedTracks.value.filter(track => track.id === props.staffTrackId)
+      ? sortedTracks.value.filter(track => track.id === props.staffTrackId || isSelected(track))
       : []
   }
 
@@ -76,7 +76,7 @@ function isSelected(track: AccountEventEntryTrack) {
 }
 
 function shouldShowFullDetails(track: AccountEventEntryTrack) {
-  return isStaffView.value || isSelected(track)
+  return track.fullDescription !== undefined
 }
 </script>
 
@@ -131,7 +131,7 @@ function shouldShowFullDetails(track: AccountEventEntryTrack) {
                 Selected
               </AppBadge>
               <AppBadge
-                v-else-if="viewerMode === 'track-staff'"
+                v-else-if="viewerMode === 'track-staff' && track.id === staffTrackId"
                 color="info"
                 variant="soft"
               >
@@ -146,7 +146,7 @@ function shouldShowFullDetails(track: AccountEventEntryTrack) {
           </div>
 
           <AppButton
-            v-if="viewerMode === 'participant' && canSelectTrack"
+            v-if="canSelectTrack"
             type="button"
             color="neutral"
             :variant="isSelected(track) ? 'soft' : 'solid'"

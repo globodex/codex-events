@@ -35,7 +35,7 @@ import type { AccountEventAgendaPage } from '#shared/domains/events/program'
 import type { AccountEventPageVisibility } from '~/domains/events/account-workspace-page'
 import {
   buildVersionedEventImageUrl,
-  formatAccountEventHeaderSummary,
+  formatEventHeaderSummary,
   resolveEventDetailBackgroundImageUrl
 } from '~/domains/events/presentation'
 import type { EventParticipationRankSummary } from '~/domains/events/participation'
@@ -44,6 +44,7 @@ import type { CheckInFlowProgress, CheckInFlowSettings } from '#shared/domains/a
 import { hasParticipantFinishedCheckInFlow } from '#shared/domains/applications/check-in-flow'
 import { resolveEventCreditClaimAccess } from '#shared/domains/credits/claim-access'
 import { buildEventCertificatePath } from '#shared/domains/events/certificates'
+import { canViewEventProgram } from '#shared/domains/events/program'
 import type {
   ParticipantApiDataResponse,
   ParticipantApplicationRecord
@@ -66,7 +67,7 @@ import {
   LazyAccountEventsAccountEventRoleRosterPanel as LazyAccountEventRoleRosterPanel,
   LazyAccountEventsAccountEventTalkProposalPanel as LazyAccountEventTalkProposalPanel,
   LazyAccountEventsAccountEventTalkProposalReviewPanel as LazyAccountEventTalkProposalReviewPanel,
-  LazyAccountEventsOrganismsAccountEventChallengesPanel as LazyAccountEventChallengesPanel,
+  LazyAccountEventsOrganismsAccountEventChallengeList as LazyAccountEventChallengeList,
   LazyAccountEventsOrganismsAccountEventTracksPanel as LazyAccountEventTracksPanel,
   LazyPublicEventsEventAgendaPanel as LazyEventAgendaPanel,
   LazyPublicEventsEventPrizeList as LazyEventPrizeList,
@@ -167,9 +168,15 @@ const isDirectNonEntryNavigation = computed(() =>
   Boolean(requestedTab.value)
   && getAccountEventPageForTab(requestedWorkspaceTab.value) !== 'entry'
 )
+// The entry page also feeds the header and the tab bar of every tab. Once it is loaded it stays
+// enabled, so a refresh from another tab (for example after a Settings save) reloads it at once.
+const isEntryPageLoaded = shallowRef(false)
 const entryPageRequest = useAccountEventPageRequest<AccountEventEntryPage>(slug, 'entry', {
-  enabled: () => !isDirectNonEntryNavigation.value
+  enabled: () => isEntryPageLoaded.value || !isDirectNonEntryNavigation.value
 })
+watch(entryPageRequest.data, (data) => {
+  isEntryPageLoaded.value = Boolean(data)
+}, { immediate: true })
 const initialPageFamily = resolveInitialAccountEventPageFamily({
   isDirectNonEntryNavigation: isDirectNonEntryNavigation.value,
   selectedTab: requestedWorkspaceTab.value
@@ -199,19 +206,6 @@ const selectedPageError = shallowRef<unknown | null>(null)
 const event = computed<AccountWorkspaceEvent | null>(() =>
   entryPage.value?.event ?? pageShell.value?.event ?? null
 )
-const programLink = computed(() => {
-  const itemId = event.value?.programItemId
-  const item = itemId && event.value?.agendaItems.find(item => item.id === itemId)
-  if (!item) {
-    return undefined
-  }
-
-  return {
-    itemId: item.id,
-    title: item.title,
-    href: `/account/events/${encodeURIComponent(slug.value)}?tab=program`
-  }
-})
 const accessRecord = shallowRef<AccountEventAccessRecord | null>(null)
 const participationRecord = shallowRef<AccountEventEntryParticipation | null>(null)
 const participantCreditOffers = shallowRef<AccountEventEntryParticipantCreditOffer[]>([])
@@ -350,8 +344,7 @@ const isCertificateGenerationDisabled = computed(() => Boolean(participationReco
 const selectedTrackId = computed(() => participationRecord.value?.application?.selectedTrackId ?? null)
 const accountEventTracks = computed(() => event.value?.tracks ?? [])
 const canSelectParticipantTrack = computed(() =>
-  accountTrackViewerMode.value === 'participant'
-  && (applicationStatus.value === 'submitted' || applicationStatus.value === 'approved')
+  (applicationStatus.value === 'submitted' || applicationStatus.value === 'approved')
   && event.value?.state !== 'completed'
   && accountEventTracks.value.length > 0
 )
@@ -513,6 +506,11 @@ const programPageRequest = useAccountEventPageRequest<AccountEventAgendaPage>(sl
   query: pageState.queryForPage('program')
 })
 const programPage = computed(() => programPageRequest.data.value?.page)
+// The sessions and the map are shown only while this person may still read them, so a program
+// that was loaded before a withdrawal is not shown.
+const canViewProgram = computed(() =>
+  canViewEventProgram(canAdmin.value, applicationStatus.value === 'approved')
+)
 const galleryPageRequest = useAccountEventPageRequest<AccountEventGalleryPage>(slug, 'gallery', {
   enabled: () => activeSection.value === 'gallery',
   query: pageState.queryForPage('gallery')
@@ -589,10 +587,13 @@ const submissionsPage = computed(() => submissionsPageRequest.data.value?.page ?
 const judgingPage = computed(() => judgingPageRequest.data.value?.page ?? null)
 const assignmentPage = computed(() => assignmentPageRequest.data.value ?? null)
 const workspacePageIsLoading = computed(() => workspacePageRequest.pending.value)
-const galleryPageIsLoading = computed(() => galleryPageRequest.pending.value)
 const feedbackPageIsLoading = computed(() => feedbackPageRequest.pending.value)
-// The participant list shows its loading state only while it has nothing to show. A search, a
-// refresh or "Load more" keeps the loaded rows on screen until the new answer arrives.
+// The gallery and the participant list show their loading state only while they have nothing to
+// show. A search, a refresh or "Load more" keeps the loaded content on screen until the new answer
+// arrives.
+const galleryPageIsLoading = computed(() =>
+  galleryPageRequest.pending.value && !galleryPage.value
+)
 const participantsPageIsLoading = computed(() =>
   participantsPageRequest.pending.value && !participantsPage.value
 )
@@ -714,8 +715,30 @@ async function refreshAccountEvent() {
   await entryPageRequest.refresh()
 }
 
+// A check-in step can unlock adding photos and can change agenda sessions that have a second
+// version for checked-in participants. So the Gallery tab and the Agenda tab read their pages
+// again on the next visit.
+async function refreshAfterCheckInStep() {
+  await Promise.all([refreshAccountEvent(), galleryPageRequest.refresh(), programPageRequest.refresh()])
+}
+
+// A Settings save can change the header, the tab bar and the agenda. The Agenda tab reads its page
+// again on the next visit.
 async function refreshSettingsPage() {
-  await settingsPageRequest.refresh()
+  await Promise.all([
+    settingsPageRequest.refresh(),
+    entryPageRequest.refresh(),
+    programPageRequest.refresh()
+  ])
+}
+
+// The tab pages that show more to a confirmed participant. A withdrawal removes them from this
+// device, so the next visit asks the server again.
+function clearConfirmedParticipantPages() {
+  programPageRequest.clear()
+  galleryPageRequest.clear()
+  workspacePageRequest.clear()
+  teamsPageRequest.clear()
 }
 const accountTabListRef = ref<HTMLElement | null>(null)
 const activeSectionSeo = computed(() => getAccountEventSeoContent(activeSection.value, event.value?.name ?? ''))
@@ -789,9 +812,10 @@ const teamTabTargetSlug = computed(() =>
 )
 const workspaceTabHref = computed(() => `/account/events/${slug.value}?tab=workspace`)
 const teamsTabHref = computed(() => buildAccountEventTeamsTabHref(slug.value, teamTabTargetSlug.value))
-// What a participant can open at the event, in the order the next-step card lists it.
-// The card shows every entry after check-in, and the entries that are open before check-in
-// already while the participant still has to check in. Add one entry here for every new activity.
+// What a participant can open at the event. The next-step card lists the entries in this order,
+// with the names and the order of the tabs. The card shows every entry after check-in, and the
+// entries that are open before check-in already while the participant still has to check in.
+// Add one entry here for every new activity.
 const participantActivities = computed(() => {
   const activities: Array<{ label: string, to: string, openBeforeCheckIn: boolean }> = []
 
@@ -803,12 +827,8 @@ const participantActivities = computed(() => {
     activities.push({ label: 'Credits', to: `/account/events/${slug.value}?tab=credits`, openBeforeCheckIn: false })
   }
 
-  if (availableTabs.value.includes('challenges')) {
-    activities.push({ label: 'Challenges', to: `/account/events/${slug.value}?tab=challenges`, openBeforeCheckIn: true })
-  }
-
   if (availableTabs.value.includes('gallery')) {
-    activities.push({ label: 'Photos', to: `/account/events/${slug.value}?tab=gallery`, openBeforeCheckIn: false })
+    activities.push({ label: 'Gallery', to: `/account/events/${slug.value}?tab=gallery`, openBeforeCheckIn: false })
   }
 
   return activities
@@ -846,8 +866,11 @@ const participantRankTeamName = computed(() =>
   ?? participationRecord.value?.latestTeam?.name
   ?? null
 )
-const showHeaderApplicationStatusSummary = computed(() =>
-  Boolean(applicationStatusSummary.value) && applicationStatus.value !== 'approved'
+// While registration is the current event state, a registered person sees only their own status
+// in the header. The registration state tells them nothing new.
+const showEventStateBadge = computed(() =>
+  event.value?.state !== 'registration_open'
+  || (applicationStatus.value !== 'submitted' && applicationStatus.value !== 'approved')
 )
 const showOverviewApplicationStatusBanner = computed(() =>
   shouldShowParticipantOverviewStatusBanner(applicationStatus.value)
@@ -871,14 +894,21 @@ const showNextStepCard = computed(() =>
 )
 // What the credit claim rule says about this person. It decides what the Credits tab offers.
 const creditClaimAccess = computed(() => resolveEventCreditClaimAccess({
+  eventCompleted: event.value?.state === 'completed',
   isEventStaff: hasStaffCreditAccess.value,
   isApprovedParticipant: applicationStatus.value === 'approved',
   checkInFlowEnabled: checkInFlowSettings.value.checkInFlowEnabled,
   hasFinishedCheckInFlow: hasParticipantFinishedCheckInFlow(checkInFlowProgress.value, checkInFlowSettings.value)
 }))
-// Where the Credits tab sends a participant who has to finish the check-in flow first: the
-// overview, while it shows the next-step card.
-const creditsNextStepHref = computed(() => showNextStepCard.value ? `/account/events/${slug.value}` : null)
+// Where the Credits and Gallery tabs send a participant who has to finish the check-in flow
+// first: the overview, while it shows the next-step card. A direct link to Gallery loads only
+// the gallery page, so galleryPage.mustFinishCheckInFlowToAddPhotos also proves Overview has it.
+const nextStepHref = computed(() =>
+  event.value?.state !== 'completed'
+  && (showNextStepCard.value || galleryPage.value?.mustFinishCheckInFlowToAddPhotos === true)
+    ? `/account/events/${slug.value}`
+    : null
+)
 const lumaSyncStatus = computed(() => participantApplication.value?.lumaSyncStatus ?? null)
 const showLumaSyncNotice = computed(() =>
   participantApplication.value?.status === 'approved'
@@ -941,7 +971,7 @@ const withdrawApplicationAvailability = computed(() =>
     hasActiveTeamMembership: Boolean(participationRecord.value?.activeTeam)
   })
 )
-const withdrawalDescription = 'If you withdraw, you will no longer be eligible to participate or attend in person through this application.'
+const withdrawalDescription = 'If you withdraw, you lose your place at this event.'
 
 const approvedOverviewTeamActionTitle = computed(() =>
   participationRecord.value?.activeTeam ? 'Continue in your workspace' : 'Open your workspace'
@@ -978,7 +1008,7 @@ const detailBackgroundImageUrl = computed(() => {
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
   : undefined)
-const detailSummary = computed(() => event.value ? formatAccountEventHeaderSummary(event.value) : '')
+const detailSummary = computed(() => event.value ? formatEventHeaderSummary(event.value) : '')
 function updateAccessRecordApplicationStatus(nextStatus: ParticipantApplicationRecord['status']) {
   if (accessRecord.value) {
     accessRecord.value = {
@@ -1139,6 +1169,7 @@ async function withdrawOwnApplication() {
 
     updateAccessRecordApplicationStatus(response.data.status)
     updateParticipationRecordApplication(response.data)
+    clearConfirmedParticipantPages()
     await refreshAccountEvent()
     applicationSubmittedNoticeVisible.value = false
     toast.add({
@@ -1199,6 +1230,7 @@ useSeoMeta({
                     {{ event.name }}
                   </h1>
                   <EventStateBadge
+                    v-if="showEventStateBadge"
                     :state="event.state"
                     :registration-opens-at="event.registrationOpensAt"
                     :registration-closes-at="event.registrationClosesAt"
@@ -1219,20 +1251,13 @@ useSeoMeta({
                 {{ detailSummary }}
               </p>
             </div>
-
-            <p
-              v-if="showHeaderApplicationStatusSummary"
-              class="text-[14px] text-neutral-600 dark:text-[#A3A3A3]"
-            >
-              {{ applicationStatusSummary }}
-            </p>
           </div>
 
           <nav
             ref="accountTabListRef"
             aria-label="Account event sections"
             role="tablist"
-            class="account-event-tab-list flex items-center gap-5 overflow-x-auto"
+            class="account-event-tab-list flex items-center gap-4 overflow-x-auto sm:gap-6"
           >
             <AppSectionTab
               v-for="tab in visibleTabs"
@@ -1263,7 +1288,7 @@ useSeoMeta({
           :settings="checkInFlowSettings"
           :progress="checkInFlowProgress"
           :activities="participantActivities"
-          :refresh-page="refreshAccountEvent"
+          :refresh-page="refreshAfterCheckInStep"
         />
 
         <div
@@ -1405,7 +1430,7 @@ useSeoMeta({
                       variant="solid"
                       icon="i-lucide-circle-check"
                       :loading="isLumaEmailVerificationPending"
-                      class="w-full rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC] lg:w-auto"
+                      class="w-full rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC] lg:w-auto"
                     >
                       Verify Luma email
                     </AppButton>
@@ -1483,7 +1508,7 @@ useSeoMeta({
                 color="neutral"
                 variant="solid"
                 trailing-icon="i-lucide-arrow-up-right"
-                class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
               >
                 View certificate
               </AppButton>
@@ -1492,13 +1517,6 @@ useSeoMeta({
         </section>
 
         <EventOverviewPanel :description="event.description" />
-
-        <AppButton
-          v-if="programLink"
-          :to="programLink.href"
-          :label="programLink.title"
-          trailing-icon="i-lucide-arrow-right"
-        />
 
         <LazyEventTimeline
           :event="event"
@@ -1540,7 +1558,7 @@ useSeoMeta({
                     color="neutral"
                     variant="solid"
                     trailing-icon="i-lucide-arrow-up-right"
-                    class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                    class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                   >
                     Open Workspace
                   </AppButton>
@@ -1571,7 +1589,7 @@ useSeoMeta({
                   color="neutral"
                   variant="solid"
                   trailing-icon="i-lucide-arrow-up-right"
-                  class="mt-4 rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                  class="mt-4 rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                 >
                   Go to Workspace
                 </AppButton>
@@ -1587,7 +1605,7 @@ useSeoMeta({
                   color="neutral"
                   variant="solid"
                   trailing-icon="i-lucide-arrow-up-right"
-                  class="mt-4 rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                  class="mt-4 rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                 >
                   Go to Workspace
                 </AppButton>
@@ -1611,7 +1629,7 @@ useSeoMeta({
                 color="neutral"
                 variant="solid"
                 trailing-icon="i-lucide-arrow-up-right"
-                class="mt-4 rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                class="mt-4 rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
               >
                 Open Teams
               </AppButton>
@@ -1671,7 +1689,7 @@ useSeoMeta({
           :event-id="event.id"
           :can-manage="canAdmin"
           :claim-access="creditClaimAccess"
-          :next-step-href="creditsNextStepHref"
+          :next-step-href="nextStepHref"
           :participant-credits="participantCreditOffers"
           :admin-credits="adminCreditOffers"
           @updated="refreshAccountEvent"
@@ -1776,15 +1794,33 @@ useSeoMeta({
         />
         <template v-else-if="programPage">
           <LazyAccountEventProgramAgenda
-            v-if="programPage.program"
+            v-if="programPage.program && canViewProgram"
             :key="programPage.program.eventId"
             :program="programPage.program"
             :agenda-items="event.agendaItems"
+            :challenges="programPage.challenges"
           />
-          <LazyEventAgendaPanel
+          <!--
+            A person who does not read the sessions sees the public agenda blocks. The challenges
+            that this person may read stand next to them, without a map.
+          -->
+          <div
             v-else
-            :agenda-items="event.agendaItems"
-          />
+            class="flex flex-col gap-6 lg:flex-row lg:items-start"
+          >
+            <LazyEventAgendaPanel
+              v-if="event.agendaItems.length"
+              class="min-w-0 lg:flex-1"
+              :agenda-items="event.agendaItems"
+            />
+            <LazyAccountEventChallengeList
+              v-if="programPage.challenges.length"
+              :class="event.agendaItems.length ? 'lg:w-80 lg:shrink-0' : 'w-full'"
+              :challenges="programPage.challenges"
+              :floor-plans="[]"
+              :selected-challenge-id="null"
+            />
+          </div>
         </template>
         <p
           v-else
@@ -1793,15 +1829,6 @@ useSeoMeta({
         >
           Loading agenda…
         </p>
-      </section>
-
-      <section
-        v-else-if="activeSection === 'challenges'"
-        id="account-tab-panel-challenges"
-        role="tabpanel"
-        aria-labelledby="account-tab-challenges"
-      >
-        <LazyAccountEventChallengesPanel :challenges="entryPage?.challenges ?? []" />
       </section>
 
       <section
@@ -1815,8 +1842,10 @@ useSeoMeta({
           :event-id="workspaceEventId"
           :can-manage="canAdmin || canJudge || canViewParticipantsAndTeams"
           :page="galleryPage"
+          :next-step-href="nextStepHref"
           :is-loading="galleryPageIsLoading"
           :load-error-message="galleryPageErrorMessage"
+          @updated="galleryPageRequest.refresh"
         />
       </section>
 
@@ -2032,21 +2061,8 @@ useSeoMeta({
           :can-manage="canAdmin"
           :is-loading="settingsPageIsLoading"
           :load-error-message="settingsPageErrorMessage"
-          program-settings-mode="settings"
           :show-terms-management="true"
           :show-criteria-configuration="true"
-          :show-prize-configuration="false"
-          @updated="refreshSettingsPage"
-        />
-        <LazyAccountEventAdminSettingsPanel
-          :event-id="workspaceEventId"
-          :event-data="settingsPage?.event ?? null"
-          :can-manage="canAdmin"
-          :is-loading="settingsPageIsLoading"
-          :load-error-message="settingsPageErrorMessage"
-          program-settings-mode="details"
-          :show-terms-management="false"
-          :show-criteria-configuration="false"
           :show-prize-configuration="false"
           @updated="refreshSettingsPage"
         />
@@ -2057,7 +2073,7 @@ useSeoMeta({
     v-else-if="isEntryPending"
     class="mx-auto max-w-3xl px-6 py-16 text-center text-sm text-muted"
   >
-    Loading event workspace…
+    Loading event…
   </div>
   <AppAlert
     v-else-if="entryError"

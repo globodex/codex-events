@@ -2,8 +2,8 @@ import type { AccountEventEntryAccess, AccountEventEntryTabVisibility } from '#s
 import type { AccountEventPageContext } from './account-event-page-context'
 
 export function buildAccountEventTabVisibility(input: {
-  event: AccountEventPageContext['event']
-  authorization: AccountEventPageContext['authorization']
+  event: Pick<AccountEventPageContext['event'], 'eventType' | 'state' | 'simplifiedClaimingEnabled' | 'talkProposalsEnabled'>
+  authorization: Pick<AccountEventPageContext['authorization'], 'isEventAdmin' | 'canViewParticipantsAndTeams' | 'canReviewThroughAssignment'>
   applicationStatus: AccountEventEntryAccess['applicationStatus']
   hasRetainedTalkProposal: boolean
   hasCreditInventory: boolean
@@ -37,25 +37,22 @@ export function buildAccountEventTabVisibility(input: {
   const isCompetitionEvent = event.eventType === 'hackathon'
   const availableTabs: AccountEventEntryTabVisibility['availableTabs'] = ['overview']
 
+  if (isCompetitionEvent && (hasPublishedPrizes || authorization.isEventAdmin || event.state === 'completed')) {
+    availableTabs.push('prizes')
+  }
+
+  // The Agenda tab shows the public agenda blocks to everyone, the sessions to people who may
+  // read the program, and the challenges to people who may read them. So it is there for an
+  // agenda and for a readable challenge.
+  if (hasAgenda || hasReadableChallenges) {
+    availableTabs.push('program')
+  }
+
   if (!event.simplifiedClaimingEnabled && (
     authorization.isEventAdmin
     || ((hasApprovedParticipantAccess || authorization.canViewParticipantsAndTeams) && hasCreditInventory)
   )) {
     availableTabs.push('credits')
-  }
-
-  if (isCompetitionEvent && (hasPublishedPrizes || authorization.isEventAdmin || event.state === 'completed')) {
-    availableTabs.push('prizes')
-  }
-
-  // The Agenda tab shows the public agenda blocks to everyone, and the sessions to people who
-  // may read the program.
-  if (hasAgenda) {
-    availableTabs.push('program')
-  }
-
-  if (hasReadableChallenges) {
-    availableTabs.push('challenges')
   }
 
   if (event.eventType === 'meetup' && event.talkProposalsEnabled && (

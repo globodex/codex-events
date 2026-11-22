@@ -168,6 +168,7 @@ export const events = sqliteTable(
     lumaWebhookError: text('luma_webhook_error'),
     lumaWebhookRegisteredAt: text('luma_webhook_registered_at'),
     lumaGuestListEnabled: integer('luma_guest_list_enabled', { mode: 'boolean' }).notNull().default(false),
+    lumaGuestListRevision: integer('luma_guest_list_revision').notNull().default(0),
     lumaGuestListSyncedAt: text('luma_guest_list_synced_at'),
     lumaGuestListSyncError: text('luma_guest_list_sync_error'),
     city: text('city').notNull(),
@@ -365,6 +366,8 @@ export const eventPhotos = sqliteTable(
     createdAt: createdAtColumn()
   },
   table => [
+    index('event_photos_participant_uploader_idx').on(table.eventId, table.uploadedByUserId)
+      .where(sql`${table.isParticipantUpload} = 1`),
     index('event_photos_event_created_idx').on(table.eventId, table.createdAt),
     index('event_photos_uploaded_by_idx').on(table.uploadedByUserId),
     check('event_photos_width_check', sql`${table.width} >= 1`),
@@ -638,7 +641,7 @@ export const eventAttendeeEligibilities = sqliteTable(
   ]
 )
 
-// Private copy of an event's Luma guest list. Keep it to these four columns:
+// Private copy of an event's Luma guest list:
 // guest emails and statuses must never be returned by an API (see docs/domain-model.md).
 export const eventLumaGuests = sqliteTable(
   'event_luma_guests',
@@ -648,7 +651,8 @@ export const eventLumaGuests = sqliteTable(
       .references(() => events.id, { onDelete: 'cascade' }),
     email: text('email').notNull(),
     approvalStatus: text('approval_status').notNull(),
-    syncedAt: text('synced_at').notNull()
+    syncedAt: text('synced_at').notNull(),
+    refreshRevision: integer('refresh_revision').notNull().default(0)
   },
   table => [
     primaryKey({ columns: [table.eventId, table.email] })
@@ -694,6 +698,8 @@ export const userApplications = sqliteTable(
     registrationDetailsJson: text('registration_details_json')
       .notNull()
       .default(emptyRegistrationDetailsJson),
+    // Maintained by D1 when a registration, account email, or Luma connection changes.
+    activeLumaEmail: text('active_luma_email'),
     // Both stay null until the participant completes the event questionnaire.
     questionnaireAnswersJson: text('questionnaire_answers_json'),
     questionnaireCompletedAt: text('questionnaire_completed_at'),
@@ -701,6 +707,8 @@ export const userApplications = sqliteTable(
     updatedAt: updatedAtColumn()
   },
   table => [
+    uniqueIndex('user_applications_active_luma_email_idx').on(table.eventId, table.activeLumaEmail)
+      .where(sql`${table.activeLumaEmail} is not null`),
     uniqueIndex('user_applications_event_user_idx').on(table.eventId, table.userId),
     index('user_applications_user_submitted_idx').on(table.userId, table.submittedAt),
     index('user_applications_event_submitted_idx').on(table.eventId, table.submittedAt),

@@ -13,7 +13,7 @@ export interface EventPhotoRecord {
   // The three fields below are part of the protected gallery only. The public gallery leaves
   // them out.
   isHighlighted?: boolean
-  /** True for a photo that a participant added. The gallery lists it under "Uploaded by participants". */
+  /** True for a photo that a participant added. The gallery lists it under "Photos from participants". */
   isParticipantUpload?: boolean
   /** True while the event team hides a participant photo. Only the people who manage the gallery receive a hidden photo. */
   isHidden?: boolean
@@ -33,7 +33,14 @@ export interface EventPhotoRecord {
 
 // Participant photos are the photos that participants add to the gallery of an event.
 
-/** How many photos one participant can add to one event. Hidden photos count. */
+/**
+ * How many photos one participant can add to one event. Hidden photos count.
+ *
+ * The database holds the same number in its trigger `participant_photo_limit` (migration
+ * `0085_build_day_guards.sql`). The trigger stops two uploads that arrive at the same moment.
+ * Change the two together: this number, and the trigger through a new migration. The test
+ * "the database holds the same limit" in `participant-photo-routes.test.ts` fails when they differ.
+ */
 export const maxParticipantPhotosPerEvent = 20
 
 /**

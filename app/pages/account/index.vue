@@ -80,7 +80,7 @@ useSeoMeta({
             to="/"
             color="neutral"
             variant="solid"
-            class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+            class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
           >
             Explore events
           </AppButton>
@@ -158,7 +158,7 @@ useSeoMeta({
                 to="/"
                 color="neutral"
                 variant="solid"
-                class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
               >
                 Explore events
                 <template #trailing>

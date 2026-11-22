@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, count, desc, eq, getTableColumns, isNull, ne, or } from 'drizzle-orm'
+import { and, asc, count, desc, eq, exists, type SQL, getTableColumns, isNull, ne, or } from 'drizzle-orm'
 import { z } from 'zod'
 
 import {
@@ -328,6 +328,7 @@ export async function withdrawUserApplicationWithAdminPolicy(options: {
   event: EventRecord
   application: UserApplicationRecord
   actorUserId?: string | null
+  writeGuard?: SQL
   trigger: AdminApplicationWithdrawalTrigger
 }): Promise<WithdrawUserApplicationWithAdminPolicyResult> {
   const actorUserId = options.actorUserId ?? null
@@ -346,17 +347,13 @@ export async function withdrawUserApplicationWithAdminPolicy(options: {
   let lumaSyncStatus: UserApplicationLumaSyncStatus = shouldSyncLuma ? 'not_synced' : null
   let updatedAt = withdrawnAt
 
-  await options.database.batch([
-    options.database
-      .update(userApplications)
-      .set({
-        status: 'withdrawn',
-        preApprovalStatus: null,
-        lumaSyncStatus,
-        withdrawnAt,
-        updatedAt
-      })
-      .where(eq(userApplications.id, options.application.id)),
+  const applicationWhere = and(
+    eq(userApplications.id, options.application.id),
+    eq(userApplications.status, options.application.status),
+    options.writeGuard
+  )
+  const eligible = exists(options.database.select({ id: userApplications.id }).from(userApplications).where(applicationWhere))
+  const statements = [
     ...(withdrawalPlan.teamAction === 'remove_member' && withdrawalPlan.targetMembership
       ? [
           options.database
@@ -364,7 +361,7 @@ export async function withdrawUserApplicationWithAdminPolicy(options: {
             .set({
               leftAt: withdrawnAt
             })
-            .where(eq(teamMembers.id, withdrawalPlan.targetMembership.id))
+            .where(and(eq(teamMembers.id, withdrawalPlan.targetMembership.id), eligible))
         ]
       : []),
     ...(withdrawalPlan.teamAction === 'dissolve_team' && withdrawalPlan.activeTeam
@@ -377,6 +374,7 @@ export async function withdrawUserApplicationWithAdminPolicy(options: {
                     leftAt: withdrawnAt
                   })
                   .where(and(
+                    eligible,
                     eq(teamMembers.teamId, withdrawalPlan.activeTeam.id),
                     isNull(teamMembers.leftAt),
                     ne(teamMembers.id, withdrawalPlan.targetMembership.id)
@@ -390,7 +388,7 @@ export async function withdrawUserApplicationWithAdminPolicy(options: {
                   .set({
                     leftAt: withdrawnAt
                   })
-                  .where(eq(teamMembers.id, withdrawalPlan.targetMembership.id))
+                  .where(and(eq(teamMembers.id, withdrawalPlan.targetMembership.id), eligible))
               ]
             : []),
           options.database
@@ -399,7 +397,7 @@ export async function withdrawUserApplicationWithAdminPolicy(options: {
               isOpenToJoinRequests: false,
               updatedAt: withdrawnAt
             })
-            .where(eq(teams.id, withdrawalPlan.activeTeam.id)),
+            .where(and(eq(teams.id, withdrawalPlan.activeTeam.id), eligible)),
           options.database
             .update(teamJoinRequests)
             .set({
@@ -408,12 +406,26 @@ export async function withdrawUserApplicationWithAdminPolicy(options: {
               reviewedByUserId: actorUserId
             })
             .where(and(
+              eligible,
               eq(teamJoinRequests.teamId, withdrawalPlan.activeTeam.id),
               eq(teamJoinRequests.status, 'pending')
             ))
         ]
-      : [])
-  ])
+      : []),
+    options.database
+      .update(userApplications)
+      .set({
+        status: 'withdrawn',
+        preApprovalStatus: null,
+        lumaSyncStatus,
+        withdrawnAt,
+        updatedAt
+      })
+      .where(applicationWhere)
+  ]
+  const [first, ...rest] = statements
+  const results = await options.database.batch([first!, ...rest])
+  if (!results.at(-1)?.meta.changes) return { status: 'blocked', withdrawalPlan }
 
   await writeAuditLog(options.database, {
     actorUserId,

@@ -232,7 +232,7 @@ async function submitFeedback() {
             color="neutral"
             variant="solid"
             :loading="isSubmitting"
-            class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+            class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
           >
             Submit Feedback
           </AppButton>

@@ -30,11 +30,6 @@ export function getAccountEventSeoContent(
         title: `Agenda | ${eventName} | Codex Events`,
         description: `See the schedule for ${eventName}.`
       }
-    case 'challenges':
-      return {
-        title: `Challenges | ${eventName} | Codex Events`,
-        description: `Pick a challenge to work on at ${eventName}.`
-      }
     case 'call-for-talks':
       return {
         title: `Call for talks | ${eventName} | Codex Events`,

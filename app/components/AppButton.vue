@@ -50,14 +50,19 @@ const sizeClasses: Record<ButtonSize, string> = {
 const toneClasses = computed(() => {
   const key = `${props.variant}:${props.color}`
 
+  // The `ghost` base of UiButton adds `hover:text-accent-foreground` and `dark:hover:bg-accent/50`.
+  // Each solid tone below names its own hover text color, so its label keeps its color on hover.
+  // Without it, the label of the primary button turns dark on its dark background in the light theme.
+  // Primary also names its hover background for the dark theme, where its label is dark and the
+  // inherited hover background is dark too.
   const variants: Record<string, string> = {
-    'solid:primary': 'bg-primary text-primary-foreground hover:bg-primary/90',
-    'solid:secondary': 'bg-secondary text-secondary-foreground hover:bg-secondary/90',
-    'solid:neutral': 'border border-default/80 bg-elevated text-highlighted hover:bg-accented',
-    'solid:success': 'bg-success text-white hover:bg-success/90',
-    'solid:warning': 'bg-warning text-white hover:bg-warning/90',
-    'solid:error': 'bg-error text-white hover:bg-error/90',
-    'solid:info': 'bg-info text-white hover:bg-info/90',
+    'solid:primary': 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground dark:hover:bg-primary/90',
+    'solid:secondary': 'bg-secondary text-secondary-foreground hover:bg-secondary/90 hover:text-secondary-foreground',
+    'solid:neutral': 'border border-default/80 bg-elevated text-highlighted hover:bg-accented hover:text-highlighted',
+    'solid:success': 'bg-success text-white hover:bg-success/90 hover:text-white',
+    'solid:warning': 'bg-warning text-white hover:bg-warning/90 hover:text-white',
+    'solid:error': 'bg-error text-white hover:bg-error/90 hover:text-white',
+    'solid:info': 'bg-info text-white hover:bg-info/90 hover:text-white',
     'soft:primary': 'border border-primary/15 bg-primary/10 text-primary hover:bg-primary/15',
     'soft:secondary': 'border border-secondary/20 bg-secondary/15 text-secondary hover:bg-secondary/20',
     'soft:neutral': 'border border-default/80 bg-default text-toned hover:bg-accented hover:text-highlighted',

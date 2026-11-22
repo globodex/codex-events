@@ -713,7 +713,7 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
                   <AppButton
                     color="neutral"
                     variant="solid"
-                    class="bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                    class="bg-black text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                     :loading="workspace.pendingActionKey.value === 'create-team'"
                     :disabled="!createTeamAvailability.isAllowed || workspace.pendingActionKey.value === 'create-team'"
                     @click="participateAsSolo"
@@ -743,7 +743,7 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
                   color="neutral"
                   variant="solid"
                   trailing-icon="i-lucide-arrow-up-right"
-                  class="bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                  class="bg-black text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                 >
                   Open Teams
                 </AppButton>

@@ -45,7 +45,6 @@ const props = withDefaults(defineProps<{
   submitLabel?: string
   submissionErrorTitle?: string
 }>(), {
-  submitLabel: 'Submit application',
   submissionErrorTitle: 'Application submission failed'
 })
 
@@ -72,16 +71,20 @@ const submissionPolicyReason = computed(() => {
     ? ''
     : props.submissionPolicy.reason
 })
+// An event that confirms people automatically has no review step, so its button says "Register".
+const resolvedSubmitLabel = computed(() =>
+  props.submitLabel ?? (props.event.autoApproveApplications ? 'Register' : 'Submit application')
+)
 const postSubmissionText = computed(() => {
   if (props.event.eventType === 'hackathon') {
     return props.event.autoApproveApplications
-      ? 'After you apply, you can create a team or join one while team formation is open.'
+      ? 'After you register, you can create a team or join one while team formation is open.'
       : 'After you apply, we will review your application. If approved, you can create a team or join one while team formation is open.'
   }
 
   return props.event.autoApproveApplications
-    ? 'After you apply, your event workspace will show the details available to approved participants.'
-    : 'After you apply, we will review your application and update your event workspace after a decision.'
+    ? 'After you register, you will find everything for the day under My events.'
+    : 'After you apply, we will review your application. You will find the decision under My events.'
 })
 
 function updateProfileField(key: ParticipantRegistrationProfileFieldKey, value: string) {
@@ -177,30 +180,7 @@ watch(() => props.profileError || props.submissionError, async (error) => {
         novalidate
         @submit.prevent="handleSubmitAttempt"
       >
-        <div class="min-w-0 space-y-5 pb-24 lg:pb-4">
-          <div
-            class="space-y-3 rounded-xl border border-black/8 bg-white/88 p-4 lg:hidden dark:border-white/[0.08] dark:bg-[#171717]/88"
-            data-testid="registration-mobile-progress"
-          >
-            <div class="flex items-center justify-between gap-3">
-              <p class="text-[13px] font-semibold text-highlighted">
-                Registration progress
-              </p>
-              <p class="text-[12px] tabular-nums text-toned">
-                {{ controller.progressPercent.value }}%
-              </p>
-            </div>
-            <AppMeter
-              :value="controller.progressPercent.value"
-              size="sm"
-              :tone="controller.progressPercent.value === 100 ? 'success' : 'info'"
-              label="Required items"
-            />
-            <p class="text-[11px] text-muted">
-              {{ controller.readinessText.value }}
-            </p>
-          </div>
-
+        <div class="min-w-0 space-y-5 pb-4">
           <div
             :id="props.definition.talkProposal ? participantRegistrationSectionDomId('registration') : undefined"
             :tabindex="props.definition.talkProposal ? -1 : undefined"
@@ -280,15 +260,14 @@ watch(() => props.profileError || props.submissionError, async (error) => {
               {{ controller.readinessText.value }}
             </p>
             <AppButton
-              v-if="!props.definition.talkProposal"
               type="submit"
-              color="neutral"
+              color="primary"
               variant="solid"
               :loading="isBusy"
               :disabled="isBusy"
-              class="hidden bg-black text-white hover:bg-black/90 lg:inline-flex dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+              :class="props.definition.talkProposal ? 'w-full sm:w-auto lg:hidden' : 'w-full sm:w-auto'"
             >
-              {{ props.submitLabel }}
+              {{ resolvedSubmitLabel }}
             </AppButton>
           </section>
 
@@ -304,29 +283,11 @@ watch(() => props.profileError || props.submissionError, async (error) => {
           <ParticipantRegistrationProgressRail
             :evaluation="controller.evaluation.value"
             :progress-percent="controller.progressPercent.value"
-            :submit-label="props.submitLabel"
+            :submit-label="resolvedSubmitLabel"
             :show-submit="Boolean(props.definition.talkProposal)"
             :submitting="isBusy"
             @navigate="formRoot && controller.navigateToSection(formRoot, $event)"
           />
-        </div>
-
-        <div class="fixed inset-x-0 bottom-0 z-30 border-t border-black/10 bg-white/92 px-4 py-3 backdrop-blur lg:hidden dark:border-white/10 dark:bg-[#111111]/92">
-          <div class="mx-auto flex max-w-[68rem] items-center justify-between gap-3">
-            <p class="min-w-0 truncate text-[12px] font-medium text-toned">
-              {{ controller.readinessText.value }}
-            </p>
-            <AppButton
-              type="submit"
-              color="neutral"
-              variant="solid"
-              :loading="isBusy"
-              :disabled="isBusy"
-              class="shrink-0 bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-            >
-              {{ props.submitLabel }}
-            </AppButton>
-          </div>
         </div>
       </form>
     </template>

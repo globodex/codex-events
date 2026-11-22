@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import {
-  formatEventLocation,
-  formatEventWindow,
-  getEventRegistrationTeamSizeMetaItems,
+  formatEventHeaderSummary,
   resolveEventDetailBackgroundImageUrl,
   type PublicEvent
 } from '~/domains/events/presentation'
@@ -59,11 +57,7 @@ const detailBackgroundImageUrl = computed(() => resolveEventDetailBackgroundImag
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
   : undefined)
-const detailSummary = computed(() => [
-  formatEventWindow(event.value.registrationOpensAt, event.value.submissionClosesAt ?? event.value.registrationClosesAt),
-  formatEventLocation(event.value),
-  ...getEventRegistrationTeamSizeMetaItems(event.value)
-].join(' • '))
+const detailSummary = computed(() => formatEventHeaderSummary(event.value))
 
 useSeoMeta({
   title: () => `Feedback | ${event.value.name} | Codex Events`,

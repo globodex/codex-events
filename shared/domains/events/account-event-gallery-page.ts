@@ -6,7 +6,7 @@ const photoSchema = z.object({
   fileName: z.string().nullable(),
   isPubliclyVisible: z.boolean(),
   isHighlighted: z.boolean().optional(),
-  // True for a photo that a participant added. The gallery lists it under "Uploaded by participants".
+  // True for a photo that a participant added. The gallery lists it under "Photos from participants".
   isParticipantUpload: z.boolean().optional(),
   // True while the event team hides a participant photo. Only the people who manage the gallery
   // receive a hidden photo.
@@ -29,7 +29,10 @@ export const accountEventGalleryPageSchema = z.object({
   // True when the caller adds photos as a participant (`canAddParticipantPhotos` in
   // `shared/domains/events/photos.ts`). False for the people who manage the gallery: they add
   // photos of the event team.
-  canAddParticipantPhotos: z.boolean()
+  canAddParticipantPhotos: z.boolean(),
+  // True when the caller adds photos as a participant as soon as they finish the check-in flow.
+  // The Gallery tab then points them to their next step.
+  mustFinishCheckInFlowToAddPhotos: z.boolean()
 })
 
 export type AccountEventGalleryPhoto = z.infer<typeof photoSchema>

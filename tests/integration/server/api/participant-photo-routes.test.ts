@@ -25,6 +25,7 @@ import {
   userApplications,
   users
 } from '../../../../server/database/schema'
+import { toApiError } from '../../../../server/http/api-error'
 import { authenticatedUploadRateLimitBindingName } from '../../../../server/utils/rate-limit'
 import { accountEventEntryPageSchema } from '../../../../shared/domains/events/account-event-entry-page'
 import { accountEventGalleryPageSchema } from '../../../../shared/domains/events/account-event-gallery-page'
@@ -440,6 +441,79 @@ describe('TASK-451 participant photos', () => {
 
       expect((await uploadPhotos(context, 'participant')).status).toBe(200)
     })
+
+    test('the database holds the same limit as maxParticipantPhotosPerEvent', async () => {
+      // The limit exists twice: as this constant, and in SQL in the database trigger
+      // `participant_photo_limit` (migration 0085). `addPhoto` writes to the database directly,
+      // so only the trigger can refuse here. The test fails when one copy changes alone.
+      const context = await createContext()
+      for (let index = 1; index <= maxParticipantPhotosPerEvent; index += 1) {
+        await addPhoto(context, { id: `photo_${index}` })
+      }
+
+      const refusal = await addPhoto(context, { id: 'one_photo_too_many' }).catch(toApiError)
+
+      expect(refusal).toMatchObject({ code: 'event_photo_participant_limit_reached' })
+    })
+  })
+
+  test.each([
+    ['participant', 404], ['staff', 404], ['judge', 404], ['event_admin', 200], ['platform_admin', 200]
+  ] as const)('hidden event gallery access for %s', async (userId, status) => {
+    const context = await createContext({ hiddenAt: checkedIn.checkedInAt })
+    await addApplication(context, finishedCheckInFlow)
+    await addPhoto(context, { id: 'hidden_event_photo' })
+    signIn(userId)
+    for (const response of [
+      await context.harness.request('/api/events/event_1/photos'),
+      await requestImage(context, userId, 'hidden_event_photo', 'variant=preview'),
+      await uploadPhotos(context, userId),
+      await setHidden(context, userId, 'hidden_event_photo', true)
+    ]) {
+      expect(response.status).toBe(status)
+      if (status === 404) expect(await response.json()).toMatchObject({ error: { code: 'event_not_found' } })
+    }
+  })
+
+  test('rolls back every chunk and deletes staged files when another upload takes the last space', async () => {
+    const context = await createContext()
+    await addApplication(context, finishedCheckInFlow)
+    for (let i = 0; i < 12; i++) await addPhoto(context, { id: `existing_${i}` })
+    const put = context.bucket.put.bind(context.bucket)
+    vi.spyOn(context.bucket, 'put').mockImplementationOnce(async (key, bytes) => {
+      await addPhoto(context, { id: 'concurrent' })
+      await put(key, bytes)
+    })
+    const cleanup = vi.spyOn(context.bucket, 'delete')
+    const response = await uploadPhotos(context, 'participant', 8)
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ error: { code: 'event_photo_participant_limit_reached' } })
+    expect(await readStoredPhotos(context)).toHaveLength(13)
+    expect(cleanup).toHaveBeenCalledTimes(8)
+    for (const [key] of cleanup.mock.calls) expect(await context.bucket.get(key)).toBeNull()
+    expect(await context.bucket.get('events/event_1/photos/concurrent/fixture')).toBeTruthy()
+  })
+
+  test.each([false, true])('keeps staged files only for a committed D1 batch (committed=%s)', async (committed) => {
+    const context = await createContext()
+    const db = context.harness.d1Database
+    const runBatch = db.runAtomicBatch.bind(db)
+    const cleanup = vi.spyOn(context.bucket, 'delete')
+    vi.spyOn(context.bucket, 'put').mockImplementationOnce(async function (this: InMemoryBucket, key, bytes) {
+      await InMemoryBucket.prototype.put.call(this, key, bytes)
+      vi.spyOn(db, 'runAtomicBatch').mockImplementationOnce(async (execute) => {
+        if (committed) await runBatch(execute)
+        throw new Error('Upload database error')
+      })
+    })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const response = await uploadPhotos(context, 'staff', 2)
+    expect(response.status).toBe(committed ? 200 : 500)
+    const rows = await readStoredPhotos(context)
+    expect(rows).toHaveLength(committed ? 2 : 0)
+    expect(cleanup).toHaveBeenCalledTimes(committed ? 0 : 2)
+    for (const row of rows) expect(await context.bucket.get(row.objectKey!)).toBeTruthy()
+    for (const [key] of cleanup.mock.calls) expect(await context.bucket.get(key)).toBeNull()
   })
 
   describe('adding photos as the event team', () => {
@@ -703,14 +777,21 @@ describe('TASK-451 participant photos', () => {
       const context = await createContext()
       await addApplication(context, finishedCheckInFlow)
 
-      expect(await readGalleryPage(context, 'participant')).toEqual({ photos: [], canAddParticipantPhotos: true })
+      expect(await readGalleryPage(context, 'participant')).toEqual({
+        photos: [],
+        canAddParticipantPhotos: true,
+        mustFinishCheckInFlowToAddPhotos: false
+      })
     })
 
-    test('does not offer adding photos to a participant with an open questionnaire', async () => {
+    test('tells a participant with an open questionnaire to finish the check-in flow before adding photos', async () => {
       const context = await createContext()
       await addApplication(context, checkedIn)
 
-      expect((await readGalleryPage(context, 'participant')).canAddParticipantPhotos).toBe(false)
+      expect(await readGalleryPage(context, 'participant')).toMatchObject({
+        canAddParticipantPhotos: false,
+        mustFinishCheckInFlowToAddPhotos: true
+      })
     })
 
     test('does not offer adding photos while the event does not allow participant photos', async () => {

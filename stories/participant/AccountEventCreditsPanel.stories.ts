@@ -56,7 +56,7 @@ export const AvailableAndClaimed: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Expand each offer to inspect the buttons. The claimed offer has a fictional code to reveal and copy.'
+        story: 'One offer to claim, one claimed offer with a fictional code to reveal and copy, and one offer with no credits left.'
       }
     }
   }
@@ -68,6 +68,17 @@ export const CheckInNotFinished: Story = {
     docs: {
       description: {
         story: 'A confirmed participant who has to finish the check-in first. No offer has a claim button; the claimed code stays visible.'
+      }
+    }
+  }
+}
+
+export const ClaimsClosed: Story = {
+  args: { claimAccess: 'event_completed' },
+  parameters: {
+    docs: {
+      description: {
+        story: 'The event ended before the participant finished the check-in. No offer has a claim button; the claimed code stays visible.'
       }
     }
   }

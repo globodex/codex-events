@@ -22,7 +22,7 @@ import {
   publicEventCdnCacheControl
 } from './public-cache'
 import {
-  getEventOrThrow,
+  getVisibleEventOrThrow,
   routeIdParamsSchema
 } from '#server/domains/events'
 import {
@@ -934,6 +934,24 @@ export async function hasPublicEventPhotos(database: AppDatabase, eventId: strin
   return Boolean(photo)
 }
 
+/** One person in one event, as the participant photo rules of the server read them. */
+interface ParticipantPhotoPerson {
+  event: EventRecord
+  viewer: EventPhotoViewer
+  /** The person's registration of this event in any status, when they have one. */
+  application: ApplicationRecord | null | undefined
+}
+
+/** Reads the stored event and registration into the facts of the shared rule `canAddParticipantPhotos`. */
+function readParticipantPhotoFacts({ event, viewer, application }: ParticipantPhotoPerson) {
+  return {
+    managesGallery: viewer.canManage,
+    participantPhotosEnabled: event.participantPhotosEnabled,
+    isApprovedParticipant: application?.status === 'approved',
+    hasFinishedCheckInFlow: application ? hasApplicationFinishedCheckInFlow(event, application) : false
+  }
+}
+
 /**
  * True when this person adds participant photos to the event.
  *
@@ -941,20 +959,24 @@ export async function hasPublicEventPhotos(database: AppDatabase, eventId: strin
  * It reads the stored event and registration and applies the one shared rule,
  * `canAddParticipantPhotos`.
  */
-export function mayAddParticipantPhotos(person: {
-  event: EventRecord
-  viewer: EventPhotoViewer
-  /** The person's registration of this event in any status, when they have one. */
-  application: ApplicationRecord | null | undefined
-}) {
-  const { event, viewer, application } = person
+export function mayAddParticipantPhotos(person: ParticipantPhotoPerson) {
+  return canAddParticipantPhotos(readParticipantPhotoFacts(person))
+}
 
-  return canAddParticipantPhotos({
-    managesGallery: viewer.canManage,
-    participantPhotosEnabled: event.participantPhotosEnabled,
-    isApprovedParticipant: application?.status === 'approved',
-    hasFinishedCheckInFlow: application ? hasApplicationFinishedCheckInFlow(event, application) : false
-  })
+/**
+ * True when this person adds participant photos as soon as they finish the check-in flow.
+ * The gallery page sends this answer, and the Gallery tab then points the person to their next step.
+ *
+ * False when the event has no check-in flow or is completed: then there is no next step to finish.
+ */
+export function mustFinishCheckInFlowToAddPhotos(person: ParticipantPhotoPerson) {
+  const facts = readParticipantPhotoFacts(person)
+
+  return person.event.checkInFlowEnabled
+    && person.event.state !== 'completed'
+    && !facts.hasFinishedCheckInFlow
+    // The shared rule says yes for a finished check-in flow, so only the flow is missing.
+    && canAddParticipantPhotos({ ...facts, hasFinishedCheckInFlow: true })
 }
 
 /**
@@ -1086,7 +1108,7 @@ export async function setEventPhotoHidden(
 export async function requireEventPhotoReadAccess(h3Event: H3Event, eventId: string) {
   const actor = await requirePlatformActor(h3Event)
   const database = getDatabase(h3Event)
-  const event = await getEventOrThrow(database, eventId)
+  const event = await getVisibleEventOrThrow(h3Event, eventId)
   const viewer = getEventPhotoViewer(await resolveEventAuthorization(h3Event, eventId))
 
   if (viewer.canManage) {
@@ -1140,7 +1162,7 @@ function eventPhotoManageRequired(eventId: string) {
 export async function requireEventPhotoManageAccess(h3Event: H3Event, eventId: string) {
   const actor = await requirePlatformActor(h3Event)
   const database = getDatabase(h3Event)
-  const event = await getEventOrThrow(database, eventId)
+  const event = await getVisibleEventOrThrow(h3Event, eventId)
   const viewer = getEventPhotoViewer(await resolveEventAuthorization(h3Event, eventId))
 
   assertGuard(viewer.canManage, eventPhotoManageRequired(eventId))
@@ -1162,7 +1184,7 @@ export async function requireEventPhotoManageAccess(h3Event: H3Event, eventId: s
 export async function requireEventPhotoUploadAccess(h3Event: H3Event, eventId: string) {
   const actor = await requirePlatformActor(h3Event)
   const database = getDatabase(h3Event)
-  const event = await getEventOrThrow(database, eventId)
+  const event = await getVisibleEventOrThrow(h3Event, eventId)
   const viewer = getEventPhotoViewer(await resolveEventAuthorization(h3Event, eventId))
 
   if (viewer.canManage) {

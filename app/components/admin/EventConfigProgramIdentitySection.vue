@@ -12,15 +12,19 @@ const form = defineModel<EventFormState>('form', {
   required: true
 })
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   description: string
+  /** The event builder edits the location in its own basics step, so it shows only the images here. */
+  showLocation?: boolean
   canUploadManagedImages?: boolean
   backgroundImageUploadPending?: boolean
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
   bannerImageUploadError?: string
   imageVersion?: string | number | EventImageVersions | null
-}>()
+}>(), {
+  showLocation: true
+})
 
 const emit = defineEmits<{
   uploadBackgroundImage: [file: File]
@@ -102,7 +106,7 @@ function promptBannerImageUpload() {
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
-          Program Identity
+          {{ props.showLocation ? 'Location and images' : 'Images' }}
         </h2>
         <p class="text-sm text-muted">
           {{ description }}
@@ -111,14 +115,18 @@ function promptBannerImageUpload() {
     </template>
 
     <div class="grid grid-cols-1 gap-5">
-      <div class="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1.6fr)]">
+      <!-- An online event has no venue, so the location is required only for an in-person event. -->
+      <div
+        v-if="props.showLocation"
+        class="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1.6fr)]"
+      >
         <label class="grid gap-2">
           <span class="text-sm font-medium text-toned">City</span>
           <AppInput
             v-model="form.city"
             type="text"
             placeholder="Vienna"
-            required
+            :required="form.inPersonEvent"
           />
         </label>
 
@@ -127,7 +135,7 @@ function promptBannerImageUpload() {
           <div>
             <AppSelect
               v-model="form.country"
-              required
+              :required="form.inPersonEvent"
             >
               <option
                 disabled
@@ -152,7 +160,7 @@ function promptBannerImageUpload() {
             v-model="form.address"
             type="text"
             placeholder="Operngasse 20, 1040 Vienna"
-            required
+            :required="form.inPersonEvent"
           />
         </label>
       </div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { EventChallenge } from '#shared/domains/events/challenges'
 import type { EventFloorPlan, ProgramRoom } from '#shared/domains/events/program'
 import { floorPlanRoomAreaSchema, programRoomSchema } from '#shared/domains/events/program'
 import type { ApiDataResponse } from '~/lib/api'
@@ -12,6 +13,8 @@ type DraftRoom = Omit<ProgramRoom, 'area'> & { area: Partial<RoomArea> }
 const props = defineProps<{
   eventId: string
   plan: EventFloorPlan
+  /** The saved challenges of the event, drafts included. A room can name one of them. */
+  challenges: Pick<EventChallenge, 'id' | 'title' | 'isPublished'>[]
 }>()
 const emit = defineEmits<{
   updated: [plan: EventFloorPlan]
@@ -179,10 +182,13 @@ async function savePlan() {
     return
   }
 
-  // A room without route points is saved without a route.
+  // A room without route points is saved without a route, and an empty room number as no room
+  // number. A room keeps its challenge only while the event still has that challenge.
   const savedRooms = markedRooms.value.map(room => ({
     ...room,
     name: room.name.trim(),
+    number: room.number?.trim() || undefined,
+    challengeId: props.challenges.some(challenge => challenge.id === room.challengeId) ? room.challengeId : undefined,
     route: room.route?.length ? room.route : undefined
   }))
   if (savedRooms.some(room => !programRoomSchema.shape.route.safeParse(room.route).success)) {
@@ -299,6 +305,44 @@ async function replaceImage(event: Event) {
                 size="sm"
                 required
               />
+            </AppFormField>
+
+            <!-- The number of the room at the venue. The participant map writes it under the room name. -->
+            <AppFormField
+              :name="`${formId}-room-number`"
+              label="Room number"
+            >
+              <AppInput
+                :id="`${formId}-room-number`"
+                v-model="activeRoom.number"
+                size="sm"
+                :maxlength="30"
+              />
+            </AppFormField>
+
+            <!-- The Agenda tab names this room on the card of the challenge, and highlights it when that card is selected. -->
+            <AppFormField
+              v-if="challenges.length"
+              :name="`${formId}-room-challenge`"
+              label="Challenge"
+            >
+              <AppSelect
+                :id="`${formId}-room-challenge`"
+                :model-value="activeRoom.challengeId ?? ''"
+                size="sm"
+                @update:model-value="value => activeRoom!.challengeId = value ? String(value) : undefined"
+              >
+                <option value="">
+                  No challenge
+                </option>
+                <option
+                  v-for="challenge in challenges"
+                  :key="challenge.id"
+                  :value="challenge.id"
+                >
+                  {{ challenge.isPublished ? challenge.title : `${challenge.title} (draft)` }}
+                </option>
+              </AppSelect>
             </AppFormField>
 
             <div class="flex flex-wrap gap-2">

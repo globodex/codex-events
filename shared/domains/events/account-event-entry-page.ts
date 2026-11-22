@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { eventChallengesSchema, type EventChallenge } from '#shared/domains/events/challenges'
 import {
   customQuestionAnswersSchema,
   customQuestionDefinitionSchema
@@ -24,10 +23,6 @@ import type {
   AccountOverviewSubmissionStatus,
   AccountOverviewTeamSummary
 } from '#shared/domains/account/account-overview-page'
-import {
-  accountEventSettingsEventSchema,
-  type AccountEventSettingsEvent
-} from './account-event-settings-page'
 
 export const accountEventEntryPagePath = '/api/account/events/:slug/entry' as const
 
@@ -60,9 +55,9 @@ export interface AccountEventEntryTrack {
   id: string
   name: string
   shortDescription: string
-  fullDescription: string
+  fullDescription?: string
   staffInstructions?: string
-  resources: AccountEventEntryTrackResource[]
+  resources?: AccountEventEntryTrackResource[]
   displayOrder: number
 }
 
@@ -74,7 +69,6 @@ export interface AccountEventEntryEvent {
   slug: string
   description: string
   agendaItems: AccountEventEntryAgendaItem[]
-  programItemId: string | null
   tracks: AccountEventEntryTrack[]
   backgroundImageUrl: string | null
   backgroundImageRevision: number
@@ -241,10 +235,9 @@ export interface AccountEventEntryRankSummary {
 
 export const accountEventEntryTabs = [
   'overview',
-  'credits',
   'prizes',
   'program',
-  'challenges',
+  'credits',
   'call-for-talks',
   'gallery',
   'feedback',
@@ -274,7 +267,6 @@ export interface AccountEventEntryTabVisibility {
 
 export interface AccountEventEntryPage {
   event: AccountEventEntryEvent
-  adminSettingsEvent: AccountEventSettingsEvent | null
   access: AccountEventEntryAccess | null
   participation: AccountEventEntryParticipation | null
   participantCredits: AccountEventEntryParticipantCreditOffer[]
@@ -292,9 +284,6 @@ export interface AccountEventEntryPage {
   checkInFlowEnabled: boolean
   questionnaireQuestions: CustomQuestionDefinition[]
   questionnaireCompletedAt: string | null
-  // The published challenges that the caller may read, in display order. Empty for a caller who
-  // may not read them (see `canReadEventChallenges` in `shared/domains/events/challenges.ts`).
-  challenges: EventChallenge[]
 }
 
 const accountEventEntryAgendaItemSchema = z.object({
@@ -321,9 +310,9 @@ const accountEventEntryTrackSchema = z.object({
   id: z.string(),
   name: z.string(),
   shortDescription: z.string(),
-  fullDescription: z.string(),
+  fullDescription: z.string().optional(),
   staffInstructions: z.string().optional(),
-  resources: z.array(accountEventEntryTrackResourceSchema),
+  resources: z.array(accountEventEntryTrackResourceSchema).optional(),
   displayOrder: z.number().int()
 })
 
@@ -335,7 +324,6 @@ const accountEventEntryEventSchema = z.object({
   slug: z.string(),
   description: z.string(),
   agendaItems: z.array(accountEventEntryAgendaItemSchema),
-  programItemId: z.string().nullable(),
   tracks: z.array(accountEventEntryTrackSchema),
   backgroundImageUrl: z.string().nullable(),
   backgroundImageRevision: z.number().int(),
@@ -527,7 +515,6 @@ const accountEventEntryTabVisibilitySchema = z.object({
 
 export const accountEventEntryPageSchema = z.object({
   event: accountEventEntryEventSchema,
-  adminSettingsEvent: accountEventSettingsEventSchema.nullable(),
   access: accountEventEntryAccessSchema.nullable(),
   participation: accountOverviewRecordSchema.nullable(),
   participantCredits: z.array(accountEventEntryParticipantCreditOfferSchema),
@@ -541,6 +528,5 @@ export const accountEventEntryPageSchema = z.object({
   lumaSyncStatus: accountOverviewLumaSyncStatusSchema,
   checkInFlowEnabled: z.boolean(),
   questionnaireQuestions: z.array(customQuestionDefinitionSchema),
-  questionnaireCompletedAt: z.string().nullable(),
-  challenges: eventChallengesSchema
+  questionnaireCompletedAt: z.string().nullable()
 })

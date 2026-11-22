@@ -17,8 +17,8 @@ async function waitForNuxtHydration(page: Page) {
   )
 }
 
-async function ensurePublicDetailSection(page: Page, sectionName: 'Prizes' | 'Details') {
-  const tab = page.getByRole('tab', { name: sectionName, exact: true })
+async function openPublicPrizesTab(page: Page) {
+  const tab = page.getByRole('tab', { name: 'Prizes', exact: true })
 
   await expect(tab).toBeVisible()
   await waitForNuxtHydration(page)
@@ -175,14 +175,9 @@ Then('I should see the public evaluation criterion {string}', async ({ page }, c
 })
 
 Then('I should see the public prize {string}', async ({ page }, prizeName: string) => {
-  await ensurePublicDetailSection(page, 'Prizes')
+  await openPublicPrizesTab(page)
   await expect(page.getByTestId('public-event-prizes')).toBeVisible()
   await expect(page.getByTestId('public-event-prizes').getByRole('heading', { name: prizeName })).toBeVisible()
-})
-
-Then('I should see the current terms reference {string}', async ({ page }, termsTitle: string) => {
-  await ensurePublicDetailSection(page, 'Details')
-  await expect(page.getByTestId('public-event-terms').getByRole('heading', { name: termsTitle })).toBeVisible()
 })
 
 Then('I should not see the admin control {string}', async ({ page }, label: string) => {

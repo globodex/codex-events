@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import {
   formatEventDate,
-  formatEventLocation,
-  formatEventWindow,
-  getEventRegistrationTeamSizeMetaItems,
+  formatEventHeaderSummary,
   getEventEarliestStartAt,
   resolveEventDetailBackgroundImageUrl,
   type PublicEvent
@@ -99,11 +97,7 @@ const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   : undefined)
 const registrationDraft = ref<ParticipantRegistrationDraft>(createParticipantRegistrationDraft())
 const profileFields = computed(() => listEventProfileFields(event.value))
-const detailSummary = computed(() => [
-  formatEventWindow(event.value.registrationOpensAt, event.value.submissionClosesAt ?? event.value.registrationClosesAt),
-  formatEventLocation(event.value),
-  ...getEventRegistrationTeamSizeMetaItems(event.value)
-].join(' • '))
+const detailSummary = computed(() => formatEventHeaderSummary(event.value))
 const inPersonCommitmentDateLabel = computed(() =>
   formatEventDate(getEventEarliestStartAt(event.value))
 )
@@ -517,7 +511,7 @@ useSeoMeta({
               name="i-lucide-arrow-left"
               class="size-4"
             />
-            Back to event detail
+            Back to event
           </NuxtLink>
 
           <div class="mt-3 border-b border-black/8 pb-0 dark:border-white/[0.08]">
@@ -540,21 +534,6 @@ useSeoMeta({
                 {{ detailSummary }}
               </p>
             </div>
-
-            <nav
-              aria-hidden="true"
-              class="flex items-center gap-5 overflow-x-auto"
-            >
-              <span class="invisible border-b-2 pb-3 text-[14px] font-medium">
-                Overview
-              </span>
-              <span class="invisible inline-flex items-center gap-2 border-b-2 pb-3 text-[14px] font-medium">
-                Prizes
-                <span class="rounded-full px-1.5 py-0.5 text-[11px]">
-                  0
-                </span>
-              </span>
-            </nav>
           </div>
         </section>
       </AppContainer>

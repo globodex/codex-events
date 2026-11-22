@@ -32,8 +32,7 @@ import {
 import {
   parseEventAgendaItems,
   listEventTracks,
-  serializeAccountEvent,
-  serializeAdminEvent
+  serializeAccountEvent
 } from '#server/domains/events'
 import { listReadableEventChallenges } from '#server/domains/events/challenges'
 import {
@@ -41,7 +40,6 @@ import {
   hasEventPhotos,
   mayAddParticipantPhotos
 } from '#server/domains/events/photos'
-import { findEventProgramItemId } from '#server/domains/events/program'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { getTeamCompetitionOutcome } from '#server/domains/outcomes'
 import { serializeSubmission } from '#server/domains/submissions'
@@ -335,7 +333,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
   page: 'entry',
   schema: accountEventEntryPageSchema,
   authorize: async () => undefined,
-  load: async (context, query): Promise<AccountEventEntryPage> => {
+  load: async (context): Promise<AccountEventEntryPage> => {
     const event = context.event
     const userId = context.actor.platformUser.id
     const photoViewer = getEventPhotoViewer(context.authorization)
@@ -379,11 +377,9 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
     const memberships = participantAccess.memberships
     const activeMembership = memberships.find(({ membership }) => membership.leftAt === null) ?? null
     const primaryMembership = activeMembership ?? memberships[0] ?? null
-    const canViewProgram = context.authorization.isEventAdmin || application?.status === 'approved'
-    const [participation, credits, programItemId] = await Promise.all([
+    const [participation, credits] = await Promise.all([
       loadParticipation(context, application, memberships),
-      loadCredits(context, application),
-      canViewProgram ? findEventProgramItemId(context.database, event.id) : null
+      loadCredits(context, application)
     ])
     const talkProposalResult = event.eventType === 'meetup' && event.talkProposalsEnabled
       ? await Promise.all([
@@ -393,27 +389,13 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
             : Promise.resolve({ items: [], pagination: { page: 1, pageSize: 100, total: 0, totalPages: 0 } })
         ])
       : [null, { items: [], pagination: { page: 1, pageSize: 100, total: 0, totalPages: 0 } }] as const
-    const serializedEvent = serializeAccountEvent(event, tracks, imageOptions)
-    const serializedAdminSettingsEvent = query.includeAdminEventConfiguration && context.authorization.isEventAdmin
-      ? serializeAdminEvent(event, undefined, tracks, {
-          appBaseUrl: '',
-          ...imageOptions
-        })
-      : null
-    const adminSettingsEvent = serializedAdminSettingsEvent
-      ? {
-          ...serializedAdminSettingsEvent,
-          tracks: serializedAdminSettingsEvent.tracks ?? []
-        }
-      : null
+    const serializedEvent = serializeAccountEvent(event, tracks, imageOptions, context.authorization, application)
     const canViewRestrictedDetails = context.authorization.isPlatformAdmin
       || context.authorization.explicitRole !== null
       || application?.status === 'approved'
     const accountEvent: AccountEventEntryEvent = {
       ...serializedEvent,
-      programItemId,
       address: canViewRestrictedDetails ? event.address : '',
-      tracks: serializedEvent.tracks ?? [],
       discordServerUrl: canViewRestrictedDetails ? event.discordServerUrl : null,
       slidesUrl: canViewRestrictedDetails ? event.slidesUrl : null,
       simplifiedClaimingEnabled: event.simplifiedClaimingEnabled,
@@ -434,7 +416,9 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
         : null,
       roles as EventRoleAssignmentRecord[]
     )
-    const challenges = listReadableEventChallenges({ event, authorization: context.authorization, application })
+    // The challenges themselves travel with the Agenda page. This page only needs to know
+    // whether the caller reads any, for the tab list.
+    const readableChallenges = listReadableEventChallenges({ event, authorization: context.authorization, application })
     const tabVisibility = buildAccountEventTabVisibility({
       event,
       authorization: context.authorization,
@@ -444,7 +428,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
       hasGallery: galleryExists,
       canAddParticipantPhotos: mayAddParticipantPhotos({ event, viewer: photoViewer, application }),
       hasAgenda: serializedEvent.agendaItems.length > 0,
-      hasReadableChallenges: challenges.length > 0,
+      hasReadableChallenges: readableChallenges.length > 0,
       hasPublishedPrizes: Boolean(publishedPrize),
       hasPublishedStaff: Boolean(publishedStaffAssignment)
     })
@@ -455,7 +439,6 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
 
     return {
       event: accountEvent,
-      adminSettingsEvent,
       access,
       participation: participationRecord,
       participantCredits: credits.participantCredits,
@@ -469,8 +452,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
       lumaSyncStatus: application?.lumaSyncStatus ?? null,
       checkInFlowEnabled: event.checkInFlowEnabled,
       questionnaireQuestions: parseCustomQuestionsJson(event.questionnaireQuestionsJson),
-      questionnaireCompletedAt: application?.questionnaireCompletedAt ?? null,
-      challenges
+      questionnaireCompletedAt: application?.questionnaireCompletedAt ?? null
     }
   }
 })

@@ -311,6 +311,17 @@ describe('TASK-449 credit claims and the check-in flow', () => {
     expect(await readCodeHolders(harness)).toEqual({ 'CODE-1': 'staff', 'CODE-2': null })
   })
 
+  test('a completed event refuses unfinished check-in and preserves existing codes and staff access', async () => {
+    const harness = await createContext({ state: 'completed' })
+    await addApplication(harness, 'participant')
+    const response = await claimCredit(harness, 'participant')
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ error: { code: 'event_credit_event_completed' } })
+    await giveFirstCodeTo(harness, 'participant')
+    expect(await readListedOffer(harness, 'participant')).toMatchObject({ claimedCode: { value: 'CODE-1' } })
+    expect((await claimCredit(harness, 'staff')).status).toBe(200)
+  })
+
   describe('the last code', () => {
     test('the next participant is told that no credits are left and nothing changes for them', async () => {
       const harness = await createContext()

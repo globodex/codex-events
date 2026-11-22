@@ -6,22 +6,23 @@ import { buildDayGroundFloor, buildDayUpperFloor } from './fixtures/build-day.fi
 const meta = {
   title: 'Participant/Build Time/Floor plan',
   component: AccountEventProgramFloorPlan,
-  args: { plan: buildDayGroundFloor, selectedRoom: null },
+  args: { plan: buildDayGroundFloor, selectedRooms: [], roomHint: 'Tap a session to see its room' },
   render: args => ({
     components: { AccountEventProgramFloorPlan },
     setup() {
+      // A click on the map selects one room. Before the first click the story's rooms are selected.
       const selectedRoomId = shallowRef<string | null>(null)
-      const selectedRoom = computed(() => {
-        const id = selectedRoomId.value ?? args.selectedRoom?.id
-        return args.plan.rooms.find(room => room.id === id) ?? null
-      })
+      const selectedRooms = computed(() => selectedRoomId.value
+        ? args.plan.rooms.filter(room => room.id === selectedRoomId.value)
+        : args.selectedRooms)
 
-      return { args, selectedRoom, selectedRoomId }
+      return { args, selectedRooms, selectedRoomId }
     },
     template: `
       <AccountEventProgramFloorPlan
         :plan="args.plan"
-        :selected-room="selectedRoom"
+        :selected-rooms="selectedRooms"
+        :room-hint="args.roomHint"
         @select-room="selectedRoomId = $event"
       />
     `
@@ -38,13 +39,13 @@ type Story = StoryObj<typeof meta>
 export const NoRoomSelected: Story = {}
 
 export const HighlightedRoom: Story = {
-  args: { selectedRoom: buildDayGroundFloor.rooms[1]! }
+  args: { selectedRooms: [buildDayGroundFloor.rooms[1]!] }
 }
 
 export const RouteToRoom: Story = {
-  args: { selectedRoom: buildDayGroundFloor.rooms[0]! }
+  args: { selectedRooms: [buildDayGroundFloor.rooms[0]!] }
 }
 
 export const DifferentFloor: Story = {
-  args: { plan: buildDayUpperFloor, selectedRoom: buildDayUpperFloor.rooms[0]! }
+  args: { plan: buildDayUpperFloor, selectedRooms: [buildDayUpperFloor.rooms[0]!] }
 }

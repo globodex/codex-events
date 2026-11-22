@@ -1037,22 +1037,6 @@ export function serializeEventTrack(
   }
 }
 
-export function serializeAccountEventTrack(
-  track: ReturnType<typeof serializeEventTrack>
-): AccountEventEntryTrack {
-  return {
-    id: track.id,
-    name: track.name,
-    shortDescription: track.shortDescription,
-    fullDescription: track.fullDescription,
-    ...(track.staffInstructions !== undefined
-      ? { staffInstructions: track.staffInstructions }
-      : {}),
-    resources: track.resources,
-    displayOrder: track.displayOrder
-  }
-}
-
 export function serializePublicEventTrackResource(resource: EventTrackResourceInput) {
   return {
     title: resource.title,
@@ -2341,17 +2325,29 @@ export function serializeEvent(
 
 export function serializeAccountEvent(
   event: EventRecord,
-  tracks?: EventTrackRecord[],
-  options: EventSerializationOptions = {}
+  tracks: EventTrackRecord[],
+  imageOptions: EventDisplayImageOptions,
+  authorization: Pick<EventAuthorization, 'isPlatformAdmin' | 'isEventAdmin' | 'isStaff' | 'staffTrackId'>,
+  application: Pick<typeof userApplications.$inferSelect, 'status' | 'selectedTrackId'> | null
 ) {
-  const serialized = serializeEvent(event, undefined, tracks, options)
-
-  return {
-    ...serialized,
-    ...(serialized.tracks
-      ? { tracks: serialized.tracks.map(serializeAccountEventTrack) }
-      : {})
-  }
+  const staffIds = resolveEventTrackStaffInstructionIds(authorization)
+  const selectedId = application?.status === 'submitted' || application?.status === 'approved'
+    ? application.selectedTrackId
+    : null
+  const accountTracks: AccountEventEntryTrack[] = (eventTypeSupportsTracks(event.eventType) ? tracks : []).map((track) => {
+    const staffAccess = staffIds === 'all' || staffIds?.has(track.id)
+    return {
+      id: track.id,
+      name: track.name,
+      shortDescription: track.shortDescription,
+      displayOrder: track.displayOrder,
+      ...(staffAccess || track.id === selectedId
+        ? { fullDescription: track.fullDescription, resources: parseEventTrackResources(track.resourcesJson) }
+        : {}),
+      ...(staffAccess ? { staffInstructions: track.staffInstructions } : {})
+    }
+  })
+  return { ...serializeEvent(event, undefined, undefined, imageOptions), tracks: accountTracks }
 }
 
 export function serializeAdminEvent(

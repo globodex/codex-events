@@ -14,7 +14,6 @@ import type {
 } from '~/domains/events/admin-event'
 import type { EvaluationCriterion } from '~/domains/judging/criteria-config'
 import type { PrizeDefinition } from '~/domains/outcomes/prizes'
-import type { EventProgramSettingsMode } from '~/domains/events/program-settings'
 import type {
   AccountEventSettingsEvent,
   AccountEventSettingsPage,
@@ -26,12 +25,10 @@ import { moveListItemByIndex } from '~/utils/reorder-list'
 
 import {
   buildEventConfigurationPatch,
-  getTermsVersionPublishErrorMessage,
-  toEventAgendaPayload
+  getTermsVersionPublishErrorMessage
 } from '~/domains/events/admin-event'
 import { formatEventTypeLabel } from '~/domains/events/presentation'
 import { getCriteriaConfigurationValidationIssues } from '~/domains/judging/criteria-config'
-import { getEventProgramSettingsCopy } from '~/domains/events/program-settings'
 import { computeEventBalance } from '#shared/domains/events/builder-scoring'
 import { createBuilderStateFromEvent, toEventBalanceInputFromState } from '~/domains/events/builder'
 import { useApiClient } from '~/composables/useApiClient'
@@ -45,7 +42,6 @@ const props = withDefaults(defineProps<{
   loadErrorMessage?: string
   canManage?: boolean
   showProgramSettings?: boolean
-  programSettingsMode?: EventProgramSettingsMode
   showTermsManagement?: boolean
   showCriteriaConfiguration?: boolean
   showPrizeConfiguration?: boolean
@@ -57,7 +53,6 @@ const props = withDefaults(defineProps<{
   loadErrorMessage: '',
   canManage: true,
   showProgramSettings: true,
-  programSettingsMode: 'settings',
   showTermsManagement: true,
   showCriteriaConfiguration: true,
   showPrizeConfiguration: true
@@ -93,7 +88,6 @@ if (!eventId.value) {
   })
 }
 
-const showSettingsOverview = computed(() => props.showProgramSettings && props.programSettingsMode === 'settings')
 const settingsPage = computed(() => props.page ?? null)
 
 const isSavingConfig = ref(false)
@@ -147,7 +141,6 @@ const builderBalance = computed(() => {
 
   return computeEventBalance(toEventBalanceInputFromState(createBuilderStateFromEvent(event)))
 })
-const showEmergencyVisibilitySettings = computed(() => props.showProgramSettings && props.programSettingsMode === 'settings')
 const isEventHidden = computed(() => Boolean(currentEvent.value?.hiddenAt))
 const trimmedHideEventReason = computed(() => hideEventReason.value.trim())
 const isCompetitionEvent = computed(() => currentEvent.value?.eventType === 'hackathon')
@@ -160,7 +153,6 @@ const eventTypeLabel = computed(() =>
   currentEvent.value ? formatEventTypeLabel(currentEvent.value.eventType) : ''
 )
 const canManage = computed(() => props.canManage)
-const programSettingsCopy = computed(() => getEventProgramSettingsCopy(props.programSettingsMode))
 const hiddenEventAlertDescription = computed(() => {
   const reason = currentEvent.value?.hiddenReason?.trim()
 
@@ -593,36 +585,6 @@ async function saveConfiguration(configForm: EventFormState) {
     return
   }
 
-  if (props.programSettingsMode === 'details') {
-    await patchConfiguration(
-      {
-        agendaItems: toEventAgendaPayload(configForm.agendaItems),
-        city: configForm.city,
-        country: configForm.country,
-        address: configForm.address
-      },
-      programSettingsCopy.value.successTitle,
-      programSettingsCopy.value.successDescription
-    )
-    return
-  }
-
-  await patchConfiguration(
-    buildEventConfigurationPatch(configForm, currentEvent.value.eventType),
-    programSettingsCopy.value.successTitle,
-    programSettingsCopy.value.successDescription
-  )
-}
-
-async function patchConfiguration(
-  body: Record<string, unknown>,
-  successTitle: string,
-  successDescription: string
-) {
-  if (!currentEvent.value) {
-    return
-  }
-
   configMutationError.value = ''
   isSavingConfig.value = true
 
@@ -631,12 +593,12 @@ async function patchConfiguration(
 
     await apiFetch(updateUrl, {
       method: 'PATCH',
-      body
+      body: buildEventConfigurationPatch(configForm, currentEvent.value.eventType)
     })
 
     toast.add({
-      title: successTitle,
-      description: successDescription,
+      title: 'Configuration saved',
+      description: 'Event settings now match the latest admin updates.',
       color: 'success'
     })
 
@@ -763,8 +725,8 @@ async function uploadEventImage(slot: EventImageSlot, file: File) {
     toast.add({
       title: slot === 'background' ? 'Background image updated' : 'Banner image updated',
       description: slot === 'background'
-        ? 'The public Details tab now shows the latest background image.'
-        : 'The public Details tab now shows the latest banner image.',
+        ? 'The event page now shows the latest background image.'
+        : 'The event page now shows the latest banner image.',
       color: 'success'
     })
   } catch (error) {
@@ -794,8 +756,8 @@ async function removeEventImage(slot: EventImageSlot) {
     toast.add({
       title: slot === 'background' ? 'Background image removed' : 'Banner image removed',
       description: slot === 'background'
-        ? 'The public Details tab no longer shows a managed background image.'
-        : 'The public Details tab no longer shows a managed banner image.',
+        ? 'The event page no longer shows a background image.'
+        : 'The event page no longer shows a banner image.',
       color: 'success'
     })
   } catch (error) {
@@ -1181,7 +1143,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
       color="warning"
       variant="soft"
       title="Admin access required"
-      description="This event is visible, but the current actor does not have event-admin capabilities for it."
+      description="You can see this event, but only its admins can change these settings."
     />
 
     <div
@@ -1193,7 +1155,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
 
     <template v-else-if="currentEvent">
       <section
-        v-if="showSettingsOverview"
+        v-if="props.showProgramSettings"
         class="grid gap-4"
         :class="settingsOverviewGridClass"
       >
@@ -1259,9 +1221,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
         v-if="props.showProgramSettings"
         class="space-y-6"
       >
-        <!-- Settings also shows this panel in its details mode, so only the settings form carries the link to the event builder. -->
         <div
-          v-if="props.programSettingsMode !== 'details'"
           data-testid="event-builder-settings-banner"
           class="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-black/8 bg-white/78 p-4 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] dark:border-white/[0.08] dark:bg-[#151515]/64"
         >
@@ -1297,14 +1257,14 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
           :image-version="{ background: currentEvent.backgroundImageRevision, banner: currentEvent.bannerImageRevision }"
           :can-upload-managed-images="true"
           :is-submitting="isSavingConfig"
-          :mode="props.programSettingsMode"
+          mode="settings"
           :background-image-upload-pending="imageMutationState.background.pending"
           :background-image-upload-error="imageMutationState.background.error"
           :banner-image-upload-pending="imageMutationState.banner.pending"
           :banner-image-upload-error="imageMutationState.banner.error"
           :is-retrying-luma-configuration="isRetryingLumaConfiguration"
-          :submit-label="programSettingsCopy.submitLabel"
-          :helper-text="programSettingsCopy.helperText"
+          submit-label="Save Configuration"
+          helper-text="Save changes."
           :submit-error="configMutationError"
           @submit="saveConfiguration"
           @upload-background-image="uploadBackgroundImage"
@@ -1742,7 +1702,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
       </section>
 
       <AppCard
-        v-if="showEmergencyVisibilitySettings"
+        v-if="props.showProgramSettings"
         class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
       >
         <template #header>

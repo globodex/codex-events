@@ -1,15 +1,14 @@
 ---
 id: TASK-454
 title: Set up and rehearse the Vienna Build Day
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-11-21T15:23:00Z'
-updated_date: '2026-11-21T21:03:00Z'
+updated_date: '2026-11-22T19:36:00Z'
 labels:
   - build-day
 milestone: m-3
 dependencies:
-  - TASK-442
   - TASK-443
   - TASK-444
   - TASK-445
@@ -18,8 +17,8 @@ dependencies:
   - TASK-449
   - TASK-450
   - TASK-451
-  - TASK-452
   - TASK-453
+  - TASK-471
 references:
   - docs/testing-strategy.md
   - >-
@@ -37,13 +36,13 @@ Vienna Build Day uses one participant timeline. The Main room hosts two optional
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 An organizer can configure the venue, workshop rooms, agenda, Luma sync, questionnaire, challenge list, credits and gallery from the event editor.
+- [x] #1 An organizer can configure the venue, workshop rooms, agenda, Luma sync, questionnaire, challenge list, credits and gallery from the event editor.
 - [ ] #2 The Vienna diagram uses the room list and assignments confirmed for the event.
-- [ ] #3 A phone rehearsal covers pending registration, confirmation, room highlighting, Luma and manual check-in, and the questionnaire.
-- [ ] #4 A failed or stale Luma update can be recovered with manual sync. Unavailable credit inventory does not block a challenge.
+- [x] #3 A phone rehearsal covers pending registration, confirmation, room highlighting, Luma and manual check-in, and the questionnaire.
+- [x] #4 A failed or stale Luma update can be recovered with manual sync. Unavailable credit inventory does not block a challenge.
 - [ ] #5 The workflow is verified with event staff and participant accounts before the event.
-- [ ] #6 The participant timeline contains the two Main room workshops, build blocks, lunch, optional demo submission, showcases, awards, and networking. The map has eight selectable areas for the Main room, six breakouts and catering, with AE U1-4 and AE U1-5 shown as one breakout. Challenge room activities are optional.
-- [ ] #7 Arrival directions show the route from the main entrance at Karlsplatz 13 to the confirmed check-in location.
+- [x] #6 The participant timeline contains the two Main room workshops, build blocks, lunch, optional demo submission, showcases, awards, and networking. The map has eight selectable areas for the Main room, six breakouts and catering, with AE U1-4 and AE U1-5 shown as one breakout. Challenge room activities are optional.
+- [x] #7 Arrival directions show the route from the main entrance at Karlsplatz 13 to the confirmed check-in location.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -103,4 +102,19 @@ The challenge rooms are where participants can find the dedicated mentors for ea
 | Make something explorable | One interactive scene that helps someone discover or understand something, such as a tiny museum, molecule model, or neighborhood. | Your first interactive 3D scene. Start with one object and add one interaction using Codex. Astra is an option for a live demo. |
 | Make a one-minute game | One playable mechanic someone can learn in a minute. A second level, original art, or a mechanic that changes are stretch ideas. | One mechanic, one playtest. Start from a playable template, make one change, and ask someone to try it. ChatGPT Images can help with original sprites. |
 | Automate a task you’d happily stop doing | Show a repeatable task, what the tool does, and how you verified the result. One example is turning sample receipts into a table you can check. | Computer Use on a practice task. Use a prepared app and sample data, then identify where a person should check the result. |
+
+### Phone rehearsal log (2026-11-22)
+
+Ran an isolated 17-step phone rehearsal at 390x844 in Chromium against a fresh local D1 state and local fake Luma server covering:
+- Public merged event page and phone registration with Luma email prefill and event date display (caught and fixed a P0 stacking-context bug where the footer covered the old fixed mobile submit bar).
+- Pending Luma guest registration showing public-only Agenda fallback without leaking private workshops or floor plan.
+- Simulated Luma HTTP 500 outage followed by manual guest-list sync recovery confirming the pending participant automatically.
+- Pre-check-in Overview next-step card, Agenda tab with Karlsplatz entrance-to-Check-in route highlighting, pre-check-in Challenges reading, and Credits/Gallery lock banners (caught and fixed missing "See your next step" button on direct links to ?tab=gallery).
+- Parity between signed Luma guest.updated check-in webhook and manual 390px door-staff check-in.
+- Questionnaire completion unlocking Credits (direct claim + sold-out offer not blocking Challenges or Gallery) and Gallery (automatic tab appearance, photo upload without raw filename for attendees, staff moderation Hide removing the photo).
+- Withdrawal clearing cached private Agenda sessions and map immediately.
+
+Remaining real-world items before Saturday, 28 November (keeping AC #2 and AC #5 open):
+- Confirm physical room-to-challenge mentor assignments and catering spot with TU Wien before publishing the production map and challenge room notes.
+- Upload the final TU Wien plan, configure the production Vienna Build Day event (including watching the first real Luma API import against Luma's 200 req/min rate limit), and run a short live check with real staff and participant accounts.
 <!-- SECTION:NOTES:END -->

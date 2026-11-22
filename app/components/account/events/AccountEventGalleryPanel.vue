@@ -2,6 +2,7 @@
 import type { EventPhotoRecord } from '#shared/domains/events/photos'
 import type { AccountEventGalleryPage } from '#shared/domains/events/account-event-gallery-page'
 
+import AccountEventNextStepNotice from '~/components/account/events/molecules/AccountEventNextStepNotice.vue'
 import EventGalleryPanel from '~/components/events/EventGalleryPanel.vue'
 import { normalizeApiError } from '~/lib/api'
 import { createEventGalleryUploadBatches, createEventGalleryUploadItems } from '~/domains/events/gallery'
@@ -13,12 +14,19 @@ const props = withDefaults(defineProps<{
   eventId: string
   canManage: boolean
   page: AccountEventGalleryPage | null
+  /** The page that shows the next-step card. Null when the event shows no next-step card. */
+  nextStepHref: string | null
   isLoading?: boolean
   loadErrorMessage?: string
 }>(), {
   isLoading: false,
   loadErrorMessage: ''
 })
+
+const emit = defineEmits<{
+  /** A photo was added, removed or changed. The parent reads the gallery page again. */
+  updated: []
+}>()
 
 const apiFetch = useApiClient()
 const toast = useToast()
@@ -101,9 +109,10 @@ const visiblePhotos = computed(() => {
 
   return eventTeamPhotos.value
 })
+// The description explains the controls of the people who manage the gallery. Participants have none.
 const panelDescription = computed(() => canManage.value
   ? 'Upload the full event archive, mark the strongest photos as highlights, and choose which images also appear on the public page.'
-  : 'Browse the protected gallery for this event. Highlights show the curated set, and all photos keeps the full archive available.'
+  : ''
 )
 const emptyStateDescription = computed(() => canManage.value
   ? 'Upload the first JPEG or PNG image to start the event gallery.'
@@ -184,6 +193,11 @@ async function uploadPhotos(files: File[]) {
   } finally {
     isUploading.value = false
     uploadingItems.value = []
+
+    // An upload that stopped halfway also added photos.
+    if (uploadedCount > 0) {
+      emit('updated')
+    }
   }
 }
 
@@ -207,6 +221,7 @@ async function deletePhoto(photo: EventPhotoRecord) {
     })
 
     photos.value = photos.value.filter(entry => entry.id !== photo.id)
+    emit('updated')
     toast.add({
       title: 'Photo removed',
       description: 'The gallery was updated.',
@@ -236,6 +251,7 @@ async function togglePublicVisibility(payload: { photo: EventPhotoRecord, value:
     })
 
     photos.value = photos.value.map(entry => entry.id === payload.photo.id ? response.data : entry)
+    emit('updated')
     toast.add({
       title: payload.value ? 'Added to public gallery' : 'Removed from public gallery',
       description: payload.value
@@ -267,6 +283,7 @@ async function toggleHighlight(payload: { photo: EventPhotoRecord, value: boolea
     })
 
     photos.value = photos.value.map(entry => entry.id === payload.photo.id ? response.data : entry)
+    emit('updated')
     toast.add({
       title: payload.value ? 'Photo highlighted' : 'Highlight removed',
       description: payload.value
@@ -299,6 +316,7 @@ async function toggleHidden(payload: { photo: EventPhotoRecord, value: boolean }
     })
 
     photos.value = photos.value.map(entry => entry.id === payload.photo.id ? response.data : entry)
+    emit('updated')
     toast.add({
       title: payload.value ? 'Photo hidden' : 'Photo shown again',
       description: payload.value
@@ -347,5 +365,16 @@ async function toggleHidden(payload: { photo: EventPhotoRecord, value: boolean }
     @toggle-public-visibility="togglePublicVisibility"
     @toggle-highlight="toggleHighlight"
     @toggle-hidden="toggleHidden"
-  />
+  >
+    <!-- The server decides who sees this notice. The gallery page carries its answer. -->
+    <template
+      v-if="props.page?.mustFinishCheckInFlowToAddPhotos"
+      #notice
+    >
+      <AccountEventNextStepNotice
+        title="Finish your next step to add photos"
+        :next-step-href="props.nextStepHref"
+      />
+    </template>
+  </EventGalleryPanel>
 </template>

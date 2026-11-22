@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test } from 'vitest'
 
-import accountEventEntry from '../../../../server/api/account/events/[slug]/entry.get'
 import participantProgram from '../../../../server/api/account/events/[slug]/program.get'
 import accountEventRosters from '../../../../server/api/account/events/[slug]/rosters.get'
 import createFloorPlan from '../../../../server/api/events/[eventId]/floor-plans/index.post'
@@ -13,7 +12,6 @@ import adminProgram from '../../../../server/api/events/[eventId]/program/index.
 import updateProgram from '../../../../server/api/events/[eventId]/program/index.put'
 import publicEvent from '../../../../server/api/public/events/[slug]/index.get'
 import { eventRoleAssignments, events, userApplications, users } from '../../../../server/database/schema'
-import type { AccountEventEntryPage } from '../../../../shared/domains/events/account-event-entry-page'
 import type { AccountEventPageShell } from '../../../../shared/domains/events/account-event-page-shell'
 import type { AdminEventProgram, EventFloorPlan, EventProgram, AccountEventAgendaPage } from '../../../../shared/domains/events/program'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
@@ -36,6 +34,9 @@ const publicBlock = {
 const room = {
   id: 'seminar_room',
   name: 'Seminar Room',
+  // The room's number at the venue, and the challenge that takes place in the room.
+  number: 'SR 1.03',
+  challengeId: 'ship_a_skill',
   area: { x: 0.25, y: 0.1, width: 0.25, height: 0.2, rotation: 30 },
   route: [{ x: 0.05, y: 0.9 }, { x: 0.05, y: 0.2 }, { x: 0.3, y: 0.2 }]
 }
@@ -110,7 +111,6 @@ describe('event program routes', () => {
     harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/public/events/:slug', handler: publicEvent },
-        { method: 'get', path: '/api/account/events/:slug/entry', handler: accountEventEntry },
         { method: 'get', path: '/api/account/events/:slug/program', handler: participantProgram },
         { method: 'get', path: '/api/account/events/:slug/rosters', handler: accountEventRosters },
         { method: 'get', path: '/api/events/:eventId/program', handler: adminProgram },
@@ -213,22 +213,16 @@ describe('event program routes', () => {
       expect((await harness.request(replacement.imageUrl)).status).toBe(403)
     }
     signIn('pending')
-    const pendingEntry = await readData<{ page: AccountEventEntryPage }>(await harness.request(`${accountPath}/entry`))
-    expect(pendingEntry.page.event.programItemId).toBeNull()
     const pendingRosters = await readData<{ shell: AccountEventPageShell }>(
       await harness.request(`${accountPath}/rosters?includeEventShell=true`)
     )
-    expect(pendingRosters.shell.event.programItemId).toBeNull()
     // A pending participant gets the Agenda tab too. It shows the public agenda blocks only.
     expect(pendingRosters.shell.tabVisibility.availableTabs).toContain('program')
 
     signIn('participant')
-    const entry = await readData<{ page: AccountEventEntryPage }>(await harness.request(`${accountPath}/entry`))
-    expect(entry.page.event.programItemId).toBe(publicBlock.id)
     const participantRosters = await readData<{ shell: AccountEventPageShell }>(
       await harness.request(`${accountPath}/rosters?includeEventShell=true`)
     )
-    expect(participantRosters.shell.event.programItemId).toBe(publicBlock.id)
     expect(participantRosters.shell.tabVisibility.availableTabs).toContain('program')
     const { id, title, startsAt, endsAt } = publicBlock
     expect(await readAgenda()).toEqual({
@@ -243,6 +237,44 @@ describe('event program routes', () => {
     expect(image.headers.get('content-type')).toBe('image/jpeg')
     expect(image.headers.get('cache-control')).toBe('private, no-store')
     expect(new Uint8Array(await image.arrayBuffer())).toEqual(jpeg)
+  })
+
+  test('shows the second title and room of a session to a participant who is checked in', async () => {
+    const { floor, floorPath, program } = await setup()
+    const breakfastRoom = { id: 'breakfast_room', name: 'Breakfast Room', area: { ...room.area, x: 0.6 } }
+    const rooms = [room, breakfastRoom]
+    await readData(await harness.request(floorPath, json('PUT', { name: floor.name, rooms })))
+
+    // The first session is "Workshop A" with details. Checked-in participants see "Breakfast".
+    const afterCheckIn = { title: 'Breakfast', room: { floorPlanId: floor.id, roomId: breakfastRoom.id } }
+    const flippingProgram = structuredClone(program)
+    flippingProgram.tracks[0]!.sessions[0]!.afterCheckIn = afterCheckIn
+    await publishProgram(flippingProgram)
+
+    // The organizer edits both versions, and reads the Agenda tab in the first version.
+    expect((await readData<AdminEventProgram>(await harness.request(programPath))).program).toEqual(flippingProgram)
+    expect((await readAgenda()).tracks).toEqual(program.tracks)
+
+    signIn('participant')
+    expect((await readAgenda()).tracks).toEqual(program.tracks)
+
+    await harness.database.update(userApplications).set({ checkedInAt: '2026-11-28T09:40:00.000Z' })
+    const [firstSessionAfterCheckIn, laterSession] = (await readAgenda()).tracks[0]!.sessions
+    expect(firstSessionAfterCheckIn).toEqual({
+      ...program.tracks[0]!.sessions[0],
+      title: 'Breakfast',
+      room: afterCheckIn.room,
+      details: null
+    })
+    expect(laterSession).toEqual(program.tracks[0]!.sessions[1])
+
+    // The second room follows the rules of a session room.
+    signIn('organizer')
+    const withoutBreakfastRoom = json('PUT', { name: floor.name, rooms: [room] })
+    expect((await harness.request(floorPath, withoutBreakfastRoom)).status).toBe(409)
+    const unknownRoomProgram = structuredClone(flippingProgram)
+    unknownRoomProgram.tracks[0]!.sessions[0]!.afterCheckIn!.room!.roomId = 'unknown_room'
+    expect((await harness.request(programPath, json('PUT', unknownRoomProgram))).status).toBe(409)
   })
 
   test('keeps the published program consistent when the parent block, sessions, or rooms change', async () => {

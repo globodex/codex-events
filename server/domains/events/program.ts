@@ -3,21 +3,17 @@ import type { H3Event } from 'h3'
 import { and, eq, sql } from 'drizzle-orm'
 
 import type { AdminEventProgram, EventProgram, ParticipantEventProgram } from '#shared/domains/events/program'
+import { canViewEventProgram } from '#shared/domains/events/program'
 import { requirePlatformActor } from '#server/auth/actor'
 import { resolveEventAuthorization } from '#server/auth/authorization'
 import { getDatabase, type AppDatabase } from '#server/database/client'
 import { eventAgendaPrograms, eventFloorPlans, events, userApplications } from '#server/database/schema'
 import { getEventOrThrow, parseEventAgendaItems, requireEventAdmin } from '#server/domains/events'
-import { listEventFloorPlans } from '#server/domains/events/floor-plans'
+import { listEventFloorPlans, sessionRoomJoins } from '#server/domains/events/floor-plans'
 import { ApiError } from '#server/http/api-error'
 import { measureRequestPhase } from '#server/http/request-timing'
 
 type EventRecord = typeof events.$inferSelect
-
-/** Event admins and confirmed participants read the program. */
-export function canViewEventProgram(isEventAdmin: boolean, approved: boolean) {
-  return isEventAdmin || approved
-}
 
 export function assertProgramViewAccess(isEventAdmin: boolean, approved: boolean) {
   if (!canViewEventProgram(isEventAdmin, approved)) {
@@ -50,12 +46,6 @@ export async function requireEventProgramAccess(h3Event: H3Event, eventId: strin
 function findEventProgramRow(database: AppDatabase, eventId: string) {
   return database.select().from(eventAgendaPrograms)
     .where(eq(eventAgendaPrograms.eventId, eventId)).get()
-}
-
-export async function findEventProgramItemId(database: AppDatabase, eventId: string) {
-  const row = await database.select({ agendaItemId: eventAgendaPrograms.agendaItemId })
-    .from(eventAgendaPrograms).where(eq(eventAgendaPrograms.eventId, eventId)).get()
-  return row?.agendaItemId ?? null
 }
 
 function getProgramAgendaItem(event: EventRecord, agendaItemId: string) {
@@ -102,16 +92,15 @@ function validateProgramWindow(event: EventRecord, program: EventProgram) {
 function availableProgramRooms(eventId: string, tracksJson: string) {
   return sql`not exists (
     select 1
-    from json_each(${tracksJson}) as track
-    join json_each(track.value, '$.sessions') as session
-    where json_type(session.value, '$.room') = 'object'
+    from ${sessionRoomJoins(tracksJson)}
+    where json_type(place.value) = 'object'
       and not exists (
         select 1
         from ${eventFloorPlans} as plan
         join json_each(plan.rooms_json) as room
         where plan.event_id = ${eventId}
-          and plan.id = json_extract(session.value, '$.room.floorPlanId')
-          and json_extract(room.value, '$.id') = json_extract(session.value, '$.room.roomId')
+          and plan.id = json_extract(place.value, '$.floorPlanId')
+          and json_extract(room.value, '$.id') = json_extract(place.value, '$.roomId')
       )
   )`
 }
@@ -150,8 +139,34 @@ export async function deleteAdminEventProgram(h3Event: H3Event, eventId: string)
   return { program: null, floorPlans: await listEventFloorPlans(database, eventId) }
 }
 
-/** The event's program for a person who may read it, or null when the event has none. */
-export async function loadParticipantEventProgram(database: AppDatabase, event: EventRecord): Promise<ParticipantEventProgram | null> {
+/**
+ * The sessions as one person sees them.
+ *
+ * A session can have a second title and room for participants who are checked in
+ * (`afterCheckIn`). A checked-in participant gets that version, without the details, which belong
+ * to the first version. Every other person gets the first version. The answer never holds
+ * `afterCheckIn`: a person sees one version of a session.
+ */
+function showTracksTo(tracks: EventProgram['tracks'], viewer: { isCheckedIn: boolean }): EventProgram['tracks'] {
+  return tracks.map(track => ({
+    ...track,
+    sessions: track.sessions.map(({ afterCheckIn, ...session }) => {
+      return viewer.isCheckedIn && afterCheckIn
+        ? { ...session, title: afterCheckIn.title, room: afterCheckIn.room, details: null }
+        : session
+    })
+  }))
+}
+
+/**
+ * The event's program for a person who may read it, or null when the event has none.
+ * `viewer.isCheckedIn` is true only for a participant who is checked in.
+ */
+export async function loadParticipantEventProgram(
+  database: AppDatabase,
+  event: EventRecord,
+  viewer: { isCheckedIn: boolean }
+): Promise<ParticipantEventProgram | null> {
   const row = await findEventProgramRow(database, event.id)
   const agendaItem = row && getProgramAgendaItem(event, row.agendaItemId)
   if (!row || !agendaItem) {
@@ -162,7 +177,7 @@ export async function loadParticipantEventProgram(database: AppDatabase, event: 
     eventId: event.id,
     eventName: event.name,
     agendaItem,
-    tracks: readProgramTracks(row.tracksJson),
+    tracks: showTracksTo(readProgramTracks(row.tracksJson), viewer),
     floorPlans: await listEventFloorPlans(database, event.id)
   }
 }

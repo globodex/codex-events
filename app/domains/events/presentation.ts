@@ -287,7 +287,7 @@ const fullDateFormatter = new Intl.DateTimeFormat('en-US', {
   year: 'numeric'
 })
 
-const weekdayDateFormatter = new Intl.DateTimeFormat(undefined, {
+const weekdayDateFormatter = new Intl.DateTimeFormat('en-US', {
   weekday: 'short',
   month: 'short',
   day: 'numeric',
@@ -435,10 +435,6 @@ export function formatEventLocation(location: { city: string, country: string })
 
 export function formatEventCompactDate(value: string) {
   return compactDateFormatter.format(new Date(value))
-}
-
-export function formatEventWindow(start: string, end: string) {
-  return `${compactDateFormatter.format(new Date(start))} - ${fullDateFormatter.format(new Date(end))}`
 }
 
 export function getEventDateTimePresentation(value: string): PublicDateTimePresentation {
@@ -630,20 +626,20 @@ export function formatMaxTeamMembers(maxTeamMembers: number) {
   return `Maximum ${maxTeamMembers} team members`
 }
 
-export function getEventRegistrationTeamSizeMetaItems(event: Pick<PublicEvent, 'eventType' | 'maxTeamMembers'>) {
-  return event.eventType === 'hackathon' ? [formatMaxTeamMembers(event.maxTeamMembers)] : []
-}
-
 export function getEventDashboardTeamSizeMetaItems(event: Pick<PublicEvent, 'eventType' | 'maxTeamMembers'>) {
   return event.eventType === 'hackathon' ? [`${event.maxTeamMembers} max/team`] : []
 }
 
-export function formatAccountEventHeaderSummary(
+export function formatEventHeaderSummary(
   event: Pick<PublicEvent, 'agendaItems' | 'city' | 'country' | 'eventType' | 'maxTeamMembers' | 'registrationClosesAt' | 'submissionOpensAt'>
 ) {
+  const startsAt = getEventEarliestStartAt(event)
+
   return [
-    formatEventDateWithWeekday(getEventEarliestStartAt(event)),
+    formatEventDateWithWeekday(startsAt),
+    // Without an agenda the start is a fallback date, so its time of day is not the time the event starts.
+    event.agendaItems.length > 0 ? formatEventTime(startsAt) : null,
     formatEventLocation(event),
     event.eventType === 'hackathon' ? formatMaxTeamMembers(event.maxTeamMembers) : null
-  ].filter(Boolean).join(' • ')
+  ].filter(Boolean).join(' · ')
 }

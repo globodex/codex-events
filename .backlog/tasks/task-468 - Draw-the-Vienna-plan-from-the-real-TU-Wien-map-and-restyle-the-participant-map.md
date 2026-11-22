@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-11-22T12:06:00Z'
-updated_date: '2026-11-22T13:00:00Z'
+updated_date: '2026-11-22T20:47:00Z'
 labels:
   - build-day
 milestone: m-3
@@ -66,6 +66,10 @@ Vienna preview: one plan 'TU Wien · Ground floor', drawn from the TUW Maps pict
 Decision by Alex on 2026-11-22: one map only. A first attempt with two plans (way in, event rooms) and a centered narrow map was rejected ('who said I want different dropdowns and the map moved to the right').
 
 After Alex's review of the single plan (2026-11-22, 'this is much better'): the preview agenda's opening item is split so check-in is obvious. 'Doors open and check-in' (09:30, 30 min) links to Check-in and shows the route from the Karlsplatz main entrance; 'Setup help and kickoff' (10:00, 40 min) links to the Main room, whose route now starts at check-in. This is event content in the local preview, not code.
+
+2026-11-22, after this task was closed: the plan has no separate Catering room any more. Breakfast and lunch are served in U1-3 (room id aeu115). The plan picture and the rooms file were drawn again without the Catering area, so the plan has 11 rooms and the two small rooms between U1-2 and U1-3 are plain rooms. Both were loaded into the local preview, and the Lunch session of the preview agenda got room U1-3.
+
+2026-11-22, after this task was closed: U1-4 (AEU119) and U1-5 (AEU125) are two rooms again, because 'Build your own idea' has a technical and a non-technical track with one room each. The movable wall between the two rooms is a thin line in TUW Maps and was lost when the plan was cleaned; the plan script draws it again, a little below the middle of the two rooms. The plan has 12 rooms.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

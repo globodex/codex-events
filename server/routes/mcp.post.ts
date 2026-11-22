@@ -256,7 +256,7 @@ export default defineEventHandler(async (event) => {
         }
       } catch (error) {
         const apiError = toApiError(error)
-        if (!isApiError(error)) {
+        if (apiError.statusCode >= 500 && !isApiError(error)) {
           console.error('Unhandled MCP operation error', { toolName: macro.name })
         }
         const safeError = { error: { code: apiError.code, message: apiError.message, ...(apiError.details ? { details: apiError.details } : {}) } }

@@ -303,6 +303,28 @@
     background-color: rgba(212, 212, 212, 0.38);
   }
 
+  /* Fades the right edge of the tab bar while more tabs are hidden behind it.
+     The mask is 2rem wider than the bar, so its fading end normally sits outside the bar.
+     The scroll position drives the animation: it pulls the fading end into the bar at the start,
+     and moves it back out over the last 2rem of scrolling. A bar that shows all its tabs does not
+     scroll, so the animation never runs. Browsers without scroll-driven animations show no fade. */
+  .account-event-tab-list {
+    mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+    mask-repeat: no-repeat;
+    mask-size: calc(100% + 2rem) 100%;
+    animation-name: account-event-tab-list-edge-fade;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-timeline: scroll(self inline);
+    animation-range-start: calc(100% - 2rem);
+  }
+
+  @keyframes account-event-tab-list-edge-fade {
+    from {
+      mask-size: 100% 100%;
+    }
+  }
+
   /* Slightly increase label-to-control spacing across common form layouts. */
   label.grid.gap-2 {
     row-gap: 0.625rem;

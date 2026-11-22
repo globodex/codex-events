@@ -320,7 +320,7 @@ required-document changes take effect on the next MCP request.
 
 - Users can view only their own application records.
 - Hidden events are not visible to public users, workspace users, approved participants, staff, or judges through public pages, participant account lists, or non-admin direct event reads.
-- Hidden events remain visible to event admins for that event and platform admins.
+- Hidden events remain visible to event admins for that event and platform admins. The same rule covers Gallery lists, protected images, uploads, and moderation.
 - Staff can view event-wide participant and team data.
 - The private Luma guest list is visible to no actor: no page or API response shows guest emails or individual guest statuses. Event admins and platform admins see only the approved and waiting guest counts, the last refresh time, and whether the list needs attention.
 - Workspace users can view the published judge and staff rosters for events they can access in `/account/events/:slug`.
@@ -328,7 +328,7 @@ required-document changes take effect on the next MCP request.
 - Published staff rosters also show whether each staff member supports the whole event or a specific event track. Track-specific staff roster entries include the track ID, name, short description, and display order so participant account pages can highlight staff connected to the participant's selected track.
 - Public event detail pages show track names and short descriptions by default. Links with `tracks=full` also show participant-facing full guidelines and resource links. Account-scoped participant details show full guidelines and resources only for the participant's selected track.
 - Account-scoped event details show the street address, Discord server URL, and slides URL only to approved participants, judges, staff, event admins, and platform admins.
-- Track staff instructions are visible only to platform admins, event admins, whole-event staff, and staff assigned to that track.
+- The Overview and the direct-link shell include full guidelines, resources, and staff instructions for every track an event or platform admin manages or a staff member supports. Staff with an active registration also receive participant details for their own selected track and can change that selection until event completion.
 - Approved participants can view event photo galleries for events where they are approved.
 - A hidden participant photo is visible only to judges, staff, event admins, and platform admins of that event. Approved participants, including the participant who added it, and public users can neither list nor open it.
 - Participant photos are not shown on the public event page until a judge, staff member, event admin, or platform admin marks them public.
@@ -346,7 +346,7 @@ required-document changes take effect on the next MCP request.
 - The completed published-projects section includes only opted-in locked non-winning submissions and remains visually separate from the winners section.
 - The participant-facing teams directory remains visible to workspace users after team formation closes, but join actions remain state-gated.
 - Published event challenges are visible to staff, event admins, platform admins, and approved participants. Draft challenges are visible only to event admins and platform admins.
-- Approved participants and event staff can view only their own claimed credit values.
+- Approved participants and event staff can view only their own claimed credit values. Once an event with check-in enabled is completed, participants with unfinished check-in can still read those values. They cannot claim another. Staff can still claim.
 - Event admins and platform admins can view credit inventory and claim records for their events.
 - Event feedback results are visible only to judges, staff, event admins, and platform admins.
 

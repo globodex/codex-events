@@ -5,11 +5,13 @@
  * - `can_claim`: the person can claim credits now.
  * - `must_finish_check_in_flow`: a confirmed participant who has to finish the check-in flow of
  *   the event first. They keep seeing the credits they already claimed.
+ * - `event_completed`: the event ended before the participant finished check-in.
  * - `cannot_claim`: the person is neither a confirmed participant nor event staff.
  */
-export type EventCreditClaimAccess = 'can_claim' | 'must_finish_check_in_flow' | 'cannot_claim'
+export type EventCreditClaimAccess = 'can_claim' | 'must_finish_check_in_flow' | 'event_completed' | 'cannot_claim'
 
 export function resolveEventCreditClaimAccess(input: {
+  eventCompleted: boolean
   isEventStaff: boolean
   isApprovedParticipant: boolean
   /** Whether the event has its check-in flow on. */
@@ -31,5 +33,5 @@ export function resolveEventCreditClaimAccess(input: {
     return 'can_claim'
   }
 
-  return 'must_finish_check_in_flow'
+  return input.eventCompleted ? 'event_completed' : 'must_finish_check_in_flow'
 }

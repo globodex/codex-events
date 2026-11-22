@@ -51,8 +51,8 @@ Then('I should see no next step', async ({ page }) => {
   await expect(nextStepCard(page)).toHaveCount(0)
 })
 
-Then('my next step should be to check in at the entrance', async ({ page }) => {
-  await expect(nextStepCard(page).getByRole('heading', { name: 'Check in at the entrance' })).toBeVisible()
+Then('my next step should be to check in with the event team', async ({ page }) => {
+  await expect(nextStepCard(page).getByRole('heading', { name: 'Check in with the event team' })).toBeVisible()
 })
 
 When('I open the agenda from my next step', async ({ page }) => {

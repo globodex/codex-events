@@ -1861,7 +1861,7 @@ async function runLifecycleAction() {
       color="warning"
       variant="soft"
       title="Admin access required"
-      description="This event is visible, but the current actor does not have event-admin capabilities for its operational workspace."
+      description="You can see this event, but only its admins can use these tools."
     />
 
     <template v-else-if="currentEvent">

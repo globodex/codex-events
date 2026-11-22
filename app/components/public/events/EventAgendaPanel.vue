@@ -7,7 +7,6 @@ import {
 
 const props = defineProps<{
   agendaItems: PublicEventAgendaItem[]
-  program?: { itemId: string, href: string }
 }>()
 
 const sortedAgendaItems = computed(() =>
@@ -115,15 +114,7 @@ const agendaTimeChipClasses = 'flex min-w-0 items-center justify-center rounded-
                   </span>
                 </div>
 
-                <NuxtLink
-                  v-if="program?.itemId === item.id"
-                  :to="program.href"
-                  class="inline-flex items-center gap-2 rounded-sm text-[17px] font-semibold tracking-[-0.02em] text-highlighted underline-offset-4 hover:underline dark:text-white"
-                >
-                  {{ item.title }}
-                  <AppIcon name="i-lucide-arrow-right" class="size-4" aria-hidden="true" />
-                </NuxtLink>
-                <p v-else class="text-[17px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
+                <p class="text-[17px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
                   {{ item.title }}
                 </p>
                 <p

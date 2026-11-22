@@ -100,7 +100,7 @@ const shouldShowDescriptionToggle = computed(() =>
           variant="solid"
           size="sm"
           trailing-icon="i-lucide-arrow-right"
-          class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+          class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
         >
           {{ props.item.actionLabel ?? 'Open' }}
         </AppButton>

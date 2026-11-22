@@ -144,11 +144,15 @@ const participantSummaryGridClass = computed(() =>
 
 <template>
   <div class="space-y-4">
+    <!--
+      A phone shows only the "Checked in" card, so the search box and the first people fit on the
+      first screen. The filter buttons below show the other counts.
+    -->
     <div
-      class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4"
+      class="grid gap-3 sm:grid-cols-4 sm:gap-4"
       :class="participantSummaryGridClass"
     >
-      <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:px-5 sm:py-5">
+      <div class="hidden rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:block sm:px-5 sm:py-5">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Awaiting review
         </p>
@@ -157,7 +161,7 @@ const participantSummaryGridClass = computed(() =>
         </p>
       </div>
 
-      <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:px-5 sm:py-5">
+      <div class="hidden rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:block sm:px-5 sm:py-5">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Approved
         </p>
@@ -181,7 +185,7 @@ const participantSummaryGridClass = computed(() =>
         </p>
       </div>
 
-      <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:px-5 sm:py-5">
+      <div class="hidden rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:block sm:px-5 sm:py-5">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Rejected
         </p>
@@ -190,7 +194,7 @@ const participantSummaryGridClass = computed(() =>
         </p>
       </div>
 
-      <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:px-5 sm:py-5">
+      <div class="hidden rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:block sm:px-5 sm:py-5">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Withdrawn
         </p>
@@ -201,7 +205,7 @@ const participantSummaryGridClass = computed(() =>
 
       <div
         v-if="participantsLimitSummary"
-        class="col-span-2 rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:col-span-4 sm:px-5 sm:py-5 xl:col-span-1"
+        class="hidden rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:col-span-4 sm:block sm:px-5 sm:py-5 xl:col-span-1"
       >
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Participants limit

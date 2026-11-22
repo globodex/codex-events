@@ -136,17 +136,35 @@ export async function createEventFloorPlan(h3Event: H3Event, eventId: string) {
   return serializeFloorPlan(plan)
 }
 
+/**
+ * SQL joins that list the rooms named by the sessions of a program, as rows called `place`.
+ * Write them after `from` or `join`.
+ *
+ * A session names up to two rooms: its room, and its room for checked-in participants
+ * (`afterCheckIn`). Every session gives two rows. `place.value` is `{ floorPlanId, roomId }`,
+ * or JSON null where the session names no room.
+ *
+ * Every rule about session rooms reads them through these joins, so both rooms follow it.
+ */
+export function sessionRoomJoins(tracksJson: string | typeof eventAgendaPrograms.tracksJson) {
+  return sql`json_each(${tracksJson}) as track
+    join json_each(track.value, '$.sessions') as session
+    join json_each(json_array(
+      json_extract(session.value, '$.room'),
+      json_extract(session.value, '$.afterCheckIn.room')
+    )) as place`
+}
+
 function noRemovedRoomsInProgram(eventId: string, floorPlanId: string, roomsJson: string) {
   return sql`not exists (
     select 1
     from ${eventAgendaPrograms}
-    join json_each(${eventAgendaPrograms.tracksJson}) as track
-    join json_each(track.value, '$.sessions') as session
+    join ${sessionRoomJoins(eventAgendaPrograms.tracksJson)}
     where ${eventAgendaPrograms.eventId} = ${eventId}
-      and json_extract(session.value, '$.room.floorPlanId') = ${floorPlanId}
+      and json_extract(place.value, '$.floorPlanId') = ${floorPlanId}
       and not exists (
         select 1 from json_each(${roomsJson}) as room
-        where json_extract(room.value, '$.id') = json_extract(session.value, '$.room.roomId')
+        where json_extract(room.value, '$.id') = json_extract(place.value, '$.roomId')
       )
   )`
 }

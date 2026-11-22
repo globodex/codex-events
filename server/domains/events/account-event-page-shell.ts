@@ -21,7 +21,6 @@ import {
   hasEventPhotos,
   mayAddParticipantPhotos
 } from '#server/domains/events/photos'
-import { findEventProgramItemId } from '#server/domains/events/program'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { getOwnTalkProposal } from '#server/domains/talk-proposals'
 import { parseCustomQuestionsJson } from '#shared/domains/events/custom-questions'
@@ -66,10 +65,8 @@ export async function loadAccountEventPageShell(
   context: AccountEventPageContext
 ): Promise<AccountEventPageShell> {
   const photoViewer = getEventPhotoViewer(context.authorization)
-  const accessPromise = getAccountEventPageAccess(context)
   const [
     access,
-    programItemId,
     tracks,
     imageOptions,
     galleryExists,
@@ -78,13 +75,7 @@ export async function loadAccountEventPageShell(
     creditInventory,
     talkProposal
   ] = await Promise.all([
-    accessPromise,
-    accessPromise.then(({ application }) => {
-      if (context.authorization.isEventAdmin || application?.status === 'approved') {
-        return findEventProgramItemId(context.database, context.event.id)
-      }
-      return null
-    }),
+    getAccountEventPageAccess(context),
     listEventTracks(context.database, context.event.id),
     getEventDisplayImageOptions(context.database),
     hasEventPhotos(context.database, context.event.id, photoViewer),
@@ -116,12 +107,10 @@ export async function loadAccountEventPageShell(
   const canViewRestrictedDetails = context.authorization.isPlatformAdmin
     || context.authorization.explicitRole !== null
     || application?.status === 'approved'
-  const serializedEvent = serializeAccountEvent(context.event, tracks, imageOptions)
+  const serializedEvent = serializeAccountEvent(context.event, tracks, imageOptions, context.authorization, application)
   const event: AccountEventEntryEvent = {
     ...serializedEvent,
-    programItemId,
     address: canViewRestrictedDetails ? context.event.address : '',
-    tracks: serializedEvent.tracks ?? [],
     discordServerUrl: canViewRestrictedDetails ? context.event.discordServerUrl : null,
     slidesUrl: canViewRestrictedDetails ? context.event.slidesUrl : null,
     simplifiedClaimingEnabled: context.event.simplifiedClaimingEnabled,

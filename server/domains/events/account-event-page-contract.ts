@@ -1,4 +1,4 @@
-import { getQuery, type H3Event } from 'h3'
+import type { H3Event } from 'h3'
 import { z } from 'zod'
 
 import { apiData } from '#server/http/api-response'
@@ -8,7 +8,7 @@ import {
   type JudgeAssignmentAuthorization
 } from '#server/auth/authorization'
 import { measureRequestPhase } from '#server/http/request-timing'
-import { validateWithSchema } from '#server/http/validation'
+import { parseValidatedQuery } from '#server/http/validation'
 import { routeSlugParamsSchema } from '#server/domains/events'
 import {
   accountEventPageNames,
@@ -46,7 +46,7 @@ export const accountEventPageQuerySchema = z.object({
   participantSearch: z.string().trim().min(1).max(participantSearchMaxLength).optional(),
   participantRows: z.coerce.number().int().min(participantListStep).max(participantListMaxRows).optional(),
   includeAdminEventConfiguration: z.coerce.boolean().optional(),
-  includeEventShell: z.coerce.boolean().optional()
+  includeEventShell: z.union([z.boolean(), z.stringbool({ truthy: ['true'], falsy: ['false'] })]).optional()
 }).passthrough()
 
 export type AccountEventPageEvent = Pick<
@@ -149,7 +149,7 @@ export async function executeAccountEventPageRoute<
     page: definition.page
   })
   const query = normalizeAccountEventPageQuery(
-    validateWithSchema(accountEventPageQuerySchema, getQuery(h3Event), 'query')
+    parseValidatedQuery(h3Event, accountEventPageQuerySchema)
   )
   const context = await resolveAccountEventPageContext(h3Event, params.slug)
   await measureRequestPhase(h3Event, 'authorization', () => definition.authorize(context))

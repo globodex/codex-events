@@ -4,13 +4,13 @@ Feature: Next step after check-in
 
   Scenario: Confirmed participant is told to check in and can open the agenda
     Given I open my event page of "check-in-flow-fixture-event" as "judge"
-    Then my next step should be to check in at the entrance
+    Then my next step should be to check in with the event team
     When I open the agenda from my next step
     Then I should see the agenda session "Kickoff"
 
   Scenario: Participant answers the event questions after a staff check-in
     Given I open my event page of "check-in-flow-fixture-event" as "regular_user"
-    Then my next step should be to check in at the entrance
+    Then my next step should be to check in with the event team
     When I confirm my check-in
     Then I should be told that my check-in is not recorded yet
     When the event team checks me in

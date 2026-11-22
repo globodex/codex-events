@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { EventChallenge } from '#shared/domains/events/challenges'
 import type { EventFloorPlan, EventProgram, ProgramTrack } from '#shared/domains/events/program'
 import type { EventAgendaItem } from '~/domains/events/records'
 
@@ -12,6 +13,8 @@ const props = defineProps<{
   agendaItems: EventAgendaItem[]
   program: EventProgram | null
   floorPlans: EventFloorPlan[]
+  /** The saved challenges of the event, drafts included. A room of a floor plan can name one of them. */
+  challenges: Pick<EventChallenge, 'id' | 'title' | 'isPublished'>[]
   saving: boolean
   saveError: string
 }>()
@@ -181,6 +184,7 @@ function remove() {
     <AdminBuilderFloorPlans
       :event-id="eventId"
       :plans="floorPlans"
+      :challenges="challenges"
       @updated="emit('floorUpdated', $event)"
     />
   </div>

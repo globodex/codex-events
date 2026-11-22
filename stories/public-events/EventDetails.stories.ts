@@ -4,30 +4,30 @@ import EventAgendaPanel from '~/components/public/events/EventAgendaPanel.vue'
 import EventOverviewPanel from '~/components/public/events/EventOverviewPanel.vue'
 import EventTalkProposalCallout from '~/components/public/events/EventTalkProposalCallout.vue'
 import EventTimeline from '~/components/public/events/EventTimeline.vue'
+import EventTracksPanel from '~/components/public/events/organisms/EventTracksPanel.vue'
 import { dayFromToday, publicBuildDay } from './fixtures/build-day'
 
 const meta = {
-  title: 'Public/Event/Details layout',
+  title: 'Public/Event/Overview layout',
   tags: ['!autodocs'],
   render: () => ({
-    components: { EventOverviewPanel, EventAgendaPanel, EventTalkProposalCallout, EventTimeline },
+    components: { EventOverviewPanel, EventAgendaPanel, EventTalkProposalCallout, EventTimeline, EventTracksPanel },
     setup: () => ({
       event: publicBuildDay,
       opensAt: dayFromToday(-3),
       closesAt: dayFromToday(8)
     }),
     template: `
-      <div class="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div class="space-y-6">
-          <EventOverviewPanel :description="event.description" />
-          <EventTalkProposalCallout
-            :opens-at="opensAt"
-            :closes-at="closesAt"
-            action-href="/account/events/storybook-build-day?tab=call-for-talks"
-          />
-          <EventAgendaPanel :agenda-items="event.agendaItems" />
-        </div>
-        <EventTimeline :event="event" show-address />
+      <div class="mx-auto max-w-[68rem] space-y-7">
+        <EventTalkProposalCallout
+          :opens-at="opensAt"
+          :closes-at="closesAt"
+          action-href="/account/events/storybook-build-day?tab=call-for-talks"
+        />
+        <EventOverviewPanel :description="event.description" />
+        <EventTimeline :event="event" />
+        <EventTracksPanel :event-type="event.eventType" :tracks="event.tracks ?? []" />
+        <EventAgendaPanel :agenda-items="event.agendaItems" />
       </div>
     `
   })
