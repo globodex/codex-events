@@ -11,6 +11,8 @@ import type { EventBalanceScoringInput } from '#shared/domains/events/builder-sc
 import { computeEventBalance } from '#shared/domains/events/builder-scoring'
 import type { EventBuilderApplicationFieldKey, EventBuilderTemplate } from '#shared/domains/events/builder-templates'
 import { eventBuilderApplicationFieldKeys } from '#shared/domains/events/builder-templates'
+import { eventChallengesSchema } from '#shared/domains/events/challenges'
+import { customQuestionsSchema } from '#shared/domains/events/custom-questions'
 import type { EventFormAgendaItem, EventFormState } from '~/domains/events/admin-event'
 import {
   createEmptyEventFormState,
@@ -519,6 +521,78 @@ export interface EventBuilderChecklistItem {
   fieldRef?: string
 }
 
+/** The element id of the title field of a challenge in the builder. The checklist focuses it. */
+export const eventBuilderChallengeTitleIdPrefix = 'event-builder-challenge-title-'
+/** The element id of the text field of a question in the builder. The checklist focuses it. */
+export const eventBuilderQuestionIdPrefix = 'event-builder-question-'
+
+/**
+ * The checklist line for the first entry of an organizer-written list that cannot be saved yet,
+ * for example "Challenge 2: Add a title." Returns null when the whole list can be saved.
+ *
+ * The list schema owns the rules and the wording of every problem. A problem of one entry has a
+ * path that starts with the position of the entry in the list.
+ */
+function getUnfinishedEntryChecklistItem(list: {
+  checklistId: string
+  /** What the organizer calls one entry, for example "Challenge". */
+  entryName: string
+  entries: Array<{ id: string }>
+  schema: z.ZodTypeAny
+  /** The element id of an entry's first field: this prefix followed by the entry id. */
+  fieldIdPrefix: string
+}): EventBuilderChecklistItem | null {
+  const result = list.schema.safeParse(list.entries)
+
+  if (result.success) {
+    return null
+  }
+
+  const problem = result.error.issues[0]!
+  const position = problem.path[0]
+
+  // A problem of the list itself, for example too many entries, points at no entry.
+  if (typeof position !== 'number') {
+    return { id: list.checklistId, label: problem.message, complete: false }
+  }
+
+  return {
+    id: list.checklistId,
+    label: `${list.entryName} ${position + 1}: ${problem.message}`,
+    complete: false,
+    fieldRef: `${list.fieldIdPrefix}${list.entries[position]!.id}`
+  }
+}
+
+/**
+ * Checklist lines for what the organizer wrote in "More settings" and has not finished: an
+ * incomplete challenge, and an incomplete question for after check-in. The save button stays
+ * off while the checklist has an open line, so the event is never sent with such an entry.
+ *
+ * This is the one place that tells the organizer about unfinished list entries.
+ */
+function getUnfinishedEntryChecklistItems(form: EventFormState) {
+  return [
+    getUnfinishedEntryChecklistItem({
+      checklistId: 'challenges',
+      entryName: 'Challenge',
+      entries: form.challenges,
+      schema: eventChallengesSchema,
+      fieldIdPrefix: eventBuilderChallengeTitleIdPrefix
+    }),
+    // The questions are sent only while the next step is on (see `buildPatchBody` in `useEventBuilder`).
+    form.checkInFlowEnabled
+      ? getUnfinishedEntryChecklistItem({
+          checklistId: 'questionnaire-questions',
+          entryName: 'Question',
+          entries: form.questionnaireQuestions,
+          schema: customQuestionsSchema,
+          fieldIdPrefix: eventBuilderQuestionIdPrefix
+        })
+      : null
+  ].filter(item => item !== null)
+}
+
 export function getBuilderChecklist(state: EventBuilderState): EventBuilderChecklistItem[] {
   const basics = buildEventBuilderBasicsInput(state)
   const parsed = eventBuilderBasicsSchema.safeParse(basics)
@@ -574,6 +648,8 @@ export function getBuilderChecklist(state: EventBuilderState): EventBuilderCheck
     })
   }
 
+  items.push(...getUnfinishedEntryChecklistItems(state.form))
+
   return items
 }
 
@@ -589,6 +665,7 @@ export type EventBuilderSettingsGroupId
     | 'luma-sync'
     | 'credits'
     | 'after-check-in'
+    | 'challenges'
     | 'images'
     | 'terms'
 
@@ -736,6 +813,17 @@ export const eventBuilderSettingsGroupDefinitions: readonly EventBuilderSettings
     // These settings are saved with an event update, so the group needs an existing event.
     editOnly: true,
     isComplete: form => form.checkInFlowEnabled
+  },
+  {
+    id: 'challenges',
+    icon: 'i-lucide-target',
+    title: 'Challenges',
+    description: 'Practical tasks for participants. They read published challenges after check-in.',
+    appliesTo: allTypes,
+    parity: false,
+    // Challenges are saved with an event update, so the group needs an existing event.
+    editOnly: true,
+    isComplete: form => form.challenges.some(challenge => challenge.isPublished)
   },
   {
     id: 'images',

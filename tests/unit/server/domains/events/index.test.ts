@@ -65,6 +65,7 @@ function buildEventRecord(
     talkProposalQuestionsRevision: 0,
     checkInFlowEnabled: false,
     questionnaireQuestionsJson: '[]',
+    challengesJson: '[]',
     inPersonEvent: false,
     applicationXProfileVisible: true,
     applicationLinkedinProfileVisible: true,

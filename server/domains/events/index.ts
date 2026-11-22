@@ -52,6 +52,7 @@ import {
   parseCustomQuestionsJson,
   customQuestionsSchema
 } from '#shared/domains/events/custom-questions'
+import { eventChallengesSchema, parseEventChallengesJson } from '#shared/domains/events/challenges'
 
 const isoTimestampSchema = z.string().refine(
   value => !Number.isNaN(Date.parse(value)),
@@ -572,6 +573,7 @@ export const updateEventBodySchema = z.object({
   talkProposalQuestions: customQuestionsSchema.optional(),
   checkInFlowEnabled: checkInFlowEnabledSchema.optional(),
   questionnaireQuestions: customQuestionsSchema.optional(),
+  challenges: eventChallengesSchema.optional(),
   blindReviewCount: blindReviewCountSchema.optional(),
   pitchReviewEnabled: pitchReviewEnabledSchema.optional(),
   blindScoreWeightPercent: blindScoreWeightPercentSchema.optional(),
@@ -1632,6 +1634,7 @@ export function buildEventUpdatePayload(
     talkProposalQuestionsJson?: string
     talkProposalQuestionsRevision?: SQL<unknown>
     questionnaireQuestionsJson?: string
+    challengesJson?: string
   } = {
     ...patch
   }
@@ -1657,6 +1660,11 @@ export function buildEventUpdatePayload(
   if (normalizedPatch.questionnaireQuestions !== undefined) {
     normalizedPatch.questionnaireQuestionsJson = JSON.stringify(normalizedPatch.questionnaireQuestions)
     Reflect.deleteProperty(normalizedPatch, 'questionnaireQuestions')
+  }
+
+  if (normalizedPatch.challenges !== undefined) {
+    normalizedPatch.challengesJson = JSON.stringify(normalizedPatch.challenges)
+    Reflect.deleteProperty(normalizedPatch, 'challenges')
   }
 
   if (existingEvent.eventType !== 'hackathon') {
@@ -2374,6 +2382,8 @@ export function serializeAdminEvent(
     talkProposalQuestionsRevision: event.talkProposalQuestionsRevision,
     checkInFlowEnabled: event.checkInFlowEnabled,
     questionnaireQuestions: parseCustomQuestionsJson(event.questionnaireQuestionsJson),
+    // Every challenge, drafts included. Only the admin event carries drafts.
+    challenges: parseEventChallengesJson(event.challengesJson),
     slidesUrl: event.slidesUrl,
     lumaApiKey: event.lumaApiKey,
     lumaWebhookStatus: event.lumaWebhookStatus,

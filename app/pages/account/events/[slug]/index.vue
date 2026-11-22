@@ -66,6 +66,7 @@ import {
   LazyAccountEventsAccountEventRoleRosterPanel as LazyAccountEventRoleRosterPanel,
   LazyAccountEventsAccountEventTalkProposalPanel as LazyAccountEventTalkProposalPanel,
   LazyAccountEventsAccountEventTalkProposalReviewPanel as LazyAccountEventTalkProposalReviewPanel,
+  LazyAccountEventsOrganismsAccountEventChallengesPanel as LazyAccountEventChallengesPanel,
   LazyAccountEventsOrganismsAccountEventTracksPanel as LazyAccountEventTracksPanel,
   LazyPublicEventsEventAgendaPanel as LazyEventAgendaPanel,
   LazyPublicEventsEventPrizeList as LazyEventPrizeList,
@@ -85,6 +86,7 @@ import {
 import {
   canAccessAccountEventWorkspace,
   accountEventWorkspaceTabs,
+  getAccountEventPageForTab,
   getAccountEventWorkspaceBackLink,
   getAccountEventTabLabel,
   resolveAccountEventScopedId,
@@ -160,9 +162,10 @@ const requestedWorkspaceTab = computed<AccountEventWorkspaceTab>(() => {
     ? normalizedTab as AccountEventWorkspaceTab
     : 'overview'
 })
+// A direct link to a tab that the entry page does not feed loads that tab's own page instead.
 const isDirectNonEntryNavigation = computed(() =>
   Boolean(requestedTab.value)
-  && !['overview', 'credits', 'details', 'call-for-talks'].includes(requestedWorkspaceTab.value)
+  && getAccountEventPageForTab(requestedWorkspaceTab.value) !== 'entry'
 )
 const entryPageRequest = useAccountEventPageRequest<AccountEventEntryPage>(slug, 'entry', {
   enabled: () => !isDirectNonEntryNavigation.value,
@@ -812,6 +815,10 @@ const participantActivities = computed(() => {
 
   if (availableTabs.value.includes('credits')) {
     activities.push({ label: 'Credits', to: `/account/events/${slug.value}?tab=credits` })
+  }
+
+  if (availableTabs.value.includes('challenges')) {
+    activities.push({ label: 'Challenges', to: `/account/events/${slug.value}?tab=challenges` })
   }
 
   return activities
@@ -1870,6 +1877,15 @@ useSeoMeta({
         >
           Loading agenda…
         </p>
+      </section>
+
+      <section
+        v-else-if="activeSection === 'challenges'"
+        id="account-tab-panel-challenges"
+        role="tabpanel"
+        aria-labelledby="account-tab-challenges"
+      >
+        <LazyAccountEventChallengesPanel :challenges="entryPage?.challenges ?? []" />
       </section>
 
       <section

@@ -106,7 +106,7 @@ BDD and the local load runner use four stable personas defined in source:
 | --- | --- | --- |
 | `platform_admin` | `platform-admin@bdd.codex-events.test` | Platform admin |
 | `event_admin` | `event-admin@bdd.codex-events.test` | Event admin for fixture events |
-| `judge` | `judge@bdd.codex-events.test` | Judge for fixture events; event staff for the staff check-in fixture event; confirmed participant of the check-in flow fixture event and the two credit claim fixture events |
+| `judge` | `judge@bdd.codex-events.test` | Judge for fixture events; event staff for the staff check-in fixture event; confirmed participant of the check-in flow fixture event, the two credit claim fixture events, and the challenges fixture event |
 | `regular_user` | `regular-user@bdd.codex-events.test` | No administrative role |
 
 Each identity subject has the form:
@@ -287,6 +287,23 @@ state.
   an offer. Browser scenarios run on dedicated fixture events and cover a
   claim opened from the next step, the Credits tab of a participant who has
   not finished the check-in flow, and an offer with no credits left.
+- Challenge coverage includes saving a challenge list for every event type,
+  a list with too many challenges, a link that is not `https`, a challenge
+  without a title, and refusal for staff, judges, and participants; the event
+  page content for a confirmed participant before check-in, with an open
+  questionnaire, and after finishing the check-in flow, where it holds the
+  published challenges only and needs no credit claim; an event with its
+  check-in flow off; an event with only draft challenges; event staff, event
+  admins, and judges; a pending registration and a user without a
+  registration; the direct-link event shell; and the admin event of the
+  settings page and of the event page, which carries drafts for the event
+  builder. Unit tests cover the builder checklist lines for an unfinished
+  challenge and an unfinished questionnaire question, and a settings form
+  save that sends neither challenges nor the check-in flow settings, which
+  only the event builder edits. Browser scenarios run on dedicated fixture
+  events and cover an organizer publishing a challenge in the event builder,
+  a participant opening Challenges from the next step, and a participant
+  without the Challenges tab before check-in.
 
 Structured operation coverage uses a fresh generated-schema module and an
 instrumented `z.fromJSONSchema` constructor. It verifies that module import

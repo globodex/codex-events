@@ -186,6 +186,8 @@ export const events = sqliteTable(
     // flow is on and it has at least one question (`eventHasQuestionnaire`).
     checkInFlowEnabled: integer('check_in_flow_enabled', { mode: 'boolean' }).notNull().default(false),
     questionnaireQuestionsJson: text('questionnaire_questions_json').notNull().default('[]'),
+    // The event's challenges, drafts included, in display order (`eventChallengesSchema`).
+    challengesJson: text('challenges_json').notNull().default('[]'),
     state: text('state', { enum: eventStates }).notNull().default('draft'),
     hiddenAt: text('hidden_at'),
     hiddenByUserId: text('hidden_by_user_id').references(() => users.id),

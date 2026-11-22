@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { eventChallengesSchema } from '#shared/domains/events/challenges'
 import { customQuestionsSchema } from '#shared/domains/events/custom-questions'
 
 const eventTypeSchema = z.enum(['hackathon', 'meetup', 'build'])
@@ -108,6 +109,10 @@ export const accountEventSettingsEventSchema = z.object({
   talkProposalQuestionsRevision: z.number().int().nonnegative(),
   checkInFlowEnabled: z.boolean(),
   questionnaireQuestions: customQuestionsSchema,
+  // Every challenge, drafts included. The event builder fills its challenge editor from this
+  // field and sends the list back when it saves, so the field must stay in this schema: without
+  // it a save in the builder would remove the stored challenges.
+  challenges: eventChallengesSchema,
   blindReviewCount: z.number().int(),
   pitchReviewEnabled: z.boolean(),
   blindScoreWeightPercent: z.number().int(),

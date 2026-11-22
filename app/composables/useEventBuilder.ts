@@ -246,7 +246,18 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
   }
 
   function buildPatchBody() {
-    return buildEventConfigurationPatch(toEventBuilderFormState(state), state.form.eventType)
+    const form = toEventBuilderFormState(state)
+
+    // The settings below have an editor only in the builder, so only the builder sends them.
+    // A save from the settings form sends none of them, and the event keeps what it has stored.
+    return {
+      ...buildEventConfigurationPatch(form, form.eventType),
+      checkInFlowEnabled: form.checkInFlowEnabled,
+      // The question editor is hidden while the switch is off. The questions are not sent then, so
+      // the event keeps its stored questions and an unfinished hidden question cannot block the save.
+      ...(form.checkInFlowEnabled ? { questionnaireQuestions: form.questionnaireQuestions } : {}),
+      challenges: form.challenges
+    }
   }
 
   return {

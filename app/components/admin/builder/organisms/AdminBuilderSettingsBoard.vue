@@ -18,6 +18,7 @@ import AccountEventAdminTermsCard from '~/components/account/events/AccountEvent
 import EventConfigProgramIdentitySection from '~/components/admin/EventConfigProgramIdentitySection.vue'
 import EventTalkProposalControl from '~/components/admin/EventTalkProposalControl.vue'
 import AdminCustomQuestionEditor from '~/components/admin/organisms/AdminCustomQuestionEditor.vue'
+import AdminBuilderChallengesEditor from '~/components/admin/builder/organisms/AdminBuilderChallengesEditor.vue'
 import AdminBuilderLumaConnection from '~/components/admin/builder/organisms/AdminBuilderLumaConnection.vue'
 import AdminBuilderCreditsSection from '~/components/admin/builder/organisms/AdminBuilderCreditsSection.vue'
 import AdminBuilderCreditsInfoDialog from '~/components/admin/builder/molecules/AdminBuilderCreditsInfoDialog.vue'
@@ -642,6 +643,14 @@ function groupById(id: string) {
             variant="builder"
           />
         </div>
+      </AdminBuilderSettingsGroupCard>
+
+      <AdminBuilderSettingsGroupCard
+        v-if="groupById('challenges')"
+        :group="groupById('challenges')!"
+        :complete="groupById('challenges')!.isComplete(form, event)"
+      >
+        <AdminBuilderChallengesEditor v-model="form.challenges" />
       </AdminBuilderSettingsGroupCard>
 
       <AdminBuilderSettingsGroupCard

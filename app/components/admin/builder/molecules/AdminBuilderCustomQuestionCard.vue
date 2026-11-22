@@ -4,6 +4,7 @@ import type {
   CustomQuestionType
 } from '#shared/domains/events/custom-questions'
 import AdminBuilderTrackRow from '~/components/admin/builder/molecules/AdminBuilderTrackRow.vue'
+import { eventBuilderQuestionIdPrefix } from '~/domains/events/builder'
 
 const props = defineProps<{
   question: CustomQuestionDefinition
@@ -17,6 +18,9 @@ const emit = defineEmits<{
   move: [direction: -1 | 1]
   remove: []
 }>()
+
+// The builder checklist focuses this field when the question is unfinished.
+const questionFieldId = computed(() => `${eventBuilderQuestionIdPrefix}${props.question.id}`)
 
 const questionTypeLabels: Record<CustomQuestionType, string> = {
   short_text: 'Short text',
@@ -68,11 +72,11 @@ function removeOption(optionIndex: number) {
     <div class="space-y-3 p-1.5">
       <div class="grid items-end gap-3 md:grid-cols-[minmax(0,1fr)_12rem_auto]">
         <AppFormField
-          :name="`event-builder-question-${props.question.id}`"
+          :name="questionFieldId"
           label="Question"
         >
           <AppInput
-            :id="`event-builder-question-${props.question.id}`"
+            :id="questionFieldId"
             :model-value="props.question.prompt"
             :disabled="props.locked"
             size="sm"

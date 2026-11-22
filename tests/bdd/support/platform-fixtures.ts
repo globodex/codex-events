@@ -53,6 +53,19 @@ const fixtureCheckInFlowProgramTracks = [
 ]
 const fixtureCreditClaimEventId = 'event_e2e_credit_claim_fixture'
 const fixtureCreditSoldOutEventId = 'event_e2e_credit_sold_out_fixture'
+const fixtureChallengesEventId = 'event_e2e_challenges_fixture'
+const fixtureChallengesBuilderEventId = 'event_e2e_challenges_builder_fixture'
+// The challenges of the challenges fixture event: one published with a resource, and one draft.
+const fixtureChallenges = [
+  {
+    id: 'ship-a-skill',
+    title: 'Ship a Codex skill',
+    instructions: 'Write **one** skill and share it with your table.',
+    resources: [{ label: 'Skill guide', url: 'https://example.com/skills' }],
+    isPublished: true
+  },
+  { id: 'unfinished-idea', title: 'Unfinished idea', instructions: 'Still being written.', resources: [], isPublished: false }
+]
 const fixtureParticipantTeamCreateEventId = 'event_e2e_participant_team_create_fixture'
 const fixtureParticipantTeamJoinEventId = 'event_e2e_participant_team_join_fixture'
 const fixtureParticipantTeamSoloEventId = 'event_e2e_participant_team_solo_fixture'
@@ -1321,6 +1334,30 @@ function buildFixtureSql(personas: StablePersona[]) {
       ('code_credit_claim_fixture_1', 'offer_credit_claim_fixture', 'BDD-CREDIT-CLAIM-1', null, null, ${sqlLiteral(fixtureTimestamp)}),
       ('code_credit_claim_fixture_2', 'offer_credit_claim_fixture', 'BDD-CREDIT-CLAIM-2', null, null, ${sqlLiteral(fixtureTimestamp)}),
       ('code_credit_sold_out_fixture', 'offer_credit_sold_out_fixture', 'BDD-CREDIT-SOLD-OUT', ${sqlLiteral(judgingParticipantTwoId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
+    // Two Build events for the challenge scenarios. The old created_at keeps them at the end of
+    // the public event list.
+    // 1. Check-in flow on, no questions, one published challenge and one draft. The regular user
+    //    is confirmed and checked in, so they read the challenges. The judge persona is confirmed
+    //    and not checked in, so they have no Challenges tab.
+    // 2. No challenges, with the agenda block the event builder needs before it saves. The event
+    //    admin persona manages it and publishes a challenge there.
+    `insert into events (
+      id, event_type, name, slug, description, city, country, address,
+      registration_opens_at, registration_closes_at, state, max_team_members,
+      agenda_items_json, check_in_flow_enabled, challenges_json,
+      created_by_user_id, created_at, updated_at
+    ) values
+      (${sqlLiteral(fixtureChallengesEventId)}, 'build', 'Challenges Fixture Build', 'challenges-fixture-event', 'Build fixture for reading challenges after check-in.', 'Vienna', 'Austria', 'Fixture Venue', '2020-01-01T00:00:00.000Z', '2030-01-01T00:00:00.000Z', 'registration_open', 1, '[]', 1, ${sqlLiteral(JSON.stringify(fixtureChallenges))}, ${sqlLiteral(eventAdminId)}, '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z'),
+      (${sqlLiteral(fixtureChallengesBuilderEventId)}, 'build', 'Challenges Builder Fixture Build', 'challenges-builder-fixture-event', 'Build fixture for publishing a challenge in the event builder.', 'Vienna', 'Austria', 'Fixture Venue', '2020-01-01T00:00:00.000Z', '2030-01-01T00:00:00.000Z', 'registration_open', 1, ${sqlLiteral(JSON.stringify(fixtureCheckInFlowAgendaItems))}, 0, '[]', ${sqlLiteral(eventAdminId)}, '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z')`,
+    `insert into event_role_assignments (
+      id, event_id, user_id, role, is_in_judge_pool, created_at
+    ) values
+      ('role_event_admin_challenges_builder_fixture', ${sqlLiteral(fixtureChallengesBuilderEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)})`,
+    `insert into user_applications (
+      id, event_id, user_id, status, submitted_at, checked_in_at, check_in_source, created_at, updated_at
+    ) values
+      ('application_challenges_fixture_regular_user', ${sqlLiteral(fixtureChallengesEventId)}, ${sqlLiteral(regularUserId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, 'staff', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('application_challenges_fixture_judge', ${sqlLiteral(fixtureChallengesEventId)}, ${sqlLiteral(judgeId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, null, null, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into event_terms_documents (
       id, event_id, document_type, version, title, content, published_at, created_at
     ) values

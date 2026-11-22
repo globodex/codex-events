@@ -264,6 +264,18 @@ Event credit permissions apply to every event type.
 
 Simplified redemption requires an authenticated platform account with current legal consent and an unused attendee email added by Luma check-in or approved CSV import; an event role alone grants no eligibility. A simplified-only offer is hidden from normal participant, staff, and admin Credits views and its generic claim operation is denied regardless of whether simplified claiming is currently enabled. Settings owns giveaway names, Markdown email instructions, code/link inventory, the redirect selection, attendee import, redemption link, QR, readiness, and sample email preview. Event admins can append unique rewards and merge approved attendees throughout claiming, while the first claim keeps the event slug, claiming setting, and selected redirect giveaway fixed.
 
+## Event Challenges
+
+Event challenge permissions apply to every event type.
+
+| Action | Approved User | Staff | Event Admin | Platform Admin |
+| --- | --- | --- | --- | --- |
+| Write, order, publish, and remove challenges | No | No | Yes | Yes |
+| Read published challenges in the account event workspace | Yes, after finishing the check-in flow | Yes | Yes | Yes |
+| Read draft challenges | No | No | Yes, in the event builder | Yes, in the event builder |
+
+No other actor receives challenge content. This includes a user with a submitted, rejected, or withdrawn application, an approved participant who has not finished the check-in flow, and a judge without an approved application.
+
 ## Event Photo Gallery
 
 | Action | Approved User | Staff | Judge | Event Admin | Platform Admin |
@@ -324,6 +336,7 @@ required-document changes take effect on the next MCP request.
 - Event admins and platform admins can view event-wide operational data.
 - The completed published-projects section includes only opted-in locked non-winning submissions and remains visually separate from the winners section.
 - The participant-facing teams directory remains visible to workspace users after team formation closes, but join actions remain state-gated.
+- Published event challenges are visible to staff, event admins, platform admins, and approved participants who finished the check-in flow. Draft challenges are visible only to event admins and platform admins.
 - Approved participants and event staff can view only their own claimed credit values.
 - Event admins and platform admins can view credit inventory and claim records for their events.
 - Event feedback results are visible only to judges, staff, event admins, and platform admins.

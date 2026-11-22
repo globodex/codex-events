@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { eventChallengesSchema, type EventChallenge } from '#shared/domains/events/challenges'
 import {
   customQuestionAnswersSchema,
   customQuestionDefinitionSchema
@@ -244,6 +245,7 @@ export const accountEventEntryTabs = [
   'prizes',
   'details',
   'program',
+  'challenges',
   'call-for-talks',
   'gallery',
   'feedback',
@@ -292,6 +294,9 @@ export interface AccountEventEntryPage {
   checkInFlowEnabled: boolean
   questionnaireQuestions: CustomQuestionDefinition[]
   questionnaireCompletedAt: string | null
+  // The published challenges that the caller may read, in display order. Empty for a caller who
+  // may not read them (see `canReadEventChallenges` in `shared/domains/events/challenges.ts`).
+  challenges: EventChallenge[]
 }
 
 const accountEventEntryAgendaItemSchema = z.object({
@@ -539,5 +544,6 @@ export const accountEventEntryPageSchema = z.object({
   lumaSyncStatus: accountOverviewLumaSyncStatusSchema,
   checkInFlowEnabled: z.boolean(),
   questionnaireQuestions: z.array(customQuestionDefinitionSchema),
-  questionnaireCompletedAt: z.string().nullable()
+  questionnaireCompletedAt: z.string().nullable(),
+  challenges: eventChallengesSchema
 })

@@ -9,6 +9,8 @@ export function buildAccountEventTabVisibility(input: {
   hasCreditInventory: boolean
   hasGallery: boolean
   hasProgram: boolean
+  /** The caller can read at least one published challenge (`listReadableEventChallenges`). */
+  hasReadableChallenges: boolean
   hasPublishedPrizes: boolean
   hasPublishedStaff: boolean
 }): AccountEventEntryTabVisibility {
@@ -20,6 +22,7 @@ export function buildAccountEventTabVisibility(input: {
     hasCreditInventory,
     hasGallery,
     hasProgram,
+    hasReadableChallenges,
     hasPublishedPrizes,
     hasPublishedStaff
   } = input
@@ -44,6 +47,10 @@ export function buildAccountEventTabVisibility(input: {
 
   if (hasProgram) {
     availableTabs.push('program')
+  }
+
+  if (hasReadableChallenges) {
+    availableTabs.push('challenges')
   }
 
   if (event.eventType === 'meetup' && event.talkProposalsEnabled && (

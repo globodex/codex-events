@@ -21,6 +21,7 @@ describe('getAccountEventTabAccess', () => {
       'prizes': 'prizes',
       'details': 'entry',
       'program': 'program',
+      'challenges': 'entry',
       'call-for-talks': 'entry',
       'gallery': 'gallery',
       'feedback': 'feedback',

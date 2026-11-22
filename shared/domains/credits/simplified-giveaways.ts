@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+// HTTPS, and no user name or password inside the link. The links of event challenges follow the
+// same rule (`shared/domains/events/challenges.ts`).
 export function isHttpsCouponUrl(value: string) {
   try {
     const url = new URL(value)

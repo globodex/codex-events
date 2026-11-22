@@ -156,7 +156,10 @@ describe('account-event page shell request topology', () => {
         simplifiedClaimingEnabled: false,
         talkProposalsEnabled: true,
         talkProposalQuestionsJson: '[]',
-        talkProposalQuestionsRevision: 0
+        talkProposalQuestionsRevision: 0,
+        checkInFlowEnabled: false,
+        questionnaireQuestionsJson: '[]',
+        challengesJson: '[]'
       }
     } as never
 

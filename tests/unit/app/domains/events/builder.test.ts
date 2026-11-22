@@ -405,6 +405,51 @@ describe('getBuilderChecklist', () => {
     expect(submission).toBeDefined()
     expect(submission!.complete).toBe(false)
   })
+
+  test('names the first unfinished challenge and what it lacks', () => {
+    const state = createEmptyEventBuilderState()
+    const finishedChallenge = { id: 'c1', title: 'Ship a skill', instructions: 'Build one skill.', resources: [], isPublished: true }
+    const findChallengeLine = () => getBuilderChecklist(state).find(item => item.id === 'challenges')
+
+    state.form.challenges = [finishedChallenge, { ...finishedChallenge, id: 'c2', title: ' ', isPublished: false }]
+
+    expect(findChallengeLine()).toEqual({
+      id: 'challenges',
+      label: 'Challenge 2: Add a title.',
+      complete: false,
+      fieldRef: 'event-builder-challenge-title-c2'
+    })
+
+    state.form.challenges = [{ ...finishedChallenge, resources: [{ label: 'Docs', url: 'http://example.com/docs' }] }]
+
+    expect(findChallengeLine()?.label).toBe('Challenge 1: Every resource needs a full link that starts with https://.')
+
+    state.form.challenges = [finishedChallenge]
+
+    expect(findChallengeLine()).toBeUndefined()
+  })
+
+  test('names an unfinished question for after check-in only while the next step is on', () => {
+    const state = createEmptyEventBuilderState()
+    const findQuestionLine = () => getBuilderChecklist(state).find(item => item.id === 'questionnaire-questions')
+
+    state.form.questionnaireQuestions = [
+      { id: 'q1', type: 'short_text', prompt: 'What do you build?', required: true, options: [] },
+      { id: 'q2', type: 'short_text', prompt: '', required: false, options: [] }
+    ]
+
+    // The questions are hidden and not saved while the next step is off.
+    expect(findQuestionLine()).toBeUndefined()
+
+    state.form.checkInFlowEnabled = true
+
+    expect(findQuestionLine()).toEqual({
+      id: 'questionnaire-questions',
+      label: 'Question 2: Write the question.',
+      complete: false,
+      fieldRef: 'event-builder-question-q2'
+    })
+  })
 })
 
 describe('templates + event type pruning', () => {

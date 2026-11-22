@@ -35,6 +35,7 @@ import {
   serializeAccountEvent,
   serializeAdminEvent
 } from '#server/domains/events'
+import { listReadableEventChallenges } from '#server/domains/events/challenges'
 import { hasEventPhotos } from '#server/domains/events/photos'
 import { findEventProgramItemId } from '#server/domains/events/program'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
@@ -428,6 +429,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
         : null,
       roles as EventRoleAssignmentRecord[]
     )
+    const challenges = listReadableEventChallenges({ event, authorization: context.authorization, application })
     const tabVisibility = buildAccountEventTabVisibility({
       event,
       authorization: context.authorization,
@@ -436,6 +438,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
       hasCreditInventory: credits.participantCredits.some(offer => offer.totalCount > 0),
       hasGallery: galleryExists,
       hasProgram: Boolean(programItemId),
+      hasReadableChallenges: challenges.length > 0,
       hasPublishedPrizes: Boolean(publishedPrize),
       hasPublishedStaff: Boolean(publishedStaffAssignment)
     })
@@ -460,7 +463,8 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
       lumaSyncStatus: application?.lumaSyncStatus ?? null,
       checkInFlowEnabled: event.checkInFlowEnabled,
       questionnaireQuestions: parseCustomQuestionsJson(event.questionnaireQuestionsJson),
-      questionnaireCompletedAt: application?.questionnaireCompletedAt ?? null
+      questionnaireCompletedAt: application?.questionnaireCompletedAt ?? null,
+      challenges
     }
   }
 })

@@ -16,9 +16,17 @@ export const customQuestionTypeSchema = z.enum(customQuestionTypes)
 export const customQuestionDefinitionSchema = z.object({
   id: z.string().trim().min(1).max(64).regex(/^[A-Za-z0-9][A-Za-z0-9_-]*$/),
   type: customQuestionTypeSchema,
-  prompt: z.string().trim().min(1).max(500),
+  // The messages tell the organizer what to fix. The event builder shows them in its checklist
+  // next to the position of the question, for example "Question 2: Write the question."
+  prompt: z.string().trim()
+    .min(1, 'Write the question.')
+    .max(500, 'Use a question of 500 characters or fewer.'),
   required: z.boolean(),
-  options: z.array(z.string().trim().min(1).max(200)).max(20).default([])
+  options: z.array(
+    z.string().trim()
+      .min(1, 'Fill in every choice.')
+      .max(200, 'Use choices of 200 characters or fewer.')
+  ).max(20).default([])
 }).superRefine((question, context) => {
   if (question.type === 'single_choice') {
     if (question.options.length < 2) {

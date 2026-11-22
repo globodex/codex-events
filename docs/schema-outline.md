@@ -123,6 +123,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `talk_proposal_questions_revision`
 - `check_in_flow_enabled`
 - `questionnaire_questions_json`
+- `challenges_json`
 - `state`
 - `hidden_at`
 - `hidden_by_user_id`
@@ -214,6 +215,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `talk_proposal_questions_json` is an ordered array with at most 20 definitions. Each definition has a stable `id`, `type`, `prompt`, `required`, and `options`; only `single_choice` uses options, and `acknowledgement` is always required.
 - Disabled Meetups and all non-Meetup events have `talk_proposals_enabled = false` with null talk-proposal timestamps.
 - `questionnaire_questions_json` is an ordered array with at most 20 definitions. The definitions follow the same rules as the definitions in `talk_proposal_questions_json`.
+- `challenges_json` is an ordered array with at most 20 challenges. Each challenge has an `id` that is unique in the array, a `title` of 1 to 120 characters, `instructions` of 1 to 4,000 characters, a `resources` array with at most 10 entries, and a boolean `isPublished`. Each resource has a `label` of 1 to 80 characters and a `url` of at most 2,048 characters that is a valid `https` URL without embedded credentials.
 
 ### Notes
 
@@ -240,6 +242,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `simplified_claiming_enabled` is available only for Meetups. It requires no application terms or required registration fields. Optional paired `luma_event_api_id` and `luma_api_key` credentials connect check-ins without approval/rejection sync. It uses the event slug for redemption and the giveaway with `redirect_on_claim = true` as the redirect destination.
 - `talk_proposals_enabled` defaults to false. `talk_proposal_questions_json` defaults to `[]`, and `talk_proposal_questions_revision` defaults to `0`. After the first `TalkProposal` exists for the event, the feature cannot be disabled and the question definition cannot change. Its closing timestamp can change until the event is completed.
 - `check_in_flow_enabled` defaults to false and is available for every event type. While it is true, the account event overview shows approved participants their next step around check-in. `questionnaire_questions_json` defaults to `[]`. The event has a questionnaire when `check_in_flow_enabled = true` and `questionnaire_questions_json` holds at least one definition. Both fields can change at any time; a change does not rewrite stored `questionnaire_answers_json` payloads.
+- `challenges_json` defaults to `[]` and is available for every event type. `instructions` holds Markdown. `isPublished = false` marks a draft that only the event builder shows. The array order is the display order. No other table stores challenge data, and no participant record refers to a challenge.
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
 - Application field visibility columns control whether each optional application field appears on the participant application form. First name and family name are always visible and required.
 - `require_x_profile`, `require_linkedin_profile`, `require_github_profile`, `require_chatgpt_email`, `require_openai_org_id`, `require_luma_profile`, `require_why_this_event`, `require_proof_of_execution`, `require_team_intent`, and `require_ai_knowledge` control whether the corresponding visible field is required.

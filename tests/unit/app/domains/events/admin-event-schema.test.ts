@@ -195,6 +195,19 @@ describe('event config form schema', () => {
     })
   })
 
+  test('leaves the builder-only settings out of configuration patches, so a save from the settings form keeps the stored ones', () => {
+    const patch = buildEventConfigurationPatch({
+      ...createValidEventFormState(),
+      checkInFlowEnabled: true,
+      questionnaireQuestions: [{ id: 'q1', type: 'short_text', prompt: 'What do you build?', required: true, options: [] }],
+      challenges: [{ id: 'c1', title: 'Ship a skill', instructions: 'Build one skill.', resources: [], isPublished: true }]
+    }, 'build')
+
+    expect(patch).not.toHaveProperty('checkInFlowEnabled')
+    expect(patch).not.toHaveProperty('questionnaireQuestions')
+    expect(patch).not.toHaveProperty('challenges')
+  })
+
   test('accepts configured submission tracks with markdown descriptions', () => {
     const result = eventConfigFormSchema.safeParse({
       ...createValidEventFormState(),

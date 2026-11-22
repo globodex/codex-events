@@ -87,8 +87,10 @@ Key characteristics:
 - In the event builder, moving an agenda block changes its scheduled time. Each block keeps its duration, and the spacing between schedule positions stays in place.
 - An event can attach a private program to one public agenda block. The program has named parallel tracks with scheduled sessions. A track can have gaps, and sessions can run at the same time in different tracks. Moving the public block moves its sessions by the same amount. Shortening or removing the block requires keeping its program valid or removing the program first.
 - Confirmed participants can open the Agenda tab before check-in. While the program runs, the tab marks the session in progress with the time left and shows when the next session starts.
-- Each event can turn on a check-in flow. The account event overview then shows a confirmed participant one next step: check in at the entrance, then answer the event questionnaire when the event has one, then open the event's activities. The activities are the agenda and, when the participant can open them, the event credits. The check-in flow is off by default, and a completed event shows no next step.
+- Each event can turn on a check-in flow. The account event overview then shows a confirmed participant one next step: check in at the entrance, then answer the event questionnaire when the event has one, then open the event's activities. The activities are the agenda and, when the participant can open them, the event credits and the event challenges. The check-in flow is off by default, and a completed event shows no next step.
 - An event has a questionnaire when its check-in flow is on and it has at least one questionnaire question. The questionnaire holds up to 20 ordered custom questions with the question types and rules of Call for talks questions. Event admins and platform admins can change the questions at any time. Turning the check-in flow off keeps the stored questions.
+- Each event can offer challenges: practical tasks that participants work on during the event. See `EventChallenge`.
+- The event builder saves an event only while its challenges are complete and, with the check-in flow on, its questionnaire questions are complete. Otherwise its checklist names the first incomplete entry and what it lacks, for example a challenge without a title or a question without its text.
 - Event admins can upload a static plan for each floor, name rooms, and mark their areas on the image. Participants can browse the floors and select a marked room on the map. A session can link to one room. Selecting the session opens the correct floor and highlights its room. An event admin can draw a route to a room on its floor plan, from where participants start to the room. Selecting that room, or a session held in it, shows the route with direction arrows.
 - Each event records its creation flow (`classic` or `builder`). Builder-created events open the event builder as their default editor while remaining fully editable in the classic form; the flow marker routes editors only and never changes how event data is interpreted.
 - Each event persists an Event Balance Score (0–100) with a meter breakdown, computed by a deterministic shared scoring engine from the event's own configuration (agenda pacing, energy, variety, return-intent signals, and quality checkpoints). The score is recomputed on every create and update for all events, is advisory guidance for organizers (it never blocks any action), and is visible to event admins and platform admins only.
@@ -212,6 +214,22 @@ Rules:
 - Removing a track clears that track from staff roster display for affected assignments.
 - Removing a track clears participant selected-track references for affected applications.
 - A track cannot be deleted once one or more submissions reference it.
+
+### EventChallenge
+
+A practical task that an event offers its participants to work on during the event.
+
+Rules:
+
+- Each challenge belongs to exactly one event. Every event type can have challenges, and an event can have at most 20.
+- A challenge has a title, Markdown instructions, and zero to ten resources. Each resource has a label and an `https` link without embedded credentials.
+- A challenge is a draft or published. A new challenge is a draft.
+- Challenges are ordered for admin editing and participant display.
+- Event admins and platform admins write, order, publish, and remove challenges in the event builder at any time. Every challenge needs a title and instructions, also while it is a draft.
+- Published challenges appear in the Challenges tab of the account event workspace. Staff, event admins, and platform admins read them in every event. An approved participant reads them after finishing the check-in flow. In an event with its check-in flow off, that is as soon as the participant has effective attendance.
+- The Challenges tab exists only for a person who can read the published challenges, and only when the event has at least one published challenge. Nobody else receives challenge content. Drafts appear only in the event builder.
+- Challenges are a list to read. The platform records nothing when a participant opens, picks, or completes a challenge.
+- Reading challenges does not depend on an event credit claim.
 
 ### EventPhoto
 
@@ -739,6 +757,7 @@ Scope:
 - A `User` can have many `UserApplication` records over time.
 - A `Event` can have many `UserApplication` records.
 - A `Event` can have many `EventTrack` records.
+- A `Event` can have up to 20 `EventChallenge` entries.
 - A `Event` can have many `Team` records.
 - A `Team` can have many `TeamMember` records.
 - A `Team` can have many `TeamJoinRequest` records.

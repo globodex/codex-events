@@ -1,5 +1,6 @@
 import type { EventState } from '~/domains/events/states'
 import type { EventBalanceBreakdown } from '#shared/domains/events/builder-scoring'
+import type { EventChallenge } from '#shared/domains/events/challenges'
 import type { CustomQuestionDefinition } from '#shared/domains/events/custom-questions'
 
 export interface TermsReference {
@@ -102,6 +103,8 @@ export interface EventRecord {
   checkInFlowEnabled?: boolean
   /** Present only in payloads for event admins. */
   questionnaireQuestions?: CustomQuestionDefinition[]
+  /** Every challenge, drafts included. Present only in payloads for event admins. */
+  challenges?: EventChallenge[]
   blindReviewCount: number
   pitchReviewEnabled: boolean
   blindScoreWeightPercent: number

@@ -15,6 +15,7 @@ import {
   listEventTracks,
   serializeAccountEvent
 } from '#server/domains/events'
+import { listReadableEventChallenges } from '#server/domains/events/challenges'
 import { hasEventPhotos } from '#server/domains/events/photos'
 import { findEventProgramItemId } from '#server/domains/events/program'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
@@ -130,6 +131,11 @@ export async function loadAccountEventPageShell(
     applicationStatus: application?.status ?? null,
     hasRetainedTalkProposal: Boolean(talkProposal),
     hasProgram: Boolean(programItemId),
+    hasReadableChallenges: listReadableEventChallenges({
+      event: context.event,
+      authorization: context.authorization,
+      application
+    }).length > 0,
     hasCreditInventory,
     hasGallery: galleryExists,
     hasPublishedPrizes: Boolean(publishedPrize),
