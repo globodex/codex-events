@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-11-22T21:51:00Z'
-updated_date: '2026-11-22T22:15:00Z'
+updated_date: '2026-11-22T22:31:00Z'
 labels: []
 milestone: m-3
 dependencies: []
@@ -96,6 +96,8 @@ Browser check, 2026-11-22: in the builder six checkboxes were ticked and saved (
 Validation, 2026-11-22: lint and typecheck passed, 768 integration tests, 135 + 1 browser tests, git diff --check clean. Unit tests: in the chain one test of tests/unit/server/domains/mcp/macro-tools.test.ts ran into its 5 second limit while other processes used the machine; alone it passes in 0.6 seconds, and a second full run passed with 723 tests. The chain ran while another agent's refactor (TASK-481) was in the working tree; that work is committed as 32abc39c.
 
 Found on the way, not changed: ESLint skips app/components/public/** and server/api/public/** because of an ignore pattern for folders named public. Both changed files there pass eslint with --no-ignore.
+
+Decision confirmed: on 2026-11-22 Alex answered 'Keep the field' to the question whether a block that has sessions should lose its description field. The description stays a field of every agenda block, and the public page shows it above the public sessions of the block.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
