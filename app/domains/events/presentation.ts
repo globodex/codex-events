@@ -47,13 +47,6 @@ export interface PublicAgendaItemPresentation {
   metaLabel: string
 }
 
-export interface PublicDateTimePresentation {
-  dayLabel: string
-  dateLabel: string
-  timeLabel: string
-  metaLabel: string
-}
-
 export interface PublicEventStatePresentation {
   label: string
   color: 'neutral' | 'info' | 'warning' | 'primary' | 'success'
@@ -415,21 +408,8 @@ export function formatEventCompactDate(value: string) {
   return compactDateFormatter.format(new Date(value))
 }
 
-export function getEventDateTimePresentation(value: string): PublicDateTimePresentation {
-  const date = new Date(value)
-  const dayLabel = weekdayFormatter.format(date)
-  const dateLabel = compactDateFormatter.format(date)
-  const timeLabel = timeFormatter.format(date)
-
-  return {
-    dayLabel,
-    dateLabel,
-    timeLabel,
-    metaLabel: `${dayLabel}, ${dateLabel} | ${timeLabel}`
-  }
-}
-
-export function describeEventWindowStatus(start: string, end: string, now = new Date()) {
+// Where a time window stands now. The state badge of an event uses it for the registration window.
+function describeEventWindowStatus(start: string, end: string, now = new Date()) {
   const startAt = new Date(start)
   const endAt = new Date(end)
 
@@ -444,39 +424,27 @@ export function describeEventWindowStatus(start: string, end: string, now = new 
   return 'Open now'
 }
 
-export function getEventWindowProgress(start: string, end: string, now = new Date()) {
-  const startAt = new Date(start).getTime()
-  const endAt = new Date(end).getTime()
-  const currentTime = now.getTime()
+/**
+ * The next registration deadline of an event in a few words, for the header of the public event
+ * page: "Registration opens Nov 21", "Registration closes Nov 28", "Registration closes at
+ * 09:30 AM" on the last day, and "Registration closed Nov 28" afterwards.
+ */
+export function describeRegistrationDeadline(opensAt: string, closesAt: string, now = new Date()) {
+  const closeTime = new Date(closesAt)
 
-  if (currentTime <= startAt) {
-    return 8
+  if (now < new Date(opensAt)) {
+    return `Registration opens ${formatEventCompactDate(opensAt)}`
   }
 
-  if (currentTime >= endAt || endAt <= startAt) {
-    return 100
+  if (now >= closeTime) {
+    return `Registration closed ${formatEventCompactDate(closesAt)}`
   }
 
-  return Math.max(8, Math.min(99, Math.round(((currentTime - startAt) / (endAt - startAt)) * 100)))
-}
-
-export function describeEventWindowNote(start: string, end: string, now = new Date()) {
-  const startAt = new Date(start)
-  const endAt = new Date(end)
-
-  if (now < startAt) {
-    return `Opens ${formatEventCompactDate(start)}`
+  if (isSameLocalDay(now, closeTime)) {
+    return `Registration closes at ${formatEventTime(closesAt)}`
   }
 
-  if (now >= endAt) {
-    return `Closed ${formatEventCompactDate(end)}`
-  }
-
-  if (isSameLocalDay(now, endAt)) {
-    return `Closes at ${formatEventTime(end)}`
-  }
-
-  return `Closes ${formatEventCompactDate(end)}`
+  return `Registration closes ${formatEventCompactDate(closesAt)}`
 }
 
 export function getEventEarliestStartAt(

@@ -14,6 +14,7 @@ import type {
   PublicPrize
 } from '~/domains/events/presentation'
 import {
+  describeRegistrationDeadline,
   formatEventHeaderSummary,
   formatEventTypeLabel,
   resolveEventDetailBackgroundImageUrl
@@ -157,6 +158,11 @@ const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
   : undefined)
 const detailSummary = computed(() => formatEventHeaderSummary(event.value))
+// While registration is the current state of the event, the header names its next deadline.
+const registrationDeadline = computed(() => event.value.state === 'registration_open'
+  ? describeRegistrationDeadline(event.value.registrationOpensAt, event.value.registrationClosesAt, now.value)
+  : null)
+const lumaEventUrl = computed(() => event.value.lumaEventUrl?.trim() || null)
 const eventTypeLabel = computed(() => formatEventTypeLabel(event.value.eventType))
 const primaryAction = computed(() =>
   resolvePublicEventPrimaryAction({
@@ -283,8 +289,21 @@ useSeoMeta({
               </div>
             </div>
 
-            <p class="text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-              {{ detailSummary }}
+            <p
+              data-testid="public-event-detail-summary"
+              class="text-[15px] text-neutral-700 dark:text-[#A3A3A3]"
+            >
+              {{ detailSummary }}<template v-if="registrationDeadline">
+                · {{ registrationDeadline }}
+              </template><template v-if="lumaEventUrl">
+                ·
+                <a
+                  :href="lumaEventUrl"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="font-medium text-highlighted underline-offset-4 hover:underline dark:text-white"
+                >Luma event</a>
+              </template>
             </p>
             <p
               v-if="workspaceAccess === 'error'"

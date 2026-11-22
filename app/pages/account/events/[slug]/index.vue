@@ -61,7 +61,7 @@ import {
   LazyPublicEventsEventAgendaPanel as LazyEventAgendaPanel,
   LazyPublicEventsEventPrizeList as LazyEventPrizeList,
   LazyPublicEventsEventPublishedProjectsShowcase as LazyEventPublishedProjectsShowcase,
-  LazyPublicEventsEventTimeline as LazyEventTimeline,
+  LazyPublicEventsEventDetailsCard as LazyEventDetailsCard,
   LazyPublicEventsEventWinnersShowcase as LazyEventWinnersShowcase
 } from '#components'
 import AccountEventParticipationRankNotice from '~/components/account/events/AccountEventParticipationRankNotice.vue'
@@ -1460,12 +1460,11 @@ useSeoMeta({
 
         <EventOverviewPanel :description="event.description" />
 
-        <LazyEventTimeline
+        <LazyEventDetailsCard
           :event="event"
           :discord-server-url="event.discordServerUrl ?? null"
           :slides-url="event.slidesUrl ?? null"
           :show-address="canViewRestrictedEventDetails"
-          hide-registration-window
         />
 
         <LazyAccountEventTracksPanel
@@ -1587,37 +1586,31 @@ useSeoMeta({
           :description="withdrawApplicationErrorMessage"
         />
 
-        <section
+        <!--
+          Withdrawing asks for a confirmation that names the consequence, so the page shows the
+          action only. A person who cannot withdraw any more reads the reason below the button.
+        -->
+        <div
           v-if="applicationStatus === 'submitted' || applicationStatus === 'approved'"
-          class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5"
+          class="flex flex-col items-start gap-2"
         >
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div class="space-y-2">
-              <p class="text-sm font-semibold text-highlighted dark:text-white">
-                Withdraw from this event
-              </p>
-              <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                {{ withdrawalDescription }}
-              </p>
-              <p
-                v-if="!withdrawApplicationAvailability.isAllowed && withdrawApplicationAvailability.reason"
-                class="text-sm text-neutral-600 dark:text-[#A3A3A3]"
-              >
-                {{ withdrawApplicationAvailability.reason }}
-              </p>
-            </div>
-
-            <AppButton
-              color="error"
-              variant="soft"
-              :loading="isWithdrawApplicationPending"
-              :disabled="!withdrawApplicationAvailability.isAllowed || isWithdrawApplicationPending"
-              @click="withdrawOwnApplication"
-            >
-              Withdraw participation
-            </AppButton>
-          </div>
-        </section>
+          <AppButton
+            color="error"
+            variant="ghost"
+            size="sm"
+            :loading="isWithdrawApplicationPending"
+            :disabled="!withdrawApplicationAvailability.isAllowed || isWithdrawApplicationPending"
+            @click="withdrawOwnApplication"
+          >
+            Withdraw from this event
+          </AppButton>
+          <p
+            v-if="!withdrawApplicationAvailability.isAllowed && withdrawApplicationAvailability.reason"
+            class="text-sm text-neutral-600 dark:text-[#A3A3A3]"
+          >
+            {{ withdrawApplicationAvailability.reason }}
+          </p>
+        </div>
       </section>
 
       <section

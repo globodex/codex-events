@@ -1,6 +1,5 @@
 <script setup lang="ts">
-// Shared bar-with-track meter. Extracts the idiom previously hand-rolled in
-// EventTimeline.vue and AccountEventFeedbackPanel.vue.
+// Shared bar-with-track meter.
 const props = withDefaults(defineProps<{
   value: number
   max?: number

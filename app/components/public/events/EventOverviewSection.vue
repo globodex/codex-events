@@ -3,7 +3,6 @@ import type { PublicEvent } from '~/domains/events/presentation'
 import EventAgendaPanel from './EventAgendaPanel.vue'
 import EventOverviewPanel from './EventOverviewPanel.vue'
 import EventTalkProposalCallout from './EventTalkProposalCallout.vue'
-import EventTimeline from './EventTimeline.vue'
 import EventTracksPanel from './organisms/EventTracksPanel.vue'
 
 defineProps<{
@@ -22,7 +21,6 @@ defineProps<{
       :action-label="talkProposalAction?.label"
     />
     <EventOverviewPanel :description="event.description" />
-    <EventTimeline :event="event" />
     <EventTracksPanel
       :event-type="event.eventType"
       :tracks="event.tracks ?? []"
