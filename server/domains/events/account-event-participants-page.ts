@@ -157,60 +157,33 @@ async function findParticipantApplicationIds(
     .map(registration => registration.applicationId)
 }
 
-/**
- * Reads rows of the participant list, newest first, at most `rowLimit`. With an application id,
- * only that registration is read.
- */
-function readParticipantRows(
-  database: AppDatabase,
-  eventId: string,
-  rows: { rowLimit: number, applicationId?: string }
-) {
-  return database
-    .select({
-      application: participantApplicationProjection,
-      user: participantUserProjection,
-      questionnaireAnswersJson: userApplications.questionnaireAnswersJson
-    })
-    .from(userApplications)
-    .innerJoin(users, eq(users.id, userApplications.userId))
-    .leftJoin(eventRoleAssignments, eventStaffRoleOfApplicant(eventId))
-    .where(and(
-      isParticipantRegistration(eventId),
-      // `and` leaves out `undefined`, so without an application id the whole list is read.
-      rows.applicationId ? eq(userApplications.id, rows.applicationId) : undefined
-    ))
-    .orderBy(...newestRegistrationFirst)
-    .limit(rows.rowLimit)
-}
-
-/** Reads the rows of the registrations that match the search text, one read per registration. */
-async function readMatchingParticipantRows(
-  database: AppDatabase,
-  eventId: string,
-  searchText: string
-) {
-  const applicationIds = await findParticipantApplicationIds(database, eventId, searchText)
-  const rowsOfEachApplication = await Promise.all(
-    applicationIds.map(applicationId => readParticipantRows(database, eventId, { rowLimit: 1, applicationId }))
-  )
-
-  // A registration that left the list between the two reads has no row.
-  return rowsOfEachApplication.flat()
-}
-
-/**
- * Lists the newest registrations of the event, at most `rowLimit`. With a search text, the
- * newest registrations that match it are listed instead, at most `searchResultLimit`.
- */
 async function listParticipantApplications(
   database: AppDatabase,
   eventId: string,
   list: { rowLimit: number, searchText?: string | null }
 ) {
-  const rows = list.searchText
-    ? await readMatchingParticipantRows(database, eventId, list.searchText)
-    : await readParticipantRows(database, eventId, { rowLimit: list.rowLimit })
+  const applicationIds = list.searchText
+    ? await findParticipantApplicationIds(database, eventId, list.searchText)
+    : null
+  const selectRows = database.select({
+    application: participantApplicationProjection,
+    user: participantUserProjection,
+    questionnaireAnswersJson: userApplications.questionnaireAnswersJson
+  })
+  // Start with the short list of matches so SQLite looks up each full row by primary key.
+  const registrations = applicationIds
+    ? selectRows.from(sql`json_each(${JSON.stringify(applicationIds)}) as matches`).crossJoin(userApplications)
+    : selectRows.from(userApplications)
+  const rows = await registrations
+    .innerJoin(users, eq(users.id, userApplications.userId))
+    .leftJoin(eventRoleAssignments, eventStaffRoleOfApplicant(eventId))
+    .where(and(
+      isParticipantRegistration(eventId),
+      applicationIds ? eq(userApplications.id, sql`matches.value`) : undefined
+    ))
+    .orderBy(...newestRegistrationFirst)
+    .limit(list.rowLimit)
+
   const withdrawalByApplicationId = await listAdminApplicationWithdrawalAvailabilityByApplicationId(
     database,
     eventId,

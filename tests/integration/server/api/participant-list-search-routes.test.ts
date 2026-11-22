@@ -243,9 +243,15 @@ describe('TASK-462 participant list of a large event', () => {
   test('answers a search with at most 100 matches, whatever the list asks for', async () => {
     const harness = await createContext()
 
+    const beforeSingleMatch = harness.d1Database.queries.length
+    await readParticipantList(harness, 'crowd001')
+    const beforeManyMatches = harness.d1Database.queries.length
     const page = await readParticipantList(harness, 'crowd', 200)
 
+    expect(harness.d1Database.queries.length - beforeManyMatches).toBe(beforeManyMatches - beforeSingleMatch)
     expect(page.applications).toHaveLength(listLimit)
+    expect(listedUserIds(page)[0]).toBe('crowd105')
+    expect(listedUserIds(page).at(-1)).toBe('crowd006')
     expect(page.pagination.pageSize).toBe(listLimit)
   })
 

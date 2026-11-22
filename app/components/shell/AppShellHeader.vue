@@ -58,7 +58,7 @@ const profileAvatarSrc = computed(() => {
         <AppColorModeButton />
 
         <div class="flex h-9 min-w-20 items-center justify-end">
-          <AppUserMenu
+          <LazyAppUserMenu
             v-if="status === 'success' && actor?.isAuthenticated"
             :name="profileName"
             :email="actor.sessionUser.email"
