@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, eq, getTableColumns, isNotNull, isNull, notExists, sql } from 'drizzle-orm'
+import { and, asc, eq, getTableColumns, isNotNull, isNull, notExists } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { resolveEventAuthorization } from '#server/auth/authorization'
@@ -165,6 +165,20 @@ export async function listEventCreditCodesForEvent(
     .orderBy(asc(eventCreditCodes.createdAt), asc(eventCreditCodes.id))
 }
 
+/** The codes of an event, grouped by the id of their offer. The order inside an offer is kept. */
+function groupCreditCodesByOffer(codes: EventCreditCodeRecord[]) {
+  const codesByOfferId = new Map<string, EventCreditCodeRecord[]>()
+
+  for (const code of codes) {
+    const existing = codesByOfferId.get(code.creditOfferId) ?? []
+    existing.push(code)
+    codesByOfferId.set(code.creditOfferId, existing)
+  }
+
+  return codesByOfferId
+}
+
+/** The offers of an event for its organizers: every offer with its codes and who claimed each. */
 export async function listAdminEventCreditOffers(
   database: ReturnType<typeof getDatabase>,
   eventId: string
@@ -184,13 +198,7 @@ export async function listAdminEventCreditOffers(
       ))
   ])
   const usersById = new Map(claimingUsers.map(user => [user.id, user] as const))
-  const codesByOfferId = new Map<string, EventCreditCodeRecord[]>()
-
-  for (const code of codes) {
-    const existing = codesByOfferId.get(code.creditOfferId) ?? []
-    existing.push(code)
-    codesByOfferId.set(code.creditOfferId, existing)
-  }
+  const codesByOfferId = groupCreditCodesByOffer(codes)
 
   return offers.map(offer => serializeAdminEventCreditOffer(
     offer,
@@ -199,31 +207,36 @@ export async function listAdminEventCreditOffers(
   ))
 }
 
-export async function listAdminEventCreditOfferSummaries(
+/**
+ * The credit offers that the Overview tab of the event page shows to one person:
+ * - an offer that the person already claimed, in every case;
+ * - once the person can claim, also every offer with at least one uploaded code.
+ *
+ * So a participant who still has to finish the check-in flow sees no offer to claim, and an
+ * offer without uploaded codes is not listed, because it has nothing to claim.
+ */
+export async function listEventCreditOffersForOverview(
   database: ReturnType<typeof getDatabase>,
-  eventId: string
+  input: {
+    eventId: string
+    userId: string
+    /** What the claim rule says about the person (`getEventCreditClaimAccess`). */
+    claimAccess: EventCreditClaimAccess
+  }
 ) {
-  return await database
-    .select({
-      id: eventCreditOffers.id,
-      eventId: eventCreditOffers.eventId,
-      name: eventCreditOffers.name,
-      description: eventCreditOffers.description,
-      displayOrder: eventCreditOffers.displayOrder,
-      createdAt: eventCreditOffers.createdAt,
-      updatedAt: eventCreditOffers.updatedAt,
-      availableCount: sql<number>`sum(case when ${eventCreditCodes.id} is not null and ${eventCreditCodes.claimedByUserId} is null then 1 else 0 end)`,
-      claimedCount: sql<number>`sum(case when ${eventCreditCodes.claimedByUserId} is not null then 1 else 0 end)`,
-      totalCount: sql<number>`count(${eventCreditCodes.id})`
-    })
-    .from(eventCreditOffers)
-    .leftJoin(eventCreditCodes, eq(eventCreditCodes.creditOfferId, eventCreditOffers.id))
-    .where(and(
-      eq(eventCreditOffers.eventId, eventId),
-      eq(eventCreditOffers.simplifiedClaimingOnly, false)
-    ))
-    .groupBy(eventCreditOffers.id)
-    .orderBy(asc(eventCreditOffers.displayOrder), asc(eventCreditOffers.createdAt))
+  if (input.claimAccess === 'cannot_claim') {
+    return []
+  }
+
+  const [offers, codes] = await Promise.all([
+    listEventCreditOffers(database, input.eventId),
+    listEventCreditCodesForEvent(database, input.eventId)
+  ])
+  const codesByOfferId = groupCreditCodesByOffer(codes)
+
+  return offers
+    .map(offer => serializeParticipantEventCreditOffer(offer, codesByOfferId.get(offer.id) ?? [], input.userId))
+    .filter(offer => offer.claimedCode !== null || (input.claimAccess === 'can_claim' && offer.totalCount > 0))
 }
 
 async function getApprovedUserApplication(

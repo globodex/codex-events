@@ -298,9 +298,11 @@ state.
   unchanged claims in an event with the check-in flow off, event staff
   claiming without the check-in flow, a claimed value that stays visible to a
   participant who has not finished the check-in flow, and the last value of
-  an offer. Server tests cover unfinished check-in after completion. Browser scenarios run on dedicated fixture events and cover a
-  claim opened from the next step, the Credits tab of a participant who has
-  not finished the check-in flow, and an offer with no credits left.
+  an offer. Server tests cover unfinished check-in after completion, the
+  offers on the Overview tab before and after the check-in flow, and an offer
+  without uploaded values. Browser scenarios run on dedicated fixture events
+  and cover a claim on the Overview tab, a participant who has not checked in
+  and sees no credits, and an offer with no credits left.
 - Challenge coverage includes saving a challenge list for every event type,
   a list with too many challenges, a link that is not `https`, a challenge
   without a title, and refusal for staff, judges, and participants; the

@@ -21,7 +21,7 @@ import {
 } from '#server/database/schema'
 import { countEventLumaGuests } from '#server/domains/applications/luma-guest-list'
 import { getSimplifiedClaimingSummary } from '#server/domains/credits/simplified-claiming'
-import { listAdminEventCreditOfferSummaries } from '#server/domains/credits'
+import { listAdminEventCreditOffers } from '#server/domains/credits'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
 import { accountEventSettingsPageSchema } from '#shared/domains/events/account-event-settings-page'
@@ -142,7 +142,7 @@ export const createAccountEventSettingsPageRoute = (appBaseUrl: string) => defin
         limit: settingsTermsVersionLimit
       }),
       getEventDisplayImageOptions(context.database),
-      listAdminEventCreditOfferSummaries(context.database, event.id),
+      listAdminEventCreditOffers(context.database, event.id),
       event.eventType === 'meetup'
         ? getSimplifiedClaimingSummary(context.database, event)
         : Promise.resolve(emptySimplifiedClaimingSummary),

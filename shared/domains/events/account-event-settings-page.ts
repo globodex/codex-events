@@ -279,7 +279,19 @@ export const accountEventSettingsCreditOfferSchema = z.object({
   updatedAt: z.string(),
   availableCount: z.number().int().nonnegative(),
   claimedCount: z.number().int().nonnegative(),
-  totalCount: z.number().int().nonnegative()
+  totalCount: z.number().int().nonnegative(),
+  // Every uploaded code or link of the offer, in upload order, with the person who claimed it.
+  codes: z.array(z.object({
+    id: z.string(),
+    value: z.string(),
+    claimedAt: z.string().nullable(),
+    createdAt: z.string(),
+    claimedByUser: z.object({
+      id: z.string(),
+      email: z.string(),
+      displayName: z.string()
+    }).nullable()
+  }))
 })
 
 export const accountEventSettingsPageSchema = z.object({

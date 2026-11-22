@@ -2,11 +2,10 @@ import type { AccountEventEntryAccess, AccountEventEntryTabVisibility } from '#s
 import type { AccountEventPageContext } from './account-event-page-context'
 
 export function buildAccountEventTabVisibility(input: {
-  event: Pick<AccountEventPageContext['event'], 'eventType' | 'state' | 'simplifiedClaimingEnabled' | 'talkProposalsEnabled'>
+  event: Pick<AccountEventPageContext['event'], 'eventType' | 'state' | 'talkProposalsEnabled'>
   authorization: Pick<AccountEventPageContext['authorization'], 'isEventAdmin' | 'canViewParticipantsAndTeams' | 'canReviewThroughAssignment'>
   applicationStatus: AccountEventEntryAccess['applicationStatus']
   hasRetainedTalkProposal: boolean
-  hasCreditInventory: boolean
   /** The gallery holds at least one photo that the caller may view (`hasEventPhotos`). */
   hasGallery: boolean
   /** The caller adds photos as a participant (`mayAddParticipantPhotos`). */
@@ -23,7 +22,6 @@ export function buildAccountEventTabVisibility(input: {
     authorization,
     applicationStatus,
     hasRetainedTalkProposal,
-    hasCreditInventory,
     hasGallery,
     canAddParticipantPhotos,
     hasAgenda,
@@ -46,13 +44,6 @@ export function buildAccountEventTabVisibility(input: {
   // agenda and for a readable challenge.
   if (hasAgenda || hasReadableChallenges) {
     availableTabs.push('program')
-  }
-
-  if (!event.simplifiedClaimingEnabled && (
-    authorization.isEventAdmin
-    || ((hasApprovedParticipantAccess || authorization.canViewParticipantsAndTeams) && hasCreditInventory)
-  )) {
-    availableTabs.push('credits')
   }
 
   if (event.eventType === 'meetup' && event.talkProposalsEnabled && (
@@ -134,7 +125,6 @@ export function buildAccountEventTabVisibility(input: {
       && !['winners_announced', 'completed'].includes(event.state),
     hasPublishedPrizes,
     hasPublishedStaff,
-    hasCreditInventory,
     hasEligibleTalkProposalApplicant,
     hasGallery
   }

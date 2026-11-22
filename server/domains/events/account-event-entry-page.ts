@@ -1,11 +1,9 @@
-import { and, asc, count, desc, eq, getTableColumns, isNull, isNotNull, or } from 'drizzle-orm'
+import { and, asc, count, desc, eq, isNull, or } from 'drizzle-orm'
 
 import type {
   AccountEventEntryAccess,
-  AccountEventEntryAdminCreditOffer,
   AccountEventEntryEvent,
   AccountEventEntryPage,
-  AccountEventEntryParticipantCreditOffer,
   AccountEventEntryParticipation,
   AccountEventEntryRankSummary,
   AccountEventEntryTalkProposal,
@@ -14,20 +12,14 @@ import type {
 import { accountEventEntryPageSchema } from '#shared/domains/events/account-event-entry-page'
 import type { events, teams, userApplications } from '#server/database/schema'
 import {
-  eventCreditCodes,
-  eventCreditOffers,
   eventRoleAssignments,
   prizes,
   submissions,
-  teamMembers,
-  users
+  teamMembers
 } from '#server/database/schema'
 import {
   getEventCreditClaimAccess,
-  listEventCreditCodesForEvent,
-  listEventCreditOffers,
-  serializeAdminEventCreditOffer,
-  serializeParticipantEventCreditOffer
+  listEventCreditOffersForOverview
 } from '#server/domains/credits'
 import {
   parseEventAgendaItems,
@@ -60,9 +52,6 @@ type TeamRecord = typeof teams.$inferSelect
 type TeamMemberRecord = typeof teamMembers.$inferSelect
 type SubmissionRecord = typeof submissions.$inferSelect
 type EventRoleAssignmentRecord = typeof eventRoleAssignments.$inferSelect
-type EventCreditOfferRecord = typeof eventCreditOffers.$inferSelect
-type EventCreditCodeRecord = typeof eventCreditCodes.$inferSelect
-type UserRecord = typeof users.$inferSelect
 
 const pastParticipationStates = new Set<EventRecord['state']>([
   'winners_announced',
@@ -266,69 +255,6 @@ export async function loadAccountEventParticipation(context: AccountEventPageCon
   )
 }
 
-async function loadCredits(
-  context: AccountEventPageContext,
-  application: ApplicationRecord | null
-) {
-  // Confirmed participants and event staff get the participant offers with their own claimed
-  // codes, also while they still have to finish the check-in flow before they can claim.
-  const seesParticipantCredits = getEventCreditClaimAccess({
-    event: context.event,
-    isEventStaff: context.authorization.isStaff,
-    application
-  }) !== 'cannot_claim'
-  const [offers, codes] = seesParticipantCredits || context.authorization.isEventAdmin
-    ? await Promise.all([
-        listEventCreditOffers(context.database, context.event.id),
-        listEventCreditCodesForEvent(context.database, context.event.id)
-      ])
-    : [[], []] as const
-  const codesByOfferId = new Map<string, EventCreditCodeRecord[]>()
-
-  for (const code of codes) {
-    const existing = codesByOfferId.get(code.creditOfferId) ?? []
-    existing.push(code)
-    codesByOfferId.set(code.creditOfferId, existing)
-  }
-
-  const participantCredits: AccountEventEntryParticipantCreditOffer[] = seesParticipantCredits
-    ? (offers as EventCreditOfferRecord[]).map(offer => serializeParticipantEventCreditOffer(
-        offer,
-        codesByOfferId.get(offer.id) ?? [],
-        context.actor.platformUser.id
-      ))
-    : []
-
-  if (!context.authorization.isEventAdmin) {
-    return {
-      participantCredits,
-      adminCredits: [] as AccountEventEntryAdminCreditOffer[]
-    }
-  }
-
-  const claimingUsers: UserRecord[] = await context.database
-    .select(getTableColumns(users))
-    .from(users)
-    .innerJoin(eventCreditCodes, eq(eventCreditCodes.claimedByUserId, users.id))
-    .innerJoin(eventCreditOffers, eq(eventCreditOffers.id, eventCreditCodes.creditOfferId))
-    .where(and(
-      eq(eventCreditOffers.eventId, context.event.id),
-      eq(eventCreditOffers.simplifiedClaimingOnly, false),
-      isNotNull(eventCreditCodes.claimedByUserId)
-    ))
-  const usersById = new Map(claimingUsers.map(user => [user.id, user] as const))
-  const adminCredits = (offers as EventCreditOfferRecord[]).map(offer => serializeAdminEventCreditOffer(
-    offer,
-    codesByOfferId.get(offer.id) ?? [],
-    usersById
-  ))
-
-  return {
-    participantCredits,
-    adminCredits
-  }
-}
-
 export const accountEventEntryPageRoute = defineAccountEventPageRoute({
   page: 'entry',
   schema: accountEventEntryPageSchema,
@@ -377,9 +303,17 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
     const memberships = participantAccess.memberships
     const activeMembership = memberships.find(({ membership }) => membership.leftAt === null) ?? null
     const primaryMembership = activeMembership ?? memberships[0] ?? null
-    const [participation, credits] = await Promise.all([
+    const [participation, participantCredits] = await Promise.all([
       loadParticipation(context, application, memberships),
-      loadCredits(context, application)
+      listEventCreditOffersForOverview(context.database, {
+        eventId: event.id,
+        userId,
+        claimAccess: getEventCreditClaimAccess({
+          event,
+          isEventStaff: context.authorization.isStaff,
+          application
+        })
+      })
     ])
     const talkProposalResult = event.eventType === 'meetup' && event.talkProposalsEnabled
       ? await Promise.all([
@@ -424,7 +358,6 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
       authorization: context.authorization,
       applicationStatus: application?.status ?? null,
       hasRetainedTalkProposal: Boolean(talkProposalResult[0]),
-      hasCreditInventory: credits.participantCredits.some(offer => offer.totalCount > 0),
       hasGallery: galleryExists,
       canAddParticipantPhotos: mayAddParticipantPhotos({ event, viewer: photoViewer, application }),
       hasAgenda: serializedEvent.agendaItems.length > 0,
@@ -441,8 +374,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
       event: accountEvent,
       access,
       participation: participationRecord,
-      participantCredits: credits.participantCredits,
-      adminCredits: credits.adminCredits,
+      participantCredits,
       talkProposal,
       talkProposalReviews,
       talkProposalReviewTotal: talkProposalResult[1].pagination.total,

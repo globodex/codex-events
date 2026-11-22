@@ -21,7 +21,6 @@ function visibilityFor(overrides: Partial<Omit<TabVisibilityInput, 'event' | 'au
   return buildAccountEventTabVisibility({
     applicationStatus: null,
     hasRetainedTalkProposal: false,
-    hasCreditInventory: false,
     hasGallery: false,
     canAddParticipantPhotos: false,
     hasAgenda: false,
@@ -32,7 +31,6 @@ function visibilityFor(overrides: Partial<Omit<TabVisibilityInput, 'event' | 'au
     event: {
       eventType: 'hackathon',
       state: 'registration_open',
-      simplifiedClaimingEnabled: false,
       talkProposalsEnabled: false,
       ...event
     },
@@ -56,9 +54,8 @@ describe('buildAccountEventTabVisibility', () => {
       applicationStatus: 'approved',
       hasAgenda: true,
       hasReadableChallenges: true,
-      hasCreditInventory: true,
       canAddParticipantPhotos: true
-    })).toEqual(['overview', 'program', 'credits', 'gallery'])
+    })).toEqual(['overview', 'program', 'gallery'])
   })
 
   test('gives the Agenda tab for a readable challenge also when the event has no agenda', () => {
@@ -74,7 +71,7 @@ describe('buildAccountEventTabVisibility', () => {
       applicationStatus: 'approved',
       hasPublishedPrizes: true
     })).toEqual([
-      'overview', 'prizes', 'credits', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams',
+      'overview', 'prizes', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams',
       'participants', 'certificates', 'submissions', 'judging', 'operations', 'settings'
     ])
   })
@@ -86,7 +83,7 @@ describe('buildAccountEventTabVisibility', () => {
       applicationStatus: 'approved',
       hasPublishedPrizes: true
     })).toMatchObject({
-      availableTabs: ['overview', 'credits', 'gallery', 'staff', 'feedback', 'participants', 'certificates', 'operations', 'settings'],
+      availableTabs: ['overview', 'gallery', 'staff', 'feedback', 'participants', 'certificates', 'operations', 'settings'],
       showPrizeConfiguration: false
     })
   })
@@ -101,7 +98,7 @@ describe('buildAccountEventTabVisibility', () => {
   test('offers prize configuration to an admin until winners are announced, and keeps the Prizes tab after that', () => {
     expect(visibilityFor({ authorization: admin })).toMatchObject({
       availableTabs: [
-        'overview', 'prizes', 'credits', 'gallery', 'judges', 'staff', 'feedback',
+        'overview', 'prizes', 'gallery', 'judges', 'staff', 'feedback',
         'participants', 'certificates', 'teams', 'submissions', 'operations', 'settings'
       ],
       showPrizeConfiguration: true
@@ -111,25 +108,6 @@ describe('buildAccountEventTabVisibility', () => {
 
     expect(afterWinners.availableTabs).toContain('prizes')
     expect(afterWinners.showPrizeConfiguration).toBe(false)
-  })
-
-  test('shows Credits to an admin always, and to participants and staff only when the event has credits', () => {
-    expect(tabsFor({ authorization: admin })).toContain('credits')
-
-    for (const viewer of [{ applicationStatus: 'approved' as const }, { authorization: staff }]) {
-      expect(tabsFor({ ...viewer, hasCreditInventory: true })).toContain('credits')
-      expect(tabsFor(viewer)).not.toContain('credits')
-    }
-
-    expect(tabsFor({ applicationStatus: 'submitted', hasCreditInventory: true })).not.toContain('credits')
-  })
-
-  test('hides Credits from everyone when the event uses simplified claiming', () => {
-    expect(tabsFor({
-      event: { simplifiedClaimingEnabled: true },
-      authorization: admin,
-      hasCreditInventory: true
-    })).not.toContain('credits')
   })
 
   test('shows Call for talks only for an eligible applicant, a retained proposal owner, or the event team', () => {
@@ -182,12 +160,12 @@ describe('buildAccountEventTabVisibility', () => {
   })
 
   test('shows Workspace only to approved participants, and Teams also to admins and staff', () => {
-    expect(tabsFor({ applicationStatus: 'approved', hasCreditInventory: true, hasPublishedStaff: true }))
-      .toEqual(['overview', 'credits', 'judges', 'staff', 'workspace', 'teams'])
-    expect(tabsFor({ authorization: staff, applicationStatus: 'approved', hasCreditInventory: true, hasPublishedStaff: true }))
-      .toEqual(['overview', 'credits', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams', 'participants'])
-    expect(tabsFor({ authorization: staff, hasCreditInventory: true, hasPublishedStaff: true }))
-      .toEqual(['overview', 'credits', 'gallery', 'judges', 'staff', 'feedback', 'participants', 'teams'])
+    expect(tabsFor({ applicationStatus: 'approved', hasPublishedStaff: true }))
+      .toEqual(['overview', 'judges', 'staff', 'workspace', 'teams'])
+    expect(tabsFor({ authorization: staff, applicationStatus: 'approved', hasPublishedStaff: true }))
+      .toEqual(['overview', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams', 'participants'])
+    expect(tabsFor({ authorization: staff, hasPublishedStaff: true }))
+      .toEqual(['overview', 'gallery', 'judges', 'staff', 'feedback', 'participants', 'teams'])
     expect(tabsFor({ authorization: judge, hasPublishedPrizes: true, hasPublishedStaff: true }))
       .toEqual(['overview', 'prizes', 'gallery', 'judges', 'staff', 'feedback', 'judging'])
     expect(tabsFor({ applicationStatus: 'submitted', hasPublishedPrizes: true, hasPublishedStaff: true }))

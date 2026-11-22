@@ -41,11 +41,7 @@ const meta = {
   component: AccountEventCreditsPanel,
   args: {
     eventId: 'build-day',
-    canManage: false,
-    claimAccess: 'can_claim',
-    nextStepHref: '/account/events/build-day',
-    participantCredits: [claimableOffer, claimedOffer, exhaustedOffer],
-    adminCredits: []
+    offers: [claimableOffer, claimedOffer, exhaustedOffer]
   }
 } satisfies Meta<typeof AccountEventCreditsPanel>
 
@@ -62,26 +58,13 @@ export const AvailableAndClaimed: Story = {
   }
 }
 
-export const CheckInNotFinished: Story = {
-  args: { claimAccess: 'must_finish_check_in_flow' },
+export const ClaimedOnly: Story = {
+  args: { offers: [claimedOffer] },
   parameters: {
     docs: {
       description: {
-        story: 'A confirmed participant who has to finish the check-in first. No offer has a claim button; the claimed code stays visible.'
+        story: 'A person who cannot claim now, for example before the check-in is finished. The Overview tab lists only the offer they already claimed.'
       }
     }
   }
 }
-
-export const ClaimsClosed: Story = {
-  args: { claimAccess: 'event_completed' },
-  parameters: {
-    docs: {
-      description: {
-        story: 'The event ended before the participant finished the check-in. No offer has a claim button; the claimed code stays visible.'
-      }
-    }
-  }
-}
-
-export const Empty: Story = { args: { participantCredits: [] } }

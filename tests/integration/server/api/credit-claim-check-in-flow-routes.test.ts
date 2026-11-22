@@ -177,19 +177,15 @@ describe('TASK-449 credit claims and the check-in flow', () => {
     return body.data[0]!
   }
 
-  /** Reads what the event page of `event_1` gives the given user for the Credits tab. */
-  async function readCreditsOnEventPage(harness: Harness, userId: string) {
+  /** Reads the credit offers that the Overview tab of `event_1` shows to the given user. */
+  async function readOverviewCredits(harness: Harness, userId: string) {
     stubAuth0Session(sessionFor(userId))
     const response = await harness.request('/api/account/events/build-day/entry')
     const body = await response.json() as { data: { page: unknown } }
 
     expect(response.status).toBe(200)
-    const page = accountEventEntryPageSchema.parse(body.data.page)
 
-    return {
-      hasCreditsTab: page.tabVisibility.availableTabs.includes('credits'),
-      offer: page.participantCredits[0]!
-    }
+    return accountEventEntryPageSchema.parse(body.data.page).participantCredits
   }
 
   describe('an event with the check-in flow on', () => {
@@ -265,24 +261,40 @@ describe('TASK-449 credit claims and the check-in flow', () => {
         availableCount: 1,
         claimedCode: { value: 'CODE-1' }
       })
-      expect(await readCreditsOnEventPage(harness, 'participant')).toMatchObject({
-        hasCreditsTab: true,
-        offer: { claimedCode: { value: 'CODE-1' } }
-      })
+      expect(await readOverviewCredits(harness, 'participant')).toMatchObject([
+        { claimedCode: { value: 'CODE-1' } }
+      ])
       // The claim operation stays closed until the check-in flow is finished.
       expect((await claimCredit(harness, 'participant')).status).toBe(409)
       expect(await readCodeHolders(harness)).toEqual({ 'CODE-1': 'participant', 'CODE-2': null })
     })
 
-    test('shows the offers to a participant who has not finished the check-in flow', async () => {
+    test('shows the offers on the Overview tab only to a participant who finished the check-in flow', async () => {
       const harness = await createContext()
       await addApplication(harness, 'participant')
+      await addCheckedInApplication(harness, 'second_participant', completedQuestionnaire)
 
+      // The credit list still names the offer to the participant who has not finished.
       expect(await readListedOffer(harness, 'participant')).toMatchObject({ availableCount: 2, claimedCode: null })
-      expect(await readCreditsOnEventPage(harness, 'participant')).toMatchObject({
-        hasCreditsTab: true,
-        offer: { availableCount: 2, claimedCode: null }
+      expect(await readOverviewCredits(harness, 'participant')).toEqual([])
+      expect(await readOverviewCredits(harness, 'second_participant')).toMatchObject([
+        { id: 'offer_1', availableCount: 2, claimedCode: null }
+      ])
+    })
+
+    test('shows no offer without uploaded codes on the Overview tab', async () => {
+      const harness = await createContext()
+      await addCheckedInApplication(harness, 'participant', completedQuestionnaire)
+      await harness.database.insert(eventCreditOffers).values({
+        id: 'offer_without_codes',
+        eventId: 'event_1',
+        name: 'Later credits',
+        description: 'The codes are not uploaded yet.'
       })
+
+      const offers = await readOverviewCredits(harness, 'participant')
+
+      expect(offers.map(offer => offer.id)).toEqual(['offer_1'])
     })
   })
 
@@ -304,6 +316,9 @@ describe('TASK-449 credit claims and the check-in flow', () => {
     { checkInFlowEnabled: false, flow: 'off' }
   ])('event staff claim without a registration when the check-in flow is $flow', async ({ checkInFlowEnabled }) => {
     const harness = await createContext({ checkInFlowEnabled })
+
+    // The Overview tab of event staff lists the offer, because staff can claim at once.
+    expect(await readOverviewCredits(harness, 'staff')).toMatchObject([{ id: 'offer_1', claimedCode: null }])
 
     const response = await claimCredit(harness, 'staff')
 
@@ -340,11 +355,10 @@ describe('TASK-449 credit claims and the check-in flow', () => {
       })
       expect(await readCodeHolders(harness)).toEqual({ 'CODE-1': 'staff', 'CODE-2': 'participant' })
       expect(await harness.database.select().from(userApplications)).toEqual(applicationsBefore)
-      // The second participant still has the Credits tab. It shows an offer without free codes.
-      expect(await readCreditsOnEventPage(harness, 'second_participant')).toMatchObject({
-        hasCreditsTab: true,
-        offer: { availableCount: 0, totalCount: 2, claimedCode: null }
-      })
+      // The Overview tab of the second participant still lists the offer, without free codes.
+      expect(await readOverviewCredits(harness, 'second_participant')).toMatchObject([
+        { availableCount: 0, totalCount: 2, claimedCode: null }
+      ])
     })
   })
 })

@@ -5,16 +5,16 @@ import { createBdd } from 'playwright-bdd'
 
 const { When, Then } = createBdd()
 
-/** One credit offer on the Credits tab of the participant's event page. */
-function creditOffer(page: Page, offerName: string) {
-  return page.locator('#account-tab-panel-credits article').filter({
-    has: page.getByRole('heading', { name: offerName })
-  })
+/** The credits card on the Overview tab of the participant's event page. */
+function creditsCard(page: Page) {
+  return page.getByTestId('participant-credits')
 }
 
-/** The note on the Credits tab for a participant who has to finish the check-in first. */
-function finishCheckInNote(page: Page) {
-  return page.getByTestId('participant-credits-finish-check-in')
+/** One credit offer in the credits card. */
+function creditOffer(page: Page, offerName: string) {
+  return creditsCard(page).locator('article').filter({
+    has: page.getByRole('heading', { name: offerName })
+  })
 }
 
 When('I claim the credit {string}', async ({ page }, offerName: string) => {
@@ -29,18 +29,14 @@ Then('I should hold the code {string} of the credit {string}', async ({ page }, 
   await expect(offer.getByText(code, { exact: true })).toBeVisible()
 })
 
-Then('I should be told to finish my check-in before I claim credits', async ({ page }) => {
-  await expect(finishCheckInNote(page).getByText('Finish your next step to claim your credits')).toBeVisible()
+Then('I should see the credit {string} on my event page', async ({ page }, offerName: string) => {
+  await expect(creditOffer(page, offerName)).toBeVisible()
 })
 
-Then('I should not be told to finish my check-in', async ({ page }) => {
-  // The heading shows that the Credits tab has its content, so a missing note is really missing.
-  await expect(page.getByRole('heading', { name: 'Claim credits' })).toBeVisible()
-  await expect(finishCheckInNote(page)).toHaveCount(0)
-})
-
-When('I follow the link to my next step', async ({ page }) => {
-  await finishCheckInNote(page).getByRole('link', { name: 'See your next step' }).click()
+// Use this step after a step that waits for the next-step card. The card and the credits come
+// with the same page data, so missing credits are then really missing.
+Then('I should see no credits on my event page', async ({ page }) => {
+  await expect(creditsCard(page)).toHaveCount(0)
 })
 
 Then('the credit {string} should have no credits left', async ({ page }, offerName: string) => {

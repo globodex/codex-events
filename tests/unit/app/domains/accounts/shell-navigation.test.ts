@@ -17,7 +17,7 @@ describe('isShellNavigationLinkActive', () => {
   test('maps account event detail tabs to the correct sidebar entry', () => {
     expect(isShellNavigationLinkActive('/account/events/berlin', undefined, '/account')).toBe(true)
     expect(isShellNavigationLinkActive('/account/events/berlin', 'overview', '/account')).toBe(true)
-    expect(isShellNavigationLinkActive('/account/events/berlin', 'credits', '/account')).toBe(true)
+    expect(isShellNavigationLinkActive('/account/events/berlin', 'gallery', '/account')).toBe(true)
     expect(isShellNavigationLinkActive('/account/events/berlin', 'workspace', '/account')).toBe(true)
     expect(isShellNavigationLinkActive('/account/events/berlin', 'teams', '/account')).toBe(true)
     expect(isShellNavigationLinkActive('/account/events/berlin', 'prizes', '/account')).toBe(true)

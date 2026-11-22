@@ -22,7 +22,7 @@ const expectedForbiddenConsoleErrorPattern = /^Failed to load resource: the serv
 export const accountEventPageKeys: Record<string, readonly string[]> = {
   entry: [
     'event', 'access', 'participation', 'participantCredits',
-    'adminCredits', 'talkProposal', 'talkProposalReviews', 'talkProposalReviewTotal',
+    'talkProposal', 'talkProposalReviews', 'talkProposalReviewTotal',
     'participantRank', 'tabVisibility', 'applicationStatus', 'lumaSyncStatus'
   ],
   prizes: ['event', 'adminSettingsEvent', 'prizes', 'winners', 'publishedProjects', 'participantRank', 'participantOutcome'],

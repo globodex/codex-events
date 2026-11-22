@@ -41,8 +41,6 @@ import {
 import type { EventParticipationRankSummary } from '~/domains/events/participation'
 import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
 import type { CheckInFlowProgress, CheckInFlowSettings } from '#shared/domains/applications/check-in-flow'
-import { hasParticipantFinishedCheckInFlow } from '#shared/domains/applications/check-in-flow'
-import { resolveEventCreditClaimAccess } from '#shared/domains/credits/claim-access'
 import { buildEventCertificatePath } from '#shared/domains/events/certificates'
 import { canViewEventProgram } from '#shared/domains/events/program'
 import type {
@@ -208,8 +206,8 @@ const event = computed<AccountWorkspaceEvent | null>(() =>
 )
 const accessRecord = shallowRef<AccountEventAccessRecord | null>(null)
 const participationRecord = shallowRef<AccountEventEntryParticipation | null>(null)
+// The credit offers that this person can claim or already claimed. The Overview tab shows them.
 const participantCreditOffers = shallowRef<AccountEventEntryParticipantCreditOffer[]>([])
-const adminCreditOffers = computed(() => entryPage.value?.adminCredits ?? [])
 const hasRetainedTalkProposal = ref(false)
 const talkProposal = shallowRef<AccountEventEntryTalkProposal | null>(null)
 const talkProposalReviews = shallowRef<AccountEventEntryTalkProposalReview[]>([])
@@ -307,7 +305,6 @@ const currentEventRole = computed(() => {
 const currentStaffTrackId = computed(() =>
   currentEventRole.value?.isStaff ? currentEventRole.value.staffTrackId : null
 )
-const hasStaffCreditAccess = computed(() => currentEventRole.value?.isStaff === true)
 const accountTrackViewerMode = computed<'participant' | 'all-staff' | 'track-staff'>(() => {
   if (canAdmin.value) {
     return 'all-staff'
@@ -421,7 +418,6 @@ const tabAccess = computed(() => entryPage.value?.tabVisibility ?? pageShell.val
   showPrizeConfiguration: false,
   hasPublishedPrizes: false,
   hasPublishedStaff: false,
-  hasCreditInventory: false,
   hasEligibleTalkProposalApplicant: false,
   hasGallery: false
 })
@@ -823,10 +819,6 @@ const participantActivities = computed(() => {
     activities.push({ label: 'Agenda', to: `/account/events/${slug.value}?tab=program`, openBeforeCheckIn: true })
   }
 
-  if (availableTabs.value.includes('credits')) {
-    activities.push({ label: 'Credits', to: `/account/events/${slug.value}?tab=credits`, openBeforeCheckIn: false })
-  }
-
   if (availableTabs.value.includes('gallery')) {
     activities.push({ label: 'Gallery', to: `/account/events/${slug.value}?tab=gallery`, openBeforeCheckIn: false })
   }
@@ -892,16 +884,8 @@ const showNextStepCard = computed(() =>
   && applicationStatus.value === 'approved'
   && event.value?.state !== 'completed'
 )
-// What the credit claim rule says about this person. It decides what the Credits tab offers.
-const creditClaimAccess = computed(() => resolveEventCreditClaimAccess({
-  eventCompleted: event.value?.state === 'completed',
-  isEventStaff: hasStaffCreditAccess.value,
-  isApprovedParticipant: applicationStatus.value === 'approved',
-  checkInFlowEnabled: checkInFlowSettings.value.checkInFlowEnabled,
-  hasFinishedCheckInFlow: hasParticipantFinishedCheckInFlow(checkInFlowProgress.value, checkInFlowSettings.value)
-}))
-// Where the Credits and Gallery tabs send a participant who has to finish the check-in flow
-// first: the overview, while it shows the next-step card. A direct link to Gallery loads only
+// Where the Gallery tab sends a participant who has to finish the check-in flow first: the
+// overview, while it shows the next-step card. A direct link to Gallery loads only
 // the gallery page, so galleryPage.mustFinishCheckInFlowToAddPhotos also proves Overview has it.
 const nextStepHref = computed(() =>
   event.value?.state !== 'completed'
@@ -1291,6 +1275,14 @@ useSeoMeta({
           :refresh-page="refreshAfterCheckInStep"
         />
 
+        <!-- The server sends the offers only once this person can claim them or has claimed them. -->
+        <LazyAccountEventCreditsPanel
+          v-if="participantCreditOffers.length > 0"
+          :event-id="event.id"
+          :offers="participantCreditOffers"
+          @updated="refreshAccountEvent"
+        />
+
         <div
           v-if="showOverviewStatusNotices"
           class="space-y-4"
@@ -1676,24 +1668,6 @@ useSeoMeta({
             </AppButton>
           </div>
         </section>
-      </section>
-
-      <section
-        v-else-if="activeSection === 'credits'"
-        id="account-tab-panel-credits"
-        role="tabpanel"
-        aria-labelledby="account-tab-credits"
-        class="space-y-8"
-      >
-        <LazyAccountEventCreditsPanel
-          :event-id="event.id"
-          :can-manage="canAdmin"
-          :claim-access="creditClaimAccess"
-          :next-step-href="nextStepHref"
-          :participant-credits="participantCreditOffers"
-          :admin-credits="adminCreditOffers"
-          @updated="refreshAccountEvent"
-        />
       </section>
 
       <section

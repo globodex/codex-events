@@ -40,8 +40,7 @@ describe('account-event entry and prizes contracts', () => {
     }
     expect(talkPanelSource).not.toContain('onMounted')
     expect(talkReviewPanelSource).not.toContain('onMounted')
-    expect(creditsPanelSource).toContain('participantCredits: AccountEventEntryParticipantCreditOffer[]')
-    expect(creditsPanelSource).toContain('adminCredits: AccountEventEntryAdminCreditOffer[]')
+    expect(creditsPanelSource).toContain('offers: AccountEventEntryParticipantCreditOffer[]')
     expect(talkPanelSource).toContain('proposal: AccountEventEntryTalkProposal | null')
     expect(talkReviewPanelSource).toContain('entries: AccountEventEntryTalkProposalReview[]')
   })

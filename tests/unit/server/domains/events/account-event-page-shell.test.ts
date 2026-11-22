@@ -70,7 +70,7 @@ describe('account-event page shell request topology', () => {
     getAccountEventPageAccess.mockReset()
   })
 
-  test('starts all shell reads in one parallel wave and uses one joined credit probe', async () => {
+  test('starts all shell reads in one parallel wave and reads no credits', async () => {
     const state = { active: 0, maxActive: 0, started: [] as string[] }
     const pending: Array<() => void> = []
     const track = <T>(label: string, value: T) => {
@@ -112,15 +112,7 @@ describe('account-event page shell request topology', () => {
           findFirst: vi.fn(() => track('published-staff', undefined))
         }
       },
-      select: vi.fn(() => ({
-        from: vi.fn(() => ({
-          innerJoin: vi.fn(() => ({
-            where: vi.fn(() => ({
-              limit: vi.fn(() => track('credit-inventory', [{ offerId: 'offer_1' }]))
-            }))
-          }))
-        }))
-      }))
+      select: vi.fn()
     }
     const context = {
       actor: {
@@ -171,24 +163,22 @@ describe('account-event page shell request topology', () => {
       'gallery',
       'published-prize',
       'published-staff',
-      'credit-inventory',
       'talk-proposal'
     ])
-    expect(state.maxActive).toBe(7)
-    expect(database.select).toHaveBeenCalledOnce()
+    expect(state.maxActive).toBe(6)
+    expect(database.select).not.toHaveBeenCalled()
 
     pending.forEach(resolve => resolve())
     const shell = await shellPromise
 
     expect(shell.event.hasGallery).toBe(false)
-    expect(shell.tabVisibility.hasCreditInventory).toBe(true)
     expect(getOwnTalkProposal).toHaveBeenCalledOnce()
     expect(getAccountEventPageAccess).toHaveBeenCalledOnce()
   })
 
-  test('keeps the shell’s independent reads explicit and avoids the old credit fan-out', () => {
+  test('keeps the shell’s independent reads explicit and reads no credit tables', () => {
     expect(shellSource).toContain('await Promise.all([')
-    expect(shellSource).toContain('innerJoin(eventCreditCodes')
+    expect(shellSource).not.toContain('eventCreditCodes')
     expect(shellSource).not.toContain('listEventCreditOffers')
     expect(shellSource).not.toContain('listEventCreditCodesForEvent')
   })

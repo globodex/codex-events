@@ -1,4 +1,5 @@
-// Who may claim event credits. This file is the only owner of that rule, for the server and the app.
+// Who may claim event credits. This file is the only owner of that rule. The server asks it for
+// every claim and for the credit offers that it sends to the Overview tab of the event page.
 
 /**
  * What the claim rule says about one person in one event:

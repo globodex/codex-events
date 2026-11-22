@@ -10,7 +10,6 @@ describe('account event workspace tabs', () => {
   test('maps every workspace tab to one named page contract', () => {
     expect(Object.fromEntries(accountEventWorkspaceTabs.map(tab => [tab, getAccountEventPageForTab(tab)]))).toEqual({
       'overview': 'entry',
-      'credits': 'entry',
       'prizes': 'prizes',
       'program': 'program',
       'call-for-talks': 'entry',

@@ -250,7 +250,7 @@ Event credit permissions apply to every event type.
 
 | Action | Approved User | Staff | Event Admin | Platform Admin |
 | --- | --- | --- | --- | --- |
-| View event credits in the account event workspace | Yes, when uploaded inventory exists | Yes, when uploaded inventory exists | Yes | Yes |
+| View credit offers on the Overview tab of the event page | Yes, once they can claim and the offer has uploaded inventory | Yes, when the offer has uploaded inventory | No | No |
 | Claim an available credit from an offer | Yes; in an event with its check-in flow on, only after finishing the check-in flow | Yes | No | No |
 | View own claimed credit values | Yes | Yes | No | No |
 | View credit inventory and claim records | No | No | Yes | Yes |
@@ -347,7 +347,7 @@ required-document changes take effect on the next MCP request.
 - The participant-facing teams directory remains visible to workspace users after team formation closes, but join actions remain state-gated.
 - Published event challenges are visible to staff, event admins, platform admins, and approved participants. Draft challenges are visible only to event admins and platform admins.
 - Approved participants and event staff can view only their own claimed credit values. Once an event with check-in enabled is completed, participants with unfinished check-in can still read those values. They cannot claim another. Staff can still claim.
-- Event admins and platform admins can view credit inventory and claim records for their events.
+- Event admins and platform admins can view credit inventory and claim records for their events in the event builder.
 - Event feedback results are visible only to judges, staff, event admins, and platform admins.
 
 ## Operational Notes

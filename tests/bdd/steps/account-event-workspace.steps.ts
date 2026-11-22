@@ -60,7 +60,6 @@ const measurements = new WeakMap<Page, Measurement>()
 
 const tabLabels: Record<string, string> = {
   overview: 'Overview',
-  credits: 'Credits',
   operations: 'Operations',
   participants: 'Participants',
   submissions: 'Submissions',

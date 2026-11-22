@@ -6,8 +6,6 @@ import type {
 } from '#shared/domains/events/account-event-entry-page'
 import type { AccountEventPageShell } from '#shared/domains/events/account-event-page-shell'
 import {
-  eventCreditCodes,
-  eventCreditOffers,
   eventRoleAssignments,
   prizes
 } from '#server/database/schema'
@@ -72,7 +70,6 @@ export async function loadAccountEventPageShell(
     galleryExists,
     publishedPrize,
     publishedStaffAssignment,
-    creditInventory,
     talkProposal
   ] = await Promise.all([
     getAccountEventPageAccess(context),
@@ -93,12 +90,6 @@ export async function loadAccountEventPageShell(
         )
       )
     }),
-    context.database
-      .select({ offerId: eventCreditOffers.id })
-      .from(eventCreditOffers)
-      .innerJoin(eventCreditCodes, eq(eventCreditCodes.creditOfferId, eventCreditOffers.id))
-      .where(eq(eventCreditOffers.eventId, context.event.id))
-      .limit(1),
     context.event.eventType === 'meetup' && context.event.talkProposalsEnabled
       ? getOwnTalkProposal(context.database, context.event.id, context.actor.platformUser.id)
       : Promise.resolve(null)
@@ -118,7 +109,6 @@ export async function loadAccountEventPageShell(
     talkProposalQuestionsRevision: context.event.talkProposalQuestionsRevision,
     hasGallery: galleryExists
   }
-  const hasCreditInventory = creditInventory.length > 0
   const tabVisibility = buildAccountEventTabVisibility({
     event: context.event,
     authorization: context.authorization,
@@ -130,7 +120,6 @@ export async function loadAccountEventPageShell(
       authorization: context.authorization,
       application
     }).length > 0,
-    hasCreditInventory,
     hasGallery: galleryExists,
     canAddParticipantPhotos: mayAddParticipantPhotos({
       event: context.event,

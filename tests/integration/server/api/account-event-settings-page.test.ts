@@ -147,12 +147,18 @@ describe('GET /api/account/events/:slug/settings', () => {
       createdAt: now,
       updatedAt: now
     })
-    await harness.database.insert(eventCreditCodes).values({
-      id: 'credit_code_1',
-      creditOfferId: 'credit_offer_1',
-      value: 'settings-credit-code',
-      createdAt: now
-    })
+    // One free code and one code that the user of this fixture claimed.
+    await harness.database.insert(eventCreditCodes).values([
+      { id: 'credit_code_1', creditOfferId: 'credit_offer_1', value: 'settings-credit-code', createdAt: now },
+      {
+        id: 'credit_code_2',
+        creditOfferId: 'credit_offer_1',
+        value: 'settings-claimed-code',
+        createdAt: now,
+        claimedByUserId: options.userId,
+        claimedAt: now
+      }
+    ])
     if (options.withEventAdmin) {
       await harness.database.insert(eventRoleAssignments).values({
         id: 'assignment_admin',
@@ -264,11 +270,16 @@ describe('GET /api/account/events/:slug/settings', () => {
         assignments: [{ id: 'assignment_admin', userId: 'settings_admin' }],
         counts: { admins: 1, staff: 1, judges: 1 }
       },
+      // Each offer carries its codes in upload order, with the person who claimed a code.
       credits: [{
         id: 'credit_offer_1',
         availableCount: 1,
-        claimedCount: 0,
-        totalCount: 1
+        claimedCount: 1,
+        totalCount: 2,
+        codes: [
+          { value: 'settings-credit-code', claimedAt: null, claimedByUser: null },
+          { value: 'settings-claimed-code', claimedAt: '2026-08-19T12:00:00.000Z', claimedByUser: { id: 'settings_admin' } }
+        ]
       }],
       simplifiedClaiming: {
         redemptionUrl: 'https://events.example.com/events/settings-fixture/redeem',

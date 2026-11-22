@@ -133,7 +133,7 @@ describe('account event operations, submissions, and judging page reads', () => 
     })
   })
 
-  test('keeps a direct operations shell read on one session with one joined credit probe', async () => {
+  test('keeps a direct operations shell read on one session and reads no credit tables', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/account/events/:slug/operations', handler: operationsPageGetHandler }
@@ -167,7 +167,6 @@ describe('account event operations, submissions, and judging page reads', () => 
         page: unknown
         shell?: {
           event: { tracks: Array<Record<string, unknown>> }
-          tabVisibility: { hasCreditInventory: boolean }
         }
       }
     }
@@ -185,17 +184,13 @@ describe('account event operations, submissions, and judging page reads', () => 
       resources: [],
       displayOrder: 1
     }])
-    expect(body.data.shell?.tabVisibility.hasCreditInventory).toBe(false)
 
     const requestQueries = harness.d1Database.queries.slice(queryOffset)
     expect(new Set(requestQueries.map(query => query.sessionId))).toHaveLength(1)
-    const creditQueries = requestQueries.filter(query =>
+    // The page shell decides the tabs without the credits: they are shown on the Overview tab.
+    expect(requestQueries.filter(query =>
       query.sql.includes('event_credit_offers') || query.sql.includes('event_credit_codes')
-    )
-
-    expect(creditQueries).toHaveLength(1)
-    expect(creditQueries[0]?.sql).toContain('event_credit_offers')
-    expect(creditQueries[0]?.sql).toContain('event_credit_codes')
+    )).toEqual([])
   })
 
   test('uses the bounded participant model for a direct admin Participants link', async () => {

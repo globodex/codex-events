@@ -27,7 +27,7 @@ Feature: Next step after check-in
   Scenario: Event without questions shows the activities right after check-in
     Given I open my event page of "check-in-flow-no-questions-fixture-event" as "regular_user"
     Then my next step should list the activity "Agenda"
-    And my next step should list the activity "Credits"
+    And I should see the credit "Codex event credit" on my event page
 
   Scenario: Event that does not use the next step keeps its page
     Given I open my event page of "participant-approved-fixture-event" as "regular_user"

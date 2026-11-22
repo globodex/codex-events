@@ -409,7 +409,7 @@ describe('TASK-450 event challenges', () => {
       }
     }
 
-    test('puts the Agenda before Credits on Overview and a direct link', async () => {
+    test('puts the Agenda right after Overview on the event page and a direct link', async () => {
       const harness = await createContext({ agendaItemsJson: JSON.stringify([{
         id: 'intro', title: 'Welcome', startsAt: '2026-11-28T10:00:00.000Z', endsAt: null, details: null, displayOrder: 0
       }]) })
@@ -417,7 +417,7 @@ describe('TASK-450 event challenges', () => {
       const { tabs } = await readDirectLinkResponse(harness, 'participant')
       const response = await requestEventPage(harness, 'participant')
       const { data } = await response.json() as { data: { page: unknown } }
-      expect(tabs.slice(0, 3)).toEqual(['overview', 'program', 'credits'])
+      expect(tabs.slice(0, 2)).toEqual(['overview', 'program'])
       expect(accountEventEntryPageSchema.parse(data.page).tabVisibility.availableTabs).toEqual(tabs)
     })
 

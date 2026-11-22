@@ -199,7 +199,6 @@ describe('account event entry and prizes page reads', () => {
       activeTeam: null
     })
     expect(page.participantCredits).toHaveLength(1)
-    expect(page.adminCredits).toEqual([])
     expect(page.talkProposal).toBeNull()
     expect(page.talkProposalReviews).toEqual([])
     expect(new Set(harness.d1Database.queries.slice(queryOffset).map(query => query.sessionId))).toHaveLength(1)

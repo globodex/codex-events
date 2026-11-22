@@ -15,11 +15,6 @@ export function getAccountEventSeoContent(
         title: `Workspace | ${eventName} | Codex Events`,
         description: `Manage your participation, team workspace, and submission for ${eventName}.`
       }
-    case 'credits':
-      return {
-        title: `Credits | ${eventName} | Codex Events`,
-        description: `Claim or manage event credits for ${eventName}.`
-      }
     case 'prizes':
       return {
         title: `Prizes | ${eventName} | Codex Events`,

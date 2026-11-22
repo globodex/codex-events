@@ -350,7 +350,7 @@ An event with its check-in flow on gives every `approved` application one of thr
 - `questionnaire open`
   The participant has effective attendance, the event has a questionnaire, and the participant has not completed it. The account event overview shows the questions.
 - `finished`
-  The participant has effective attendance and has completed the questionnaire, or the event has no questionnaire. The account event overview lists the event's activities, and the participant can claim event credits and add photos to the gallery when the event allows participant photos.
+  The participant has effective attendance and has completed the questionnaire, or the event has no questionnaire. The account event overview lists the event's activities and the credit offers of the event. The participant can claim credits there and add photos to the gallery when the event allows participant photos.
 
 Position changes:
 

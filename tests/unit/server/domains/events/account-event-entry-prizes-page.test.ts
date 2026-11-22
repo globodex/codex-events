@@ -38,7 +38,7 @@ describe('account-event entry/prizes server assemblers', () => {
 
   test('keeps authorization and visibility decisions server-owned', () => {
     expect(entrySource).toContain('context.authorization.canViewParticipantsAndTeams')
-    expect(entrySource).toContain('context.authorization.isEventAdmin')
+    expect(entrySource).toContain('getEventCreditClaimAccess({')
     expect(prizesSource).toContain('assertCompetitionEvent(context.event)')
     expect(entrySource).not.toContain('capabilities')
     expect(prizesSource).not.toContain('capabilities')

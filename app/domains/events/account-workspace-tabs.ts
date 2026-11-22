@@ -8,7 +8,6 @@ export type AccountEventWorkspaceTab = AccountEventEntryTab
 
 export const accountEventWorkspacePageByTab: Readonly<Record<AccountEventWorkspaceTab, AccountEventPageName>> = {
   'overview': 'entry',
-  'credits': 'entry',
   'prizes': 'prizes',
   'program': 'program',
   'call-for-talks': 'entry',
@@ -47,7 +46,6 @@ export interface AccountEventWorkspaceBackLink {
 
 const defaultAccountEventTabLabels: Record<AccountEventWorkspaceTab, string> = {
   'overview': 'Overview',
-  'credits': 'Credits',
   'workspace': 'Workspace',
   'prizes': 'Prizes',
   'program': 'Agenda',

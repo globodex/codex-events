@@ -164,30 +164,6 @@ export interface AccountEventEntryParticipantCreditOffer {
   } | null
 }
 
-export interface AccountEventEntryAdminCreditOffer {
-  id: string
-  eventId: string
-  name: string
-  description: string
-  displayOrder: number
-  createdAt: string
-  updatedAt: string
-  availableCount: number
-  claimedCount: number
-  totalCount: number
-  codes: Array<{
-    id: string
-    value: string
-    claimedAt: string | null
-    createdAt: string
-    claimedByUser: {
-      id: string
-      email: string
-      displayName: string
-    } | null
-  }>
-}
-
 export type AccountEventEntryTalkProposalStatus = 'draft' | 'submitted' | 'withdrawn' | 'accepted' | 'rejected'
 
 export interface AccountEventEntryTalkProposal {
@@ -237,7 +213,6 @@ export const accountEventEntryTabs = [
   'overview',
   'prizes',
   'program',
-  'credits',
   'call-for-talks',
   'gallery',
   'feedback',
@@ -260,7 +235,6 @@ export interface AccountEventEntryTabVisibility {
   showPrizeConfiguration: boolean
   hasPublishedPrizes: boolean
   hasPublishedStaff: boolean
-  hasCreditInventory: boolean
   hasEligibleTalkProposalApplicant: boolean
   hasGallery: boolean
 }
@@ -269,8 +243,12 @@ export interface AccountEventEntryPage {
   event: AccountEventEntryEvent
   access: AccountEventEntryAccess | null
   participation: AccountEventEntryParticipation | null
+  /**
+   * The credit offers that the Overview tab shows to the caller: the offers that the caller can
+   * claim now, and the offers that the caller already claimed. Organizers manage the offers in
+   * the event builder, which reads them from the settings page.
+   */
   participantCredits: AccountEventEntryParticipantCreditOffer[]
-  adminCredits: AccountEventEntryAdminCreditOffer[]
   talkProposal: AccountEventEntryTalkProposal | null
   talkProposalReviews: AccountEventEntryTalkProposalReview[]
   talkProposalReviewTotal: number
@@ -436,30 +414,6 @@ const accountEventEntryParticipantCreditOfferSchema = z.object({
   }).nullable()
 })
 
-const accountEventEntryAdminCreditOfferSchema = z.object({
-  id: z.string(),
-  eventId: z.string(),
-  name: z.string(),
-  description: z.string(),
-  displayOrder: z.number().int(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-  availableCount: z.number().int().nonnegative(),
-  claimedCount: z.number().int().nonnegative(),
-  totalCount: z.number().int().nonnegative(),
-  codes: z.array(z.object({
-    id: z.string(),
-    value: z.string(),
-    claimedAt: z.string().nullable(),
-    createdAt: z.string(),
-    claimedByUser: z.object({
-      id: z.string(),
-      email: z.string(),
-      displayName: z.string()
-    }).nullable()
-  }))
-})
-
 const accountEventEntryTalkProposalSchema = z.object({
   id: z.string(),
   eventId: z.string(),
@@ -508,7 +462,6 @@ const accountEventEntryTabVisibilitySchema = z.object({
   showPrizeConfiguration: z.boolean(),
   hasPublishedPrizes: z.boolean(),
   hasPublishedStaff: z.boolean(),
-  hasCreditInventory: z.boolean(),
   hasEligibleTalkProposalApplicant: z.boolean(),
   hasGallery: z.boolean()
 })
@@ -518,7 +471,6 @@ export const accountEventEntryPageSchema = z.object({
   access: accountEventEntryAccessSchema.nullable(),
   participation: accountOverviewRecordSchema.nullable(),
   participantCredits: z.array(accountEventEntryParticipantCreditOfferSchema),
-  adminCredits: z.array(accountEventEntryAdminCreditOfferSchema),
   talkProposal: accountEventEntryTalkProposalSchema.nullable(),
   talkProposalReviews: z.array(accountEventEntryTalkProposalReviewSchema),
   talkProposalReviewTotal: z.number().int().nonnegative(),
