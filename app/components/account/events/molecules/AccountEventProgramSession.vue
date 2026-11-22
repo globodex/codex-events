@@ -22,7 +22,7 @@ const accessibleLabel = computed(() =>
 )
 
 const cardClass = computed(() => {
-  if (props.selected) return 'border-sky-600 bg-sky-500/10'
+  if (props.selected) return 'border-primary bg-primary/5'
   if (props.phase === 'now') return 'border-success/50 bg-success/10'
   return 'border-default bg-default'
 })

@@ -150,7 +150,7 @@ When('I select each session in the program', async ({ page }) => {
   await expect.poll(() => image.evaluate(element => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
 
   await page.getByTestId(`program-session-${buildSessionId}`).click()
-  await expect(plan.getByText('Makers Room', { exact: true })).toBeVisible()
+  await expect(plan.locator('figcaption').getByText('Makers Room', { exact: true })).toBeVisible()
   await expect(plan.getByTestId('program-room-highlight')).toHaveAttribute('style', /left: 12\.5%/u)
 
   await page.getByTestId(`program-session-${designSessionId}`).click()
@@ -158,7 +158,7 @@ When('I select each session in the program', async ({ page }) => {
 
 Then('the floor plan should highlight the selected room', async ({ page }) => {
   const plan = page.getByTestId('program-floor-plan')
-  await expect(plan.getByText('Studio Room', { exact: true })).toBeVisible()
+  await expect(plan.locator('figcaption').getByText('Studio Room', { exact: true })).toBeVisible()
   await expect(plan.getByTestId('program-room-highlight')).toHaveAttribute('style', /left: 50%/u)
 
   await page.setViewportSize({ width: 390, height: 844 })
@@ -178,7 +178,7 @@ When('I explore the {string} using the map', async ({ page }, floorName: string)
   const quietRoom = plan.getByRole('button', { name: 'Quiet Room', exact: true })
   await quietRoom.click()
   await expect(quietRoom).toHaveAttribute('aria-pressed', 'true')
-  await expect(plan.getByText('Quiet Room', { exact: true })).toBeVisible()
+  await expect(plan.locator('figcaption').getByText('Quiet Room', { exact: true })).toBeVisible()
 
   const teamRoom = plan.getByRole('button', { name: 'Team Room', exact: true })
   await teamRoom.focus()
@@ -186,7 +186,7 @@ When('I explore the {string} using the map', async ({ page }, floorName: string)
   await expect(teamRoom).toBeFocused()
   await expect(teamRoom).toHaveAttribute('aria-pressed', 'true')
   await expect(quietRoom).toHaveAttribute('aria-pressed', 'false')
-  await expect(plan.getByText('Team Room', { exact: true })).toBeVisible()
+  await expect(plan.locator('figcaption').getByText('Team Room', { exact: true })).toBeVisible()
 })
 
 When('I select the build session in the agenda', async ({ page }) => {
@@ -198,7 +198,7 @@ Then('the map should return to the build session\'s room on {string}', async ({ 
   await expect(plan.getByRole('img', { name: `Floor plan for ${floorName}`, exact: true })).toBeVisible()
   const room = plan.getByRole('button', { name: 'Makers Room', exact: true })
   await expect(room).toHaveAttribute('aria-pressed', 'true')
-  await expect(plan.getByText('Makers Room', { exact: true })).toBeVisible()
+  await expect(plan.locator('figcaption').getByText('Makers Room', { exact: true })).toBeVisible()
 })
 
 When('I reload the Agenda tab', async ({ page }) => {

@@ -9,7 +9,9 @@ export const floorPlanRoomAreaSchema = z.object({
   x: coordinate,
   y: coordinate,
   width: coordinate.positive(),
-  height: coordinate.positive()
+  height: coordinate.positive(),
+  // Degrees the rectangle is turned clockwise around its center. An upright rectangle has 0.
+  rotation: z.number().min(-180).max(180).default(0)
 }).refine(({ x, y, width, height }) =>
   x + width <= 1 + Number.EPSILON && y + height <= 1 + Number.EPSILON,
 { message: 'Keep the room area inside the floor plan.' })

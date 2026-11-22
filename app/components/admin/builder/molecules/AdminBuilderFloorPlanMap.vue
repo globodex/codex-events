@@ -44,12 +44,14 @@ function pointOnPlan(event: MouseEvent, bounds: DOMRect): Point {
   }
 }
 
+// A newly marked area is upright. The admin turns it with the rotation field.
 function areaBetween(start: Point, end: Point): ProgramRoom['area'] {
   return {
     x: Math.min(start.x, end.x),
     y: Math.min(start.y, end.y),
     width: Math.abs(start.x - end.x),
-    height: Math.abs(start.y - end.y)
+    height: Math.abs(start.y - end.y),
+    rotation: 0
   }
 }
 
@@ -110,22 +112,23 @@ function addRoutePoint(event: MouseEvent) {
     @pointercancel="cancelMark"
     @lostpointercapture="cancelMark"
   >
+    <!-- The dark theme swaps light and dark in the plan image, as on the participant map. -->
     <img
       :src="props.imageUrl"
       :alt="`Floor plan for ${props.name}`"
       loading="lazy"
       draggable="false"
-      class="block h-auto w-full select-none"
+      class="block h-auto w-full select-none dark:invert dark:hue-rotate-180"
     >
     <span
       v-for="room in props.rooms"
       :key="room.id"
       :style="roomAreaStyle(room.area)"
       aria-hidden="true"
-      class="pointer-events-none absolute border-sky-700 ring-white"
+      class="pointer-events-none absolute border-primary"
       :class="room.id === props.activeRoomId
-        ? 'z-10 border-2 bg-sky-300/35 ring-2'
-        : 'border bg-sky-300/10 ring-1'"
+        ? 'z-10 border-2 bg-primary/25'
+        : 'border bg-primary/5'"
     />
     <svg
       v-if="routeLine"
@@ -136,7 +139,7 @@ function addRoutePoint(event: MouseEvent) {
     >
       <polyline
         :points="routeLine"
-        class="fill-none stroke-sky-600"
+        class="fill-none stroke-primary"
         stroke-width="4"
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -148,14 +151,14 @@ function addRoutePoint(event: MouseEvent) {
       :key="index"
       :style="{ left: `${point.x * 100}%`, top: `${point.y * 100}%` }"
       aria-hidden="true"
-      class="pointer-events-none absolute z-20 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white"
-      :class="index === 0 ? 'bg-emerald-600' : 'bg-sky-600'"
+      class="pointer-events-none absolute z-20 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bg"
+      :class="index === 0 ? 'bg-success' : 'bg-primary'"
     />
     <span
       v-if="preview"
       :style="roomAreaStyle(preview)"
       aria-hidden="true"
-      class="pointer-events-none absolute z-20 border-2 border-dashed border-sky-700 bg-sky-300/40"
+      class="pointer-events-none absolute z-20 border-2 border-dashed border-primary bg-primary/25"
     />
   </div>
 </template>

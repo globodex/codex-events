@@ -5,8 +5,6 @@
     <path d="M60 36h252v144H60zm312 0h168v144H372zM60 264h480v60H60z"/>
   </g>
   <g fill="#334155" font-family="sans-serif" font-size="18" text-anchor="middle">
-    <text x="186" y="116">Main Hall</text>
-    <text x="456" y="116">Studio</text>
     <text x="300" y="300">Entrance</text>
   </g>
 </svg>

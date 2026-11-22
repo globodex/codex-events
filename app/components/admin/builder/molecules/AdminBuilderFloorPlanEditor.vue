@@ -91,10 +91,18 @@ function markRoom(area: RoomArea) {
   }
 }
 
-function updatePercent(key: keyof RoomArea, value: string | number | undefined) {
+function updatePercent(key: typeof areaFields[number]['key'], value: string | number | undefined) {
   const room = activeRoom.value
   if (room) {
     room.area[key] = value === undefined || value === '' ? undefined : Number(value) / 100
+  }
+}
+
+// An empty field means the room is upright.
+function updateRotation(value: string | number | undefined) {
+  const room = activeRoom.value
+  if (room) {
+    room.area.rotation = value === undefined || value === '' ? undefined : Number(value)
   }
 }
 
@@ -360,6 +368,21 @@ async function replaceImage(event: Event) {
                     max="100"
                     step="any"
                     @update:model-value="updatePercent(field.key, $event)"
+                  />
+                </AppFormField>
+                <AppFormField
+                  :name="`${formId}-rotation`"
+                  label="Rotation (°)"
+                >
+                  <AppInput
+                    :id="`${formId}-rotation`"
+                    :model-value="activeRoom.area.rotation"
+                    type="number"
+                    size="sm"
+                    min="-180"
+                    max="180"
+                    step="any"
+                    @update:model-value="updateRotation"
                   />
                 </AppFormField>
               </div>

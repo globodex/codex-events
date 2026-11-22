@@ -9,12 +9,12 @@ export const buildDayGroundFloor: EventFloorPlan = {
   rooms: [{
     id: 'main-hall',
     name: 'Main Hall',
-    area: { x: 0.1, y: 0.1, width: 0.42, height: 0.4 },
+    area: { x: 0.1, y: 0.1, width: 0.42, height: 0.4, rotation: 0 },
     route: [{ x: 0.5, y: 0.82 }, { x: 0.5, y: 0.62 }, { x: 0.31, y: 0.62 }, { x: 0.31, y: 0.48 }]
   }, {
     id: 'studio',
     name: 'Studio',
-    area: { x: 0.62, y: 0.1, width: 0.28, height: 0.4 }
+    area: { x: 0.62, y: 0.1, width: 0.28, height: 0.4, rotation: 0 }
   }]
 }
 
@@ -25,7 +25,7 @@ export const buildDayUpperFloor: EventFloorPlan = {
   rooms: [{
     id: 'workshop-room',
     name: 'Workshop Room',
-    area: { x: 0.5, y: 0.6, width: 0.4, height: 0.3 }
+    area: { x: 0.5, y: 0.6, width: 0.4, height: 0.3, rotation: 0 }
   }]
 }
 

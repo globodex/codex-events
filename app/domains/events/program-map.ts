@@ -10,7 +10,8 @@ export function roomAreaStyle(area: ProgramRoom['area']) {
     left: `${area.x * 100}%`,
     top: `${area.y * 100}%`,
     width: `${area.width * 100}%`,
-    height: `${area.height * 100}%`
+    height: `${area.height * 100}%`,
+    rotate: `${area.rotation}deg`
   }
 }
 

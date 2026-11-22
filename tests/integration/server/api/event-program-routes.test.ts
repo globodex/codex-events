@@ -36,7 +36,7 @@ const publicBlock = {
 const room = {
   id: 'seminar_room',
   name: 'Seminar Room',
-  area: { x: 0.25, y: 0.1, width: 0.25, height: 0.2 },
+  area: { x: 0.25, y: 0.1, width: 0.25, height: 0.2, rotation: 30 },
   route: [{ x: 0.05, y: 0.9 }, { x: 0.05, y: 0.2 }, { x: 0.3, y: 0.2 }]
 }
 const firstSession = {
