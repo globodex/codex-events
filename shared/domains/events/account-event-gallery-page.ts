@@ -6,6 +6,11 @@ const photoSchema = z.object({
   fileName: z.string().nullable(),
   isPubliclyVisible: z.boolean(),
   isHighlighted: z.boolean().optional(),
+  // True for a photo that a participant added. The gallery lists it under "Uploaded by participants".
+  isParticipantUpload: z.boolean().optional(),
+  // True while the event team hides a participant photo. Only the people who manage the gallery
+  // receive a hidden photo.
+  isHidden: z.boolean().optional(),
   contentType: z.string(),
   width: z.number().int().positive(),
   height: z.number().int().positive(),
@@ -20,7 +25,11 @@ const photoSchema = z.object({
 })
 
 export const accountEventGalleryPageSchema = z.object({
-  photos: z.array(photoSchema)
+  photos: z.array(photoSchema),
+  // True when the caller adds photos as a participant (`canAddParticipantPhotos` in
+  // `shared/domains/events/photos.ts`). False for the people who manage the gallery: they add
+  // photos of the event team.
+  canAddParticipantPhotos: z.boolean()
 })
 
 export type AccountEventGalleryPhoto = z.infer<typeof photoSchema>

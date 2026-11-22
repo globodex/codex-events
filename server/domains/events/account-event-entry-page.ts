@@ -36,7 +36,11 @@ import {
   serializeAdminEvent
 } from '#server/domains/events'
 import { listReadableEventChallenges } from '#server/domains/events/challenges'
-import { hasEventPhotos } from '#server/domains/events/photos'
+import {
+  getEventPhotoViewer,
+  hasEventPhotos,
+  mayAddParticipantPhotos
+} from '#server/domains/events/photos'
 import { findEventProgramItemId } from '#server/domains/events/program'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { getTeamCompetitionOutcome } from '#server/domains/outcomes'
@@ -334,6 +338,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
   load: async (context, query): Promise<AccountEventEntryPage> => {
     const event = context.event
     const userId = context.actor.platformUser.id
+    const photoViewer = getEventPhotoViewer(context.authorization)
     const accessPromise = getAccountEventPageAccess(context)
     const [
       participantAccess,
@@ -354,7 +359,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
       }),
       listEventTracks(context.database, event.id),
       getEventDisplayImageOptions(context.database),
-      hasEventPhotos(context.database, event.id),
+      hasEventPhotos(context.database, event.id, photoViewer),
       context.database.query.prizes.findFirst({
         columns: { id: true },
         where: eq(prizes.eventId, event.id)
@@ -437,6 +442,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
       hasRetainedTalkProposal: Boolean(talkProposalResult[0]),
       hasCreditInventory: credits.participantCredits.some(offer => offer.totalCount > 0),
       hasGallery: galleryExists,
+      canAddParticipantPhotos: mayAddParticipantPhotos({ event, viewer: photoViewer, application }),
       hasProgram: Boolean(programItemId),
       hasReadableChallenges: challenges.length > 0,
       hasPublishedPrizes: Boolean(publishedPrize),

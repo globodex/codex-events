@@ -1,4 +1,8 @@
-import { listEventPhotoRecords } from '#server/domains/events/photos'
+import {
+  getEventPhotoViewer,
+  listEventPhotoRecords,
+  mayAddParticipantPhotos
+} from '#server/domains/events/photos'
 import type { AccountEventGalleryPage } from '#shared/domains/events/account-event-gallery-page'
 import { accountEventGalleryPageSchema } from '#shared/domains/events/account-event-gallery-page'
 import { assertGuard } from '#server/domains/lifecycle-guard'
@@ -9,10 +13,7 @@ export const accountEventGalleryPageRoute = defineAccountEventPageRoute({
   page: 'gallery',
   schema: accountEventGalleryPageSchema,
   authorize: async (context) => {
-    if (
-      context.authorization.isPlatformAdmin
-      || context.authorization.explicitRole !== null
-    ) {
+    if (getEventPhotoViewer(context.authorization).canManage) {
       return
     }
 
@@ -24,7 +25,19 @@ export const accountEventGalleryPageRoute = defineAccountEventPageRoute({
       details: { eventId: context.event.id }
     })
   },
-  load: async (context): Promise<AccountEventGalleryPage> => ({
-    photos: await listEventPhotoRecords(context.database, context.event.id)
-  })
+  load: async (context): Promise<AccountEventGalleryPage> => {
+    const viewer = getEventPhotoViewer(context.authorization)
+
+    return {
+      photos: await listEventPhotoRecords(context.database, context.event.id, viewer),
+      canAddParticipantPhotos: mayAddParticipantPhotos({
+        event: context.event,
+        viewer,
+        // `context.access` holds the registration of every caller without a role in the event.
+        // A caller with a role manages the gallery and never adds participant photos, so their
+        // registration is not read here.
+        application: context.access?.application
+      })
+    }
+  }
 })

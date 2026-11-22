@@ -642,6 +642,10 @@ function groupById(id: string) {
             v-model="form.questionnaireQuestions"
             variant="builder"
           />
+          <AppCheckbox
+            v-model="form.participantPhotosEnabled"
+            label="Participants can add photos to the gallery"
+          />
         </div>
       </AdminBuilderSettingsGroupCard>
 

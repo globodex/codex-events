@@ -113,6 +113,9 @@ export const accountEventSettingsEventSchema = z.object({
   // field and sends the list back when it saves, so the field must stay in this schema: without
   // it a save in the builder would remove the stored challenges.
   challenges: eventChallengesSchema,
+  // Like `challenges`, the event builder reads this setting here and sends it back when it
+  // saves. Without the field a save in the builder would switch participant photos off.
+  participantPhotosEnabled: z.boolean(),
   blindReviewCount: z.number().int(),
   pitchReviewEnabled: z.boolean(),
   blindScoreWeightPercent: z.number().int(),

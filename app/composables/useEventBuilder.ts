@@ -256,7 +256,8 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
       // The question editor is hidden while the switch is off. The questions are not sent then, so
       // the event keeps its stored questions and an unfinished hidden question cannot block the save.
       ...(form.checkInFlowEnabled ? { questionnaireQuestions: form.questionnaireQuestions } : {}),
-      challenges: form.challenges
+      challenges: form.challenges,
+      participantPhotosEnabled: form.participantPhotosEnabled
     }
   }
 

@@ -259,6 +259,7 @@ const simplifiedClaimingEnabledSchema = z.coerce.boolean()
 const lumaGuestListEnabledSchema = z.coerce.boolean()
 const talkProposalsEnabledSchema = z.coerce.boolean()
 const checkInFlowEnabledSchema = z.coerce.boolean()
+const participantPhotosEnabledSchema = z.coerce.boolean()
 const blindReviewCountSchema = z.coerce.number().int().min(0).max(2)
 const pitchReviewEnabledSchema = z.coerce.boolean()
 const blindScoreWeightPercentSchema = z.coerce.number().int().min(0).max(100)
@@ -574,6 +575,7 @@ export const updateEventBodySchema = z.object({
   checkInFlowEnabled: checkInFlowEnabledSchema.optional(),
   questionnaireQuestions: customQuestionsSchema.optional(),
   challenges: eventChallengesSchema.optional(),
+  participantPhotosEnabled: participantPhotosEnabledSchema.optional(),
   blindReviewCount: blindReviewCountSchema.optional(),
   pitchReviewEnabled: pitchReviewEnabledSchema.optional(),
   blindScoreWeightPercent: blindScoreWeightPercentSchema.optional(),
@@ -2384,6 +2386,7 @@ export function serializeAdminEvent(
     questionnaireQuestions: parseCustomQuestionsJson(event.questionnaireQuestionsJson),
     // Every challenge, drafts included. Only the admin event carries drafts.
     challenges: parseEventChallengesJson(event.challengesJson),
+    participantPhotosEnabled: event.participantPhotosEnabled,
     slidesUrl: event.slidesUrl,
     lumaApiKey: event.lumaApiKey,
     lumaWebhookStatus: event.lumaWebhookStatus,

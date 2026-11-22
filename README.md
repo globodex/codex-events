@@ -84,7 +84,7 @@ You run three kinds of event from the same platform. Every event shares the same
 | **Guided arrival** | Optionally show confirmed participants their next step on the event page: check in at the entrance, answer a short questionnaire written by the organizer, then open the event's activities. Staff and admins read the answers in the participant list. |
 | **Event challenges** | Publish practical tasks with instructions and resource links for an event. Participants read them on their event page after they finish their check-in. |
 | **Event credits** | Offer redeemable credits — such as API or tooling credits — to approved participants from uploaded inventory. |
-| **Galleries and feedback** | Share a private event gallery, publish selected photos, and collect anonymous post-event feedback. |
+| **Galleries and feedback** | Share a private event gallery, let checked-in participants add their own photos, publish selected photos, and collect anonymous post-event feedback. |
 | **Explicit roles and audit** | Platform admins, event admins, event organizers, and staff are separate actors with scoped permissions and an audit trail. |
 | **MCP access** | Let signed-in users connect compatible AI clients through Auth0 OAuth or optional 30-day manual tokens, with the same platform permissions as the web app. |
 

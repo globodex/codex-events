@@ -821,6 +821,10 @@ const participantActivities = computed(() => {
     activities.push({ label: 'Challenges', to: `/account/events/${slug.value}?tab=challenges` })
   }
 
+  if (availableTabs.value.includes('gallery')) {
+    activities.push({ label: 'Photos', to: `/account/events/${slug.value}?tab=gallery` })
+  }
+
   return activities
 })
 const applicationSubmittedNoticeVisible = ref(isParticipantApplicationSubmittedNotice(route.query.notice))

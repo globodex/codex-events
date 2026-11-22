@@ -106,7 +106,7 @@ BDD and the local load runner use four stable personas defined in source:
 | --- | --- | --- |
 | `platform_admin` | `platform-admin@bdd.codex-events.test` | Platform admin |
 | `event_admin` | `event-admin@bdd.codex-events.test` | Event admin for fixture events |
-| `judge` | `judge@bdd.codex-events.test` | Judge for fixture events; event staff for the staff check-in fixture event; confirmed participant of the check-in flow fixture event, the two credit claim fixture events, and the challenges fixture event |
+| `judge` | `judge@bdd.codex-events.test` | Judge for fixture events; event staff for the staff check-in fixture event and the participant photos fixture event; confirmed participant of the check-in flow fixture event, the two credit claim fixture events, and the challenges fixture event |
 | `regular_user` | `regular-user@bdd.codex-events.test` | No administrative role |
 
 Each identity subject has the form:
@@ -304,6 +304,28 @@ state.
   events and cover an organizer publishing a challenge in the event builder,
   a participant opening Challenges from the next step, and a participant
   without the Challenges tab before check-in.
+- Participant photo coverage includes an upload before check-in, with an open
+  questionnaire, after finishing the check-in flow without a credit claim, in
+  an event without a questionnaire, with the check-in flow off, with
+  participant photos not allowed, and by users without an approved
+  application; the limit of 20 photos for one participant, where hidden
+  photos count; uploads by staff, judges, event admins, and platform admins,
+  which stay photos of the event team also with a finished application, and
+  a request with eight photos within the D1 limit of bound values; hiding and
+  showing by staff and event admins with an audit record, and refusal for
+  participants and for photos of the event team; a hidden photo that is
+  absent from the photo list, the gallery page, and every image variant for
+  the participant who added it and for other participants, and present for
+  the people who manage the gallery; a public photo that leaves the public
+  list and the public image when it is hidden and stays off the public page
+  when it is shown again; refused highlight and public changes of a hidden
+  photo; who learns the uploader of a participant photo; the Gallery tab on
+  the event page and on a direct link; and the event setting with the admin
+  event of the settings page. A unit test covers a settings form save that
+  does not send the participant photo setting. Browser scenarios run on
+  dedicated fixture events and cover a participant adding a photo from the
+  next step, event staff hiding it, and an organizer allowing participant
+  photos in the event builder.
 
 Structured operation coverage uses a fresh generated-schema module and an
 instrumented `z.fromJSONSchema` constructor. It verifies that module import

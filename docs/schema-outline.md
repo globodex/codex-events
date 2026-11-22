@@ -124,6 +124,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `check_in_flow_enabled`
 - `questionnaire_questions_json`
 - `challenges_json`
+- `participant_photos_enabled`
 - `state`
 - `hidden_at`
 - `hidden_by_user_id`
@@ -243,6 +244,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `talk_proposals_enabled` defaults to false. `talk_proposal_questions_json` defaults to `[]`, and `talk_proposal_questions_revision` defaults to `0`. After the first `TalkProposal` exists for the event, the feature cannot be disabled and the question definition cannot change. Its closing timestamp can change until the event is completed.
 - `check_in_flow_enabled` defaults to false and is available for every event type. While it is true, the account event overview shows approved participants their next step around check-in. `questionnaire_questions_json` defaults to `[]`. The event has a questionnaire when `check_in_flow_enabled = true` and `questionnaire_questions_json` holds at least one definition. Both fields can change at any time; a change does not rewrite stored `questionnaire_answers_json` payloads.
 - `challenges_json` defaults to `[]` and is available for every event type. `instructions` holds Markdown. `isPublished = false` marks a draft that only the event builder shows. The array order is the display order. No other table stores challenge data, and no participant record refers to a challenge.
+- `participant_photos_enabled` defaults to false and is available for every event type. While it is true, an approved participant who finished the check-in flow can add photos to the event gallery. It does not depend on `check_in_flow_enabled`: with the check-in flow off, a participant has finished the check-in flow as soon as they have effective attendance.
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
 - Application field visibility columns control whether each optional application field appears on the participant application form. First name and family name are always visible and required.
 - `require_x_profile`, `require_linkedin_profile`, `require_github_profile`, `require_chatgpt_email`, `require_openai_org_id`, `require_luma_profile`, `require_why_this_event`, `require_proof_of_execution`, `require_team_intent`, and `require_ai_knowledge` control whether the corresponding visible field is required.
@@ -312,6 +314,9 @@ It describes the intended persistent model at the level of entities, key fields,
 - `image_revision`
 - `file_name`
 - `is_publicly_visible`
+- `is_highlighted`
+- `is_participant_upload`
+- `is_hidden`
 - `content_type`
 - `width`
 - `height`
@@ -321,6 +326,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - `width >= 1`
 - `height >= 1`
+- `is_hidden = false`, or `is_participant_upload = true` and `is_publicly_visible = false`
 
 ### Notes
 
@@ -329,9 +335,11 @@ It describes the intended persistent model at the level of entities, key fields,
 - `file_name` is optional because the upload can succeed even when the client omits a stable file name.
 - `created_at` stores the image creation time when the upload can read it from image metadata, otherwise the upload time.
 - `is_publicly_visible` controls whether a gallery photo appears in the public event Gallery tab.
-- `is_highlighted` controls whether a gallery photo appears in the highlighted account-scoped gallery view.
+- `is_highlighted` controls whether a photo of the event team appears in the highlighted account-scoped gallery view. Participant photos are listed in their own section in every view, whatever the value.
+- `is_participant_upload` defaults to false. It is true for a photo that an approved participant added, is set when the row is created, and never changes. Such a row is a participant photo. One user can have at most 20 participant photos in one event; hidden rows count.
+- `is_hidden` defaults to false. While it is true, the row is returned only to judges, staff, event admins, and platform admins. Only a participant photo can be hidden, and a hidden photo is never public: hiding sets `is_publicly_visible = false`, and showing the photo again leaves it false. `is_highlighted` keeps its value while a row is hidden.
 - Preview variants are derived at read time from the stored private object and are not stored as separate canonical rows. Public `preview` is capped at 720px and public `original` is a bounded 2400px full-display transform; neither exposes the stored original for display. An explicit `download=1` request returns the uploaded original as a non-cacheable attachment under the same gallery access and revision rules.
-- Approved participants can read gallery rows for their events, while judges, staff, event admins, and platform admins can also create, delete, highlight, and mark them public.
+- Approved participants can read the gallery rows of their events that are not hidden. An approved participant who finished the check-in flow can create participant photos while `events.participant_photos_enabled = true`. Judges, staff, event admins, and platform admins can read every row and can create, delete, highlight, hide, and mark rows public.
 
 ## EventRoleAssignment
 

@@ -5,6 +5,7 @@ import { eventPhotos } from '#server/database/schema'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
+  assertEventPhotoNotHidden,
   eventPhotoParamsSchema,
   getEventPhotoRecordOrThrow,
   listEventPhotoRecords,
@@ -25,8 +26,10 @@ export const applicationOperation = defineStructuredRouteOperation({
 }, async (h3Event) => {
   const { eventId, photoId } = parseValidatedParams(h3Event, eventPhotoParamsSchema)
   const body = await parseValidatedBody(h3Event, updateEventPhotoHighlightBodySchema)
-  const { actor, database } = await requireEventPhotoManageAccess(h3Event, eventId)
-  const photo = await getEventPhotoRecordOrThrow(database, eventId, photoId)
+  const { actor, database, viewer } = await requireEventPhotoManageAccess(h3Event, eventId)
+  const photo = await getEventPhotoRecordOrThrow(database, eventId, photoId, viewer)
+
+  assertEventPhotoNotHidden(photo)
 
   await database
     .update(eventPhotos)
@@ -46,7 +49,7 @@ export const applicationOperation = defineStructuredRouteOperation({
     }
   })
 
-  const photos = await listEventPhotoRecords(database, eventId)
+  const photos = await listEventPhotoRecords(database, eventId, viewer)
   const updatedPhoto = photos.find(entry => entry.id === photo.id)
 
   return apiData(updatedPhoto!)

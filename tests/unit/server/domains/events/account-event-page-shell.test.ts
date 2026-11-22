@@ -19,7 +19,9 @@ vi.mock('#server/domains/events', () => ({
 }))
 
 vi.mock('#server/domains/events/photos', () => ({
-  hasEventPhotos
+  hasEventPhotos,
+  getEventPhotoViewer: () => ({ canManage: false }),
+  mayAddParticipantPhotos: () => false
 }))
 
 vi.mock('#server/domains/events/program', () => ({

@@ -350,7 +350,7 @@ An event with its check-in flow on gives every `approved` application one of thr
 - `questionnaire open`
   The participant has effective attendance, the event has a questionnaire, and the participant has not completed it. The account event overview shows the questions.
 - `finished`
-  The participant has effective attendance and has completed the questionnaire, or the event has no questionnaire. The account event overview lists the event's activities, and the participant can claim event credits and read the event's published challenges.
+  The participant has effective attendance and has completed the questionnaire, or the event has no questionnaire. The account event overview lists the event's activities, and the participant can claim event credits, read the event's published challenges, and add photos to the gallery when the event allows participant photos.
 
 Position changes:
 
@@ -369,7 +369,7 @@ Notes:
 - A participant completes the questionnaire once. Changing the questions afterwards does not reopen it.
 - A `finished` participant who never completed a questionnaire moves to `questionnaire open` when an event admin adds the first question to the event.
 - Restoring a withdrawn application clears the check-in and the questionnaire completion, so the restored participant starts at `check-in pending`.
-- An event with its check-in flow off shows no next step. Its participants still finish the check-in flow as soon as they have effective attendance. From then on they can read the event's published challenges.
+- An event with its check-in flow off shows no next step. Its participants still finish the check-in flow as soon as they have effective attendance. From then on they can read the event's published challenges and, when the event allows participant photos, add photos to the gallery.
 
 ## Team Join Request
 

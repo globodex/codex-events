@@ -807,12 +807,12 @@ export const eventBuilderSettingsGroupDefinitions: readonly EventBuilderSettings
     id: 'after-check-in',
     icon: 'i-lucide-list-checks',
     title: 'After check-in',
-    description: 'Tell participants what to do when they arrive, and ask them a few questions.',
+    description: 'Tell participants what to do when they arrive, ask them a few questions, and let them add photos.',
     appliesTo: allTypes,
     parity: false,
     // These settings are saved with an event update, so the group needs an existing event.
     editOnly: true,
-    isComplete: form => form.checkInFlowEnabled
+    isComplete: form => form.checkInFlowEnabled || form.participantPhotosEnabled
   },
   {
     id: 'challenges',

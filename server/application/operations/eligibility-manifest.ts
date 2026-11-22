@@ -126,6 +126,7 @@ export const mcpEligibilityManifest = [
   { route: 'events/[eventId]/luma/actions/sync-guest-list.post.ts', disposition: 'exclude', reason: 'system_integration_control' },
   { route: 'events/[eventId]/no-submission-teams/index.get.ts', disposition: 'include' },
   { route: 'events/[eventId]/photos/[photoId].delete.ts', disposition: 'include' },
+  { route: 'events/[eventId]/photos/[photoId]/hidden.patch.ts', disposition: 'include' },
   { route: 'events/[eventId]/photos/[photoId]/highlight.patch.ts', disposition: 'include' },
   { route: 'events/[eventId]/photos/[photoId]/image.get.ts', disposition: 'exclude', reason: 'raw_binary_transfer' },
   { route: 'events/[eventId]/photos/[photoId]/public-visibility.patch.ts', disposition: 'include' },

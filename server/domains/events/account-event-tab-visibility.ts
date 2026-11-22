@@ -7,7 +7,10 @@ export function buildAccountEventTabVisibility(input: {
   applicationStatus: AccountEventEntryAccess['applicationStatus']
   hasRetainedTalkProposal: boolean
   hasCreditInventory: boolean
+  /** The gallery holds at least one photo that the caller may view (`hasEventPhotos`). */
   hasGallery: boolean
+  /** The caller adds photos as a participant (`mayAddParticipantPhotos`). */
+  canAddParticipantPhotos: boolean
   hasProgram: boolean
   /** The caller can read at least one published challenge (`listReadableEventChallenges`). */
   hasReadableChallenges: boolean
@@ -21,6 +24,7 @@ export function buildAccountEventTabVisibility(input: {
     hasRetainedTalkProposal,
     hasCreditInventory,
     hasGallery,
+    canAddParticipantPhotos,
     hasProgram,
     hasReadableChallenges,
     hasPublishedPrizes,
@@ -67,6 +71,8 @@ export function buildAccountEventTabVisibility(input: {
     || authorization.isEventAdmin
     || authorization.canViewParticipantsAndTeams
     || (hasApprovedParticipantAccess && hasGallery)
+    // A participant who can add photos gets the tab also while the gallery is empty.
+    || canAddParticipantPhotos
   ) {
     availableTabs.push('gallery')
   }

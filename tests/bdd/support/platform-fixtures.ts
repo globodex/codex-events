@@ -66,6 +66,8 @@ const fixtureChallenges = [
   },
   { id: 'unfinished-idea', title: 'Unfinished idea', instructions: 'Still being written.', resources: [], isPublished: false }
 ]
+const fixtureParticipantPhotosEventId = 'event_e2e_participant_photos_fixture'
+const fixtureParticipantPhotosBuilderEventId = 'event_e2e_participant_photos_builder_fixture'
 const fixtureParticipantTeamCreateEventId = 'event_e2e_participant_team_create_fixture'
 const fixtureParticipantTeamJoinEventId = 'event_e2e_participant_team_join_fixture'
 const fixtureParticipantTeamSoloEventId = 'event_e2e_participant_team_solo_fixture'
@@ -1358,6 +1360,30 @@ function buildFixtureSql(personas: StablePersona[]) {
     ) values
       ('application_challenges_fixture_regular_user', ${sqlLiteral(fixtureChallengesEventId)}, ${sqlLiteral(regularUserId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, 'staff', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
       ('application_challenges_fixture_judge', ${sqlLiteral(fixtureChallengesEventId)}, ${sqlLiteral(judgeId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, null, null, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
+    // Two Build events for the participant photo scenarios. The old created_at keeps them at the
+    // end of the public event list.
+    // 1. Check-in flow on, no questions, participant photos allowed, an empty gallery. The
+    //    regular user is confirmed and checked in, so they can add photos. The judge persona is
+    //    event staff there and hides a photo.
+    // 2. Participant photos not allowed, with the agenda block the event builder needs before it
+    //    saves. The event admin persona manages it and allows participant photos there.
+    `insert into events (
+      id, event_type, name, slug, description, city, country, address,
+      registration_opens_at, registration_closes_at, state, max_team_members,
+      agenda_items_json, check_in_flow_enabled, participant_photos_enabled,
+      created_by_user_id, created_at, updated_at
+    ) values
+      (${sqlLiteral(fixtureParticipantPhotosEventId)}, 'build', 'Participant Photos Fixture Build', 'participant-photos-fixture-event', 'Build fixture for adding photos after check-in.', 'Vienna', 'Austria', 'Fixture Venue', '2020-01-01T00:00:00.000Z', '2030-01-01T00:00:00.000Z', 'registration_open', 1, '[]', 1, 1, ${sqlLiteral(eventAdminId)}, '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z'),
+      (${sqlLiteral(fixtureParticipantPhotosBuilderEventId)}, 'build', 'Participant Photos Builder Fixture Build', 'participant-photos-builder-fixture-event', 'Build fixture for allowing participant photos in the event builder.', 'Vienna', 'Austria', 'Fixture Venue', '2020-01-01T00:00:00.000Z', '2030-01-01T00:00:00.000Z', 'registration_open', 1, ${sqlLiteral(JSON.stringify(fixtureCheckInFlowAgendaItems))}, 0, 0, ${sqlLiteral(eventAdminId)}, '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z')`,
+    `insert into event_role_assignments (
+      id, event_id, user_id, role, is_in_judge_pool, is_staff, created_at
+    ) values
+      ('role_staff_participant_photos_fixture', ${sqlLiteral(fixtureParticipantPhotosEventId)}, ${sqlLiteral(judgeId)}, 'staff', 0, 1, ${sqlLiteral(fixtureTimestamp)}),
+      ('role_event_admin_participant_photos_builder_fixture', ${sqlLiteral(fixtureParticipantPhotosBuilderEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, 0, ${sqlLiteral(fixtureTimestamp)})`,
+    `insert into user_applications (
+      id, event_id, user_id, status, submitted_at, checked_in_at, check_in_source, created_at, updated_at
+    ) values
+      ('application_participant_photos_fixture_regular_user', ${sqlLiteral(fixtureParticipantPhotosEventId)}, ${sqlLiteral(regularUserId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, 'staff', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into event_terms_documents (
       id, event_id, document_type, version, title, content, published_at, created_at
     ) values

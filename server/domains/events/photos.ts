@@ -1,15 +1,21 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, eq, getTableColumns, gt, isNotNull } from 'drizzle-orm'
+import { and, asc, count, eq, getTableColumns, gt, isNotNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
-import type { EventPhotoImageVariant, EventPhotoRecord } from '#shared/domains/events/photos'
+import {
+  canAddParticipantPhotos,
+  maxParticipantPhotosPerEvent,
+  type EventPhotoImageVariant,
+  type EventPhotoRecord
+} from '#shared/domains/events/photos'
 
 import { requirePlatformActor } from '#server/auth/actor'
-import { resolveEventAuthorization } from '#server/auth/authorization'
+import { resolveEventAuthorization, type EventAuthorization } from '#server/auth/authorization'
 import { getDatabase, type AppDatabase } from '#server/database/client'
-import { eventPhotos, userApplications, users } from '#server/database/schema'
+import { eventPhotos, events, userApplications, users } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
+import { hasApplicationFinishedCheckInFlow } from '#server/domains/applications/check-in-flow'
 import { getEventImagesBucket } from './images'
 import {
   publicEventCacheControl,
@@ -26,9 +32,19 @@ import {
 } from '#server/utils/image-signatures'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 
+type EventRecord = typeof events.$inferSelect
+type ApplicationRecord = typeof userApplications.$inferSelect
+type EventPhotoRow = typeof eventPhotos.$inferSelect
+
 export const eventPhotoMaxBytes = 10 * 1024 * 1024
 export const eventPhotoContentTypes = supportedImageContentTypes
-export const eventPhotoMaxRowsPerInsert = 10
+// D1 allows at most 100 bound parameters per statement, and an insert binds one value for
+// every column of `event_photos`. The row limit follows from the column count, so a new column
+// cannot push an insert over the D1 limit.
+const d1MaxBoundParametersPerStatement = 100
+export const eventPhotoMaxRowsPerInsert = Math.floor(
+  d1MaxBoundParametersPerStatement / Object.keys(getTableColumns(eventPhotos)).length
+)
 export const privateEventPhotoCacheControl = 'private, no-store'
 
 type TiffByteOrder = 'little' | 'big'
@@ -102,6 +118,10 @@ export const updateEventPhotoPublicVisibilityBodySchema = z.object({
 
 export const updateEventPhotoHighlightBodySchema = z.object({
   isHighlighted: z.coerce.boolean()
+})
+
+export const updateEventPhotoHiddenBodySchema = z.object({
+  isHidden: z.boolean()
 })
 
 interface ImagesInfoResultLike {
@@ -683,14 +703,53 @@ export async function getEventPhotoObject(
   return await getEventImagesBucket(event).get(objectKey)
 }
 
+/**
+ * Who is looking at the gallery of an event. A person who manages the gallery also receives
+ * hidden photos and learns who added a participant photo. Nobody else does.
+ *
+ * Routes get this object from the access functions below (`requireEventPhotoReadAccess`,
+ * `requireEventPhotoManageAccess`, `requireEventPhotoUploadAccess`). Page loaders build it with
+ * `getEventPhotoViewer`. Every reader of the protected gallery takes it, so no route can return
+ * a hidden photo by leaving out a condition.
+ */
+export interface EventPhotoViewer {
+  canManage: boolean
+}
+
+/** Platform admins and everyone with a role in the event (event admin, staff, judge) manage its gallery. */
+export function getEventPhotoViewer(
+  authorization: Pick<EventAuthorization, 'isPlatformAdmin' | 'explicitRole'>
+): EventPhotoViewer {
+  return {
+    canManage: authorization.isPlatformAdmin || authorization.explicitRole !== null
+  }
+}
+
+/** The photos of an event that this viewer may receive in the protected gallery. */
+function viewablePhotosOfEvent(eventId: string, viewer: EventPhotoViewer) {
+  return viewer.canManage
+    ? eq(eventPhotos.eventId, eventId)
+    : and(eq(eventPhotos.eventId, eventId), eq(eventPhotos.isHidden, false))
+}
+
+/** The photos of an event that the public may receive: marked public and not hidden. */
+function publicPhotosOfEvent(eventId: string) {
+  return and(
+    eq(eventPhotos.eventId, eventId),
+    eq(eventPhotos.isPubliclyVisible, true),
+    eq(eventPhotos.isHidden, false)
+  )
+}
+
 export async function getEventPhotoRecordOrThrow(
   database: AppDatabase,
   eventId: string,
-  photoId: string
+  photoId: string,
+  viewer: EventPhotoViewer
 ) {
   const photo = await database.query.eventPhotos.findFirst({
     where: and(
-      eq(eventPhotos.eventId, eventId),
+      viewablePhotosOfEvent(eventId, viewer),
       eq(eventPhotos.id, photoId)
     )
   })
@@ -717,9 +776,8 @@ export async function getPublicEventPhotoRecordOrThrow(
 ) {
   const photo = await database.query.eventPhotos.findFirst({
     where: and(
-      eq(eventPhotos.eventId, eventId),
-      eq(eventPhotos.id, photoId),
-      eq(eventPhotos.isPubliclyVisible, true)
+      publicPhotosOfEvent(eventId),
+      eq(eventPhotos.id, photoId)
     )
   })
 
@@ -739,10 +797,11 @@ export async function getPublicEventPhotoRecordOrThrow(
 }
 
 function serializeEventPhotoRecord(
-  photo: typeof eventPhotos.$inferSelect,
+  photo: EventPhotoRow,
   options: {
     imagePathBuilder: (photoId: string, variant: EventPhotoImageVariant, version: string) => string
-    includeHighlight: boolean
+    /** The protected gallery also gets the highlight, participant photo and hidden marks. */
+    includeProtectedGalleryFields: boolean
     uploadedByUserId: string | null
     uploader: {
       id: string
@@ -755,7 +814,13 @@ function serializeEventPhotoRecord(
     eventId: photo.eventId,
     fileName: photo.fileName,
     isPubliclyVisible: photo.isPubliclyVisible,
-    ...(options.includeHighlight ? { isHighlighted: photo.isHighlighted } : {}),
+    ...(options.includeProtectedGalleryFields
+      ? {
+          isHighlighted: photo.isHighlighted,
+          isParticipantUpload: photo.isParticipantUpload,
+          isHidden: photo.isHidden
+        }
+      : {}),
     contentType: photo.contentType,
     width: photo.width,
     height: photo.height,
@@ -776,9 +841,19 @@ function serializeEventPhotoRecord(
   }
 }
 
-export async function listEventPhotoRecords(database: AppDatabase, eventId: string) {
+/**
+ * The protected gallery of an event as this viewer may see it, oldest photo first.
+ *
+ * A viewer who does not manage the gallery gets no hidden photo and does not learn who added a
+ * participant photo.
+ */
+export async function listEventPhotoRecords(
+  database: AppDatabase,
+  eventId: string,
+  viewer: EventPhotoViewer
+) {
   const photos = await database.query.eventPhotos.findMany({
-    where: eq(eventPhotos.eventId, eventId),
+    where: viewablePhotosOfEvent(eventId, viewer),
     orderBy: [asc(eventPhotos.createdAt)]
   })
 
@@ -789,12 +864,16 @@ export async function listEventPhotoRecords(database: AppDatabase, eventId: stri
     .where(eq(eventPhotos.eventId, eventId))
   const usersById = new Map(uploaders.map(user => [user.id, user] as const))
 
-  return photos.map(photo => serializeEventPhotoRecord(photo, {
-    imagePathBuilder: (photoId, variant, version) => buildEventPhotoImageUrl(eventId, photoId, variant, version),
-    includeHighlight: true,
-    uploadedByUserId: photo.uploadedByUserId,
-    uploader: usersById.get(photo.uploadedByUserId) ?? null
-  }))
+  return photos.map((photo) => {
+    const mayKnowUploader = viewer.canManage || !photo.isParticipantUpload
+
+    return serializeEventPhotoRecord(photo, {
+      imagePathBuilder: (photoId, variant, version) => buildEventPhotoImageUrl(eventId, photoId, variant, version),
+      includeProtectedGalleryFields: true,
+      uploadedByUserId: mayKnowUploader ? photo.uploadedByUserId : null,
+      uploader: mayKnowUploader ? usersById.get(photo.uploadedByUserId) ?? null : null
+    })
+  })
 }
 
 export async function listPublicEventPhotoRecords(
@@ -804,8 +883,7 @@ export async function listPublicEventPhotoRecords(
 ) {
   const photos = await database.query.eventPhotos.findMany({
     where: and(
-      eq(eventPhotos.eventId, eventId),
-      eq(eventPhotos.isPubliclyVisible, true),
+      publicPhotosOfEvent(eventId),
       isNotNull(eventPhotos.objectKey),
       gt(eventPhotos.imageRevision, 0)
     ),
@@ -819,18 +897,23 @@ export async function listPublicEventPhotoRecords(
       variant,
       version
     ),
-    includeHighlight: false,
+    includeProtectedGalleryFields: false,
     uploadedByUserId: null,
     uploader: null
   }))
 }
 
-export async function hasEventPhotos(database: AppDatabase, eventId: string) {
+/** True when the gallery of the event holds at least one photo that this viewer may receive. */
+export async function hasEventPhotos(
+  database: AppDatabase,
+  eventId: string,
+  viewer: EventPhotoViewer
+) {
   const photo = await database.query.eventPhotos.findFirst({
     columns: {
       id: true
     },
-    where: eq(eventPhotos.eventId, eventId)
+    where: viewablePhotosOfEvent(eventId, viewer)
   })
 
   return Boolean(photo)
@@ -842,8 +925,7 @@ export async function hasPublicEventPhotos(database: AppDatabase, eventId: strin
       id: true
     },
     where: and(
-      eq(eventPhotos.eventId, eventId),
-      eq(eventPhotos.isPubliclyVisible, true),
+      publicPhotosOfEvent(eventId),
       isNotNull(eventPhotos.objectKey),
       gt(eventPhotos.imageRevision, 0)
     )
@@ -852,26 +934,167 @@ export async function hasPublicEventPhotos(database: AppDatabase, eventId: strin
   return Boolean(photo)
 }
 
+/**
+ * True when this person adds participant photos to the event.
+ *
+ * Every server path asks this function: the upload route, the gallery page, and the tab list.
+ * It reads the stored event and registration and applies the one shared rule,
+ * `canAddParticipantPhotos`.
+ */
+export function mayAddParticipantPhotos(person: {
+  event: EventRecord
+  viewer: EventPhotoViewer
+  /** The person's registration of this event in any status, when they have one. */
+  application: ApplicationRecord | null | undefined
+}) {
+  const { event, viewer, application } = person
+
+  return canAddParticipantPhotos({
+    managesGallery: viewer.canManage,
+    participantPhotosEnabled: event.participantPhotosEnabled,
+    isApprovedParticipant: application?.status === 'approved',
+    hasFinishedCheckInFlow: application ? hasApplicationFinishedCheckInFlow(event, application) : false
+  })
+}
+
+/**
+ * Refuses an upload that would give one participant more photos in the event than
+ * `maxParticipantPhotosPerEvent`. Hidden photos count, so hiding a photo does not free a place.
+ */
+export async function assertParticipantPhotoLimit(
+  database: AppDatabase,
+  upload: {
+    eventId: string
+    userId: string
+    newPhotoCount: number
+  }
+) {
+  const [existing] = await database
+    .select({ count: count() })
+    .from(eventPhotos)
+    .where(and(
+      eq(eventPhotos.eventId, upload.eventId),
+      eq(eventPhotos.uploadedByUserId, upload.userId),
+      eq(eventPhotos.isParticipantUpload, true)
+    ))
+  const remaining = Math.max(0, maxParticipantPhotosPerEvent - Number(existing?.count ?? 0))
+
+  assertGuard(upload.newPhotoCount <= remaining, {
+    code: 'event_photo_participant_limit_reached',
+    message: `You can add up to ${maxParticipantPhotosPerEvent} photos to this event. You have ${remaining} left.`,
+    details: {
+      limit: maxParticipantPhotosPerEvent,
+      remaining
+    }
+  })
+}
+
+/**
+ * Changes who can see a photo. This is the only code that writes `is_publicly_visible` and
+ * `is_hidden`, so the public side effects stay in one place. When the public visibility changes:
+ * - the photo gets a new image revision, so public image links issued before stop working;
+ * - the event gets a new public content revision, so cached public pages are replaced.
+ *
+ * A field that is left out of `change` keeps its stored value. Each caller writes only the
+ * fields it decides, so two requests at the same moment cannot undo each other.
+ */
+async function writeEventPhotoVisibility(
+  database: AppDatabase,
+  photo: EventPhotoRow,
+  change: {
+    isPubliclyVisible?: boolean
+    isHidden?: boolean
+  }
+) {
+  const publicVisibilityChanges = change.isPubliclyVisible !== undefined
+    && change.isPubliclyVisible !== photo.isPubliclyVisible
+
+  if (!publicVisibilityChanges) {
+    await database
+      .update(eventPhotos)
+      .set(change)
+      .where(eq(eventPhotos.id, photo.id))
+    return
+  }
+
+  await database.batch([
+    database
+      .update(eventPhotos)
+      .set({
+        ...change,
+        imageRevision: sql`${eventPhotos.imageRevision} + 1`
+      })
+      .where(eq(eventPhotos.id, photo.id)),
+    database
+      .update(events)
+      .set({
+        publicContentRevision: sql`${events.publicContentRevision} + 1`
+      })
+      .where(eq(events.id, photo.eventId))
+  ])
+}
+
+/**
+ * Refuses a change of the highlight or the public mark of a hidden photo. Neither has an effect
+ * while the photo is hidden, so the event team shows the photo again first.
+ */
+export function assertEventPhotoNotHidden(photo: Pick<EventPhotoRow, 'id' | 'isHidden'>) {
+  assertGuard(!photo.isHidden, {
+    code: 'event_photo_hidden',
+    message: 'Show this photo again before you change it.',
+    details: {
+      photoId: photo.id
+    }
+  })
+}
+
+/** Puts a photo on the public event page, or takes it off that page. */
+export async function setEventPhotoPublicVisibility(
+  database: AppDatabase,
+  photo: EventPhotoRow,
+  isPubliclyVisible: boolean
+) {
+  assertEventPhotoNotHidden(photo)
+
+  await writeEventPhotoVisibility(database, photo, { isPubliclyVisible })
+}
+
+/**
+ * Hides a participant photo from participants and the public, or shows it again.
+ *
+ * Hiding also takes the photo off the public event page. Showing it again does not put it back
+ * there: the event team marks it public again when they want that.
+ */
+export async function setEventPhotoHidden(
+  database: AppDatabase,
+  photo: EventPhotoRow,
+  isHidden: boolean
+) {
+  assertGuard(photo.isParticipantUpload, {
+    code: 'event_photo_not_participant_upload',
+    message: 'Only photos added by participants can be hidden.',
+    details: {
+      photoId: photo.id
+    }
+  })
+
+  await writeEventPhotoVisibility(database, photo, isHidden
+    ? { isHidden: true, isPubliclyVisible: false }
+    : { isHidden: false })
+}
+
 export async function requireEventPhotoReadAccess(h3Event: H3Event, eventId: string) {
   const actor = await requirePlatformActor(h3Event)
   const database = getDatabase(h3Event)
   const event = await getEventOrThrow(database, eventId)
+  const viewer = getEventPhotoViewer(await resolveEventAuthorization(h3Event, eventId))
 
-  if (actor.platformUser.isPlatformAdmin) {
+  if (viewer.canManage) {
     return {
       actor,
       database,
-      event
-    }
-  }
-
-  const authorization = await resolveEventAuthorization(h3Event, eventId)
-
-  if (authorization.explicitRole !== null) {
-    return {
-      actor,
-      database,
-      event
+      event,
+      viewer
     }
   }
 
@@ -898,7 +1121,19 @@ export async function requireEventPhotoReadAccess(h3Event: H3Event, eventId: str
   return {
     actor,
     database,
-    event
+    event,
+    viewer
+  }
+}
+
+function eventPhotoManageRequired(eventId: string) {
+  return {
+    statusCode: 403,
+    code: 'event_photo_manage_required',
+    message: 'This operation requires event photo management access.',
+    details: {
+      eventId
+    }
   }
 }
 
@@ -906,30 +1141,53 @@ export async function requireEventPhotoManageAccess(h3Event: H3Event, eventId: s
   const actor = await requirePlatformActor(h3Event)
   const database = getDatabase(h3Event)
   const event = await getEventOrThrow(database, eventId)
+  const viewer = getEventPhotoViewer(await resolveEventAuthorization(h3Event, eventId))
 
-  if (actor.platformUser.isPlatformAdmin) {
-    return {
-      actor,
-      database,
-      event
-    }
-  }
-
-  const authorization = await resolveEventAuthorization(h3Event, eventId)
-
-  assertGuard(authorization.explicitRole !== null, {
-    statusCode: 403,
-    code: 'event_photo_manage_required',
-    message: 'This operation requires event photo management access.',
-    details: {
-      eventId
-    }
-  })
+  assertGuard(viewer.canManage, eventPhotoManageRequired(eventId))
 
   return {
     actor,
     database,
-    event
+    event,
+    viewer
+  }
+}
+
+/**
+ * Who may upload photos to an event, and what the upload creates:
+ * - the people who manage the gallery upload photos of the event team;
+ * - a participant who may add photos (`mayAddParticipantPhotos`) uploads participant photos;
+ * - everyone else is refused.
+ */
+export async function requireEventPhotoUploadAccess(h3Event: H3Event, eventId: string) {
+  const actor = await requirePlatformActor(h3Event)
+  const database = getDatabase(h3Event)
+  const event = await getEventOrThrow(database, eventId)
+  const viewer = getEventPhotoViewer(await resolveEventAuthorization(h3Event, eventId))
+
+  if (viewer.canManage) {
+    return {
+      actor,
+      database,
+      viewer,
+      isParticipantUpload: false
+    }
+  }
+
+  const application = await database.query.userApplications.findFirst({
+    where: and(
+      eq(userApplications.eventId, eventId),
+      eq(userApplications.userId, actor.platformUser.id)
+    )
+  })
+
+  assertGuard(mayAddParticipantPhotos({ event, viewer, application }), eventPhotoManageRequired(eventId))
+
+  return {
+    actor,
+    database,
+    viewer,
+    isParticipantUpload: true
   }
 }
 

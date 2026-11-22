@@ -188,6 +188,9 @@ export const events = sqliteTable(
     questionnaireQuestionsJson: text('questionnaire_questions_json').notNull().default('[]'),
     // The event's challenges, drafts included, in display order (`eventChallengesSchema`).
     challengesJson: text('challenges_json').notNull().default('[]'),
+    // True when participants who finished the check-in flow may add photos to the gallery
+    // (`canAddParticipantPhotos`).
+    participantPhotosEnabled: integer('participant_photos_enabled', { mode: 'boolean' }).notNull().default(false),
     state: text('state', { enum: eventStates }).notNull().default('draft'),
     hiddenAt: text('hidden_at'),
     hiddenByUserId: text('hidden_by_user_id').references(() => users.id),
@@ -351,6 +354,11 @@ export const eventPhotos = sqliteTable(
     fileName: text('file_name'),
     isPubliclyVisible: integer('is_publicly_visible', { mode: 'boolean' }).notNull().default(false),
     isHighlighted: integer('is_highlighted', { mode: 'boolean' }).notNull().default(false),
+    // True for a photo that a participant added. Set at upload, never changed.
+    isParticipantUpload: integer('is_participant_upload', { mode: 'boolean' }).notNull().default(false),
+    // True while the event team hides a participant photo. Only the people who manage the
+    // gallery receive a hidden photo (`EventPhotoViewer` in the photo domain).
+    isHidden: integer('is_hidden', { mode: 'boolean' }).notNull().default(false),
     contentType: text('content_type').notNull(),
     width: integer('width').notNull(),
     height: integer('height').notNull(),
@@ -360,7 +368,12 @@ export const eventPhotos = sqliteTable(
     index('event_photos_event_created_idx').on(table.eventId, table.createdAt),
     index('event_photos_uploaded_by_idx').on(table.uploadedByUserId),
     check('event_photos_width_check', sql`${table.width} >= 1`),
-    check('event_photos_height_check', sql`${table.height} >= 1`)
+    check('event_photos_height_check', sql`${table.height} >= 1`),
+    // Only a participant photo can be hidden, and a hidden photo is never public.
+    check(
+      'event_photos_hidden_check',
+      sql`${table.isHidden} = 0 OR (${table.isParticipantUpload} = 1 AND ${table.isPubliclyVisible} = 0)`
+    )
   ]
 )
 

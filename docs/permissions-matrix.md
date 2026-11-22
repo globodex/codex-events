@@ -280,11 +280,18 @@ No other actor receives challenge content. This includes a user with a submitted
 
 | Action | Approved User | Staff | Judge | Event Admin | Platform Admin |
 | --- | --- | --- | --- | --- | --- |
-| View event photo gallery in the account workspace | Yes | Yes | Yes | Yes | Yes |
-| Upload event gallery photos | No | Yes | Yes | Yes | Yes |
+| View event photo gallery in the account workspace | Yes, without hidden photos | Yes | Yes | Yes | Yes |
+| Upload event gallery photos as the event team | No | Yes | Yes | Yes | Yes |
+| Add participant photos to the event gallery | Yes, in an event that allows participant photos, after finishing the check-in flow, up to 20 photos | No | No | No | No |
 | Update event gallery highlights | No | Yes | Yes | Yes | Yes |
 | Update event gallery public visibility | No | Yes | Yes | Yes | Yes |
+| Hide a participant photo and show it again | No | Yes | Yes | Yes | Yes |
+| View hidden participant photos | No | Yes | Yes | Yes | Yes |
+| See who added a participant photo | No | Yes | Yes | Yes | Yes |
 | Delete event gallery photos | No | Yes | Yes | Yes | Yes |
+| Allow participant photos for an event | No | No | No | Yes, in the event builder | Yes, in the event builder |
+
+A photo uploaded by staff, a judge, an event admin, or a platform admin is a photo of the event team, also when that person has an approved application. No other actor adds photos. This includes a user with a submitted, rejected, or withdrawn application and an approved participant who has not finished the check-in flow. Participants cannot hide or delete photos, including their own.
 
 ## Event Feedback
 
@@ -323,6 +330,8 @@ required-document changes take effect on the next MCP request.
 - Account-scoped event details show the street address, Discord server URL, and slides URL only to approved participants, judges, staff, event admins, and platform admins.
 - Track staff instructions are visible only to platform admins, event admins, whole-event staff, and staff assigned to that track.
 - Approved participants can view event photo galleries for events where they are approved.
+- A hidden participant photo is visible only to judges, staff, event admins, and platform admins of that event. Approved participants, including the participant who added it, and public users can neither list nor open it.
+- Participant photos are not shown on the public event page until a judge, staff member, event admin, or platform admin marks them public.
 - Judges, staff, event admins, and platform admins can manage event photo galleries for events where they hold that access.
 - Highlighted event photos define the curated account-scoped gallery view and do not affect public event gallery visibility.
 - Public event detail pages expose a Gallery tab only when the event has one or more gallery photos marked public.

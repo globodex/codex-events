@@ -105,6 +105,8 @@ export interface EventRecord {
   questionnaireQuestions?: CustomQuestionDefinition[]
   /** Every challenge, drafts included. Present only in payloads for event admins. */
   challenges?: EventChallenge[]
+  /** Present only in payloads for event admins. */
+  participantPhotosEnabled?: boolean
   blindReviewCount: number
   pitchReviewEnabled: boolean
   blindScoreWeightPercent: number

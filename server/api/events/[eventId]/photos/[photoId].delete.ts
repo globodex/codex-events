@@ -22,8 +22,8 @@ export const applicationOperation = defineStructuredRouteOperation({
   effect: 'delete'
 }, async (h3Event) => {
   const { eventId, photoId } = parseValidatedParams(h3Event, eventPhotoParamsSchema)
-  const { actor, database, event } = await requireEventPhotoManageAccess(h3Event, eventId)
-  const photo = await getEventPhotoRecordOrThrow(database, eventId, photoId)
+  const { actor, database, event, viewer } = await requireEventPhotoManageAccess(h3Event, eventId)
+  const photo = await getEventPhotoRecordOrThrow(database, eventId, photoId, viewer)
 
   await database.batch([
     database

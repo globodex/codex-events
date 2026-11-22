@@ -16,7 +16,11 @@ import {
   serializeAccountEvent
 } from '#server/domains/events'
 import { listReadableEventChallenges } from '#server/domains/events/challenges'
-import { hasEventPhotos } from '#server/domains/events/photos'
+import {
+  getEventPhotoViewer,
+  hasEventPhotos,
+  mayAddParticipantPhotos
+} from '#server/domains/events/photos'
 import { findEventProgramItemId } from '#server/domains/events/program'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { getOwnTalkProposal } from '#server/domains/talk-proposals'
@@ -61,6 +65,7 @@ function serializeShellAccess(
 export async function loadAccountEventPageShell(
   context: AccountEventPageContext
 ): Promise<AccountEventPageShell> {
+  const photoViewer = getEventPhotoViewer(context.authorization)
   const accessPromise = getAccountEventPageAccess(context)
   const [
     access,
@@ -82,7 +87,7 @@ export async function loadAccountEventPageShell(
     }),
     listEventTracks(context.database, context.event.id),
     getEventDisplayImageOptions(context.database),
-    hasEventPhotos(context.database, context.event.id),
+    hasEventPhotos(context.database, context.event.id, photoViewer),
     context.database.query.prizes.findFirst({
       columns: { id: true },
       where: eq(prizes.eventId, context.event.id)
@@ -138,6 +143,11 @@ export async function loadAccountEventPageShell(
     }).length > 0,
     hasCreditInventory,
     hasGallery: galleryExists,
+    canAddParticipantPhotos: mayAddParticipantPhotos({
+      event: context.event,
+      viewer: photoViewer,
+      application
+    }),
     hasPublishedPrizes: Boolean(publishedPrize),
     hasPublishedStaff: Boolean(publishedStaffAssignment)
   })

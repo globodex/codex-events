@@ -2,7 +2,7 @@ import { getDatabase } from '#server/database/client'
 import { resolveEventAuthorization } from '#server/auth/authorization'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
-import { hasEventPhotos } from '#server/domains/events/photos'
+import { getEventPhotoViewer, hasEventPhotos } from '#server/domains/events/photos'
 import {
   canViewRestrictedEventDetails,
   getCurrentEventTerms,
@@ -63,9 +63,11 @@ export const applicationOperation = defineStructuredRouteOperation({
     ...(authorization?.isEventAdmin
       ? { simplifiedClaimingEnabled: event.simplifiedClaimingEnabled }
       : {}),
-    ...(canViewPhotos
+    // Which photos count depends on the caller's role in the event: only the people who manage
+    // the gallery receive hidden photos.
+    ...(canViewPhotos && authorization
       ? {
-          hasGallery: await hasEventPhotos(database, event.id)
+          hasGallery: await hasEventPhotos(database, event.id, getEventPhotoViewer(authorization))
         }
       : {})
   })

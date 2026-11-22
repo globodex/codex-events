@@ -41,7 +41,7 @@ export interface EventFormState {
   talkProposalOpensAt: string
   talkProposalClosesAt: string
   talkProposalQuestions: CustomQuestionDefinition[]
-  // The three settings below have an editor only in the event builder. Only the builder sends
+  // The four settings below have an editor only in the event builder. Only the builder sends
   // them when it saves (`buildPatchBody` in `useEventBuilder`). `buildEventConfigurationPatch`
   // leaves them out, so a save from the settings form keeps what the event has stored.
   /** Shows participants their next step around check-in. Edited in the builder's "After check-in" group. */
@@ -50,6 +50,8 @@ export interface EventFormState {
   questionnaireQuestions: CustomQuestionDefinition[]
   /** Every challenge of the event, drafts included. Edited in the builder's "Challenges" group. */
   challenges: EventChallenge[]
+  /** Lets participants add photos to the gallery after check-in. Edited in the builder's "After check-in" group. */
+  participantPhotosEnabled: boolean
   blindReviewCount: number
   pitchReviewEnabled: boolean
   blindScoreWeightPercent: number
@@ -387,6 +389,7 @@ const eventConfigFormBaseSchema = z.object({
   checkInFlowEnabled: z.boolean(),
   questionnaireQuestions: customQuestionsSchema,
   challenges: eventChallengesSchema,
+  participantPhotosEnabled: z.boolean(),
   blindReviewCount: z.number().int().min(0).max(2),
   pitchReviewEnabled: z.boolean(),
   blindScoreWeightPercent: z.number().int().min(0).max(100),
@@ -685,6 +688,7 @@ export function createEmptyEventFormState(): EventFormState {
     checkInFlowEnabled: false,
     questionnaireQuestions: [],
     challenges: [],
+    participantPhotosEnabled: false,
     blindReviewCount: 1,
     pitchReviewEnabled: false,
     blindScoreWeightPercent: 70,
@@ -808,6 +812,7 @@ export function createEventFormState(event: EventRecord): EventFormState {
     checkInFlowEnabled: event.checkInFlowEnabled ?? false,
     questionnaireQuestions: event.questionnaireQuestions ?? [],
     challenges: event.challenges ?? [],
+    participantPhotosEnabled: event.participantPhotosEnabled ?? false,
     blindReviewCount: event.blindReviewCount,
     pitchReviewEnabled: event.pitchReviewEnabled,
     blindScoreWeightPercent: event.blindScoreWeightPercent,

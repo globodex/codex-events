@@ -198,6 +198,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
           "delete.events.by-eventId.photos.by-photoId",
           "delete.events.by-eventId.program",
           "delete.events.by-eventId.roles.by-userId",
+          "patch.events.by-eventId.photos.by-photoId.hidden",
           "patch.events.by-eventId.photos.by-photoId.highlight",
           "patch.events.by-eventId.photos.by-photoId.public-visibility",
           "patch.events.by-eventId.roles.by-userId",
@@ -211,7 +212,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
         "toolName": "administration_upsert",
       },
     ],
-    "byteSize": 14148,
+    "byteSize": 14199,
     "toolNames": [
       "events_read",
       "events_upsert",
@@ -408,6 +409,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
           "delete.events.by-eventId.photos.by-photoId",
           "delete.events.by-eventId.program",
           "delete.events.by-eventId.roles.by-userId",
+          "patch.events.by-eventId.photos.by-photoId.hidden",
           "patch.events.by-eventId.photos.by-photoId.highlight",
           "patch.events.by-eventId.photos.by-photoId.public-visibility",
           "patch.events.by-eventId.roles.by-userId",
@@ -421,7 +423,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
         "toolName": "administration_upsert",
       },
     ],
-    "byteSize": 13472,
+    "byteSize": 13523,
     "toolNames": [
       "events_read",
       "events_upsert",
@@ -558,6 +560,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
       {
         "actions": [
           "delete.events.by-eventId.photos.by-photoId",
+          "patch.events.by-eventId.photos.by-photoId.hidden",
           "patch.events.by-eventId.photos.by-photoId.highlight",
           "patch.events.by-eventId.photos.by-photoId.public-visibility",
           "post.platform-document-acceptances",
@@ -565,7 +568,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
         "toolName": "administration_upsert",
       },
     ],
-    "byteSize": 9657,
+    "byteSize": 9708,
     "toolNames": [
       "events_read",
       "participation_read",
@@ -1026,6 +1029,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
           "delete.events.by-eventId.program",
           "delete.events.by-eventId.roles.by-userId",
           "delete.platform-admins.by-userId",
+          "patch.events.by-eventId.photos.by-photoId.hidden",
           "patch.events.by-eventId.photos.by-photoId.highlight",
           "patch.events.by-eventId.photos.by-photoId.public-visibility",
           "patch.events.by-eventId.roles.by-userId",
@@ -1043,7 +1047,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
         "toolName": "administration_upsert",
       },
     ],
-    "byteSize": 14499,
+    "byteSize": 14550,
     "toolNames": [
       "events_read",
       "events_upsert",
@@ -1167,6 +1171,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
       {
         "actions": [
           "delete.events.by-eventId.photos.by-photoId",
+          "patch.events.by-eventId.photos.by-photoId.hidden",
           "patch.events.by-eventId.photos.by-photoId.highlight",
           "patch.events.by-eventId.photos.by-photoId.public-visibility",
           "post.platform-document-acceptances",
@@ -1174,7 +1179,7 @@ exports[`stateless MCP protocol > keeps exact role catalogs and their serialized
         "toolName": "administration_upsert",
       },
     ],
-    "byteSize": 8435,
+    "byteSize": 8486,
     "toolNames": [
       "events_read",
       "participation_read",

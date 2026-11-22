@@ -18,8 +18,8 @@ export const applicationOperation = defineStructuredRouteOperation({
   effect: 'read'
 }, async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
-  const { database } = await requireEventPhotoReadAccess(h3Event, eventId)
-  const photos = await listEventPhotoRecords(database, eventId)
+  const { database, viewer } = await requireEventPhotoReadAccess(h3Event, eventId)
+  const photos = await listEventPhotoRecords(database, eventId, viewer)
 
   return apiList(photos, {
     total: photos.length

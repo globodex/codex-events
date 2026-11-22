@@ -6,6 +6,7 @@ import { defineApiHandler } from '#server/http/api-handler'
 import { apiList } from '#server/http/api-response'
 import { ApiError } from '#server/http/api-error'
 import {
+  assertParticipantPhotoLimit,
   assertValidEventPhotoPart,
   chunkEventPhotoRowsForInsert,
   getEventPhotoCapturedAt,
@@ -13,15 +14,20 @@ import {
   eventPhotoObjectKey,
   listEventPhotoRecords,
   putEventPhotoObject,
-  requireEventPhotoManageAccess
+  requireEventPhotoUploadAccess
 } from '#server/domains/events/photos'
 import { routeIdParamsSchema } from '#server/domains/events'
 import { assertAuthenticatedUploadRateLimit } from '#server/utils/rate-limit'
 import { parseValidatedParams } from '#server/http/validation'
 
+/**
+ * Adds photos to the gallery of an event. The people who manage the gallery add photos of the
+ * event team. A participant who may add photos adds participant photos. Both go through the
+ * same file checks and the same upload rate limit.
+ */
 export default defineApiHandler(async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
-  const { actor, database } = await requireEventPhotoManageAccess(h3Event, eventId)
+  const { actor, database, viewer, isParticipantUpload } = await requireEventPhotoUploadAccess(h3Event, eventId)
   await assertAuthenticatedUploadRateLimit(h3Event, `authenticated-upload:${actor.platformUser.id}`)
   const multipart = await readMultipartFormData(h3Event)
   const fileParts = (multipart ?? []).filter(part => part.name === 'file')
@@ -31,6 +37,14 @@ export default defineApiHandler(async (h3Event) => {
       statusCode: 400,
       code: 'event_photo_file_required',
       message: 'At least one event photo file is required.'
+    })
+  }
+
+  if (isParticipantUpload) {
+    await assertParticipantPhotoLimit(database, {
+      eventId,
+      userId: actor.platformUser.id,
+      newPhotoCount: fileParts.length
     })
   }
 
@@ -64,6 +78,7 @@ export default defineApiHandler(async (h3Event) => {
       fileName: file.fileName,
       isPubliclyVisible: false,
       isHighlighted: false,
+      isParticipantUpload,
       contentType: file.contentType,
       width: file.width,
       height: file.height,
@@ -79,8 +94,8 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  // D1 allows at most 100 bound parameters per statement. Each event photo row
-  // binds ten values, so keep metadata inserts at 10 rows per query.
+  // D1 limits the bound parameters of one statement, so the rows are inserted in small groups
+  // (`eventPhotoMaxRowsPerInsert`).
   for (const rowBatch of chunkEventPhotoRowsForInsert(createdRows)) {
     await database.insert(eventPhotos).values(rowBatch)
   }
@@ -98,7 +113,7 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  const photos = await listEventPhotoRecords(database, eventId)
+  const photos = await listEventPhotoRecords(database, eventId, viewer)
 
   return apiList(photos, {
     total: photos.length

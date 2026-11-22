@@ -23,9 +23,13 @@ type PhotoSwipeLightboxCtor = new (options: Record<string, unknown>) => PhotoSwi
 const props = withDefaults(defineProps<{
   description: string
   photos: EventPhotoRecord[]
+  /** Photos that participants added. Listed after `photos`, under "Uploaded by participants". */
+  participantPhotos?: EventPhotoRecord[]
   totalPhotoCount?: number | null
   filterOptions?: ReadonlyArray<EventGalleryFilterOption>
   canManage?: boolean
+  /** The viewer adds photos as a participant. Shows the upload action of the participant section. */
+  canAddParticipantPhotos?: boolean
   canTogglePublicVisibility?: boolean
   canToggleHighlight?: boolean
   showCurationBadges?: boolean
@@ -38,15 +42,18 @@ const props = withDefaults(defineProps<{
   pendingDeletePhotoId?: string | null
   pendingPublicVisibilityPhotoId?: string | null
   pendingHighlightPhotoId?: string | null
+  pendingHiddenPhotoId?: string | null
   addButtonLabel?: string
   emptyStateTitle?: string
   emptyStateDescription?: string
   emptyFilteredStateTitle?: string
   emptyFilteredStateDescription?: string
 }>(), {
+  participantPhotos: () => [],
   totalPhotoCount: null,
   filterOptions: () => [],
   canManage: false,
+  canAddParticipantPhotos: false,
   canTogglePublicVisibility: false,
   canToggleHighlight: false,
   showCurationBadges: false,
@@ -59,6 +66,7 @@ const props = withDefaults(defineProps<{
   pendingDeletePhotoId: null,
   pendingPublicVisibilityPhotoId: null,
   pendingHighlightPhotoId: null,
+  pendingHiddenPhotoId: null,
   addButtonLabel: 'Add photos',
   emptyStateTitle: 'No gallery photos yet',
   emptyStateDescription: 'Gallery photos will appear here once they are available.',
@@ -71,6 +79,7 @@ const emit = defineEmits<{
   deletePhoto: [photo: EventPhotoRecord]
   togglePublicVisibility: [payload: { photo: EventPhotoRecord, value: boolean }]
   toggleHighlight: [payload: { photo: EventPhotoRecord, value: boolean }]
+  toggleHidden: [payload: { photo: EventPhotoRecord, value: boolean }]
 }>()
 
 const activeFilter = defineModel<string>('activeFilter', {
@@ -81,23 +90,43 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const galleryElement = ref<HTMLElement | null>(null)
 const dragDepth = ref(0)
 const isDragTargetActive = ref(false)
-const photoCountLabel = computed(() => {
-  const totalPhotoCount = props.totalPhotoCount
+// Everything the panel lists: the photos of the event team first, then the participant photos.
+const listedPhotos = computed(() => [...props.photos, ...props.participantPhotos])
+// The panel shows its photos in up to two groups. The participant group also appears without
+// photos for a participant who can add some, because it holds their upload action.
+const photoGroups = computed(() => {
+  const groups: Array<{ id: 'event-team' | 'participants', photos: EventPhotoRecord[] }> = []
 
-  if (typeof totalPhotoCount === 'number' && totalPhotoCount > props.photos.length) {
-    return `${props.photos.length}/${totalPhotoCount} photos`
+  if (props.photos.length > 0) {
+    groups.push({ id: 'event-team', photos: props.photos })
   }
 
-  return `${props.photos.length} ${props.photos.length === 1 ? 'photo' : 'photos'}`
+  if (props.participantPhotos.length > 0 || props.canAddParticipantPhotos) {
+    groups.push({ id: 'participants', photos: props.participantPhotos })
+  }
+
+  return groups
+})
+// The people who manage the gallery and participants who add photos use the same upload control.
+const canUpload = computed(() => props.canManage || props.canAddParticipantPhotos)
+const photoCountLabel = computed(() => {
+  const totalPhotoCount = props.totalPhotoCount
+  const listedPhotoCount = listedPhotos.value.length
+
+  if (typeof totalPhotoCount === 'number' && totalPhotoCount > listedPhotoCount) {
+    return `${listedPhotoCount}/${totalPhotoCount} photos`
+  }
+
+  return `${listedPhotoCount} ${listedPhotoCount === 1 ? 'photo' : 'photos'}`
 })
 const uploadingItems = computed(() => props.uploadingItems ?? [])
 const uploadStatusLabel = computed(() => uploadingItems.value.length === 1 ? 'Uploading 1 photo' : `Uploading ${uploadingItems.value.length} photos`)
-const showInitialLoadingState = computed(() => props.isLoading && props.photos.length === 0)
+const showInitialLoadingState = computed(() => props.isLoading && listedPhotos.value.length === 0)
 const showFilterControls = computed(() => props.filterOptions.length > 1)
 const hasFilteredEmptyState = computed(() =>
   typeof props.totalPhotoCount === 'number'
   && props.totalPhotoCount > 0
-  && props.photos.length === 0
+  && listedPhotos.value.length === 0
 )
 const resolvedEmptyStateTitle = computed(() => hasFilteredEmptyState.value ? props.emptyFilteredStateTitle : props.emptyStateTitle)
 const resolvedEmptyStateDescription = computed(() => hasFilteredEmptyState.value ? props.emptyFilteredStateDescription : props.emptyStateDescription)
@@ -106,6 +135,7 @@ const hasPendingMutation = computed(() =>
   props.pendingDeletePhotoId !== null
   || props.pendingPublicVisibilityPhotoId !== null
   || props.pendingHighlightPhotoId !== null
+  || props.pendingHiddenPhotoId !== null
 )
 
 let photoLightbox: PhotoSwipeLightboxInstance | null = null
@@ -132,7 +162,7 @@ function highlightStatusLabel(photo: EventPhotoRecord) {
 }
 
 function openFilePicker() {
-  if (!props.canManage || props.isUploading) {
+  if (!canUpload.value || props.isUploading) {
     return
   }
 
@@ -165,7 +195,7 @@ function hasDraggedFiles(event: DragEvent) {
 }
 
 function activateDropTarget(event: DragEvent) {
-  if (!props.canManage || props.isUploading || hasFilteredEmptyState.value || !hasDraggedFiles(event)) {
+  if (!canUpload.value || props.isUploading || hasFilteredEmptyState.value || !hasDraggedFiles(event)) {
     return false
   }
 
@@ -221,7 +251,7 @@ function onDropTargetDrop(event: DragEvent) {
 }
 
 async function ensurePhotoLightbox() {
-  if (!import.meta.client || !galleryElement.value || props.photos.length === 0) {
+  if (!import.meta.client || !galleryElement.value || listedPhotos.value.length === 0) {
     photoLightbox?.destroy()
     photoLightbox = null
     return
@@ -247,7 +277,7 @@ onMounted(async () => {
   await ensurePhotoLightbox()
 })
 
-watch([galleryElement, () => props.photos], async () => {
+watch([galleryElement, listedPhotos], async () => {
   await ensurePhotoLightbox()
 }, {
   flush: 'post'
@@ -281,19 +311,20 @@ onBeforeUnmount(() => {
           </p>
         </div>
 
+        <input
+          v-if="canUpload"
+          ref="fileInput"
+          type="file"
+          accept="image/jpeg,image/png"
+          multiple
+          class="hidden"
+          @change="onFileInputChange"
+        >
+
         <div
           v-if="canManage"
           class="flex shrink-0 flex-wrap items-center gap-3"
         >
-          <input
-            ref="fileInput"
-            type="file"
-            accept="image/jpeg,image/png"
-            multiple
-            class="hidden"
-            @change="onFileInputChange"
-          >
-
           <AppButton
             color="primary"
             icon="i-lucide-upload"
@@ -351,68 +382,65 @@ onBeforeUnmount(() => {
         />
       </div>
 
-      <div
-        v-else-if="photos.length === 0"
-        class="rounded-2xl border border-dashed px-6 py-10 text-center transition-colors dark:border-white/[0.08]"
-        :class="canUseEmptyUploadTarget
-          ? [
-            'cursor-pointer',
-            isDragTargetActive
-              ? 'border-emerald-500/60 bg-emerald-500/[0.06] dark:border-emerald-400/60 dark:bg-emerald-400/[0.08]'
-              : 'border-black/10 hover:border-black/18 hover:bg-black/[0.02] dark:border-white/[0.08] dark:hover:border-white/[0.14] dark:hover:bg-white/[0.03]'
-          ]
-          : 'border-black/10 dark:border-white/[0.08]'"
-        :role="canUseEmptyUploadTarget ? 'button' : undefined"
-        :tabindex="canUseEmptyUploadTarget ? 0 : undefined"
-        :aria-disabled="canUseEmptyUploadTarget && isUploading ? 'true' : undefined"
-        @click="openFilePickerFromEmptyState"
-        @keydown.enter.prevent="openFilePickerFromEmptyState"
-        @keydown.space.prevent="openFilePickerFromEmptyState"
-        @dragenter="onDropTargetDragEnter"
-        @dragover="onDropTargetDragOver"
-        @dragleave="onDropTargetDragLeave"
-        @drop="onDropTargetDrop"
-      >
-        <p class="text-base font-semibold text-highlighted">
-          {{ resolvedEmptyStateTitle }}
-        </p>
-        <p class="mt-2 text-sm text-muted">
-          {{ resolvedEmptyStateDescription }}
-        </p>
-        <p
-          v-if="canUseEmptyUploadTarget"
-          class="mt-3 text-[11px] font-medium uppercase tracking-[0.14em] text-muted"
-        >
-          {{ isDragTargetActive ? 'Drop JPEG or PNG files here.' : 'Drop JPEG or PNG files here, or click to choose.' }}
-        </p>
+      <template v-else>
         <div
-          v-if="uploadingItems.length > 0"
-          class="mx-auto mt-4 flex max-w-3xl items-center gap-2 overflow-hidden rounded-full border border-black/8 bg-black/[0.03] px-3 py-2 text-left dark:border-white/[0.08] dark:bg-white/[0.04]"
+          v-if="listedPhotos.length === 0"
+          class="rounded-2xl border border-dashed px-6 py-10 text-center transition-colors dark:border-white/[0.08]"
+          :class="canUseEmptyUploadTarget
+            ? [
+              'cursor-pointer',
+              isDragTargetActive
+                ? 'border-emerald-500/60 bg-emerald-500/[0.06] dark:border-emerald-400/60 dark:bg-emerald-400/[0.08]'
+                : 'border-black/10 hover:border-black/18 hover:bg-black/[0.02] dark:border-white/[0.08] dark:hover:border-white/[0.14] dark:hover:bg-white/[0.03]'
+            ]
+            : 'border-black/10 dark:border-white/[0.08]'"
+          :role="canUseEmptyUploadTarget ? 'button' : undefined"
+          :tabindex="canUseEmptyUploadTarget ? 0 : undefined"
+          :aria-disabled="canUseEmptyUploadTarget && isUploading ? 'true' : undefined"
+          @click="openFilePickerFromEmptyState"
+          @keydown.enter.prevent="openFilePickerFromEmptyState"
+          @keydown.space.prevent="openFilePickerFromEmptyState"
+          @dragenter="onDropTargetDragEnter"
+          @dragover="onDropTargetDragOver"
+          @dragleave="onDropTargetDragLeave"
+          @drop="onDropTargetDrop"
         >
-          <span class="size-2 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
-          <p class="shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-highlighted dark:text-white">
-            {{ uploadStatusLabel }}
+          <p class="text-base font-semibold text-highlighted">
+            {{ resolvedEmptyStateTitle }}
           </p>
-          <div class="min-w-0 flex-1 overflow-x-auto">
-            <div class="flex min-w-max items-center gap-2 pr-1">
-              <span
-                v-for="item in uploadingItems"
-                :key="item.id"
-                class="max-w-[11rem] truncate rounded-full bg-white/80 px-2 py-0.5 text-xs text-muted dark:bg-white/[0.08]"
-              >
-                {{ item.name }}
-              </span>
+          <p class="mt-2 text-sm text-muted">
+            {{ resolvedEmptyStateDescription }}
+          </p>
+          <p
+            v-if="canUseEmptyUploadTarget"
+            class="mt-3 text-[11px] font-medium uppercase tracking-[0.14em] text-muted"
+          >
+            {{ isDragTargetActive ? 'Drop JPEG or PNG files here.' : 'Drop JPEG or PNG files here, or click to choose.' }}
+          </p>
+          <div
+            v-if="uploadingItems.length > 0"
+            class="mx-auto mt-4 flex max-w-3xl items-center gap-2 overflow-hidden rounded-full border border-black/8 bg-black/[0.03] px-3 py-2 text-left dark:border-white/[0.08] dark:bg-white/[0.04]"
+          >
+            <span class="size-2 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
+            <p class="shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-highlighted dark:text-white">
+              {{ uploadStatusLabel }}
+            </p>
+            <div class="min-w-0 flex-1 overflow-x-auto">
+              <div class="flex min-w-max items-center gap-2 pr-1">
+                <span
+                  v-for="item in uploadingItems"
+                  :key="item.id"
+                  class="max-w-[11rem] truncate rounded-full bg-white/80 px-2 py-0.5 text-xs text-muted dark:bg-white/[0.08]"
+                >
+                  {{ item.name }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div
-        v-else
-        class="space-y-3"
-      >
         <div
-          v-if="uploadingItems.length > 0"
+          v-else-if="uploadingItems.length > 0"
           class="flex items-center gap-2 overflow-hidden rounded-full border border-black/8 bg-black/[0.03] px-3 py-2 dark:border-white/[0.08] dark:bg-white/[0.04]"
         >
           <span class="size-2 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
@@ -433,175 +461,240 @@ onBeforeUnmount(() => {
         </div>
 
         <div
+          v-if="photoGroups.length > 0"
           class="relative"
           @dragenter="onDropTargetDragEnter"
           @dragover="onDropTargetDragOver"
           @dragleave="onDropTargetDragLeave"
           @drop="onDropTargetDrop"
         >
+          <!-- The lightbox opens every photo link inside this element, across both groups. -->
           <div
             ref="galleryElement"
-            class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+            class="space-y-8"
           >
-            <article
-              v-for="photo in photos"
-              :key="photo.id"
-              class="group overflow-hidden rounded-2xl border border-black/8 bg-white/80 shadow-[0_18px_50px_-28px_rgba(15,23,42,0.35)] dark:border-white/[0.08] dark:bg-[#111111]"
+            <section
+              v-for="group in photoGroups"
+              :key="group.id"
+              class="space-y-4"
+              :data-testid="`event-gallery-group-${group.id}`"
             >
-              <a
-                v-if="photo.originalUrl && photo.previewUrl"
-                :href="photo.originalUrl"
-                :data-photoswipe-photo="photo.id"
-                :data-pswp-width="photo.width"
-                :data-pswp-height="photo.height"
-                :aria-label="`Open ${photo.fileName ?? 'gallery photo'}`"
-                class="block"
+              <div
+                v-if="group.id === 'participants'"
+                class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
               >
-                <div
-                  class="overflow-hidden bg-black/[0.04] dark:bg-white/[0.04]"
-                  :style="{ aspectRatio: `${photo.width} / ${photo.height}` }"
-                >
-                  <img
-                    :src="photo.previewUrl"
-                    :alt="photo.fileName ?? 'Gallery photo'"
-                    loading="lazy"
-                    class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
-                  >
-                </div>
-              </a>
-
-              <div class="space-y-4 p-4">
                 <div class="space-y-1">
-                  <p class="truncate text-sm font-semibold text-highlighted dark:text-white">
-                    {{ photo.fileName ?? 'Gallery photo' }}
-                  </p>
-                  <p class="text-xs text-muted">
-                    {{ formatPhotoTimestamp(photo.createdAt) }}
-                  </p>
+                  <h3 class="text-base font-semibold text-highlighted">
+                    Uploaded by participants
+                  </h3>
                   <p
-                    v-if="showUploader && photo.uploadedBy"
-                    class="truncate text-xs text-muted"
+                    v-if="canAddParticipantPhotos"
+                    class="text-sm text-muted"
                   >
-                    Added by {{ photo.uploadedBy.displayName }}
+                    Other participants and the event team can see your photos.
                   </p>
-                  <div
-                    v-if="showCurationBadges"
-                    class="flex flex-wrap gap-2 pt-1"
-                  >
-                    <AppBadge
-                      v-if="photo.isHighlighted"
-                      color="warning"
-                      variant="soft"
-                      size="sm"
-                      class="rounded-full"
-                    >
-                      Highlight
-                    </AppBadge>
-                    <AppBadge
-                      v-if="photo.isPubliclyVisible"
-                      color="success"
-                      variant="soft"
-                      size="sm"
-                      class="rounded-full"
-                    >
-                      Public
-                    </AppBadge>
-                  </div>
                 </div>
 
                 <AppButton
-                  v-if="photo.originalUrl"
-                  :to="`${photo.originalUrl}&download=1`"
-                  external
-                  icon="i-lucide-download"
-                  color="neutral"
-                  variant="outline"
-                  size="sm"
-                  :aria-label="`Download original ${photo.fileName ?? 'gallery photo'}`"
+                  v-if="canAddParticipantPhotos"
+                  color="primary"
+                  icon="i-lucide-upload"
+                  class="shrink-0"
+                  :loading="isUploading"
+                  @click="openFilePicker"
                 >
-                  Download original
+                  {{ addButtonLabel }}
                 </AppButton>
-
-                <div
-                  v-if="canToggleHighlight || canTogglePublicVisibility || canManage"
-                  class="flex flex-col gap-4 border-t border-black/8 pt-4 dark:border-white/[0.08]"
-                >
-                  <div
-                    v-if="canToggleHighlight"
-                    class="flex items-start justify-between gap-4"
-                  >
-                    <div class="space-y-1">
-                      <label
-                        :for="highlightSwitchId(photo.id)"
-                        class="text-sm font-medium text-highlighted dark:text-white"
-                      >
-                        Highlight for participants
-                      </label>
-                      <p class="text-sm text-muted">
-                        Highlighted images appear in the default protected gallery view.
-                      </p>
-                      <p class="text-xs font-medium uppercase tracking-[0.14em] text-muted">
-                        {{ highlightStatusLabel(photo) }}
-                      </p>
-                    </div>
-
-                    <UiSwitch
-                      :id="highlightSwitchId(photo.id)"
-                      :model-value="photo.isHighlighted === true"
-                      :disabled="hasPendingMutation"
-                      @update:model-value="emit('toggleHighlight', { photo, value: Boolean($event) })"
-                    />
-                  </div>
-
-                  <div
-                    v-if="canTogglePublicVisibility"
-                    class="flex items-start justify-between gap-4"
-                  >
-                    <div class="space-y-1">
-                      <label
-                        :for="publicVisibilitySwitchId(photo.id)"
-                        class="text-sm font-medium text-highlighted dark:text-white"
-                      >
-                        Show on the public page
-                      </label>
-                      <p class="text-sm text-muted">
-                        Selected images appear in the public Gallery tab for this event.
-                      </p>
-                      <p class="text-xs font-medium uppercase tracking-[0.14em] text-muted">
-                        {{ publicVisibilityStatusLabel(photo) }}
-                      </p>
-                    </div>
-
-                    <UiSwitch
-                      :id="publicVisibilitySwitchId(photo.id)"
-                      :model-value="photo.isPubliclyVisible"
-                      :disabled="hasPendingMutation"
-                      @update:model-value="emit('togglePublicVisibility', { photo, value: Boolean($event) })"
-                    />
-                  </div>
-
-                  <div
-                    v-if="canManage"
-                    class="flex justify-end"
-                  >
-                    <AppButton
-                      color="error"
-                      variant="soft"
-                      size="sm"
-                      :loading="pendingDeletePhotoId === photo.id"
-                      :disabled="hasPendingMutation"
-                      @click.prevent="emit('deletePhoto', photo)"
-                    >
-                      Delete
-                    </AppButton>
-                  </div>
-                </div>
               </div>
-            </article>
+
+              <div
+                v-if="group.photos.length > 0"
+                class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+              >
+                <article
+                  v-for="photo in group.photos"
+                  :key="photo.id"
+                  class="group overflow-hidden rounded-2xl border border-black/8 bg-white/80 shadow-[0_18px_50px_-28px_rgba(15,23,42,0.35)] dark:border-white/[0.08] dark:bg-[#111111]"
+                >
+                  <a
+                    v-if="photo.originalUrl && photo.previewUrl"
+                    :href="photo.originalUrl"
+                    :data-photoswipe-photo="photo.id"
+                    :data-pswp-width="photo.width"
+                    :data-pswp-height="photo.height"
+                    :aria-label="`Open ${photo.fileName ?? 'gallery photo'}`"
+                    class="block"
+                  >
+                    <div
+                      class="overflow-hidden bg-black/[0.04] dark:bg-white/[0.04]"
+                      :style="{ aspectRatio: `${photo.width} / ${photo.height}` }"
+                    >
+                      <img
+                        :src="photo.previewUrl"
+                        :alt="photo.fileName ?? 'Gallery photo'"
+                        loading="lazy"
+                        class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                        :class="{ 'opacity-50': photo.isHidden }"
+                      >
+                    </div>
+                  </a>
+
+                  <div class="space-y-4 p-4">
+                    <div class="space-y-1">
+                      <p class="truncate text-sm font-semibold text-highlighted dark:text-white">
+                        {{ photo.fileName ?? 'Gallery photo' }}
+                      </p>
+                      <p class="text-xs text-muted">
+                        {{ formatPhotoTimestamp(photo.createdAt) }}
+                      </p>
+                      <p
+                        v-if="showUploader && photo.uploadedBy"
+                        class="truncate text-xs text-muted"
+                      >
+                        Added by {{ photo.uploadedBy.displayName }}
+                      </p>
+                      <div
+                        v-if="showCurationBadges"
+                        class="flex flex-wrap gap-2 pt-1"
+                      >
+                        <AppBadge
+                          v-if="photo.isHidden"
+                          color="error"
+                          variant="soft"
+                          size="sm"
+                          class="rounded-full"
+                        >
+                          Hidden
+                        </AppBadge>
+                        <AppBadge
+                          v-if="photo.isHighlighted"
+                          color="warning"
+                          variant="soft"
+                          size="sm"
+                          class="rounded-full"
+                        >
+                          Highlight
+                        </AppBadge>
+                        <AppBadge
+                          v-if="photo.isPubliclyVisible"
+                          color="success"
+                          variant="soft"
+                          size="sm"
+                          class="rounded-full"
+                        >
+                          Public
+                        </AppBadge>
+                      </div>
+                    </div>
+
+                    <AppButton
+                      v-if="photo.originalUrl"
+                      :to="`${photo.originalUrl}&download=1`"
+                      external
+                      icon="i-lucide-download"
+                      color="neutral"
+                      variant="outline"
+                      size="sm"
+                      :aria-label="`Download original ${photo.fileName ?? 'gallery photo'}`"
+                    >
+                      Download original
+                    </AppButton>
+
+                    <div
+                      v-if="canToggleHighlight || canTogglePublicVisibility || canManage"
+                      class="flex flex-col gap-4 border-t border-black/8 pt-4 dark:border-white/[0.08]"
+                    >
+                      <!-- Highlights choose the photos of the event team for the curated view. Participant photos are always listed, so they have no highlight switch. -->
+                      <div
+                        v-if="canToggleHighlight && !photo.isParticipantUpload"
+                        class="flex items-start justify-between gap-4"
+                      >
+                        <div class="space-y-1">
+                          <label
+                            :for="highlightSwitchId(photo.id)"
+                            class="text-sm font-medium text-highlighted dark:text-white"
+                          >
+                            Highlight for participants
+                          </label>
+                          <p class="text-sm text-muted">
+                            Highlighted images appear in the default protected gallery view.
+                          </p>
+                          <p class="text-xs font-medium uppercase tracking-[0.14em] text-muted">
+                            {{ highlightStatusLabel(photo) }}
+                          </p>
+                        </div>
+
+                        <UiSwitch
+                          :id="highlightSwitchId(photo.id)"
+                          :model-value="photo.isHighlighted === true"
+                          :disabled="hasPendingMutation"
+                          @update:model-value="emit('toggleHighlight', { photo, value: Boolean($event) })"
+                        />
+                      </div>
+
+                      <div
+                        v-if="canTogglePublicVisibility"
+                        class="flex items-start justify-between gap-4"
+                      >
+                        <div class="space-y-1">
+                          <label
+                            :for="publicVisibilitySwitchId(photo.id)"
+                            class="text-sm font-medium text-highlighted dark:text-white"
+                          >
+                            Show on the public page
+                          </label>
+                          <p class="text-sm text-muted">
+                            Selected images appear in the public Gallery tab for this event.
+                          </p>
+                          <p class="text-xs font-medium uppercase tracking-[0.14em] text-muted">
+                            {{ publicVisibilityStatusLabel(photo) }}
+                          </p>
+                        </div>
+
+                        <!-- A hidden photo cannot be on the public page. The event team shows it again first. -->
+                        <UiSwitch
+                          :id="publicVisibilitySwitchId(photo.id)"
+                          :model-value="photo.isPubliclyVisible"
+                          :disabled="hasPendingMutation || photo.isHidden === true"
+                          @update:model-value="emit('togglePublicVisibility', { photo, value: Boolean($event) })"
+                        />
+                      </div>
+
+                      <div
+                        v-if="canManage"
+                        class="flex justify-end gap-2"
+                      >
+                        <AppButton
+                          v-if="photo.isParticipantUpload"
+                          color="neutral"
+                          variant="outline"
+                          size="sm"
+                          :loading="pendingHiddenPhotoId === photo.id"
+                          :disabled="hasPendingMutation"
+                          @click.prevent="emit('toggleHidden', { photo, value: !photo.isHidden })"
+                        >
+                          {{ photo.isHidden ? 'Show' : 'Hide' }}
+                        </AppButton>
+                        <AppButton
+                          color="error"
+                          variant="soft"
+                          size="sm"
+                          :loading="pendingDeletePhotoId === photo.id"
+                          :disabled="hasPendingMutation"
+                          @click.prevent="emit('deletePhoto', photo)"
+                        >
+                          Delete
+                        </AppButton>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </section>
           </div>
 
           <div
-            v-if="canManage && isDragTargetActive"
+            v-if="canUpload && isDragTargetActive"
             class="pointer-events-none absolute inset-0 flex items-center justify-center rounded-3xl border-2 border-dashed border-emerald-500/70 bg-emerald-500/[0.08] p-6"
           >
             <div class="rounded-full bg-white/92 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-highlighted shadow-[0_16px_40px_-24px_rgba(15,23,42,0.45)] dark:bg-[#111111]/95 dark:text-white">
@@ -609,7 +702,7 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </div>
-      </div>
+      </template>
     </div>
   </AppCard>
 </template>

@@ -18,8 +18,8 @@ import {
 export default defineApiHandler(async (h3Event) => {
   const { eventId, photoId } = parseValidatedParams(h3Event, eventPhotoParamsSchema)
   const query = parseValidatedQuery(h3Event, eventPhotoImageQuerySchema)
-  const { database } = await requireEventPhotoReadAccess(h3Event, eventId)
-  const photo = await getEventPhotoRecordOrThrow(database, eventId, photoId)
+  const { database, viewer } = await requireEventPhotoReadAccess(h3Event, eventId)
+  const photo = await getEventPhotoRecordOrThrow(database, eventId, photoId, viewer)
 
   if (query.v && query.v !== String(photo.imageRevision)) {
     throw new ApiError({

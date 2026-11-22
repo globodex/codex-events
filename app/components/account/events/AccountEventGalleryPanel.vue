@@ -24,10 +24,21 @@ const apiFetch = useApiClient()
 const toast = useToast()
 const eventId = computed(() => props.eventId.trim())
 const canManage = computed(() => props.canManage)
+// The server decides who adds photos as a participant. The gallery page carries its answer.
+const canAddParticipantPhotos = computed(() => props.page?.canAddParticipantPhotos ?? false)
+const canUpload = computed(() => canManage.value || canAddParticipantPhotos.value)
 const mutationErrorMessage = ref('')
 const pendingDeletePhotoId = ref<string | null>(null)
 const pendingPublicVisibilityPhotoId = ref<string | null>(null)
 const pendingHighlightPhotoId = ref<string | null>(null)
+const pendingHiddenPhotoId = ref<string | null>(null)
+// One change of a photo runs at a time.
+const isPhotoChangePending = computed(() =>
+  pendingDeletePhotoId.value !== null
+  || pendingPublicVisibilityPhotoId.value !== null
+  || pendingHighlightPhotoId.value !== null
+  || pendingHiddenPhotoId.value !== null
+)
 const isUploading = ref(false)
 const uploadingItems = ref(createEventGalleryUploadItems([]))
 const photos = ref<EventPhotoRecord[]>([])
@@ -38,17 +49,26 @@ watch(() => props.page, (page) => {
   photos.value = page?.photos ?? []
 }, { immediate: true })
 
-const highlightedPhotoCount = computed(() => photos.value.filter(photo => photo.isHighlighted === true).length)
-const notHighlightedPhotoCount = computed(() => photos.value.length - highlightedPhotoCount.value)
-const publicPhotoCount = computed(() => photos.value.filter(photo => photo.isPubliclyVisible).length)
+// The gallery shows two lists. The filter and the highlights belong to the photos of the event
+// team. The photos that participants added are always listed in full, in their own section.
+const eventTeamPhotos = computed(() => photos.value.filter(photo => photo.isParticipantUpload !== true))
+const participantPhotos = computed(() => photos.value.filter(photo => photo.isParticipantUpload === true))
+const highlightedPhotoCount = computed(() => eventTeamPhotos.value.filter(photo => photo.isHighlighted === true).length)
+const notHighlightedPhotoCount = computed(() => eventTeamPhotos.value.length - highlightedPhotoCount.value)
+const publicPhotoCount = computed(() => eventTeamPhotos.value.filter(photo => photo.isPubliclyVisible).length)
 const galleryFilterOptions = computed<Array<{
   label: string
   value: AccountEventGalleryFilter
   count: number
 }>>(() => {
+  // The filter chooses among the photos of the event team, so it is shown when there are some.
+  if (eventTeamPhotos.value.length === 0) {
+    return []
+  }
+
   if (canManage.value) {
     return [
-      { label: 'All', value: 'all', count: photos.value.length },
+      { label: 'All', value: 'all', count: eventTeamPhotos.value.length },
       { label: 'Highlighted', value: 'highlighted', count: highlightedPhotoCount.value },
       { label: 'Not highlighted', value: 'not-highlighted', count: notHighlightedPhotoCount.value },
       { label: 'Public', value: 'public', count: publicPhotoCount.value }
@@ -58,28 +78,28 @@ const galleryFilterOptions = computed<Array<{
   if (highlightedPhotoCount.value > 0 || galleryFilter.value === 'highlighted') {
     return [
       { label: 'Highlights', value: 'highlighted', count: highlightedPhotoCount.value },
-      { label: 'All photos', value: 'all', count: photos.value.length }
+      { label: 'All photos', value: 'all', count: eventTeamPhotos.value.length }
     ]
   }
 
   return [
-    { label: 'All photos', value: 'all', count: photos.value.length }
+    { label: 'All photos', value: 'all', count: eventTeamPhotos.value.length }
   ]
 })
 const visiblePhotos = computed(() => {
   if (galleryFilter.value === 'highlighted') {
-    return photos.value.filter(photo => photo.isHighlighted === true)
+    return eventTeamPhotos.value.filter(photo => photo.isHighlighted === true)
   }
 
   if (galleryFilter.value === 'not-highlighted') {
-    return photos.value.filter(photo => photo.isHighlighted !== true)
+    return eventTeamPhotos.value.filter(photo => photo.isHighlighted !== true)
   }
 
   if (galleryFilter.value === 'public') {
-    return photos.value.filter(photo => photo.isPubliclyVisible)
+    return eventTeamPhotos.value.filter(photo => photo.isPubliclyVisible)
   }
 
-  return photos.value
+  return eventTeamPhotos.value
 })
 const panelDescription = computed(() => canManage.value
   ? 'Upload the full event archive, mark the strongest photos as highlights, and choose which images also appear on the public page.'
@@ -114,7 +134,7 @@ watch(eventId, () => {
 })
 
 async function uploadPhotos(files: File[]) {
-  if (!canManage.value || files.length === 0 || isUploading.value) {
+  if (!canUpload.value || files.length === 0 || isUploading.value) {
     return
   }
 
@@ -168,7 +188,7 @@ async function uploadPhotos(files: File[]) {
 }
 
 async function deletePhoto(photo: EventPhotoRecord) {
-  if (!canManage.value || pendingDeletePhotoId.value || pendingPublicVisibilityPhotoId.value || pendingHighlightPhotoId.value) {
+  if (!canManage.value || isPhotoChangePending.value) {
     return
   }
 
@@ -200,7 +220,7 @@ async function deletePhoto(photo: EventPhotoRecord) {
 }
 
 async function togglePublicVisibility(payload: { photo: EventPhotoRecord, value: boolean }) {
-  if (!canManage.value || pendingDeletePhotoId.value || pendingPublicVisibilityPhotoId.value || pendingHighlightPhotoId.value) {
+  if (!canManage.value || isPhotoChangePending.value) {
     return
   }
 
@@ -231,7 +251,7 @@ async function togglePublicVisibility(payload: { photo: EventPhotoRecord, value:
 }
 
 async function toggleHighlight(payload: { photo: EventPhotoRecord, value: boolean }) {
-  if (!canManage.value || pendingDeletePhotoId.value || pendingPublicVisibilityPhotoId.value || pendingHighlightPhotoId.value) {
+  if (!canManage.value || isPhotoChangePending.value) {
     return
   }
 
@@ -260,6 +280,38 @@ async function toggleHighlight(payload: { photo: EventPhotoRecord, value: boolea
     pendingHighlightPhotoId.value = null
   }
 }
+
+/** Hides a participant photo from participants and the public, or shows it again. */
+async function toggleHidden(payload: { photo: EventPhotoRecord, value: boolean }) {
+  if (!canManage.value || isPhotoChangePending.value) {
+    return
+  }
+
+  mutationErrorMessage.value = ''
+  pendingHiddenPhotoId.value = payload.photo.id
+
+  try {
+    const response = await apiFetch<{ data: EventPhotoRecord }>(`/api/events/${eventId.value}/photos/${payload.photo.id}/hidden`, {
+      method: 'PATCH',
+      body: {
+        isHidden: payload.value
+      }
+    })
+
+    photos.value = photos.value.map(entry => entry.id === payload.photo.id ? response.data : entry)
+    toast.add({
+      title: payload.value ? 'Photo hidden' : 'Photo shown again',
+      description: payload.value
+        ? 'Participants no longer see this photo.'
+        : 'Participants see this photo again.',
+      color: 'success'
+    })
+  } catch (error) {
+    mutationErrorMessage.value = normalizeApiError(error).message
+  } finally {
+    pendingHiddenPhotoId.value = null
+  }
+}
 </script>
 
 <template>
@@ -267,9 +319,11 @@ async function toggleHighlight(payload: { photo: EventPhotoRecord, value: boolea
     v-model:active-filter="galleryFilter"
     :description="panelDescription"
     :photos="visiblePhotos"
+    :participant-photos="participantPhotos"
     :total-photo-count="photos.length"
     :filter-options="galleryFilterOptions"
     :can-manage="canManage"
+    :can-add-participant-photos="canAddParticipantPhotos"
     :can-toggle-public-visibility="canManage"
     :can-toggle-highlight="canManage"
     :show-curation-badges="true"
@@ -282,6 +336,7 @@ async function toggleHighlight(payload: { photo: EventPhotoRecord, value: boolea
     :pending-delete-photo-id="pendingDeletePhotoId"
     :pending-public-visibility-photo-id="pendingPublicVisibilityPhotoId"
     :pending-highlight-photo-id="pendingHighlightPhotoId"
+    :pending-hidden-photo-id="pendingHiddenPhotoId"
     add-button-label="Add photos"
     empty-state-title="No gallery photos yet"
     :empty-state-description="emptyStateDescription"
@@ -291,5 +346,6 @@ async function toggleHighlight(payload: { photo: EventPhotoRecord, value: boolea
     @delete-photo="deletePhoto"
     @toggle-public-visibility="togglePublicVisibility"
     @toggle-highlight="toggleHighlight"
+    @toggle-hidden="toggleHidden"
   />
 </template>

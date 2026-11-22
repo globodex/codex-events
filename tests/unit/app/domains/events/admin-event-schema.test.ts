@@ -200,12 +200,14 @@ describe('event config form schema', () => {
       ...createValidEventFormState(),
       checkInFlowEnabled: true,
       questionnaireQuestions: [{ id: 'q1', type: 'short_text', prompt: 'What do you build?', required: true, options: [] }],
-      challenges: [{ id: 'c1', title: 'Ship a skill', instructions: 'Build one skill.', resources: [], isPublished: true }]
+      challenges: [{ id: 'c1', title: 'Ship a skill', instructions: 'Build one skill.', resources: [], isPublished: true }],
+      participantPhotosEnabled: true
     }, 'build')
 
     expect(patch).not.toHaveProperty('checkInFlowEnabled')
     expect(patch).not.toHaveProperty('questionnaireQuestions')
     expect(patch).not.toHaveProperty('challenges')
+    expect(patch).not.toHaveProperty('participantPhotosEnabled')
   })
 
   test('accepts configured submission tracks with markdown descriptions', () => {

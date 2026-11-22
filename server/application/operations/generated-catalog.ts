@@ -86,6 +86,7 @@ export const applicationOperationLoaders = [
   () => import('../../api/events/[eventId]/leaderboard/index.get'),
   () => import('../../api/events/[eventId]/no-submission-teams/index.get'),
   () => import('../../api/events/[eventId]/photos/[photoId].delete'),
+  () => import('../../api/events/[eventId]/photos/[photoId]/hidden.patch'),
   () => import('../../api/events/[eventId]/photos/[photoId]/highlight.patch'),
   () => import('../../api/events/[eventId]/photos/[photoId]/public-visibility.patch'),
   () => import('../../api/events/[eventId]/photos/index.get'),

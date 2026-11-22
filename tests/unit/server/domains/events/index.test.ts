@@ -66,6 +66,7 @@ function buildEventRecord(
     checkInFlowEnabled: false,
     questionnaireQuestionsJson: '[]',
     challengesJson: '[]',
+    participantPhotosEnabled: false,
     inPersonEvent: false,
     applicationXProfileVisible: true,
     applicationLinkedinProfileVisible: true,
