@@ -89,6 +89,18 @@ function buildAgendaEvent(overrides: Partial<EventRecord> = {}): EventRecord {
   }
 }
 
+test('gives a new event the sign-up form of the event type that the organizer picks', () => {
+  const builder = useEventBuilder({ mode: 'create', initialEvent: shallowRef(null) })
+  // A new event starts with the Hackathon sign-up form.
+  expect(builder.state.form).toMatchObject({ requireChatgptEmail: true, requireOpenaiOrgId: true })
+
+  builder.setEventType('build')
+  expect(builder.state.form).toMatchObject({ eventType: 'build', requireChatgptEmail: false, requireOpenaiOrgId: false })
+
+  builder.setEventType('hackathon')
+  expect(builder.state.form).toMatchObject({ eventType: 'hackathon', requireChatgptEmail: true, requireOpenaiOrgId: true })
+})
+
 test('preserves edits made before a settings refresh and during a save of the same event', async () => {
   const initialEvent = shallowRef<EventRecord | null>(null)
   const builder = useEventBuilder({ mode: 'edit', initialEvent })

@@ -7,6 +7,7 @@ import { computeEventBalance } from '#shared/domains/events/builder-scoring'
 import type { EventBuilderTemplate } from '#shared/domains/events/builder-templates'
 import { getEventBuilderTemplates } from '#shared/domains/events/builder-templates'
 import {
+  applyEventTypeApplicationFieldDefaults,
   buildEventCreateBody,
   buildEventConfigurationPatch,
   createEventSlug
@@ -187,6 +188,9 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
     }
 
     state.form.eventType = eventType
+    // Every event type has its own sign-up form, as in the classic editor. A Build or a Meetup
+    // does not ask for the ChatGPT email and the OpenAI org ID that a Hackathon requires.
+    applyEventTypeApplicationFieldDefaults(state.form, eventType)
     state.eventTypeChosen = true
     state.appliedTemplateId = null
 
