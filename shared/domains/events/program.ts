@@ -60,7 +60,11 @@ const programSessionSchema = z.object({
   afterCheckIn: z.object({
     title: z.string().trim().min(1, 'Enter the title after check-in.').max(120),
     room: sessionRoomSchema.nullable()
-  }).optional()
+  }).optional(),
+  // True when the public event page lists this session under its agenda block, with its start
+  // time and its title. A session without this mark is for people who read the program only.
+  // The room, the details and the version after check-in are never public.
+  isPublic: z.boolean().optional()
 })
 
 const programTrackSchema = z.object({
@@ -115,6 +119,16 @@ export const participantEventProgramSchema = z.object({
 
 export type ParticipantEventProgram = z.infer<typeof participantEventProgramSchema>
 
+// The sessions that the organizer marked as public, in the order of their start, with the
+// public agenda block that they belong to. The public event page and the Agenda tab of a person
+// who does not read the program list them under that block.
+export const publicProgramSessionsSchema = z.object({
+  agendaItemId: id,
+  sessions: z.array(z.object({ id, title: z.string(), startsAt: z.string() }))
+})
+
+export type PublicProgramSessions = z.infer<typeof publicProgramSessionsSchema>
+
 /** Event admins and confirmed participants read the program. */
 export function canViewEventProgram(isEventAdmin: boolean, approved: boolean) {
   return isEventAdmin || approved
@@ -125,6 +139,9 @@ export const accountEventAgendaPageSchema = z.object({
   // Null when the event has no program, and for people who may not read it. They see the
   // public agenda blocks instead.
   program: participantEventProgramSchema.nullable(),
+  // For a caller who does not get the program: the sessions that the organizer made public.
+  // Null for a caller who gets the program, and when the event has no public session.
+  publicSessions: publicProgramSessionsSchema.nullable(),
   // The published challenges that the caller may read, in display order. Empty for a caller who
   // may not read them (`canReadEventChallenges`). A room of a floor plan names its challenge.
   challenges: eventChallengesSchema

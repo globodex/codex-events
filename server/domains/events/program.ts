@@ -2,7 +2,12 @@ import type { H3Event } from 'h3'
 
 import { and, eq, sql } from 'drizzle-orm'
 
-import type { AdminEventProgram, EventProgram, ParticipantEventProgram } from '#shared/domains/events/program'
+import type {
+  AdminEventProgram,
+  EventProgram,
+  ParticipantEventProgram,
+  PublicProgramSessions
+} from '#shared/domains/events/program'
 import { canViewEventProgram } from '#shared/domains/events/program'
 import { requirePlatformActor } from '#server/auth/actor'
 import { resolveEventAuthorization } from '#server/auth/authorization'
@@ -61,6 +66,14 @@ function readProgramTracks(tracksJson: string): EventProgram['tracks'] {
   return JSON.parse(tracksJson) as EventProgram['tracks']
 }
 
+// The public event page lists the public sessions of the program. So every write of the program
+// also rotates the revision of the public event content.
+function rotatePublicContentRevision(database: AppDatabase, eventId: string) {
+  return database.update(events)
+    .set({ publicContentRevision: sql`${events.publicContentRevision} + 1` })
+    .where(eq(events.id, eventId))
+}
+
 export async function readAdminEventProgram(h3Event: H3Event, eventId: string): Promise<AdminEventProgram> {
   await requireEventAdmin(h3Event, eventId)
   const database = getDatabase(h3Event)
@@ -112,7 +125,7 @@ export async function saveAdminEventProgram(h3Event: H3Event, eventId: string, p
 
   // Compare the agenda read above and the live rooms in the write itself.
   const tracksJson = JSON.stringify(program.tracks)
-  const result = await database.insert(eventAgendaPrograms).select(database.select({
+  const saveProgram = database.insert(eventAgendaPrograms).select(database.select({
     eventId: events.id,
     agendaItemId: sql<string>`${program.agendaItemId}`.as('agendaItemId'),
     tracksJson: sql<string>`${tracksJson}`.as('tracksJson')
@@ -124,6 +137,10 @@ export async function saveAdminEventProgram(h3Event: H3Event, eventId: string, p
     target: eventAgendaPrograms.eventId,
     set: { agendaItemId: program.agendaItemId, tracksJson }
   })
+  // One D1 mutation, so the program and the revision change together. When the agenda or a room
+  // changed in the meantime, the program is not written and the revision still rotates. That
+  // only makes the public caches read the unchanged event once more.
+  const [result] = await database.batch([saveProgram, rotatePublicContentRevision(database, eventId)])
 
   if (!result.meta.changes) {
     throw new ApiError({ statusCode: 409, code: 'event_program_changed', message: 'The agenda or a selected room changed. Refresh and try again.' })
@@ -135,7 +152,10 @@ export async function saveAdminEventProgram(h3Event: H3Event, eventId: string, p
 export async function deleteAdminEventProgram(h3Event: H3Event, eventId: string): Promise<AdminEventProgram> {
   await requireEventAdmin(h3Event, eventId)
   const database = getDatabase(h3Event)
-  await database.delete(eventAgendaPrograms).where(eq(eventAgendaPrograms.eventId, eventId))
+  await database.batch([
+    database.delete(eventAgendaPrograms).where(eq(eventAgendaPrograms.eventId, eventId)),
+    rotatePublicContentRevision(database, eventId)
+  ])
   return { program: null, floorPlans: await listEventFloorPlans(database, eventId) }
 }
 
@@ -180,4 +200,35 @@ export async function loadParticipantEventProgram(
     tracks: showTracksTo(readProgramTracks(row.tracksJson), viewer),
     floorPlans: await listEventFloorPlans(database, event.id)
   }
+}
+
+/**
+ * The sessions that the organizer marked as public, in the order of their start, or null when
+ * the event has no public session.
+ *
+ * A public session gives its own title and its start time. It never gives the room, the details
+ * or the version for checked-in participants (`afterCheckIn`).
+ */
+export async function loadPublicProgramSessions(
+  database: AppDatabase,
+  event: EventRecord
+): Promise<PublicProgramSessions | null> {
+  const row = await findEventProgramRow(database, event.id)
+  const agendaItem = row && getProgramAgendaItem(event, row.agendaItemId)
+  if (!row || !agendaItem) {
+    return null
+  }
+
+  const blockStart = Date.parse(agendaItem.startsAt)
+  const sessions = readProgramTracks(row.tracksJson)
+    .flatMap(track => track.sessions)
+    .filter(session => session.isPublic)
+    .toSorted((left, right) => left.startsAfterMinutes - right.startsAfterMinutes)
+    .map(session => ({
+      id: session.id,
+      title: session.title,
+      startsAt: new Date(blockStart + session.startsAfterMinutes * 60_000).toISOString()
+    }))
+
+  return sessions.length ? { agendaItemId: agendaItem.id, sessions } : null
 }

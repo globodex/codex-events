@@ -1699,8 +1699,9 @@ useSeoMeta({
             :challenges="programPage.challenges"
           />
           <!--
-            A person who does not read the sessions sees the public agenda blocks. The challenges
-            that this person may read stand next to them, without a map.
+            A person who does not read the program sees the public agenda blocks with the sessions
+            that the organizer made public. The challenges that this person may read stand next
+            to them, without a map.
           -->
           <div
             v-else
@@ -1710,6 +1711,7 @@ useSeoMeta({
               v-if="event.agendaItems.length"
               class="min-w-0 lg:flex-1"
               :agenda-items="event.agendaItems"
+              :public-sessions="programPage.publicSessions"
             />
             <LazyAccountEventChallengeList
               v-if="programPage.challenges.length"

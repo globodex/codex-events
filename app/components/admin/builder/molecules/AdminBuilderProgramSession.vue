@@ -162,6 +162,14 @@ function minutesAfterStart(value: string | number | undefined) {
       />
     </AppFormField>
 
+    <!-- The public event page lists a marked session with its start time and title only. -->
+    <AppCheckbox
+      :model-value="session.isPublic ?? false"
+      label="Show on the public event page"
+      :disabled="disabled"
+      @update:model-value="isPublic => updateSession({ isPublic })"
+    />
+
     <AppCheckbox
       :model-value="Boolean(session.afterCheckIn)"
       label="Changes after check-in"

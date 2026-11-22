@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import type { PublicProgramSessions } from '#shared/domains/events/program'
 import {
+  formatEventTime,
   getAgendaItemPresentation,
   shouldShowAgendaDayContext,
   type PublicEventAgendaItem
@@ -7,6 +9,8 @@ import {
 
 const props = defineProps<{
   agendaItems: PublicEventAgendaItem[]
+  /** The sessions that the organizer made public. The panel lists them under their agenda block. */
+  publicSessions?: PublicProgramSessions | null
 }>()
 
 const sortedAgendaItems = computed(() =>
@@ -17,7 +21,8 @@ const showAgendaDayContext = computed(() => shouldShowAgendaDayContext(sortedAge
 const agendaEntries = computed(() =>
   sortedAgendaItems.value.map(item => ({
     ...item,
-    presentation: getAgendaItemPresentation(item, showAgendaDayContext.value)
+    presentation: getAgendaItemPresentation(item, showAgendaDayContext.value),
+    sessions: item.id === props.publicSessions?.agendaItemId ? props.publicSessions.sessions : []
   }))
 )
 
@@ -123,6 +128,24 @@ const agendaTimeChipClasses = 'flex min-w-0 items-center justify-center rounded-
                 >
                   {{ item.details }}
                 </p>
+                <!-- The public sessions of this block, each with its start time. -->
+                <ul
+                  v-if="item.sessions.length > 0"
+                  class="mt-2 max-w-[62ch] text-sm leading-6 text-neutral-600 dark:text-[#AFAFAF]"
+                  data-testid="public-event-agenda-sessions"
+                >
+                  <li
+                    v-for="session in item.sessions"
+                    :key="session.id"
+                    class="flex gap-3"
+                  >
+                    <time
+                      :datetime="session.startsAt"
+                      class="w-[4.5rem] shrink-0 whitespace-nowrap tabular-nums"
+                    >{{ formatEventTime(session.startsAt) }}</time>
+                    <span class="min-w-0">{{ session.title }}</span>
+                  </li>
+                </ul>
               </div>
 
               <div

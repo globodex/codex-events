@@ -1,4 +1,5 @@
 import type { EventState } from '~/domains/events/states'
+import type { PublicProgramSessions } from '#shared/domains/events/program'
 import { resolveEventCertificateDateIso } from '#shared/domains/events/certificates'
 
 export { formatPrizeReward } from '#shared/domains/events/prizes'
@@ -64,6 +65,8 @@ export interface PublicEvent {
   slug: string
   description: string
   agendaItems: PublicEventAgendaItem[]
+  /** The sessions that the organizer made public. Only the event detail carries them. */
+  publicSessions?: PublicProgramSessions | null
   tracks?: PublicEventTrack[]
   backgroundImageUrl: string | null
   displayBackgroundImageUrl: string | null

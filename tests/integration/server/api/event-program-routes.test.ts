@@ -107,6 +107,12 @@ describe('event program routes', () => {
     await readData(await harness.request(programPath, json('PUT', program)))
   }
 
+  /** The revision of the public event content. It rotates when the public page has to change. */
+  async function readPublicContentRevision() {
+    const [event] = await harness.database.select({ revision: events.publicContentRevision }).from(events)
+    return event!.revision
+  }
+
   async function setup() {
     harness = createApiRouteTestHarness({
       routes: [
@@ -275,6 +281,52 @@ describe('event program routes', () => {
     const unknownRoomProgram = structuredClone(flippingProgram)
     unknownRoomProgram.tracks[0]!.sessions[0]!.afterCheckIn!.room!.roomId = 'unknown_room'
     expect((await harness.request(programPath, json('PUT', unknownRoomProgram))).status).toBe(409)
+  })
+
+  test('lists the public sessions on the public event page and for people who do not read the program', async () => {
+    const { program } = await setup()
+    // "Workshop A" has a room and details, gets a version after check-in, and stays private.
+    // "Build Sprint" starts with the block and "Workshop B" 90 minutes later. Both become public.
+    const programWithPublicSessions = structuredClone(program)
+    programWithPublicSessions.tracks[0]!.sessions[0]!.afterCheckIn = { title: 'Breakfast', room: null }
+    programWithPublicSessions.tracks[0]!.sessions[1]!.isPublic = true
+    programWithPublicSessions.tracks[1]!.sessions[0]!.isPublic = true
+    const revisionBefore = await readPublicContentRevision()
+    await publishProgram(programWithPublicSessions)
+    expect(await readPublicContentRevision()).toBe(revisionBefore + 1)
+
+    const publicSessions = {
+      agendaItemId: publicBlock.id,
+      sessions: [
+        { id: 'parallel_session', title: 'Build Sprint', startsAt: publicBlock.startsAt },
+        { id: 'later_session', title: 'Workshop B', startsAt: '2026-11-28T11:30:00.000Z' }
+      ]
+    }
+
+    stubAuth0Session(null)
+    const publicDetail = await readData<{ publicSessions: unknown }>(await harness.request(publicPath))
+    expect(publicDetail.publicSessions).toEqual(publicSessions)
+    // What stays private: the private session and its details, the second version, the room and the floor.
+    const privateTexts = /Workshop A|A confirmed participant workshop|Breakfast|Seminar Room|Ground floor/
+    expect(JSON.stringify(publicDetail)).not.toMatch(privateTexts)
+
+    for (const viewer of ['pending', 'staff']) {
+      signIn(viewer)
+      expect(await readAgendaPage()).toMatchObject({ program: null, publicSessions })
+    }
+
+    // A person who reads the program gets every session, and no separate public list.
+    signIn('participant')
+    const participantPage = await readAgendaPage()
+    expect(participantPage.publicSessions).toBeNull()
+    expect(participantPage.program!.tracks.flatMap(track => track.sessions)).toHaveLength(3)
+
+    // Without the program the public page has no sessions, and the revision rotates again.
+    signIn('organizer')
+    await readData(await harness.request(programPath, { method: 'DELETE' }))
+    expect(await readPublicContentRevision()).toBe(revisionBefore + 2)
+    stubAuth0Session(null)
+    expect((await readData<{ publicSessions: unknown }>(await harness.request(publicPath))).publicSessions).toBeNull()
   })
 
   test('keeps the published program consistent when the parent block, sessions, or rooms change', async () => {

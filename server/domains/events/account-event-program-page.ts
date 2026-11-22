@@ -3,14 +3,15 @@ import { accountEventAgendaPageSchema, canViewEventProgram } from '#shared/domai
 import { defineAccountEventPageRoute } from './account-event-page-contract'
 import { getAccountEventPageAccess } from './account-event-page-context'
 import { listReadableEventChallenges } from './challenges'
-import { loadParticipantEventProgram } from './program'
+import { loadParticipantEventProgram, loadPublicProgramSessions } from './program'
 
 export const accountEventProgramPageRoute = defineAccountEventPageRoute({
   page: 'program',
   schema: accountEventAgendaPageSchema,
   // Everyone who can open the event workspace can open the Agenda tab. Only event admins and
-  // confirmed participants get the program; the others see the public agenda blocks. The
-  // challenges have their own rule for who reads them (`listReadableEventChallenges`).
+  // confirmed participants get the program; the others see the public agenda blocks with the
+  // sessions that the organizer made public. The challenges have their own rule for who reads
+  // them (`listReadableEventChallenges`).
   authorize: async () => undefined,
   load: async (context) => {
     const isEventAdmin = context.authorization.isEventAdmin
@@ -25,13 +26,18 @@ export const accountEventProgramPageRoute = defineAccountEventPageRoute({
     })
 
     if (!canViewEventProgram(isEventAdmin, approved)) {
-      return { program: null, challenges }
+      return {
+        program: null,
+        publicSessions: await loadPublicProgramSessions(context.database, context.event),
+        challenges
+      }
     }
 
     return {
       program: await loadParticipantEventProgram(context.database, context.event, {
         isCheckedIn: application ? isApplicationEffectivelyCheckedIn(application) : false
       }),
+      publicSessions: null,
       challenges
     }
   }

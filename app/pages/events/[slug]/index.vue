@@ -436,7 +436,10 @@ useSeoMeta({
           :tracks="event.tracks ?? []"
         />
 
-        <EventAgendaPanel :agenda-items="event.agendaItems" />
+        <EventAgendaPanel
+          :agenda-items="event.agendaItems"
+          :public-sessions="event.publicSessions"
+        />
       </section>
 
       <section

@@ -321,6 +321,12 @@ state.
   events and cover an organizer publishing a challenge in the event builder,
   and a participant reading a challenge and its details on the Agenda, opened
   from the next step after check-in and before check-in.
+- Public session coverage includes the public event detail and the Agenda page
+  of a pending participant and of event staff, which hold the sessions that
+  the organizer made public in the order of their start; the rooms, details
+  and second versions that stay out of both; a confirmed participant, who
+  gets the whole program and no separate public list; and the revision of the
+  public event content after a program is saved and after it is removed.
 - Participant photo coverage includes an upload before check-in, with an open
   questionnaire, after finishing the check-in flow without a credit claim, in
   an event without a questionnaire, with the check-in flow off, with

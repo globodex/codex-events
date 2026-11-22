@@ -9,6 +9,7 @@ import {
   routeSlugParamsSchema,
   serializePublicEvent
 } from '#server/domains/events'
+import { loadPublicProgramSessions } from '#server/domains/events/program'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import {
   setPrivatePublicEventCacheHeaders,
@@ -32,17 +33,20 @@ export const applicationOperation = defineStructuredRouteOperation({
   const query = parseValidatedQuery(h3Event, publicEventDetailQuerySchema)
   const database = getDatabase(h3Event)
   const event = await getPublicEventBySlugOrThrow(database, slug)
-  const [currentTerms, tracks, imageOptions] = await Promise.all([
+  const [currentTerms, tracks, imageOptions, publicSessions] = await Promise.all([
     getCurrentEventTerms(database, event),
     listEventTracks(database, event.id),
-    getEventDisplayImageOptions(database)
+    getEventDisplayImageOptions(database),
+    loadPublicProgramSessions(database, event)
   ])
 
   const response = apiData({
     ...serializePublicEvent(event, currentTerms, tracks, {
       ...imageOptions,
       includeFullTrackDetails: query.tracks === 'full'
-    })
+    }),
+    // The sessions that the organizer made public. The page lists them under their agenda block.
+    publicSessions
   })
 
   setPublicEventCacheHeaders(h3Event, 'public-event-detail', response)

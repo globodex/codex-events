@@ -51,8 +51,16 @@ const fixtureCheckInFlowQuestions = [
 const fixtureCheckInFlowAgendaItems = [
   { id: 'check-in-flow-build-time', startsAt: '2026-11-28T12:00:00.000Z', endsAt: '2026-11-28T14:00:00.000Z', title: 'Build Time', details: null, displayOrder: 0 }
 ]
+// "Kickoff" is public: the public event page lists it. "Table setup" is for people who read the program.
 const fixtureCheckInFlowProgramTracks = [
-  { id: 'main-room', name: 'Main room', sessions: [{ id: 'kickoff', title: 'Kickoff', details: null, startsAfterMinutes: 0, durationMinutes: 30, room: null }] }
+  {
+    id: 'main-room',
+    name: 'Main room',
+    sessions: [
+      { id: 'kickoff', title: 'Kickoff', details: null, startsAfterMinutes: 0, durationMinutes: 30, room: null, isPublic: true },
+      { id: 'table-setup', title: 'Table setup', details: null, startsAfterMinutes: 30, durationMinutes: 15, room: null }
+    ]
+  }
 ]
 const fixtureCreditClaimEventId = 'event_e2e_credit_claim_fixture'
 const fixtureCreditSoldOutEventId = 'event_e2e_credit_sold_out_fixture'
