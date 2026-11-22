@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { and, asc, eq } from 'drizzle-orm'
 
+import accountPatchHandler from '../../../../server/api/account.patch'
 import settingsPageGetHandler from '../../../../server/api/account/events/[slug]/settings.get'
 import stageApprovalHandler from '../../../../server/api/events/[eventId]/applications/[applicationId]/actions/approve.post'
 import undoWithdrawalHandler from '../../../../server/api/events/[eventId]/applications/[applicationId]/actions/undo-withdrawal.post'
@@ -56,6 +57,7 @@ describe('TASK-443 Luma guest list', () => {
         { method: 'post', path: '/api/events/:eventId/applications/actions/apply-staged-decisions', handler: applyStagedDecisionsHandler },
         { method: 'post', path: '/api/events/:eventId/applications/me/actions/withdraw', handler: withdrawOwnApplicationHandler },
         { method: 'patch', path: '/api/events/:eventId', handler: eventPatchHandler },
+        { method: 'patch', path: '/api/account', handler: accountPatchHandler },
         { method: 'get', path: '/api/account/events/:slug/settings', handler: settingsPageGetHandler }
       ],
       sessionUser: eventAdminSession,
@@ -609,6 +611,117 @@ describe('TASK-443 Luma guest list', () => {
       expect(approvedResponse.status).toBe(200)
       expect(await approvedResponse.json()).toMatchObject({ data: { status: 'approved', lumaSyncStatus: null } })
       expect(reviewEmailQueue.send).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  // The platform finds the registration of a Luma guest by the Luma email of the account. In one
+  // event that email belongs to one active registration (submitted or approved).
+  describe('one active registration per Luma email', () => {
+    const restoreParticipant = (harness: Harness) =>
+      harness.request('/api/events/event_1/applications/application_participant/actions/undo-withdrawal', { method: 'POST' })
+
+    /** Changes the Luma email of the `participant` account, the way the account settings do. */
+    function changeParticipantLumaEmail(harness: Harness, lumaEmail: string) {
+      stubAuth0Session(participantSession)
+      return harness.request('/api/account', {
+        method: 'PATCH',
+        body: JSON.stringify({ firstName: 'Parti', familyName: 'Cipant', lumaEmail })
+      })
+    }
+
+    async function readParticipantLumaEmail(harness: Harness) {
+      return (await harness.database.query.users.findFirst({ where: eq(users.id, 'participant') }))!.lumaEmail
+    }
+
+    test.each(['submitted', 'approved'] as const)('refuses a second account while a %s registration holds the Luma email', async (status) => {
+      const { harness } = await createContext()
+      await addParticipant(harness, 'first_account', 'guest@luma.example', status)
+      await saveGuests(harness, { 'guest@luma.example': 'approved' })
+
+      const response = await register(harness)
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'luma_email_already_used', details: { eventId: 'event_1' } }
+      })
+      expect(await readApplication(harness, 'participant')).toBeUndefined()
+    })
+
+    test.each(['withdrawn', 'rejected'] as const)('a %s registration frees its Luma email for another account', async (status) => {
+      const { harness } = await createContext()
+      await addParticipant(harness, 'first_account', 'guest@luma.example', status)
+      await saveGuests(harness, { 'guest@luma.example': 'approved' })
+
+      const response = await register(harness)
+
+      expect(response.status).toBe(200)
+      // The approved Luma guest is still confirmed at once.
+      expect(await response.json()).toMatchObject({ data: { userId: 'participant', status: 'approved' } })
+    })
+
+    test('a Luma update reaches the active registration and leaves a withdrawn one with the same email alone', async () => {
+      const { harness } = await createContext()
+      await addParticipant(harness, 'first_account', 'guest@luma.example', 'withdrawn')
+      await addApplication(harness, 'participant', 'submitted')
+
+      await deliverGuestWebhook(harness, 'guest.updated', { email: 'guest@luma.example', approvalStatus: 'approved' })
+
+      expect(await readApplication(harness, 'participant')).toMatchObject({ status: 'approved' })
+      expect(await readApplication(harness, 'first_account')).toMatchObject({ status: 'withdrawn' })
+    })
+
+    test('a duplicate Luma email does not matter in an event that is not linked to Luma', async () => {
+      const { harness } = await createContext({
+        lumaGuestListEnabled: false,
+        lumaWebhookStatus: 'not_configured',
+        requireLumaEmail: false
+      })
+      await addParticipant(harness, 'first_account', 'guest@luma.example', 'approved')
+
+      const response = await register(harness)
+
+      expect(response.status).toBe(200)
+    })
+
+    test('refuses to restore a withdrawn registration while another registration holds its Luma email', async () => {
+      const { harness } = await createContext()
+      await addParticipant(harness, 'second_account', 'guest@luma.example', 'approved')
+      await addApplication(harness, 'participant', 'withdrawn', { withdrawnAt: '2026-11-21T10:00:00.000Z' })
+
+      const response = await restoreParticipant(harness)
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({ error: { code: 'luma_email_already_used' } })
+      expect(await readApplication(harness, 'participant')).toMatchObject({ status: 'withdrawn' })
+    })
+
+    test('refuses a Luma email change that another active registration of a shared event holds', async () => {
+      const { harness } = await createContext()
+      await addParticipant(harness, 'other_account', 'other@luma.example', 'approved')
+      await addApplication(harness, 'participant', 'approved')
+
+      const response = await changeParticipantLumaEmail(harness, 'Other@Luma.example')
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'luma_email_already_used', details: { eventId: 'event_1' } }
+      })
+      expect(await readParticipantLumaEmail(harness)).toBe('Guest@Luma.example')
+    })
+
+    test('allows a Luma email change when no shared event has an active registration with that email', async () => {
+      const { harness } = await createContext()
+      // The other account is not active in the event, and the participant has no registration yet.
+      await addParticipant(harness, 'other_account', 'other@luma.example', 'withdrawn')
+
+      expect((await changeParticipantLumaEmail(harness, 'other@luma.example')).status).toBe(200)
+      expect(await readParticipantLumaEmail(harness)).toBe('other@luma.example')
+
+      await addApplication(harness, 'participant', 'approved')
+
+      // A new email that nobody uses is free too, also with an active registration.
+      expect((await changeParticipantLumaEmail(harness, 'fresh@luma.example')).status).toBe(200)
+      expect(await readParticipantLumaEmail(harness)).toBe('fresh@luma.example')
     })
   })
 

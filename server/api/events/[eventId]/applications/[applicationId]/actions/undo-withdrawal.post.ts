@@ -14,6 +14,8 @@ import {
   requireEventAdminApplicationContext,
   serializeUserApplication
 } from '#server/domains/applications'
+import { isEventLinkedToLuma } from '#server/domains/applications/luma-config'
+import { assertLumaEmailFreeInEvent } from '#server/domains/applications/luma-email'
 import { applyPostRegistrationApplicationOutcome } from '#server/domains/applications/review-finalization'
 import { parseValidatedParams } from '#server/http/validation'
 
@@ -47,6 +49,21 @@ export const applicationOperation = defineStructuredRouteOperation({
         applicationId: application.id
       }
     })
+  }
+
+  const applicant = await database.query.users.findFirst({
+    where: eq(users.id, application.userId)
+  })
+  const applicantLumaEmail = applicant?.lumaEmail?.trim() ?? ''
+
+  if (applicantLumaEmail && isEventLinkedToLuma(event)) {
+    // A withdrawn registration frees its Luma email. It can come back only while no other
+    // active registration of the event holds that email (see `luma-email.ts`).
+    await assertLumaEmailFreeInEvent(
+      database,
+      { eventId, lumaEmail: applicantLumaEmail, exceptUserId: application.userId },
+      'The Luma email of this participant is now connected to another registration of this event. Withdraw that registration first.'
+    )
   }
 
   const restoredAt = new Date().toISOString()
@@ -87,10 +104,6 @@ export const applicationOperation = defineStructuredRouteOperation({
       updatedAt: restoredApplication.updatedAt
     })
     .where(eq(userApplications.id, application.id))
-
-  const applicant = await database.query.users.findFirst({
-    where: eq(users.id, application.userId)
-  })
 
   const applicationRecord = await applyPostRegistrationApplicationOutcome({
     h3Event,

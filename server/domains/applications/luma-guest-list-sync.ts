@@ -4,10 +4,8 @@ import { and, eq, isNull, sql } from 'drizzle-orm'
 
 import type { AppDatabase } from '#server/database/client'
 import { eventLumaGuests, events, userApplications, users } from '#server/database/schema'
-import {
-  findEventApplicationByLumaEmail,
-  withdrawUserApplicationWithAdminPolicy
-} from '#server/domains/applications'
+import { withdrawUserApplicationWithAdminPolicy } from '#server/domains/applications'
+import { findEventApplicationByLumaEmail } from '#server/domains/applications/luma-email'
 import { fetchLumaEventGuests, LumaEventGuestLimitError } from '#server/domains/applications/luma-event-guests'
 import {
   findEventLumaGuestStanding,

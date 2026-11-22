@@ -1,4 +1,4 @@
-import { and, eq, ne, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { requirePlatformActor } from '#server/auth/actor'
@@ -13,6 +13,7 @@ import {
   isEventLumaSyncEnabled,
   serializeUserApplication
 } from '#server/domains/applications'
+import { assertLumaEmailChangeIsFree } from '#server/domains/applications/luma-email'
 import {
   buildApplicationLumaSyncQueueMessage,
   lookupLumaEventGuestByEmail,
@@ -105,27 +106,9 @@ export const applicationOperation = defineStructuredRouteOperation({
     })
   }
 
-  const existingLumaEmailApplication = await database
-    .select({ id: userApplications.id })
-    .from(userApplications)
-    .innerJoin(users, eq(users.id, userApplications.userId))
-    .where(and(
-      eq(userApplications.eventId, eventId),
-      ne(userApplications.userId, actor.platformUser.id),
-      sql`lower(${users.lumaEmail}) = lower(${body.lumaEmail})`
-    ))
-    .limit(1)
-
-  if (existingLumaEmailApplication.length > 0) {
-    throw new ApiError({
-      statusCode: 409,
-      code: 'luma_email_already_used',
-      message: 'This Luma email is already connected to another participant for this event.',
-      details: {
-        eventId
-      }
-    })
-  }
+  // The verified email is saved on the account, so it must be free in every event where the
+  // caller has an active registration (see `luma-email.ts`).
+  await assertLumaEmailChangeIsFree(database, { userId: actor.platformUser.id, lumaEmail: body.lumaEmail })
 
   const lumaGuestLookup = await lookupLumaEventGuestByEmail({
     lumaEventApiId: event.lumaEventApiId!.trim(),

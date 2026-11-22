@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, count, desc, eq, getTableColumns, isNull, ne, or, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, getTableColumns, isNull, ne, or } from 'drizzle-orm'
 import { z } from 'zod'
 
 import {
@@ -856,39 +856,6 @@ export async function getOwnUserApplication(
       eq(userApplications.userId, userId)
     )
   })
-}
-
-/**
- * Finds the application that belongs to a Luma guest of the event.
- *
- * A guest matches only when exactly one application in the event belongs to an active user whose
- * saved Luma email equals the guest email, ignoring case. With no match or several matches the
- * result is null, so a Luma update never changes an application it cannot identify for sure.
- */
-export async function findEventApplicationByLumaEmail(
-  database: AppDatabase,
-  eventId: string,
-  guestEmail: string
-) {
-  const matches = await database
-    .select({
-      application: getTableColumns(userApplications),
-      applicant: {
-        email: users.email,
-        displayName: users.displayName
-      }
-    })
-    .from(userApplications)
-    .innerJoin(users, eq(users.id, userApplications.userId))
-    .where(and(
-      eq(userApplications.eventId, eventId),
-      isNull(users.deletedAt),
-      sql`lower(${users.lumaEmail}) = lower(${guestEmail})`
-    ))
-
-  return matches.length === 1
-    ? matches[0] ?? null
-    : null
 }
 
 export async function assertNoExistingApplication(

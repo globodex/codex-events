@@ -161,7 +161,9 @@ watch(() => accountActor.value, (actor) => {
       ?? '',
     chatgptEmail: actor.platformUser.chatgptEmail,
     openaiOrgId: actor.platformUser.openaiOrgId,
-    lumaEmail: actor.platformUser.lumaEmail
+    // Most people use one email everywhere. Until the account has a Luma email of its own, the
+    // form suggests the account email, so most participants do not type it at the entrance.
+    lumaEmail: actor.platformUser.lumaEmail ?? actor.platformUser.email
   }))
 }, { immediate: true })
 

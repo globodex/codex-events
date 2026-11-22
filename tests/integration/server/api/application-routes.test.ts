@@ -1703,7 +1703,7 @@ describe('TASK-3.6 application routes', () => {
     expect(await response.json()).toMatchObject({
       error: {
         code: 'luma_email_already_used',
-        message: 'This Luma email is already connected to another participant for this event.',
+        message: 'This Luma email is already connected to another participant of an event you are registered for.',
         details: {
           eventId: 'event_1'
         }

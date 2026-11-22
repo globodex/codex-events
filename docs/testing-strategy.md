@@ -253,7 +253,11 @@ state.
   registration outcomes for missing, declined, waiting, and approved guests,
   approval and withdrawal reconciliation with the single-application matching
   rule, the absence of Luma decision sync, and guest data staying out of every
-  response.
+  response. Coverage of one active application per Luma email includes a
+  refused second registration, a withdrawn or rejected application that frees
+  its Luma email, a Luma update that reaches only the active application, an
+  event that is not linked to Luma, a refused restore, and an allowed and a
+  refused Luma email change on the account.
 - Participant list coverage includes the newest 100 registrations with the
   total of the whole event, search by participant name, account email, and
   Luma email for a registration outside those 100, a match that ignores letter

@@ -6,6 +6,7 @@ import {
   platformAccountProfileBodySchema,
   updatePlatformAccountProfile
 } from '#server/domains/accounts'
+import { assertLumaEmailChangeIsFree } from '#server/domains/applications/luma-email'
 import { parseValidatedBody } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
@@ -20,8 +21,16 @@ export const applicationOperation = defineStructuredRouteOperation({
 }, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const body = await parseValidatedBody(h3Event, platformAccountProfileBodySchema)
+  const database = getDatabase(h3Event)
+  const nextLumaEmail = body.lumaEmail?.trim() ?? ''
+  const currentLumaEmail = actor.platformUser.lumaEmail?.trim() ?? ''
 
-  const user = await updatePlatformAccountProfile(getDatabase(h3Event), actor.platformUser.id, body)
+  if (nextLumaEmail && nextLumaEmail.toLowerCase() !== currentLumaEmail.toLowerCase()) {
+    // A Luma email belongs to one active registration of an event (see `luma-email.ts`).
+    await assertLumaEmailChangeIsFree(database, { userId: actor.platformUser.id, lumaEmail: nextLumaEmail })
+  }
+
+  const user = await updatePlatformAccountProfile(database, actor.platformUser.id, body)
 
   return apiData({
     user

@@ -7,6 +7,8 @@ import { eventTracks, userApplications } from '#server/database/schema'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { ApiError } from '#server/http/api-error'
 import { apiData } from '#server/http/api-response'
+import { isEventLinkedToLuma } from '#server/domains/applications/luma-config'
+import { assertLumaEmailFreeInEvent } from '#server/domains/applications/luma-email'
 import { findEventLumaGuestStanding } from '#server/domains/applications/luma-guest-list'
 import { lookupLumaEventGuestByEmail } from '#server/domains/applications/luma-sync-queue'
 import {
@@ -69,6 +71,15 @@ export const applicationOperation = defineStructuredRouteOperation({
         }
       })
     }
+  }
+
+  if (lumaEmail && isEventLinkedToLuma(event)) {
+    // A Luma email belongs to one active registration of the event (see `luma-email.ts`).
+    await assertLumaEmailFreeInEvent(
+      database,
+      { eventId, lumaEmail, exceptUserId: actor.platformUser.id },
+      'This Luma email is already connected to another registration for this event. If you registered with another account, sign in with that account. Otherwise ask the event team for help.'
+    )
   }
 
   if (isEventLumaSyncEnabled(event) && lumaEmail) {

@@ -42,6 +42,17 @@ export function isEventLumaGuestListEnabled(event: Pick<EventRecord, 'lumaGuestL
 }
 
 /**
+ * True when Luma can change registrations of this event: the Luma guest list confirms and
+ * withdraws them, or signed Luma webhooks record cancellations and check-ins. In such an event
+ * a Luma email belongs to one active registration (`luma-email.ts`).
+ */
+export function isEventLinkedToLuma(
+  event: Pick<EventRecord, 'lumaGuestListEnabled' | 'lumaEventApiId' | 'lumaApiKey' | 'lumaWebhookSecret' | 'lumaWebhookStatus'>
+) {
+  return isEventLumaGuestListEnabled(event) || isEventLumaAttendanceSyncEnabled(event)
+}
+
+/**
  * Organizers decide on the platform and every approval, rejection, and withdrawal is sent to Luma.
  * This is never true for an event that uses the Luma guest list: there Luma is the one that decides.
  */

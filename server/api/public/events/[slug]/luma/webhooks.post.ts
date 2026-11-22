@@ -5,13 +5,13 @@ import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase, type AppDatabase } from '#server/database/client'
 import type { events } from '#server/database/schema'
 import {
-  findEventApplicationByLumaEmail,
   isEventLumaAttendanceSyncEnabled,
   isEventLumaGuestListEnabled,
   isEventLumaSyncEnabled,
   withdrawUserApplicationWithAdminPolicy
 } from '#server/domains/applications'
 import { recordFirstApplicationCheckIn } from '#server/domains/applications/check-in'
+import { findEventApplicationByLumaEmail } from '#server/domains/applications/luma-email'
 import { applyLumaGuestWebhookUpdate } from '#server/domains/applications/luma-guest-list-sync'
 import {
   extractLumaAttendanceCheckInEvent,
