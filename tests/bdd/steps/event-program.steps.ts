@@ -4,6 +4,7 @@ import { createBdd } from 'playwright-bdd'
 import type { EventFloorPlan, EventProgram, ProgramRoom } from '../../../shared/domains/events/program'
 import type { EventRecord } from '../../../app/domains/events/records'
 import { createAuthenticatedApiClient } from '../support/api-client'
+import { openBuilderExtra, openBuilderLevel } from '../support/event-builder'
 import { platformFixtureIds } from '../support/platform-fixtures'
 import { signInAs } from '../support/session-state'
 
@@ -35,15 +36,13 @@ const png = Buffer.from(
   'base64'
 )
 
-async function openParallelAgendaInBuilder(page: Page) {
+async function openRoomsAndSessionsInBuilder(page: Page) {
   await signInAs('platform_admin', page)
   await page.goto(`/admin/events/builder/${eventSlug}`)
   await page.waitForFunction(() =>
     typeof window.useNuxtApp === 'function' && window.useNuxtApp().isHydrating === false
   )
-  const summary = page.locator('summary').filter({ hasText: 'Parallel agenda' })
-  await summary.click()
-  await expect(summary.locator('..')).toHaveAttribute('open', '')
+  await openBuilderExtra(page, 'rooms')
 }
 
 function builderFloor(page: Page, floorName: string) {
@@ -234,7 +233,7 @@ When('I reload the Agenda tab', async ({ page }) => {
 })
 
 When('I replace the {string} image while editing a track', async ({ page }, floorName: string) => {
-  await openParallelAgendaInBuilder(page)
+  await openRoomsAndSessionsInBuilder(page)
   const track = page.getByRole('region', { name: 'Build track' }).getByLabel('Track name')
   await track.fill('Updated build track')
   const floor = builderFloor(page, floorName)
@@ -255,7 +254,7 @@ Then('I can save the track edit in the event builder', async ({ page }) => {
   const [saved] = await Promise.all([
     page.waitForResponse(response => new URL(response.url()).pathname === `${eventPath}/program`
       && response.request().method() === 'PUT'),
-    page.getByRole('button', { name: 'Save parallel agenda' }).click()
+    page.getByRole('button', { name: 'Save rooms and sessions' }).click()
   ])
   expect(saved.ok(), `Program save returned HTTP ${saved.status()}`).toBe(true)
   const { data }: { data: { program: EventProgram } } = await saved.json()
@@ -263,12 +262,15 @@ Then('I can save the track edit in the event builder', async ({ page }) => {
 })
 
 When('I leave the builder for event settings', async ({ page }) => {
-  await page.getByRole('link', { name: 'Back', exact: true }).click()
+  await page.getByRole('link', { name: 'Event settings', exact: true }).click()
 })
 
-When('I reopen the parallel agenda from event settings', async ({ page }) => {
+When('I reopen the rooms and sessions from event settings', async ({ page }) => {
   await page.getByTestId('event-builder-open-in-builder').click()
-  await page.locator('summary').filter({ hasText: 'Parallel agenda' }).click()
+  // The tile shows the sessions of the event before its editor has loaded.
+  await openBuilderLevel(page, 'extras')
+  await expect(page.getByTestId('event-builder-extra-rooms')).toContainText(/\d+ sessions?/)
+  await openBuilderExtra(page, 'rooms')
 })
 
 Then('the builder should show the saved track name', async ({ page }) => {
@@ -282,7 +284,7 @@ Then('the builder should show the saved route to {string} on {string}', async ({
 })
 
 When('I draw a route to {string} on {string} and leave before the save finishes', async ({ page }, roomName: string, floorName: string) => {
-  await openParallelAgendaInBuilder(page)
+  await openRoomsAndSessionsInBuilder(page)
   const floor = await selectBuilderRoom(page, roomName, floorName)
   await floor.getByRole('button', { name: 'Draw route' }).click()
   const map = floor.getByTestId('admin-floor-plan-map')
@@ -299,7 +301,7 @@ When('I draw a route to {string} on {string} and leave before the save finishes'
   await expect(saved).toBeOK()
   const { data }: { data: EventFloorPlan } = await saved.json()
   expect(data.rooms.find(room => room.name === roomName)?.route).toHaveLength(3)
-  await page.getByRole('link', { name: 'Back', exact: true }).click()
+  await page.getByRole('link', { name: 'Event settings', exact: true }).click()
   await expect(page.getByTestId('event-builder-open-in-builder')).toBeVisible()
   await route.fulfill({ response: saved })
 })

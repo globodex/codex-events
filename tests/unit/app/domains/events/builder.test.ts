@@ -12,6 +12,7 @@ import {
   createEmptyEventBuilderState,
   deriveScheduleDefaults,
   eventBuilderBasicsSchema,
+  eventBuilderLevels,
   getBuilderChecklist,
   parseEventBuilderDurationMinutes,
   toEventBuilderFormState
@@ -419,6 +420,21 @@ describe('getBuilderChecklist', () => {
     expect(complete.some(item => item.id === 'submission-window')).toBe(false)
   })
 
+  // Saving with open steps opens the first one, so the first open step must be on the earliest level.
+  test('lists the steps in the order of the levels', () => {
+    const state = createEmptyEventBuilderState()
+
+    state.form.eventType = 'hackathon'
+    state.eventTypeChosen = true
+    state.form.challenges = [{ id: 'c1', title: ' ', instructions: '', resources: [], isPublished: false }]
+
+    const levelOrder = eventBuilderLevels.map(level => level.id)
+    const positions = getBuilderChecklist(state).map(item => levelOrder.indexOf(item.level))
+
+    expect(positions).toEqual(positions.toSorted((left, right) => left - right))
+    expect(new Set(positions)).toEqual(new Set([0, 1, 2, 3, 4]))
+  })
+
   test('choosing online completes location without venue fields', () => {
     const state = createEmptyEventBuilderState()
 
@@ -458,6 +474,8 @@ describe('getBuilderChecklist', () => {
       id: 'challenges',
       label: 'Challenge 2: Add a title.',
       complete: false,
+      level: 'extras',
+      extra: 'challenges',
       fieldRef: 'event-builder-challenge-title-c2'
     })
 
@@ -488,6 +506,8 @@ describe('getBuilderChecklist', () => {
       id: 'questionnaire-questions',
       label: 'Question 2: Write the question.',
       complete: false,
+      level: 'extras',
+      extra: 'check-in',
       fieldRef: 'event-builder-question-q2'
     })
   })

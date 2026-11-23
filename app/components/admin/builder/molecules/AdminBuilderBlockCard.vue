@@ -67,7 +67,8 @@ const durationModel = computed({
 
 <template>
   <div class="min-w-0">
-    <div class="flex min-w-0 items-center gap-2.5">
+    <!-- On a phone the row has two lines: the title, then the duration and the actions. -->
+    <div class="flex min-w-0 flex-wrap items-center gap-2.5 sm:flex-nowrap">
       <span
         class="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-black/5 text-toned dark:bg-white/[0.06]"
         :title="definition.label"
@@ -84,6 +85,10 @@ const durationModel = computed({
         class="min-w-24 flex-1"
         :aria-label="`Title for block ${index + 1}`"
         @update:model-value="value => emit('updateTitle', block.id, String(value))"
+      />
+      <span
+        aria-hidden="true"
+        class="basis-full sm:hidden"
       />
 
       <span

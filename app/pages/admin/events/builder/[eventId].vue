@@ -3,6 +3,7 @@ import type { ApiDataResponse } from '~/lib/api'
 import type { EventRecord, TermsDocument } from '~/domains/events/records'
 import type { AccountEventSettingsPage } from '#shared/domains/events/account-event-settings-page'
 import type { AdminEventProgram, EventFloorPlan, EventProgram } from '#shared/domains/events/program'
+import { countProgramSessions } from '#shared/domains/events/program'
 
 import { normalizeApiError } from '~/lib/api'
 import { getTermsVersionPublishErrorMessage, type SaveBuilderFloorPlan } from '~/domains/events/admin-event'
@@ -34,11 +35,13 @@ const hasExistingTalkProposal = computed(() => settingsPage.value?.talkProposals
 const AdminBuilderProgramEditor = defineAsyncComponent(() =>
   import('~/components/admin/builder/organisms/AdminBuilderProgramEditor.vue')
 )
+// The rooms and sessions load when the organizer opens that extra for the first time. The
+// builder renders the panel of the extra only then, and it keeps the panel after that.
 const isProgramOpen = shallowRef(false)
 const isProgramDirty = shallowRef(false)
 const isProgramSaving = shallowRef(false)
 const programSaveError = shallowRef('')
-const programDisclosure = useTemplateRef<HTMLDetailsElement>('programDisclosure')
+const programPanel = useTemplateRef<HTMLElement>('programPanel')
 const { authorizationGeneration, clearReads } = useAuthorizationCache()
 const eventPath = computed(() => `/api/events/${encodeURIComponent(currentEvent.value?.id ?? '')}`)
 const programTarget = computed(() => ({
@@ -53,11 +56,17 @@ const programRequest = useApiResponse<AdminEventProgram>(
   { enabled: () => Boolean(currentEvent.value) && isProgramOpen.value, server: false }
 )
 
-function syncProgramDisclosure() {
-  isProgramOpen.value = programDisclosure.value?.open ?? false
-}
+watch(programPanel, (panel) => {
+  if (panel) {
+    isProgramOpen.value = true
+  }
+})
 
-watch(programDisclosure, syncProgramDisclosure)
+// The number on the tile "Rooms and sessions". The loaded editor has the current sessions.
+// Before it loads, the number comes with the settings of the event.
+const sessionCount = computed(() => programRequest.data.value
+  ? countProgramSessions(programRequest.data.value.program)
+  : settingsPage.value?.builder.programSessionCount ?? 0)
 
 function clearAgendaReads(slug: string, includeParent: boolean, keepKey?: string) {
   const family = includeParent ? `account-event-page:${slug}` : buildAccountEventPageCacheKey(slug, 'program')
@@ -66,7 +75,7 @@ function clearAgendaReads(slug: string, includeParent: boolean, keepKey?: string
 
 // A write may finish after navigation. Expire the original event, and patch only its open editor.
 function finishProgramWrite(target: typeof programTarget.value, agendaItemChanged: boolean) {
-  const stillEditing = programDisclosure.value?.open && target === programTarget.value
+  const stillEditing = Boolean(programPanel.value) && target === programTarget.value
   const path = `${target.eventPath}/program`
   clearAgendaReads(target.slug, agendaItemChanged, stillEditing ? settingsRequest.requestKey.value : undefined)
   clearReads([path], stillEditing ? path : undefined)
@@ -103,9 +112,9 @@ async function writeProgram(program: EventProgram | null) {
     if (!current) return
 
     programRequest.data.value = { ...current, program: data.program }
-    toast.add({ title: program ? 'Parallel agenda saved' : 'Parallel agenda removed', color: 'success' })
+    toast.add({ title: program ? 'Rooms and sessions saved' : 'Rooms and sessions removed', color: 'success' })
   } catch (error) {
-    if (programDisclosure.value?.open && target === programTarget.value) {
+    if (programPanel.value && target === programTarget.value) {
       programSaveError.value = normalizeApiError(error).message
     }
   } finally {
@@ -144,11 +153,7 @@ async function saveEvent() {
     }
     builder.markSaved(submittedSnapshot)
 
-    toast.add({
-      title: 'Event updated',
-      description: `Balance score ${builder.report.value.score} — changes are saved.`,
-      color: 'success'
-    })
+    toast.add({ title: 'Event saved', color: 'success' })
 
     if (data.slug !== event.slug) {
       await navigateTo({ path: `/admin/events/builder/${data.slug}`, query: route.query, hash: route.hash }, { replace: true })
@@ -321,6 +326,7 @@ useSeoMeta({
     <AdminWorkspaceHeader
       title="Rework your event"
       :back-to="currentEvent ? `/account/events/${currentEvent.slug}?tab=settings` : undefined"
+      back-label="Event settings"
     />
 
     <AppAlert
@@ -349,6 +355,7 @@ useSeoMeta({
       :luma-guest-list="lumaGuestList"
       :credit-offers="creditOffers"
       :has-existing-talk-proposal="hasExistingTalkProposal"
+      :session-count="sessionCount"
       @submit="saveEvent"
       @upload-background-image="file => uploadEventImage('background', file)"
       @remove-background-image="removeEventImage('background')"
@@ -357,61 +364,45 @@ useSeoMeta({
       @save-terms="saveTerms"
       @updated="settingsRequest.refresh"
     >
-      <template #agenda>
-        <details
-          ref="programDisclosure"
-          class="group"
-          @toggle="syncProgramDisclosure"
-        >
-          <summary
-            class="inline-flex h-9 cursor-pointer list-none items-center gap-2 rounded-xl border border-default px-4 text-sm font-medium text-highlighted hover:bg-default focus-visible:ring-2 focus-visible:ring-ring/60 [&::-webkit-details-marker]:hidden"
+      <template #rooms>
+        <div ref="programPanel">
+          <AppAlert
+            v-if="programRequest.error.value"
+            color="error"
+            title="Unable to load the rooms and sessions"
+            :description="normalizeApiError(programRequest.error.value).message"
           >
-            Parallel agenda
-            <AppIcon
-              name="i-lucide-chevron-down"
-              class="size-4 group-open:rotate-180"
-            />
-          </summary>
-
-          <div class="mt-4">
-            <AppAlert
-              v-if="programRequest.error.value"
-              color="error"
-              title="Unable to load the parallel agenda"
-              :description="normalizeApiError(programRequest.error.value).message"
+            <AppButton
+              color="neutral"
+              size="sm"
+              class="mt-2"
+              @click="programRequest.refresh()"
             >
-              <AppButton
-                color="neutral"
-                size="sm"
-                class="mt-2"
-                @click="programRequest.refresh()"
-              >
-                Retry
-              </AppButton>
-            </AppAlert>
-            <AdminBuilderProgramEditor
-              v-else-if="programRequest.data.value"
-              :key="currentEvent.id"
-              :save-floor-plan="saveFloorPlan"
-              :agenda-items="currentEvent.agendaItems"
-              :program="programRequest.data.value.program"
-              :floor-plans="programRequest.data.value.floorPlans"
-              :challenges="currentEvent.challenges ?? []"
-              :saving="isProgramSaving"
-              :save-error="programSaveError"
-              @save="writeProgram"
-              @remove="writeProgram(null)"
-              @dirty-change="isProgramDirty = $event"
-            />
-            <p
-              v-else
-              class="text-sm text-muted"
-              role="status"
-            >
-              Loading parallel agenda…
-            </p>
-          </div>
-        </details>
+              Retry
+            </AppButton>
+          </AppAlert>
+          <AdminBuilderProgramEditor
+            v-else-if="programRequest.data.value"
+            :key="currentEvent.id"
+            :save-floor-plan="saveFloorPlan"
+            :agenda-items="currentEvent.agendaItems"
+            :program="programRequest.data.value.program"
+            :floor-plans="programRequest.data.value.floorPlans"
+            :challenges="currentEvent.challenges ?? []"
+            :saving="isProgramSaving"
+            :save-error="programSaveError"
+            @save="writeProgram"
+            @remove="writeProgram(null)"
+            @dirty-change="isProgramDirty = $event"
+          />
+          <p
+            v-else
+            class="text-sm text-muted"
+            role="status"
+          >
+            Loading…
+          </p>
+        </div>
       </template>
     </AdminBuilderWorkspace>
   </AppContainer>

@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
+import { openBuilderExtra, openBuilderLevel } from '../support/event-builder.ts'
 import { parsePersonaKey } from '../support/personas.ts'
 import { signInAs } from '../support/session-state.ts'
 
@@ -15,14 +16,16 @@ When('I open the event builder with the saved {string} session', async ({ page }
   await signInAs(parsePersonaKey(personaKey), page)
   await page.goto('/admin/events/builder/new')
   await waitForNuxtHydration(page)
-  // The staged reveal starts with just the name field.
+  // A new event starts on the first level. The other levels open after the event type is chosen.
   await expect(page.getByTestId('event-builder-name')).toBeVisible()
+  await expect(page.getByTestId('event-builder-level-agenda')).toBeDisabled()
 })
 
 When('I name the event {string}', async ({ page }, eventName: string) => {
   await page.getByTestId('event-builder-name').fill(eventName)
-  // Naming the event reveals the type picker.
-  await expect(page.getByTestId('event-builder-event-type')).toBeVisible()
+  // The step of the level that is now done is no longer named.
+  await expect(page.getByTestId('event-builder-step-name')).toHaveCount(0)
+  await expect(page.getByTestId('event-builder-step-event-type')).toBeVisible()
 })
 
 When('I choose the {string} event type in the builder', async ({ page }, eventType: string) => {
@@ -31,6 +34,7 @@ When('I choose the {string} event type in the builder', async ({ page }, eventTy
 })
 
 When('I apply the {string} builder template', async ({ page }, templateId: string) => {
+  await openBuilderLevel(page, 'agenda')
   // Card click opens the preview; only the explicit button applies.
   await page.getByTestId(`event-builder-template-${templateId}`).click()
   await page.getByTestId(`event-builder-use-template-${templateId}`).click()
@@ -55,6 +59,8 @@ When('I move the last builder block up', async ({ page }) => {
 })
 
 When('I set a builder event start', async ({ page }) => {
+  await openBuilderLevel(page, 'when-where')
+
   const dateTime = page.getByTestId('event-builder-event-starts-at')
 
   await dateTime.getByRole('spinbutton').first().click()
@@ -62,6 +68,8 @@ When('I set a builder event start', async ({ page }) => {
 })
 
 When('I clear and type {string} minutes into the first builder block', async ({ page }, minutes: string) => {
+  await openBuilderLevel(page, 'agenda')
+
   const input = page.locator('[data-testid^="event-builder-duration-input-"]').first()
 
   await input.press('ControlOrMeta+A')
@@ -88,8 +96,10 @@ Then('the builder balance score should be visible', async ({ page }) => {
 })
 
 When('I fill the builder basics for {string}', async ({ page }, eventName: string) => {
+  await openBuilderLevel(page, 'event')
   await page.getByTestId('event-builder-name').fill(eventName)
   await page.getByTestId('event-builder-description').getByRole('textbox').fill('A **meetup** assembled with the event builder for BDD coverage.')
+  await openBuilderLevel(page, 'when-where')
   // Onsite vs online starts unchosen; the venue fields appear after the pick.
   await page.getByTestId('event-builder-location-onsite').click()
   await page.getByTestId('event-builder-city').fill('Vienna')
@@ -100,7 +110,12 @@ When('I fill the builder basics for {string}', async ({ page }, eventName: strin
   // is typed digit-by-digit rather than filled.
   await page.getByTestId('event-builder-event-starts-at').getByRole('spinbutton').first().click()
   await page.keyboard.type('151020261800')
+  await openBuilderLevel(page, 'registration')
   await expect(page.getByTestId('event-builder-registration-opens-at')).toContainText('2026')
+  // Every level with a required step is done now.
+  for (const level of ['event', 'when-where', 'agenda']) {
+    await expect(page.getByTestId(`event-builder-level-${level}`)).toHaveAttribute('data-status', 'done')
+  }
 })
 
 When('I use a mobile builder viewport', async ({ page }) => {
@@ -108,6 +123,7 @@ When('I use a mobile builder viewport', async ({ page }) => {
 })
 
 When('I add Markdown to the first builder track short description', async ({ page }) => {
+  await openBuilderExtra(page, 'tracks')
   await page.getByTestId('event-builder-add-track').click()
   await page.locator('[data-testid^="event-builder-track-short-"]').first().getByRole('textbox').fill('Build **useful tools** for event teams.')
 })
@@ -136,10 +152,15 @@ When('I open the event in the builder from the workspace banner', async ({ page 
 })
 
 Then('the builder should hydrate {int} agenda blocks', async ({ page }, expectedCount: number) => {
+  // A saved event shows the state of every level at once.
+  await expect(page.getByTestId('event-builder-level-registration')).toHaveAttribute('data-status', 'done')
+  await openBuilderLevel(page, 'agenda')
   await expect(page.locator('[data-builder-block-row]')).toHaveCount(expectedCount)
 })
 
 Then('the builder description editor should match the color theme', async ({ page }) => {
+  await openBuilderLevel(page, 'event')
+
   const editor = page.getByTestId('event-builder-description').locator('.md-editor')
 
   await page.emulateMedia({ colorScheme: 'light' })
@@ -152,26 +173,40 @@ Then('the builder description editor should match the color theme', async ({ pag
 })
 
 Then('the builder should retain the saved rich basics', async ({ page }) => {
+  await openBuilderLevel(page, 'event')
   await expect(page.getByTestId('event-builder-description').getByRole('textbox')).toContainText('A **meetup** assembled with the event builder for BDD coverage.')
+  await openBuilderLevel(page, 'when-where')
   await expect(page.getByTestId('event-builder-country')).toHaveValue('Austria')
 })
 
 Then('the builder rich basics should fit the mobile viewport', async ({ page }) => {
+  await openBuilderLevel(page, 'event')
   const descriptionBounds = await page.getByTestId('event-builder-description').evaluate(element => ({
-    left: element.getBoundingClientRect().left,
-    right: element.getBoundingClientRect().right
-  }))
-  const countryBounds = await page.getByTestId('event-builder-country').evaluate(element => ({
     left: element.getBoundingClientRect().left,
     right: element.getBoundingClientRect().right
   }))
 
   expect(descriptionBounds.left).toBeGreaterThanOrEqual(0)
   expect(descriptionBounds.right).toBeLessThanOrEqual(390)
+  await expect(page.getByTestId('event-builder-description').getByRole('textbox')).toContainText('A **meetup** assembled with the event builder for BDD coverage.')
+
+  await openBuilderLevel(page, 'when-where')
+  const countryBounds = await page.getByTestId('event-builder-country').evaluate(element => ({
+    left: element.getBoundingClientRect().left,
+    right: element.getBoundingClientRect().right
+  }))
+
   expect(countryBounds.left).toBeGreaterThanOrEqual(0)
   expect(countryBounds.right).toBeLessThanOrEqual(390)
-  await expect(page.getByTestId('event-builder-description').getByRole('textbox')).toContainText('A **meetup** assembled with the event builder for BDD coverage.')
   await expect(page.getByTestId('event-builder-country')).toHaveValue('Austria')
+
+  // The level buttons and the bar with the save button fit as well.
+  for (const testId of ['event-builder-level-extras', 'event-builder-submit']) {
+    const bounds = (await page.getByTestId(testId).boundingBox())!
+
+    expect(bounds.x).toBeGreaterThanOrEqual(0)
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(390)
+  }
 })
 
 Then('the builder track short description should retain its Markdown', async ({ page }) => {
@@ -181,19 +216,22 @@ Then('the builder track short description should retain its Markdown', async ({ 
   await expect(editor.getByRole('button', { name: 'bold' })).toBeVisible()
 })
 
+// Luma and the credits are two extras. Only one extra is open at a time, so the step opens the
+// credits to change the method and comes back to Luma to see what it kept.
 Then('Luma credentials stay in one section when I change claiming methods', async ({ page }) => {
-  const luma = page.getByTestId('event-builder-settings-luma-sync')
-  const credits = page.getByTestId('event-builder-settings-credits')
+  let luma = await openBuilderExtra(page, 'luma')
   await expect(luma.getByLabel('Luma event ID', { exact: true })).toBeHidden()
   await luma.getByRole('button', { name: 'Connect Luma', exact: true }).click()
   await luma.getByLabel('Luma event ID', { exact: true }).fill('evt-bdd')
   await luma.getByLabel('Luma API key', { exact: true }).fill('bdd-key')
   await expect(luma.getByLabel('Luma API key', { exact: true })).toHaveAttribute('type', 'password')
   for (const method of ['Simplified claiming', 'Regular claiming', 'Simplified claiming']) {
+    const credits = await openBuilderExtra(page, 'credits')
     await credits.getByRole('radio', { name: new RegExp(method) }).click()
+    await expect(credits.getByLabel('Luma event ID', { exact: true })).toHaveCount(0)
+    luma = await openBuilderExtra(page, 'luma')
     await expect(luma.getByLabel('Luma event ID', { exact: true })).toHaveValue('evt-bdd')
     await expect(luma.getByLabel('Luma API key', { exact: true })).toHaveValue('bdd-key')
-    await expect(credits.getByLabel('Luma event ID', { exact: true })).toHaveCount(0)
     await expect(luma.getByText('Connected', { exact: true })).toBeHidden()
     await expect(page.getByRole('button', { name: 'Import existing check-ins' })).toBeHidden()
   }
@@ -210,6 +248,7 @@ When('I stage link and code giveaways with {string} claiming', async ({ page }, 
   page.on('request', (request) => {
     if (request.method() === 'POST' && new URL(request.url()).pathname.startsWith('/api/events')) mutations.push(request.url())
   })
+  await openBuilderExtra(page, 'credits')
   if (method === 'simplified') await page.getByRole('radio', { name: /^Simplified claiming/ }).click()
   const manager = page.getByTestId('simplified-giveaways')
   for (const [name, csv, detected] of [
@@ -247,7 +286,10 @@ When('I create the draft after a failed save', async ({ page }) => {
 })
 
 Then('the builder should show the saved staged credits', async ({ page }) => {
-  const credits = page.getByTestId('event-builder-settings-credits')
+  // The tile counts the four staged codes and links before the extra is open.
+  await openBuilderLevel(page, 'extras')
+  await expect(page.getByTestId('event-builder-extra-credits')).toContainText('4 codes')
+  const credits = await openBuilderExtra(page, 'credits')
   await expect(credits.getByText('Staged links', { exact: true })).toBeVisible()
   await expect(credits.getByText('Staged codes', { exact: true })).toBeVisible()
   await expect(credits.getByText(/2 available/)).toHaveCount(2)

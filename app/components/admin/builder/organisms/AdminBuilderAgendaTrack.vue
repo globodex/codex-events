@@ -153,16 +153,7 @@ useAdminSortableLists({
 </script>
 
 <template>
-  <section class="space-y-3">
-    <div>
-      <h3 class="text-sm font-semibold text-highlighted">
-        Agenda track
-      </h3>
-      <p class="text-xs text-muted">
-        Drag to reschedule.
-      </p>
-    </div>
-
+  <section aria-label="Agenda">
     <div
       ref="listElement"
       class="-m-2 space-y-2.5 rounded-2xl border-2 border-dashed p-1.5 transition-colors duration-150"
@@ -186,7 +177,7 @@ useAdminSortableLists({
           class="size-5 shrink-0"
           :class="receiving ? 'text-emerald-500' : 'text-dimmed'"
         />
-        {{ receiving ? 'Drop the block here' : 'Click or drop blocks from the palette, or start from a template.' }}
+        {{ receiving ? 'Drop the block here' : 'Add a block or pick a template' }}
       </div>
 
       <template

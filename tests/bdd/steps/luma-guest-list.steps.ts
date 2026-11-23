@@ -4,6 +4,7 @@ import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import { createAuthenticatedApiClient } from '../support/api-client'
+import { openBuilderExtra } from '../support/event-builder.ts'
 import { platformFixtureIds } from '../support/platform-fixtures.ts'
 import { parsePersonaKey } from '../support/personas.ts'
 import { signInAs } from '../support/session-state.ts'
@@ -18,8 +19,9 @@ const guestListEventIds: Record<string, string> = {
 
 const registrations = new WeakMap<Page, { response: APIResponse, json: unknown }>()
 
-function guestListControls(page: Page) {
-  return page.getByTestId('event-builder-luma-guest-list')
+/** Opens the extra "Luma" of the event builder and returns the controls of its guest list. */
+async function guestListControls(page: Page) {
+  return (await openBuilderExtra(page, 'luma')).getByTestId('event-builder-luma-guest-list')
 }
 
 When('I open the Luma guest list event {string} in the builder', async ({ page }, slug: string) => {
@@ -31,7 +33,7 @@ When('I open the Luma guest list event {string} in the builder', async ({ page }
 })
 
 Then('I should see the Luma guest list with {int} approved and {int} waiting guests', async ({ page }, approved: number, waiting: number) => {
-  const controls = guestListControls(page)
+  const controls = await guestListControls(page)
 
   await expect(controls.getByLabel('Confirm registrations from the Luma guest list')).toBeChecked()
   await expect(controls.getByText(`${approved} approved · ${waiting} waiting`)).toBeVisible()
@@ -40,11 +42,11 @@ Then('I should see the Luma guest list with {int} approved and {int} waiting gue
 })
 
 Then('I should not see any Luma guest email', async ({ page }) => {
-  await expect(page.getByTestId('event-builder-settings-luma-sync')).not.toContainText('@')
+  await expect(await openBuilderExtra(page, 'luma')).not.toContainText('@')
 })
 
 Then('I should be asked to import the Luma guest list', async ({ page }) => {
-  const controls = guestListControls(page)
+  const controls = await guestListControls(page)
 
   await expect(controls.getByText('0 approved · 0 waiting')).toBeVisible()
   await expect(controls.getByText('Import the guest list', { exact: true })).toBeVisible()

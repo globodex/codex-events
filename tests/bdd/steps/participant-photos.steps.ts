@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test'
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
+import { openBuilderExtra } from '../support/event-builder.ts'
 import { holdBrowserGet } from '../support/hold-browser-get.ts'
 import { parsePersonaKey } from '../support/personas.ts'
 import { signInAs } from '../support/session-state.ts'
@@ -33,10 +34,9 @@ function participantPhoto(page: Page, fileName: string) {
   return participantPhotos(page).filter({ hasText: fileName })
 }
 
-/** The builder checkbox that lets participants add photos. */
-function participantPhotosCheckbox(page: Page) {
-  return page.getByTestId('event-builder-settings-after-check-in')
-    .getByLabel('Participants can add photos to the gallery')
+/** Opens the extra "Photos" of the event builder and returns the checkbox that lets participants add photos. */
+async function participantPhotosCheckbox(page: Page) {
+  return (await openBuilderExtra(page, 'photos')).getByLabel('Participants can add photos to the gallery')
 }
 
 When('I add the photo {string} to the gallery', async ({ page }, fileName: string) => {
@@ -80,7 +80,7 @@ Then('the gallery of {string} should show no participant photos to {string}', as
 })
 
 When('I let participants add photos to the gallery', async ({ page }) => {
-  await participantPhotosCheckbox(page).check()
+  await (await participantPhotosCheckbox(page)).check()
 })
 
 Then('the builder should still let participants add photos after a reload', async ({ page }) => {
@@ -89,7 +89,10 @@ Then('the builder should still let participants add photos after a reload', asyn
     typeof window.useNuxtApp === 'function' && window.useNuxtApp().isHydrating === false
   )
 
-  await expect(participantPhotosCheckbox(page)).toBeChecked()
+  await expect(await participantPhotosCheckbox(page)).toBeChecked()
+  // The tile of the extra shows that photos are on.
+  await page.locator('[data-testid="event-builder-extras-back"]:visible').click()
+  await expect(page.getByTestId('event-builder-extra-photos')).toContainText('On')
 })
 
 When('I open the gallery while its photos are loading', async ({ page }) => {

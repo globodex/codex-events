@@ -6,6 +6,7 @@ import settingsPageGetHandler from '../../../../server/api/account/events/[slug]
 import eventPatchHandler from '../../../../server/api/events/[eventId]/index.patch'
 import {
   evaluationCriteria,
+  eventAgendaPrograms,
   eventCreditCodes,
   eventCreditOffers,
   eventRoleAssignments,
@@ -146,6 +147,15 @@ describe('GET /api/account/events/:slug/settings', () => {
       displayOrder: 0,
       createdAt: now,
       updatedAt: now
+    })
+    // Two rooms with three sessions in all. The builder shows the number on a tile.
+    await harness.database.insert(eventAgendaPrograms).values({
+      eventId: 'event_settings',
+      agendaItemId: 'agenda_1',
+      tracksJson: JSON.stringify([
+        { id: 'track_main', name: 'Main room', sessions: [{ id: 'session_1' }, { id: 'session_2' }] },
+        { id: 'track_side', name: 'Side room', sessions: [{ id: 'session_3' }] }
+      ])
     })
     // One free code and one code that the user of this fixture claimed.
     await harness.database.insert(eventCreditCodes).values([
@@ -292,6 +302,7 @@ describe('GET /api/account/events/:slug/settings', () => {
         creationFlow: 'builder',
         agendaBlockCount: 1,
         typedAgendaBlockCount: 1,
+        programSessionCount: 3,
         balanceScore: 84
       }
     })

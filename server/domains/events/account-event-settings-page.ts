@@ -23,6 +23,7 @@ import { countEventLumaGuests } from '#server/domains/applications/luma-guest-li
 import { getSimplifiedClaimingSummary } from '#server/domains/credits/simplified-claiming'
 import { listAdminEventCreditOffers } from '#server/domains/credits'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
+import { countEventProgramSessions } from './program'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
 import { accountEventSettingsPageSchema } from '#shared/domains/events/account-event-settings-page'
 
@@ -92,7 +93,8 @@ export const createAccountEventSettingsPageRoute = (appBaseUrl: string) => defin
       credits,
       simplifiedClaimingSummary,
       lumaGuestCounts,
-      existingTalkProposals
+      existingTalkProposals,
+      programSessionCount
     ] = await Promise.all([
       listEventTracks(context.database, event.id),
       event.eventType === 'hackathon'
@@ -153,7 +155,8 @@ export const createAccountEventSettingsPageRoute = (appBaseUrl: string) => defin
         columns: { id: true },
         where: eq(talkProposals.eventId, event.id),
         limit: 1
-      })
+      }),
+      countEventProgramSessions(context.database, event.id)
     ])
 
     const userById = new Map(relatedUsers.map(user => [user.id, user]))
@@ -223,6 +226,7 @@ export const createAccountEventSettingsPageRoute = (appBaseUrl: string) => defin
         creationFlow: event.creationFlow,
         agendaBlockCount: agendaItems.length,
         typedAgendaBlockCount,
+        programSessionCount,
         balanceScore: event.balanceScore,
         balanceBreakdown: eventPayload.balanceBreakdown ?? null
       }

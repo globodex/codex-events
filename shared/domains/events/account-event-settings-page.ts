@@ -324,6 +324,9 @@ export const accountEventSettingsPageSchema = z.object({
     creationFlow: z.enum(['classic', 'builder']),
     agendaBlockCount: z.number().int().nonnegative(),
     typedAgendaBlockCount: z.number().int().nonnegative(),
+    // The sessions in the rooms of the event. The builder shows the number on a tile before
+    // the organizer opens the editor of the rooms and sessions.
+    programSessionCount: z.number().int().nonnegative(),
     balanceScore: z.number().nullable(),
     balanceBreakdown: eventBalanceBreakdownSchema.nullable()
   })

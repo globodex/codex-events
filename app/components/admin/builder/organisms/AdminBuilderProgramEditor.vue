@@ -81,7 +81,7 @@ function save() {
 }
 
 function remove() {
-  if (window.confirm('Remove the parallel agenda?')) {
+  if (window.confirm('Remove the rooms and sessions?')) {
     emit('remove')
   }
 }
@@ -91,7 +91,7 @@ function remove() {
   <div class="space-y-6">
     <form
       class="space-y-4"
-      aria-label="Parallel agenda"
+      aria-label="Rooms and sessions"
       @submit.prevent="save"
     >
       <AppFormField
@@ -167,7 +167,7 @@ function remove() {
           :disabled="!isDirty"
           :loading="saving"
         >
-          Save parallel agenda
+          Save rooms and sessions
         </AppButton>
         <AppButton
           v-if="program"
@@ -176,7 +176,7 @@ function remove() {
           :disabled="saving"
           @click="remove"
         >
-          Remove parallel agenda
+          Remove rooms and sessions
         </AppButton>
       </div>
     </form>

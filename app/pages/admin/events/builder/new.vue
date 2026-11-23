@@ -58,11 +58,7 @@ async function createEvent() {
     const event = await createDraft({ ...builder.buildCreateBody(), creationFlow: 'builder' })
 
     builder.markSubmitted()
-    toast.add({
-      title: 'Event created',
-      description: `Balance score ${builder.report.value.score} — the draft is ready for configuration.`,
-      color: 'success'
-    })
+    toast.add({ title: 'Event created', color: 'success' })
 
     await session.refresh()
     await navigateTo(`/account/events/${event.slug}?tab=settings`)

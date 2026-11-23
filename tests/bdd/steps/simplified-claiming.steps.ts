@@ -5,6 +5,7 @@ import { createBdd } from 'playwright-bdd'
 import qrcode from 'qrcode-generator'
 
 import { createAuthenticatedApiClient } from '../support/api-client'
+import { openBuilderExtra, openBuilderLevel } from '../support/event-builder.ts'
 import { platformFixtureIds } from '../support/platform-fixtures'
 import { getStablePersona, parsePersonaKey } from '../support/personas.ts'
 import { signInAs } from '../support/session-state.ts'
@@ -176,6 +177,8 @@ Then('the {string} should see the simplified claiming participant checked in', a
 When('I add a code giveaway in the simplified event builder', async ({ page }) => {
   await signInAs('event_admin', page)
   await page.goto(`/admin/events/builder/${fixtureSlug}`)
+  await waitForNuxtHydration(page)
+  await openBuilderExtra(page, 'credits')
   const manager = page.getByTestId('simplified-giveaways')
   await expect(manager).toBeVisible()
   await manager.getByRole('button', { name: 'Add giveaway', exact: true }).click()
@@ -192,7 +195,6 @@ Then('I should see automatically detected codes and the combined email preview',
   const manager = page.getByTestId('simplified-giveaways')
   await expect(manager.getByText('0 links · 2 codes · 2 available')).toBeVisible()
   await expect(page.getByTestId('event-builder-submit')).toBeVisible()
-  await expect(page.getByTestId('event-builder-settings-luma-sync')).toBeVisible()
   await manager.getByRole('button', { name: 'Preview email', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog).toContainText('Codex event credit')
@@ -205,6 +207,11 @@ Then('I should see automatically detected codes and the combined email preview',
   await expect(dialog).not.toContainText('PRIVATE-BDD-CODE')
   await dialog.getByRole('button', { name: 'Close email preview' }).click()
   await expect(dialog).toBeHidden()
+  // The tile of the credits counts the codes of every giveaway of the event, and Luma is an
+  // extra of its own.
+  await page.locator('[data-testid="event-builder-extras-back"]:visible').click()
+  await expect(page.getByTestId('event-builder-extra-credits')).toContainText(/\d+ codes/)
+  await expect(page.getByTestId('event-builder-extra-luma')).toBeVisible()
 })
 
 When('I open the connected Luma event in the builder', async ({ page }) => {
@@ -214,7 +221,10 @@ When('I open the connected Luma event in the builder', async ({ page }) => {
 })
 
 Then('I can edit and cancel the saved Luma connection without losing it', async ({ page }) => {
-  const luma = page.getByTestId('event-builder-settings-luma-sync')
+  // The tile shows the state of the connection before the extra is open.
+  await openBuilderLevel(page, 'extras')
+  await expect(page.getByTestId('event-builder-extra-luma')).toContainText('Connected')
+  const luma = await openBuilderExtra(page, 'luma')
   await expect(luma.getByText('Connected', { exact: true })).toBeVisible()
   await expect(luma.getByText('evt-bdd-simplified', { exact: true })).toBeVisible()
   await expect(luma.getByLabel('Luma API key', { exact: true })).toBeHidden()

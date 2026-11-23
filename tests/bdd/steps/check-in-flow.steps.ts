@@ -4,6 +4,7 @@ import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import { createAuthenticatedApiClient } from '../support/api-client'
+import { openBuilderExtra } from '../support/event-builder.ts'
 import { platformFixtureIds } from '../support/platform-fixtures.ts'
 import { parsePersonaKey } from '../support/personas.ts'
 import { signInAs } from '../support/session-state.ts'
@@ -18,9 +19,9 @@ function nextStepCard(page: Page) {
   return page.getByTestId('account-event-next-step')
 }
 
-/** The builder settings group for what happens after check-in. */
-function afterCheckInSettings(page: Page) {
-  return page.getByTestId('event-builder-settings-after-check-in')
+/** Opens the extra "Check-in" of the event builder and returns the frame around its editor. */
+function checkInSettings(page: Page) {
+  return openBuilderExtra(page, 'check-in')
 }
 
 function isEventPageDataUrl(url: string) {
@@ -139,15 +140,15 @@ Given('I open the event {string} in the builder as its event admin', async ({ pa
   await signInAs(eventAdminPersona, page)
   await page.goto(`/admin/events/builder/${eventSlug}`)
   await waitForNuxtHydration(page)
-  await expect(afterCheckInSettings(page)).toBeVisible()
+  await expect(page.getByTestId('event-builder-level-extras')).toBeVisible()
 })
 
 When('I turn on the next step for participants', async ({ page }) => {
-  await afterCheckInSettings(page).getByLabel('Show participants their next step on their event page').check()
+  await (await checkInSettings(page)).getByLabel('Show participants their next step on their event page').check()
 })
 
 When('I add the question {string} for after check-in', async ({ page }, question: string) => {
-  const settings = afterCheckInSettings(page)
+  const settings = await checkInSettings(page)
 
   await settings.getByRole('button', { name: 'Add question' }).click()
   await settings.getByLabel('Question', { exact: true }).fill(question)
@@ -156,14 +157,14 @@ When('I add the question {string} for after check-in', async ({ page }, question
 When('I save the event in the builder', async ({ page }) => {
   await page.getByTestId('event-builder-submit').click()
   // The toast appears after the event was saved and the builder has read it again.
-  await expect(page.getByText('Event updated')).toBeVisible()
+  await expect(page.getByText('Event saved')).toBeVisible()
 })
 
 Then('the builder should keep the question {string} after a reload', async ({ page }, question: string) => {
   await page.reload()
   await waitForNuxtHydration(page)
 
-  const settings = afterCheckInSettings(page)
+  const settings = await checkInSettings(page)
 
   await expect(settings.getByLabel('Show participants their next step on their event page')).toBeChecked()
   await expect(settings.getByLabel('Question', { exact: true })).toHaveValue(question)

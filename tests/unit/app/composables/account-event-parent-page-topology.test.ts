@@ -42,8 +42,8 @@ const builderWorkspaceSource = readFileSync(
   new URL('../../../../app/components/admin/builder/AdminBuilderWorkspace.vue', import.meta.url),
   'utf8'
 )
-const builderSettingsBoardSource = readFileSync(
-  new URL('../../../../app/components/admin/builder/organisms/AdminBuilderSettingsBoard.vue', import.meta.url),
+const builderExtrasBoardSource = readFileSync(
+  new URL('../../../../app/components/admin/builder/organisms/AdminBuilderExtrasBoard.vue', import.meta.url),
   'utf8'
 )
 const dateTimeInputSource = readFileSync(
@@ -127,9 +127,9 @@ describe('account event parent page request topology', () => {
     expect(builderPageSource).toContain('const hasExistingTalkProposal = computed(() => settingsPage.value?.talkProposals.hasExistingProposal ?? false)')
     expect(builderWorkspaceSource).toContain('hasExistingTalkProposal?: boolean')
     expect(builderWorkspaceSource).toContain(':has-existing-talk-proposal="hasExistingTalkProposal"')
-    expect(builderSettingsBoardSource).toContain('hasExistingTalkProposal?: boolean')
-    expect(builderSettingsBoardSource).toContain(':has-existing-proposal="props.hasExistingTalkProposal ?? false"')
-    expect(builderSettingsBoardSource).toContain('question-editor-variant="builder"')
+    expect(builderExtrasBoardSource).toContain('hasExistingTalkProposal?: boolean')
+    expect(builderExtrasBoardSource).toContain(':has-existing-proposal="props.hasExistingTalkProposal ?? false"')
+    expect(builderExtrasBoardSource).toContain('question-editor-variant="builder"')
     expect(talkControlSource).toContain(':variant="props.questionEditorVariant"')
     expect(dateTimeInputSource).toContain('<AppDateTimePicker')
     expect(dateTimeInputSource).not.toContain('datetime-local')

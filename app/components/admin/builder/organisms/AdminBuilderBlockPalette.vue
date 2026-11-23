@@ -40,16 +40,9 @@ useAdminSortableLists({
 <template>
   <section
     id="event-builder-block-palette"
-    class="space-y-3"
+    aria-label="Blocks to add to the agenda"
+    tabindex="-1"
   >
-    <div>
-      <h3 class="text-sm font-semibold text-highlighted">
-        Session blocks
-      </h3>
-      <p class="text-xs text-muted">
-        Click a block to add it, or drag it straight into the agenda track.
-      </p>
-    </div>
     <div
       ref="gridElement"
       class="grid grid-cols-2 gap-2 sm:grid-cols-3 2xl:grid-cols-4"

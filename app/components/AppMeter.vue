@@ -4,6 +4,8 @@ const props = withDefaults(defineProps<{
   value: number
   max?: number
   label?: string
+  /** The name of the meter for screen readers, for a meter without a visible label. */
+  ariaLabel?: string
   tone?: 'neutral' | 'success' | 'warning' | 'error' | 'info'
   size?: 'sm' | 'md'
   showValue?: boolean
@@ -11,6 +13,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   max: 100,
   label: '',
+  ariaLabel: '',
   tone: 'neutral',
   size: 'md',
   showValue: false,
@@ -54,7 +57,7 @@ const toneClasses: Record<NonNullable<typeof props.tone>, string> = {
       :aria-valuenow="Math.round(clampedValue)"
       :aria-valuemin="0"
       :aria-valuemax="max"
-      :aria-label="label || undefined"
+      :aria-label="ariaLabel || label || undefined"
       class="w-full overflow-hidden rounded-full bg-black/6 dark:bg-white/[0.05]"
       :class="size === 'sm' ? 'h-1.5' : 'h-2.5'"
     >

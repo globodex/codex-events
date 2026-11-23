@@ -8,7 +8,7 @@ import type {
   ParticipantEventProgram,
   PublicProgramSessions
 } from '#shared/domains/events/program'
-import { canViewEventProgram } from '#shared/domains/events/program'
+import { canViewEventProgram, countProgramSessions } from '#shared/domains/events/program'
 import { requirePlatformActor } from '#server/auth/actor'
 import { resolveEventAuthorization } from '#server/auth/authorization'
 import { getDatabase, type AppDatabase } from '#server/database/client'
@@ -64,6 +64,13 @@ function getProgramAgendaItem(event: EventRecord, agendaItemId: string) {
 
 function readProgramTracks(tracksJson: string): EventProgram['tracks'] {
   return JSON.parse(tracksJson) as EventProgram['tracks']
+}
+
+/** The sessions in the rooms of an event. The event builder shows the number on a tile. */
+export async function countEventProgramSessions(database: AppDatabase, eventId: string) {
+  const row = await findEventProgramRow(database, eventId)
+
+  return row ? countProgramSessions({ tracks: readProgramTracks(row.tracksJson) }) : 0
 }
 
 // The public event page lists the public sessions of the program. So every write of the program

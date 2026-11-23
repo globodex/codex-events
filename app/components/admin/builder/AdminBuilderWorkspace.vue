@@ -1,17 +1,28 @@
 <script setup lang="ts">
+// The event builder. It shows one level at a time: the event, when and where, the agenda, the
+// registration, and the extras. The level bar at the top leads to every level, and the bar at the
+// bottom moves one level back or forward and saves the event.
 import type { EventBuilderTemplate } from '#shared/domains/events/builder-templates'
 import type { TermsDocument, EventRecord, EventType } from '~/domains/events/records'
 import type { EventBuilderApi } from '~/composables/useEventBuilder'
-import { eventBuilderBasicsSchema, buildEventBuilderBasicsInput } from '~/domains/events/builder'
-import type { EventBuilderChecklistItem } from '~/domains/events/builder'
+import {
+  buildEventBuilderBasicsInput,
+  eventBuilderBasicsSchema,
+  eventBuilderLevels,
+  getEventBuilderLevelBarItems
+} from '~/domains/events/builder'
+import type { EventBuilderChecklistItem, EventBuilderExtraId, EventBuilderLevelId } from '~/domains/events/builder'
+import AdminBuilderLevelBar from '~/components/admin/builder/molecules/AdminBuilderLevelBar.vue'
+import AdminBuilderLevelNav from '~/components/admin/builder/molecules/AdminBuilderLevelNav.vue'
+import AdminBuilderStepChip from '~/components/admin/builder/molecules/AdminBuilderStepChip.vue'
 import AdminBuilderAgendaTrack from '~/components/admin/builder/organisms/AdminBuilderAgendaTrack.vue'
-import AdminBuilderBasicsForm from '~/components/admin/builder/organisms/AdminBuilderBasicsForm.vue'
 import AdminBuilderBlockPalette from '~/components/admin/builder/organisms/AdminBuilderBlockPalette.vue'
-import AdminBuilderEventTypePicker from '~/components/admin/builder/organisms/AdminBuilderEventTypePicker.vue'
-import AdminBuilderNameHero from '~/components/admin/builder/molecules/AdminBuilderNameHero.vue'
-import AdminBuilderSettingsBoard from '~/components/admin/builder/organisms/AdminBuilderSettingsBoard.vue'
-import AdminBuilderSidePanel from '~/components/admin/builder/organisms/AdminBuilderSidePanel.vue'
+import AdminBuilderEventForm from '~/components/admin/builder/organisms/AdminBuilderEventForm.vue'
+import AdminBuilderExtrasBoard from '~/components/admin/builder/organisms/AdminBuilderExtrasBoard.vue'
+import AdminBuilderRegistrationForm from '~/components/admin/builder/organisms/AdminBuilderRegistrationForm.vue'
+import AdminBuilderScorePanel from '~/components/admin/builder/organisms/AdminBuilderScorePanel.vue'
 import AdminBuilderTemplateGallery from '~/components/admin/builder/organisms/AdminBuilderTemplateGallery.vue'
+import AdminBuilderWhenWhereForm from '~/components/admin/builder/organisms/AdminBuilderWhenWhereForm.vue'
 import type {
   AccountEventLumaGuestList,
   AccountEventSettingsCreditOffer,
@@ -24,6 +35,8 @@ const props = defineProps<{
   event?: EventRecord | null
   isSubmitting: boolean
   submitError: string
+  /** The sessions in the rooms of the event. The tile "Rooms and sessions" shows the number. */
+  sessionCount?: number
   backgroundImageUploadPending?: boolean
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
@@ -47,20 +60,74 @@ const emit = defineEmits<{
   updated: []
 }>()
 
-const submitAttempted = ref(false)
+defineSlots<{
+  /** The editor of the extra "Rooms and sessions". The page owns it, because it loads and saves it. */
+  rooms(): unknown
+}>()
 
-// Staged reveal: naming the event surfaces the type picker; picking a type
-// surfaces the rest. Once the type is chosen the picker never hides again.
-const showTypePicker = computed(() =>
-  props.builder.state.form.name.trim().length > 0 || props.builder.state.eventTypeChosen
-)
+const currentLevelId = ref<EventBuilderLevelId>('event')
+// A level is mounted when the organizer opens it for the first time, and it stays mounted.
+// What they typed or opened on it is still there when they come back from another level.
+const visitedLevelIds = ref<EventBuilderLevelId[]>(['event'])
+const openExtraId = ref<EventBuilderExtraId | null>(null)
+const topElement = useTemplateRef<HTMLElement>('top')
+
+const levelBarItems = computed(() => getEventBuilderLevelBarItems({
+  checklist: props.builder.checklist.value,
+  mode: props.mode,
+  visitedLevelIds: visitedLevelIds.value,
+  eventTypeChosen: props.builder.state.eventTypeChosen
+}))
+const currentLevelIndex = computed(() => eventBuilderLevels.findIndex(level => level.id === currentLevelId.value))
+const openSteps = computed(() => props.builder.checklist.value
+  .filter(item => !item.complete && item.level === currentLevelId.value))
+
+/** Brings the level bar back into view, for example after the level changed far down a long page. */
+async function scrollToTop() {
+  await nextTick()
+  topElement.value?.scrollIntoView({ block: 'nearest' })
+}
+
+async function openLevel(id: EventBuilderLevelId) {
+  currentLevelId.value = id
+
+  if (!visitedLevelIds.value.includes(id)) {
+    visitedLevelIds.value.push(id)
+  }
+
+  await scrollToTop()
+}
+
+function openNeighbourLevel(direction: -1 | 1) {
+  const level = eventBuilderLevels[currentLevelIndex.value + direction]
+
+  if (level) {
+    openLevel(level.id)
+  }
+}
+
+// The tiles and an open extra have different heights, so the level bar comes back into view.
+watch(openExtraId, scrollToTop)
+
+// An extra with its own save button hides the bar at the bottom: "Save event" there would not
+// save what the organizer typed into the extra.
+const levelNavHidden = computed(() => currentLevelId.value === 'extras'
+  && props.builder.extras.value.some(extra => extra.id === openExtraId.value && extra.hasOwnSave))
+
+// The agenda level offers the templates while the agenda is empty. With blocks on the agenda
+// the organizer opens them with a button, because a template replaces the blocks.
+const templatesOpen = ref(false)
+const showTemplates = computed(() => props.builder.state.blocks.length === 0 || templatesOpen.value)
 
 // True while a palette tile is being dragged — the agenda track lights up as
 // the drop zone for exactly that window.
 const paletteDragActive = ref(false)
 
+// The messages below the fields appear after the organizer tried to save.
+const saveAttempted = ref(false)
+
 const fieldErrors = computed<Record<string, string>>(() => {
-  if (!submitAttempted.value) {
+  if (!saveAttempted.value) {
     return {}
   }
 
@@ -88,10 +155,19 @@ function onEventTypeSelect(eventType: EventType) {
 }
 
 function onApplyTemplate(template: EventBuilderTemplate) {
-  props.builder.applyTemplate(template)
+  if (props.builder.applyTemplate(template)) {
+    templatesOpen.value = false
+  }
 }
 
-function focusChecklistField(item: EventBuilderChecklistItem) {
+/** Opens the level (and the extra) of a step and puts the cursor into its field. */
+async function showStep(item: EventBuilderChecklistItem) {
+  if (item.extra) {
+    openExtraId.value = item.extra
+  }
+
+  await openLevel(item.level)
+
   if (!item.fieldRef) {
     return
   }
@@ -106,169 +182,183 @@ function focusChecklistField(item: EventBuilderChecklistItem) {
 }
 
 function onSubmit() {
-  submitAttempted.value = true
+  saveAttempted.value = true
 
-  if (props.builder.canSubmit.value) {
+  // An event with an open step is not saved: the organizer lands on the first open step instead.
+  const openStep = props.builder.checklist.value.find(item => !item.complete)
+
+  if (openStep) {
+    showStep(openStep)
+  } else {
     emit('submit')
   }
 }
 </script>
 
 <template>
-  <div>
-    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,23rem)]">
-      <div class="min-w-0 space-y-7">
-        <AdminBuilderNameHero
-          :form="builder.state.form"
-          :name-error="fieldErrors.name"
-          :slug-error="fieldErrors.slug"
-          @slug-edited="builder.markSlugEdited()"
+  <div class="space-y-6">
+    <div
+      ref="top"
+      class="flex scroll-mt-4 flex-wrap items-center justify-between gap-x-6 gap-y-3"
+    >
+      <AdminBuilderLevelBar
+        :levels="levelBarItems"
+        :current-id="currentLevelId"
+        @select="openLevel"
+      />
+
+      <ul
+        v-if="openSteps.length > 0"
+        aria-label="Open steps of this level"
+        class="flex flex-wrap gap-2"
+      >
+        <AdminBuilderStepChip
+          v-for="item in openSteps"
+          :key="item.id"
+          :item="item"
+          :urgent="saveAttempted"
+          @focus-field="showStep"
         />
+      </ul>
+    </div>
 
-        <!-- Light separators mirror the checklist steps: name, type, agenda, details. -->
-        <div
-          v-if="showTypePicker"
-          class="space-y-7 animate-in fade-in slide-in-from-top-2 duration-300 motion-reduce:animate-none"
-        >
-          <div
-            aria-hidden="true"
-            class="border-t border-black/5 dark:border-white/[0.05]"
-          />
+    <AdminBuilderEventForm
+      v-show="currentLevelId === 'event'"
+      :form="builder.state.form"
+      :event-type-chosen="builder.state.eventTypeChosen"
+      :event-type-locked="mode === 'edit'"
+      :errors="fieldErrors"
+      @slug-edited="builder.markSlugEdited()"
+      @select-event-type="onEventTypeSelect"
+    />
 
-          <AdminBuilderEventTypePicker
-            :model-value="builder.state.eventTypeChosen ? builder.state.form.eventType : null"
-            :disabled="mode === 'edit'"
-            @select="onEventTypeSelect"
-          />
-        </div>
+    <AdminBuilderWhenWhereForm
+      v-if="visitedLevelIds.includes('when-where')"
+      v-show="currentLevelId === 'when-where'"
+      :form="builder.state.form"
+      :event-starts-at="builder.state.eventStartsAt"
+      :location-chosen="builder.state.locationChosen"
+      :errors="fieldErrors"
+      @update:event-starts-at="value => builder.setEventStartsAt(value)"
+      @choose-location="online => builder.setLocationMode(online)"
+    />
 
-        <!-- Templates, blocks, and settings all derive from the event type. -->
-        <div
-          v-if="builder.state.eventTypeChosen"
-          class="space-y-7 animate-in fade-in slide-in-from-top-2 duration-300 motion-reduce:animate-none"
-        >
-          <div
-            aria-hidden="true"
-            class="border-t border-black/5 dark:border-white/[0.05]"
-          />
-
-          <AdminBuilderTemplateGallery
-            :templates="builder.templates.value"
-            @apply="onApplyTemplate"
-          />
-
-          <AdminBuilderBlockPalette
-            :types="builder.paletteTypes.value"
-            @add="type => builder.addBlock(type)"
-            @drag-start="paletteDragActive = true"
-            @drag-end="paletteDragActive = false"
-          />
-
-          <AdminBuilderAgendaTrack
-            :blocks="builder.state.blocks"
-            :schedule="builder.schedule.value"
-            :receiving="paletteDragActive"
-            @reorder="(oldIndex, newIndex) => builder.reorderBlocks(oldIndex, newIndex)"
-            @insert="(type, index) => builder.addBlock(type, index)"
-            @move="(id, direction) => builder.moveBlock(id, direction)"
-            @remove="id => builder.removeBlock(id)"
-            @update-title="(id, title) => builder.setBlockTitle(id, title)"
-            @update-details="(id, details) => builder.setBlockDetails(id, details)"
-            @clone="id => builder.cloneBlock(id)"
-            @update-duration="(id, minutes) => builder.setBlockDuration(id, minutes)"
-            @update-focus-cost="(id, value) => builder.setBlockFocusCost(id, value)"
-            @update-energy-delta="(id, value) => builder.setBlockEnergyDelta(id, value)"
-          />
-
-          <slot name="agenda" />
-
-          <div
-            aria-hidden="true"
-            class="border-t border-black/5 dark:border-white/[0.05]"
-          />
-
-          <AdminBuilderBasicsForm
-            :form="builder.state.form"
-            :event-starts-at="builder.state.eventStartsAt"
-            :location-chosen="builder.state.locationChosen"
-            :errors="fieldErrors"
-            @update:event-starts-at="value => builder.setEventStartsAt(value)"
-            @choose-location="online => builder.setLocationMode(online)"
-          />
-
-          <div
-            aria-hidden="true"
-            class="border-t border-black/5 dark:border-white/[0.05]"
-          />
-
-          <AdminBuilderSettingsBoard
-            :staged-credits="builder.state.credits"
-            :saving="isSubmitting"
-            :form="builder.state.form"
-            :groups="builder.settingsGroups.value"
-            :mode="mode"
-            :event="event ?? null"
-            :required-application-field-count="builder.requiredApplicationFieldCount.value"
-            :visible-application-field-count="builder.visibleApplicationFieldCount.value"
-            :background-image-upload-pending="backgroundImageUploadPending"
-            :background-image-upload-error="backgroundImageUploadError"
-            :banner-image-upload-pending="bannerImageUploadPending"
-            :banner-image-upload-error="bannerImageUploadError"
-            :current-application-terms="currentApplicationTerms"
-            :current-winner-terms="currentWinnerTerms"
-            :saving-terms-document-type="savingTermsDocumentType"
-            :initial-simplified-claiming-status="initialSimplifiedClaimingStatus"
-            :luma-guest-list="lumaGuestList"
-            :credit-offers="creditOffers"
-            :has-existing-talk-proposal="hasExistingTalkProposal"
-            @update:staged-credits="builder.setStagedCredits"
-            @save="onSubmit"
-            @upload-background-image="file => emit('uploadBackgroundImage', file)"
-            @remove-background-image="emit('removeBackgroundImage')"
-            @upload-banner-image="file => emit('uploadBannerImage', file)"
-            @remove-banner-image="emit('removeBannerImage')"
-            @save-terms="(documentType, content) => emit('saveTerms', documentType, content)"
-            @updated="emit('updated')"
-          />
-        </div>
-      </div>
-
-      <AdminBuilderSidePanel
-        :checklist="builder.checklist.value"
+    <section
+      v-if="visitedLevelIds.includes('agenda')"
+      v-show="currentLevelId === 'agenda'"
+      class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]"
+    >
+      <AdminBuilderScorePanel
+        class="lg:sticky lg:top-6 lg:order-2 lg:self-start"
         :report="builder.report.value"
         :blocks="builder.state.blocks"
-        :schedule="builder.schedule.value"
-        :can-submit="builder.canSubmit.value"
-        :is-submitting="isSubmitting"
-        :submit-error="submitError"
-        :submit-label="mode === 'create' ? 'Create draft event' : 'Save event'"
-        @submit="onSubmit"
-        @focus-field="focusChecklistField"
       />
-    </div>
 
-    <!-- Mobile companion: live score + submit, one sticky strip. -->
-    <div class="sticky bottom-0 z-40 -mx-4 mt-5 border-t border-black/8 bg-white/90 px-4 py-2.5 backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#111111]/90 lg:hidden">
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex items-baseline gap-2">
-          <span class="text-xl font-semibold tabular-nums text-highlighted">
-            {{ builder.state.blocks.length === 0 ? '—' : builder.report.value.score }}
-          </span>
-          <span class="text-xs text-muted">
-            {{ builder.state.blocks.length === 0 ? 'Add blocks' : builder.report.value.band.label }}
-          </span>
-        </div>
-        <AppButton
-          color="neutral"
-          variant="solid"
-          size="sm"
-          :disabled="!builder.canSubmit.value || isSubmitting"
-          :loading="isSubmitting"
-          @click="onSubmit"
+      <div class="min-w-0 space-y-6">
+        <div
+          v-if="builder.state.blocks.length > 0"
+          class="flex justify-end"
         >
-          {{ mode === 'create' ? 'Create draft' : 'Save' }}
-        </AppButton>
+          <AppButton
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            icon="i-lucide-layout-template"
+            label="Templates"
+            :aria-expanded="templatesOpen"
+            data-testid="event-builder-templates-toggle"
+            @click="templatesOpen = !templatesOpen"
+          />
+        </div>
+
+        <AdminBuilderTemplateGallery
+          v-if="showTemplates"
+          :templates="builder.templates.value"
+          @apply="onApplyTemplate"
+        />
+
+        <AdminBuilderAgendaTrack
+          :blocks="builder.state.blocks"
+          :schedule="builder.schedule.value"
+          :receiving="paletteDragActive"
+          @reorder="(oldIndex, newIndex) => builder.reorderBlocks(oldIndex, newIndex)"
+          @insert="(type, index) => builder.addBlock(type, index)"
+          @move="(id, direction) => builder.moveBlock(id, direction)"
+          @remove="id => builder.removeBlock(id)"
+          @update-title="(id, title) => builder.setBlockTitle(id, title)"
+          @update-details="(id, details) => builder.setBlockDetails(id, details)"
+          @clone="id => builder.cloneBlock(id)"
+          @update-duration="(id, minutes) => builder.setBlockDuration(id, minutes)"
+          @update-focus-cost="(id, value) => builder.setBlockFocusCost(id, value)"
+          @update-energy-delta="(id, value) => builder.setBlockEnergyDelta(id, value)"
+        />
+
+        <AdminBuilderBlockPalette
+          :types="builder.paletteTypes.value"
+          @add="type => builder.addBlock(type)"
+          @drag-start="paletteDragActive = true"
+          @drag-end="paletteDragActive = false"
+        />
       </div>
-    </div>
+    </section>
+
+    <AdminBuilderRegistrationForm
+      v-if="visitedLevelIds.includes('registration')"
+      v-show="currentLevelId === 'registration'"
+      :form="builder.state.form"
+      :required-application-field-count="builder.requiredApplicationFieldCount.value"
+      :visible-application-field-count="builder.visibleApplicationFieldCount.value"
+      :errors="fieldErrors"
+    />
+
+    <AdminBuilderExtrasBoard
+      v-if="visitedLevelIds.includes('extras')"
+      v-show="currentLevelId === 'extras'"
+      v-model:open-id="openExtraId"
+      :staged-credits="builder.state.credits"
+      :form="builder.state.form"
+      :extras="builder.extras.value"
+      :saving="isSubmitting"
+      :mode="mode"
+      :event="event ?? null"
+      :session-count="sessionCount"
+      :background-image-upload-pending="backgroundImageUploadPending"
+      :background-image-upload-error="backgroundImageUploadError"
+      :banner-image-upload-pending="bannerImageUploadPending"
+      :banner-image-upload-error="bannerImageUploadError"
+      :current-application-terms="currentApplicationTerms"
+      :current-winner-terms="currentWinnerTerms"
+      :saving-terms-document-type="savingTermsDocumentType"
+      :initial-simplified-claiming-status="initialSimplifiedClaimingStatus"
+      :luma-guest-list="lumaGuestList"
+      :credit-offers="creditOffers"
+      :has-existing-talk-proposal="hasExistingTalkProposal"
+      @update:staged-credits="builder.setStagedCredits"
+      @save="onSubmit"
+      @upload-background-image="file => emit('uploadBackgroundImage', file)"
+      @remove-background-image="emit('removeBackgroundImage')"
+      @upload-banner-image="file => emit('uploadBannerImage', file)"
+      @remove-banner-image="emit('removeBannerImage')"
+      @save-terms="(documentType, content) => emit('saveTerms', documentType, content)"
+      @updated="emit('updated')"
+    >
+      <template #rooms>
+        <slot name="rooms" />
+      </template>
+    </AdminBuilderExtrasBoard>
+
+    <AdminBuilderLevelNav
+      v-show="!levelNavHidden"
+      :can-go-back="currentLevelIndex > 0"
+      :can-go-next="currentLevelIndex < eventBuilderLevels.length - 1"
+      :next-locked="!builder.state.eventTypeChosen"
+      :submit-label="mode === 'create' ? 'Create draft event' : 'Save event'"
+      :ready-to-submit="builder.canSubmit.value"
+      :is-submitting="isSubmitting"
+      :submit-error="submitError"
+      @back="openNeighbourLevel(-1)"
+      @next="openNeighbourLevel(1)"
+      @submit="onSubmit"
+    />
   </div>
 </template>

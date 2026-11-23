@@ -242,8 +242,8 @@ state.
   public upcoming/open callout visibility; and account deletion.
 - Simplified Meetup claiming coverage includes signed check-ins before account
   creation, check-in-only Luma behavior, paginated manual check-in import,
-  shared email deduplication and claim preservation, a stable builder Luma section
-  across claiming methods, collapsed verified credentials, edit cancellation, bounded and appendable reward and attendee CSV imports, and PII
+  shared email deduplication and claim preservation, a builder Luma extra that keeps its
+  credentials across claiming methods, collapsed verified credentials, edit cancellation, bounded and appendable reward and attendee CSV imports, and PII
   minimization, offer visibility, configuration locking, authenticated email
   matching, pre-creation credit staging for both claiming methods, draft-save retry retention and atomic creation rollback, atomic multi-giveaway allocation, link/code detection, exhausted-giveaway skipping, nullable redirects, immutable repeat claims, combined receipt delivery and escaping, redirect selection locking, email preview, attendance-source
   precedence, certificate eligibility, rate limiting, and the external coupon
@@ -314,13 +314,22 @@ state.
   staff, event admins, and judges; a pending registration and a user without a
   registration; the Agenda tab of an event without an agenda; the direct-link
   event shell; and the admin event of the settings page, which carries drafts
-  for the event builder. Unit tests cover the builder checklist lines for an unfinished
-  challenge and an unfinished questionnaire question, and a settings form
+  for the event builder. Unit tests cover the open steps of the builder for an unfinished
+  challenge and an unfinished questionnaire question, and their order by level, and a settings form
   save that sends neither challenges nor the check-in flow settings, which
   only the event builder edits. Browser scenarios run on dedicated fixture
   events and cover an organizer publishing a challenge in the event builder,
   and a participant reading a challenge and its details on the Agenda, opened
   from the next step after check-in and before check-in.
+- Event builder coverage includes the order of the open steps by level and
+  the number of sessions that the settings page carries for the tile of the
+  rooms and sessions. Browser scenarios cover the levels of a new event, which
+  stay locked until the event type is chosen and become done as the organizer
+  fills them; saving with an open step, which sends nothing and opens the
+  step; templates and blocks on the Agenda level; an extra that opens alone
+  and keeps what was typed while another extra is open; the state on the
+  tiles for credits, challenges, photos, Luma, and rooms and sessions; and the
+  level buttons and the save bar on a phone width.
 - Public session coverage includes the public event detail and the Agenda page
   of a pending participant and of event staff, which hold the sessions that
   the organizer made public in the order of their start; the rooms, details

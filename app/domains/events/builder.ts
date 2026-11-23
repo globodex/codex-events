@@ -514,10 +514,50 @@ export function buildEventBuilderBasicsInput(state: EventBuilderState) {
   }
 }
 
+/** The builder shows one level at a time. */
+export type EventBuilderLevelId = 'event' | 'when-where' | 'agenda' | 'registration' | 'extras'
+
+export interface EventBuilderLevelDefinition {
+  id: EventBuilderLevelId
+  icon: string
+  title: string
+}
+
+/** The levels in the order of the level bar. */
+export const eventBuilderLevels: readonly EventBuilderLevelDefinition[] = [
+  { id: 'event', icon: 'i-lucide-flag', title: 'Event' },
+  { id: 'when-where', icon: 'i-lucide-map-pin', title: 'When and where' },
+  { id: 'agenda', icon: 'i-lucide-layout-list', title: 'Agenda' },
+  { id: 'registration', icon: 'i-lucide-user-check', title: 'Registration' },
+  { id: 'extras', icon: 'i-lucide-sparkles', title: 'Extras' }
+]
+
+/**
+ * How the level bar shows a level.
+ * - done: every step of the level is complete.
+ * - open: the level still needs something.
+ * - ahead: a level of a new event that the organizer has not opened yet.
+ */
+export type EventBuilderLevelStatus = 'done' | 'open' | 'ahead'
+
+export interface EventBuilderLevelBarItem extends EventBuilderLevelDefinition {
+  status: EventBuilderLevelStatus
+  /** A locked level cannot be opened yet. */
+  locked: boolean
+}
+
+/**
+ * One step the event needs before it can be saved, for example "Set the event start".
+ * A level is done when all of its steps are complete.
+ */
 export interface EventBuilderChecklistItem {
   id: string
   label: string
   complete: boolean
+  /** The level that shows the field of this step. */
+  level: EventBuilderLevelId
+  /** The extra that holds the field, for a step on the extras level. */
+  extra?: EventBuilderExtraId
   fieldRef?: string
 }
 
@@ -535,6 +575,8 @@ export const eventBuilderQuestionIdPrefix = 'event-builder-question-'
  */
 function getUnfinishedEntryChecklistItem(list: {
   checklistId: string
+  /** The extra that holds the list. */
+  extra: EventBuilderExtraId
   /** What the organizer calls one entry, for example "Challenge". */
   entryName: string
   entries: Array<{ id: string }>
@@ -553,21 +595,23 @@ function getUnfinishedEntryChecklistItem(list: {
 
   // A problem of the list itself, for example too many entries, points at no entry.
   if (typeof position !== 'number') {
-    return { id: list.checklistId, label: problem.message, complete: false }
+    return { id: list.checklistId, label: problem.message, complete: false, level: 'extras', extra: list.extra }
   }
 
   return {
     id: list.checklistId,
     label: `${list.entryName} ${position + 1}: ${problem.message}`,
     complete: false,
+    level: 'extras',
+    extra: list.extra,
     fieldRef: `${list.fieldIdPrefix}${list.entries[position]!.id}`
   }
 }
 
 /**
- * Checklist lines for what the organizer wrote in "More settings" and has not finished: an
- * incomplete challenge, and an incomplete question for after check-in. The save button stays
- * off while the checklist has an open line, so the event is never sent with such an entry.
+ * Steps for what the organizer wrote in an extra and has not finished: an incomplete challenge,
+ * and an incomplete question for after check-in. The event is not saved while a step is open,
+ * so it is never sent with such an entry.
  *
  * This is the one place that tells the organizer about unfinished list entries.
  */
@@ -575,6 +619,7 @@ function getUnfinishedEntryChecklistItems(form: EventFormState) {
   return [
     getUnfinishedEntryChecklistItem({
       checklistId: 'challenges',
+      extra: 'challenges',
       entryName: 'Challenge',
       entries: form.challenges,
       schema: eventChallengesSchema,
@@ -584,6 +629,7 @@ function getUnfinishedEntryChecklistItems(form: EventFormState) {
     form.checkInFlowEnabled
       ? getUnfinishedEntryChecklistItem({
           checklistId: 'questionnaire-questions',
+          extra: 'check-in',
           entryName: 'Question',
           entries: form.questionnaireQuestions,
           schema: customQuestionsSchema,
@@ -605,36 +651,45 @@ export function getBuilderChecklist(state: EventBuilderState): EventBuilderCheck
     return typeof value === 'string' ? value.trim().length > 0 && !issuePaths.has(field) : true
   }
 
+  // The steps follow the order of the levels: saving with open steps opens the first one.
   // The slug rides with the name: it auto-derives from it, so a broken slug
-  // reopens the "name" step instead of earning its own checklist line.
+  // reopens the "name" step instead of earning its own step.
   const items: EventBuilderChecklistItem[] = [
     {
       id: 'name',
       label: 'Name the event',
       complete: fieldValid('name') && fieldValid('slug'),
+      level: 'event',
       fieldRef: 'event-builder-name'
     },
-    { id: 'event-type', label: 'Pick the event type', complete: state.eventTypeChosen, fieldRef: 'event-builder-event-type' },
     {
-      id: 'agenda',
-      label: 'Add at least one agenda block',
-      complete: state.blocks.length > 0,
-      fieldRef: 'event-builder-block-palette'
+      id: 'event-type',
+      label: 'Pick the event type',
+      complete: state.eventTypeChosen,
+      level: 'event',
+      fieldRef: 'event-builder-event-type'
     },
-    { id: 'event-start', label: 'Set the event start', complete: fieldValid('eventStartsAt'), fieldRef: 'event-builder-event-starts-at' },
+    {
+      id: 'description',
+      label: 'Describe the event',
+      complete: fieldValid('description'),
+      level: 'event',
+      fieldRef: 'event-builder-description'
+    },
+    {
+      id: 'event-start',
+      label: 'Set the event start',
+      complete: fieldValid('eventStartsAt'),
+      level: 'when-where',
+      fieldRef: 'event-builder-event-starts-at'
+    },
     {
       id: 'location',
       label: 'Set the location or go online',
       complete: state.locationChosen
         && (basics.isOnline || (fieldValid('city') && fieldValid('country') && fieldValid('address'))),
+      level: 'when-where',
       fieldRef: 'event-builder-location'
-    },
-    { id: 'description', label: 'Describe the event', complete: fieldValid('description'), fieldRef: 'event-builder-description' },
-    {
-      id: 'registration-window',
-      label: 'Set a valid registration window',
-      complete: fieldValid('registrationOpensAt') && fieldValid('registrationClosesAt') && !issuePaths.has('registrationClosesAt'),
-      fieldRef: 'event-builder-registration-opens-at'
     }
   ]
 
@@ -644,212 +699,273 @@ export function getBuilderChecklist(state: EventBuilderState): EventBuilderCheck
       label: 'Set a valid submission window',
       complete: Boolean(basics.submissionOpensAt) && Boolean(basics.submissionClosesAt)
         && !issuePaths.has('submissionOpensAt') && !issuePaths.has('submissionClosesAt'),
+      level: 'when-where',
       fieldRef: 'event-builder-submission-opens-at'
     })
   }
+
+  items.push(
+    {
+      id: 'agenda',
+      label: 'Add at least one agenda block',
+      complete: state.blocks.length > 0,
+      level: 'agenda',
+      fieldRef: 'event-builder-block-palette'
+    },
+    {
+      id: 'registration-window',
+      label: 'Set a valid registration window',
+      complete: fieldValid('registrationOpensAt') && fieldValid('registrationClosesAt') && !issuePaths.has('registrationClosesAt'),
+      level: 'registration',
+      fieldRef: 'event-builder-registration-opens-at'
+    }
+  )
 
   items.push(...getUnfinishedEntryChecklistItems(state.form))
 
   return items
 }
 
-export type EventBuilderSettingsGroupId
-  = | 'communication'
-    | 'application-form'
-    | 'capacity'
-    | 'judging'
-    | 'team-size'
-    | 'tracks'
-    | 'call-for-talks'
-    | 'submission-requirements'
-    | 'luma-sync'
-    | 'credits'
-    | 'after-check-in'
+function getLevelStatus(seen: boolean, hasOpenStep: boolean): EventBuilderLevelStatus {
+  if (!seen) {
+    return 'ahead'
+  }
+
+  return hasOpenStep ? 'open' : 'done'
+}
+
+/** What the level bar shows for every level. */
+export function getEventBuilderLevelBarItems(input: {
+  checklist: EventBuilderChecklistItem[]
+  mode: 'create' | 'edit'
+  /** The levels the organizer has opened in this visit. */
+  visitedLevelIds: readonly EventBuilderLevelId[]
+  eventTypeChosen: boolean
+}): EventBuilderLevelBarItem[] {
+  return eventBuilderLevels.map((level, index) => {
+    const hasOpenStep = input.checklist.some(item => item.level === level.id && !item.complete)
+    // A saved event shows the state of every level at once. A new event starts with nothing
+    // done: a level counts after the organizer opened it, so the bar fills up from the left.
+    const seen = input.mode === 'edit' || input.visitedLevelIds.includes(level.id)
+
+    return {
+      ...level,
+      status: getLevelStatus(seen, hasOpenStep),
+      // Every level after the first depends on the event type.
+      locked: index > 0 && !input.eventTypeChosen
+    }
+  })
+}
+
+export type EventBuilderExtraId
+  = | 'tracks'
     | 'challenges'
+    | 'rooms'
+    | 'credits'
+    | 'check-in'
+    | 'photos'
+    | 'talks'
+    | 'judging'
+    | 'submissions'
+    | 'links'
     | 'images'
     | 'terms'
+    | 'luma'
 
-export interface EventBuilderSettingsGroupDefinition {
-  id: EventBuilderSettingsGroupId
+/** What a tile reads to describe its option. */
+export interface EventBuilderExtraContext {
+  form: EventFormState
+  event: EventRecord | null
+  /** The credit codes and links of the event: uploaded for a saved event, staged for a new one. */
+  creditCount: number
+  /** The sessions in the rooms of the event. */
+  sessionCount: number
+}
+
+/** One optional part of an event. The extras level shows it as a tile. */
+export interface EventBuilderExtraDefinition {
+  id: EventBuilderExtraId
   icon: string
   title: string
-  description: string
+  /** The tile is shown only for these event types. */
   appliesTo: readonly EventType[]
-  /** Parity groups embed the classic controls instead of builder-native ones. */
-  parity: boolean
-  /** Group only appears when editing an existing event. */
+  /** True for an option that needs a saved event, so the tile is not shown for a new event. */
   editOnly: boolean
-  isComplete: (form: EventFormState, event: EventRecord | null) => boolean
+  /**
+   * True for an extra that saves what the organizer types with its own button, not with the
+   * event. The builder hides its own save bar while such an extra is open, so the organizer
+   * does not save the event and believe that the extra was saved with it.
+   */
+  hasOwnSave?: boolean
+  /**
+   * The state the tile shows while the option is in use, for example "3 codes".
+   * Null while the option is not in use.
+   */
+  summary: (context: EventBuilderExtraContext) => string | null
 }
 
 const allTypes: readonly EventType[] = ['hackathon', 'meetup', 'build']
 
-export const eventBuilderSettingsGroupDefinitions: readonly EventBuilderSettingsGroupDefinition[] = [
-  {
-    id: 'communication',
-    icon: 'i-lucide-link',
-    title: 'Discord, Luma & slides links',
-    description: 'Where participants find the community, the ticket page, and the slides.',
-    appliesTo: allTypes,
-    parity: false,
-    editOnly: false,
-    isComplete: form => [form.discordServerUrl, form.lumaEventUrl, form.slidesUrl]
-      .some(value => value.trim().length > 0)
-  },
-  {
-    id: 'application-form',
-    icon: 'i-lucide-clipboard-list',
-    title: 'Application form',
-    description: 'What applicants must provide. Every extra required field costs sign-ups.',
-    appliesTo: allTypes,
-    parity: false,
-    editOnly: false,
-    isComplete: (form) => {
-      const requiredCount = [
-        form.requireXProfile,
-        form.requireLinkedinProfile,
-        form.requireGithubProfile,
-        form.requireChatgptEmail,
-        form.requireOpenaiOrgId,
-        form.requireLumaEmail,
-        form.requireWhyThisEvent,
-        form.requireProofOfExecution,
-        form.requireTeamIntent,
-        form.requireAiKnowledge
-      ].filter(Boolean).length
+/** "3", or "3 codes" with a noun. Null for none: a tile shows no state for an unused option. */
+function describeCount(count: number, noun?: string) {
+  if (count === 0) {
+    return null
+  }
 
-      return requiredCount <= 6
-    }
-  },
-  {
-    id: 'capacity',
-    icon: 'i-lucide-users-round',
-    title: 'Capacity & approvals',
-    description: 'Participant limit and automatic application approval.',
-    appliesTo: allTypes,
-    parity: false,
-    editOnly: false,
-    isComplete: form => form.participantsLimit !== null
-  },
-  {
-    id: 'judging',
-    icon: 'i-lucide-scale',
-    title: 'Judging',
-    description: 'Blind reviews, live pitches, and how their scores combine.',
-    appliesTo: ['hackathon'],
-    parity: false,
-    editOnly: false,
-    isComplete: form => form.blindReviewCount > 0 || form.pitchReviewEnabled
-  },
-  {
-    id: 'team-size',
-    icon: 'i-lucide-users',
-    title: 'Team size',
-    description: 'How many people can join one team.',
-    appliesTo: ['hackathon'],
-    parity: false,
-    editOnly: false,
-    isComplete: form => form.maxTeamMembers >= 1
-  },
+  return noun ? `${count} ${noun}${count === 1 ? '' : 's'}` : String(count)
+}
+
+function countFilled(values: Array<string | null | undefined>) {
+  return values.filter(value => value?.trim()).length
+}
+
+function describeJudging(form: EventFormState) {
+  const blind = form.blindReviewCount > 0
+
+  if (blind && form.pitchReviewEnabled) {
+    return 'Blind + pitch'
+  }
+
+  if (blind) {
+    return 'Blind review'
+  }
+
+  return form.pitchReviewEnabled ? 'Live pitch' : null
+}
+
+function describeLumaConnection(event: EventRecord | null) {
+  if (event?.lumaWebhookStatus === 'configured') {
+    return 'Connected'
+  }
+
+  return event?.lumaWebhookStatus === 'failed' ? 'Not connected' : null
+}
+
+/** The extras in the order of their tiles. */
+const eventBuilderExtraDefinitions: readonly EventBuilderExtraDefinition[] = [
   {
     id: 'tracks',
     icon: 'i-lucide-git-branch',
     title: 'Tracks',
-    description: 'Themed tracks give participants direction and judges structure.',
     appliesTo: ['hackathon', 'build'],
-    parity: false,
     editOnly: false,
-    isComplete: form => form.tracks.length > 0
-  },
-  {
-    id: 'call-for-talks',
-    icon: 'i-lucide-megaphone',
-    title: 'Call for talks',
-    description: 'Let community members propose their own talks.',
-    appliesTo: ['meetup'],
-    parity: false,
-    editOnly: false,
-    isComplete: form => form.talkProposalsEnabled
-  },
-  {
-    id: 'submission-requirements',
-    icon: 'i-lucide-clipboard-check',
-    title: 'Submission requirements',
-    description: 'What a complete project submission needs.',
-    appliesTo: ['hackathon'],
-    parity: false,
-    editOnly: false,
-    isComplete: () => true
-  },
-  {
-    id: 'luma-sync',
-    icon: 'i-lucide-refresh-cw',
-    title: 'Luma connection',
-    description: 'Connect your Luma event.',
-    appliesTo: allTypes,
-    parity: true,
-    editOnly: false,
-    isComplete: (form, event) => Boolean(event?.lumaWebhookStatus === 'configured'
-      && form.lumaEventApiId.trim() === event.lumaEventApiId
-      && form.lumaApiKey.trim() === event.lumaApiKey)
-  },
-  {
-    id: 'credits',
-    icon: 'i-lucide-ticket-check',
-    title: 'Credits',
-    description: 'Upload credit codes or links and choose how participants claim them.',
-    appliesTo: allTypes,
-    parity: true,
-    editOnly: false,
-    isComplete: (_form, event) => event !== null
-  },
-  {
-    id: 'after-check-in',
-    icon: 'i-lucide-list-checks',
-    title: 'After check-in',
-    description: 'Tell participants what to do when they arrive, ask them a few questions, and let them add photos.',
-    appliesTo: allTypes,
-    parity: false,
-    // These settings are saved with an event update, so the group needs an existing event.
-    editOnly: true,
-    isComplete: form => form.checkInFlowEnabled || form.participantPhotosEnabled
+    summary: ({ form }) => describeCount(form.tracks.length)
   },
   {
     id: 'challenges',
     icon: 'i-lucide-target',
     title: 'Challenges',
-    description: 'Practical tasks for participants. Confirmed participants can read the published ones.',
     appliesTo: allTypes,
-    parity: false,
-    // Challenges are saved with an event update, so the group needs an existing event.
+    // Challenges are saved with an event update.
     editOnly: true,
-    isComplete: form => form.challenges.some(challenge => challenge.isPublished)
+    summary: ({ form }) => describeCount(form.challenges.length)
+  },
+  {
+    id: 'rooms',
+    icon: 'i-lucide-map',
+    title: 'Rooms and sessions',
+    appliesTo: allTypes,
+    // Rooms and sessions are saved with their own request.
+    editOnly: true,
+    hasOwnSave: true,
+    summary: ({ sessionCount }) => describeCount(sessionCount, 'session')
+  },
+  {
+    id: 'credits',
+    icon: 'i-lucide-ticket-check',
+    title: 'Credits',
+    appliesTo: allTypes,
+    editOnly: false,
+    summary: ({ creditCount }) => describeCount(creditCount, 'code')
+  },
+  {
+    id: 'check-in',
+    icon: 'i-lucide-list-checks',
+    title: 'Check-in',
+    appliesTo: allTypes,
+    // The next step and its questions are saved with an event update.
+    editOnly: true,
+    summary: ({ form }) => form.checkInFlowEnabled
+      ? describeCount(form.questionnaireQuestions.length, 'question') ?? 'On'
+      : null
+  },
+  {
+    id: 'photos',
+    icon: 'i-lucide-camera',
+    title: 'Photos',
+    appliesTo: allTypes,
+    // The photo setting is saved with an event update.
+    editOnly: true,
+    summary: ({ form }) => form.participantPhotosEnabled ? 'On' : null
+  },
+  {
+    id: 'talks',
+    icon: 'i-lucide-megaphone',
+    title: 'Call for talks',
+    appliesTo: ['meetup'],
+    editOnly: false,
+    summary: ({ form }) => form.talkProposalsEnabled ? 'On' : null
+  },
+  {
+    id: 'judging',
+    icon: 'i-lucide-scale',
+    title: 'Judging',
+    appliesTo: ['hackathon'],
+    editOnly: false,
+    summary: ({ form }) => describeJudging(form)
+  },
+  {
+    id: 'submissions',
+    icon: 'i-lucide-clipboard-check',
+    title: 'Submissions',
+    appliesTo: ['hackathon'],
+    editOnly: false,
+    summary: ({ form }) => describeCount([
+      form.requireSubmissionSummary,
+      form.requireSubmissionRepositoryUrl,
+      form.requireSubmissionDemoUrl
+    ].filter(Boolean).length, 'required field')
+  },
+  {
+    id: 'links',
+    icon: 'i-lucide-link',
+    title: 'Links',
+    appliesTo: allTypes,
+    editOnly: false,
+    summary: ({ form }) => describeCount(countFilled([form.discordServerUrl, form.lumaEventUrl, form.slidesUrl]))
   },
   {
     id: 'images',
     icon: 'i-lucide-image',
-    title: 'Background & banner images',
-    description: 'The images on the public event page.',
+    title: 'Images',
     appliesTo: allTypes,
-    parity: true,
+    // An image is uploaded to a saved event.
     editOnly: true,
-    isComplete: (_form, event) => Boolean(event?.backgroundImageUrl || event?.bannerImageUrl)
+    summary: ({ event }) => describeCount(countFilled([event?.backgroundImageUrl, event?.bannerImageUrl]))
   },
   {
     id: 'terms',
     icon: 'i-lucide-file-check',
-    title: 'Terms documents',
-    description: 'Event-specific terms participants accept when applying.',
+    title: 'Terms',
     appliesTo: allTypes,
-    parity: true,
+    // Terms are published for a saved event.
     editOnly: true,
-    isComplete: (_form, event) => Boolean(event?.currentApplicationTermsDocumentId)
+    hasOwnSave: true,
+    summary: ({ event }) => event?.currentApplicationTermsDocumentId ? 'On' : null
+  },
+  {
+    id: 'luma',
+    icon: 'i-lucide-refresh-cw',
+    title: 'Luma',
+    appliesTo: allTypes,
+    editOnly: false,
+    summary: ({ event }) => describeLumaConnection(event)
   }
 ]
 
-export function getEventBuilderSettingsGroups(eventType: EventType, mode: 'create' | 'edit') {
-  return eventBuilderSettingsGroupDefinitions.filter(group =>
-    group.appliesTo.includes(eventType) && (mode === 'edit' || !group.editOnly)
+export function getEventBuilderExtras(eventType: EventType, mode: 'create' | 'edit') {
+  return eventBuilderExtraDefinitions.filter(extra =>
+    extra.appliesTo.includes(eventType) && (mode === 'edit' || !extra.editOnly)
   )
 }
 

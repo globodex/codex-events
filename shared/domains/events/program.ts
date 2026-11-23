@@ -96,6 +96,11 @@ export const eventProgramSchema = z.object({
 })
 
 export type EventProgram = z.infer<typeof eventProgramSchema>
+
+/** The sessions in all rooms of an event. An event without a program has none. */
+export function countProgramSessions(program: Pick<EventProgram, 'tracks'> | null) {
+  return program?.tracks.reduce((total, track) => total + track.sessions.length, 0) ?? 0
+}
 export type ProgramTrack = z.infer<typeof programTrackSchema>
 export type ProgramSession = z.infer<typeof programSessionSchema>
 export type ProgramRoom = z.infer<typeof programRoomSchema>

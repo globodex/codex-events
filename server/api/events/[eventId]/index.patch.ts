@@ -135,7 +135,7 @@ export const applicationOperation = defineStructuredRouteOperation({
       assertGuard(Boolean(validProgramParent), {
         statusCode: 409,
         code: 'event_program_parent_conflict',
-        message: 'Keep the agenda block long enough for its sessions, or remove the parallel agenda first.'
+        message: 'Keep the agenda block long enough for its sessions, or remove the rooms and sessions first.'
       })
     }
     assertTalkProposalConfigurationChangeAllowed(event, body, true)

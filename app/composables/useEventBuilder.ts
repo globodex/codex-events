@@ -20,7 +20,7 @@ import {
   computeBlockSchedule,
   deriveScheduleDefaults,
   getBuilderChecklist,
-  getEventBuilderSettingsGroups,
+  getEventBuilderExtras,
   getRequiredApplicationFieldCount,
   getVisibleApplicationFieldCount,
   pruneBlocksForEventType,
@@ -72,7 +72,7 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
   const templates = computed(() =>
     getEventBuilderTemplates(state.form.eventType as EventBuilderEventType)
   )
-  const settingsGroups = computed(() => getEventBuilderSettingsGroups(state.form.eventType, options.mode))
+  const extras = computed(() => getEventBuilderExtras(state.form.eventType, options.mode))
   const requiredApplicationFieldCount = computed(() => getRequiredApplicationFieldCount(state.form))
   const visibleApplicationFieldCount = computed(() => getVisibleApplicationFieldCount(state.form))
 
@@ -267,7 +267,7 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
     canSubmit,
     paletteTypes,
     templates,
-    settingsGroups,
+    extras,
     requiredApplicationFieldCount,
     visibleApplicationFieldCount,
     isDirty,

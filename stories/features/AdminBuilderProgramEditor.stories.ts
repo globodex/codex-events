@@ -28,7 +28,7 @@ const initialProgram: EventProgram = {
 }
 
 const meta = {
-  title: 'Admin/Event builder/Parallel agenda',
+  title: 'Admin/Event builder/Rooms and sessions',
   component: AdminBuilderProgramEditor,
   args: { hasAgenda: true, hasProgram: true },
   parameters: { controls: { disable: true } },

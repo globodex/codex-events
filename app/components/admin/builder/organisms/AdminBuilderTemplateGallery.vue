@@ -111,17 +111,6 @@ const previewColumns = computed(() => {
     data-testid="event-builder-templates"
     class="space-y-2"
   >
-    <div class="flex items-center gap-2">
-      <AppIcon
-        name="i-lucide-layout-template"
-        class="size-3.5 text-muted"
-      />
-      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-        Start from a template
-      </p>
-      <span class="text-[11px] text-dimmed">click a card to preview it first</span>
-    </div>
-
     <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       <AdminBuilderTemplateCard
         v-for="template in templates"
@@ -189,7 +178,7 @@ const previewColumns = computed(() => {
       </div>
 
       <p class="text-xs text-dimmed">
-        <span class="font-medium text-toned">Application form preset:</span>
+        <span class="font-medium text-toned">Application form:</span>
         {{ applicationPresetLabel }}
       </p>
 
@@ -225,26 +214,21 @@ const previewColumns = computed(() => {
         </div>
       </div>
 
-      <div class="flex flex-wrap items-center gap-3">
-        <AppButton
-          color="neutral"
-          variant="solid"
-          size="sm"
-          :data-testid="`event-builder-use-template-${selectedTemplate.id}`"
-          @click="onApply"
-        >
-          Use this template
-          <template #trailing>
-            <AppIcon
-              name="i-lucide-sparkles"
-              class="size-3.5"
-            />
-          </template>
-        </AppButton>
-        <p class="text-xs text-muted">
-          Loads these blocks and the application form preset. Everything stays editable.
-        </p>
-      </div>
+      <AppButton
+        color="neutral"
+        variant="solid"
+        size="sm"
+        :data-testid="`event-builder-use-template-${selectedTemplate.id}`"
+        @click="onApply"
+      >
+        Use this template
+        <template #trailing>
+          <AppIcon
+            name="i-lucide-sparkles"
+            class="size-3.5"
+          />
+        </template>
+      </AppButton>
     </div>
   </section>
 </template>

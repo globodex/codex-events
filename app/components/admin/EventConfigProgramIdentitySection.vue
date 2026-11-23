@@ -9,8 +9,12 @@ const form = defineModel<EventFormState>('form', {
 })
 
 const props = withDefaults(defineProps<{
-  description: string
-  /** The event builder edits the location in its own basics step, so it shows only the images here. */
+  /** The line below the heading. The heading and this line are shown together with the location. */
+  description?: string
+  /**
+   * The event builder edits the location on its own level and names the images in the frame
+   * around this section, so it shows only the images here, without a heading.
+   */
   showLocation?: boolean
   canUploadManagedImages?: boolean
   backgroundImageUploadPending?: boolean
@@ -76,10 +80,13 @@ function promptBannerImageUpload() {
     id="admin-config-identity"
     class="scroll-mt-28 rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
   >
-    <template #header>
+    <template
+      v-if="props.showLocation"
+      #header
+    >
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
-          {{ props.showLocation ? 'Location and images' : 'Images' }}
+          Location and images
         </h2>
         <p class="text-sm text-muted">
           {{ description }}

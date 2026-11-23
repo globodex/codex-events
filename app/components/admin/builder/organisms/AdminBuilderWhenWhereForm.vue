@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import AdminMarkdownEditorField from '~/components/admin/AdminMarkdownEditorField.vue'
+// The level "When and where" of the event builder: when the event starts, when a hackathon takes
+// submissions, and where the event takes place.
 import type { EventFormState } from '~/domains/events/admin-event'
 import { toDateTimeLocalValue } from '~/domains/events/admin-event'
 import { getCountryOptions } from '~/utils/country-options'
@@ -36,16 +37,7 @@ const onlineActive = computed(() => props.locationChosen && !form.value.inPerson
 </script>
 
 <template>
-  <section class="space-y-5">
-    <div>
-      <h3 class="text-sm font-semibold text-highlighted">
-        Event details
-      </h3>
-      <p class="text-xs text-muted">
-        When it happens, where to go, and what to expect.
-      </p>
-    </div>
-
+  <section class="space-y-6">
     <div class="grid gap-4 sm:grid-cols-2">
       <AppFormField label="Event starts at (local time)">
         <AppDateTimePicker
@@ -58,6 +50,38 @@ const onlineActive = computed(() => props.locationChosen && !form.value.inPerson
           class="mt-1.5 text-xs text-rose-500"
         >
           {{ errors.eventStartsAt }}
+        </p>
+      </AppFormField>
+    </div>
+
+    <div
+      v-if="isHackathon"
+      class="grid gap-4 sm:grid-cols-2"
+    >
+      <AppFormField label="Submissions open">
+        <AppDateTimePicker
+          id="event-builder-submission-opens-at"
+          v-model="form.submissionOpensAt"
+          data-testid="event-builder-submission-opens-at"
+        />
+        <p
+          v-if="errors.submissionOpensAt"
+          class="mt-1.5 text-xs text-rose-500"
+        >
+          {{ errors.submissionOpensAt }}
+        </p>
+      </AppFormField>
+      <AppFormField label="Submissions close">
+        <AppDateTimePicker
+          id="event-builder-submission-closes-at"
+          v-model="form.submissionClosesAt"
+          data-testid="event-builder-submission-closes-at"
+        />
+        <p
+          v-if="errors.submissionClosesAt"
+          class="mt-1.5 text-xs text-rose-500"
+        >
+          {{ errors.submissionClosesAt }}
         </p>
       </AppFormField>
     </div>
@@ -182,90 +206,6 @@ const onlineActive = computed(() => props.locationChosen && !form.value.inPerson
           </p>
         </AppFormField>
       </div>
-    </div>
-
-    <div
-      data-testid="event-builder-description"
-      :aria-invalid="Boolean(errors.description)"
-      :aria-describedby="errors.description ? 'event-builder-description-error' : undefined"
-    >
-      <AdminMarkdownEditorField
-        v-model="form.description"
-        name="event-builder-description"
-        editor-id="event-builder-description"
-        label="Description"
-        placeholder="What participants can expect, in a few sentences."
-        height="240px"
-        required
-      />
-      <p
-        v-if="errors.description"
-        id="event-builder-description-error"
-        class="mt-1.5 text-xs text-rose-500"
-      >
-        {{ errors.description }}
-      </p>
-    </div>
-
-    <div class="grid gap-4 sm:grid-cols-2">
-      <AppFormField label="Registration opens">
-        <AppDateTimePicker
-          id="event-builder-registration-opens-at"
-          v-model="form.registrationOpensAt"
-          data-testid="event-builder-registration-opens-at"
-        />
-        <p
-          v-if="errors.registrationOpensAt"
-          class="mt-1.5 text-xs text-rose-500"
-        >
-          {{ errors.registrationOpensAt }}
-        </p>
-      </AppFormField>
-      <AppFormField label="Registration closes">
-        <AppDateTimePicker
-          id="event-builder-registration-closes-at"
-          v-model="form.registrationClosesAt"
-          data-testid="event-builder-registration-closes-at"
-        />
-        <p
-          v-if="errors.registrationClosesAt"
-          class="mt-1.5 text-xs text-rose-500"
-        >
-          {{ errors.registrationClosesAt }}
-        </p>
-      </AppFormField>
-    </div>
-
-    <div
-      v-if="isHackathon"
-      class="grid gap-4 sm:grid-cols-2"
-    >
-      <AppFormField label="Submissions open">
-        <AppDateTimePicker
-          id="event-builder-submission-opens-at"
-          v-model="form.submissionOpensAt"
-          data-testid="event-builder-submission-opens-at"
-        />
-        <p
-          v-if="errors.submissionOpensAt"
-          class="mt-1.5 text-xs text-rose-500"
-        >
-          {{ errors.submissionOpensAt }}
-        </p>
-      </AppFormField>
-      <AppFormField label="Submissions close">
-        <AppDateTimePicker
-          id="event-builder-submission-closes-at"
-          v-model="form.submissionClosesAt"
-          data-testid="event-builder-submission-closes-at"
-        />
-        <p
-          v-if="errors.submissionClosesAt"
-          class="mt-1.5 text-xs text-rose-500"
-        >
-          {{ errors.submissionClosesAt }}
-        </p>
-      </AppFormField>
     </div>
   </section>
 </template>
