@@ -2,7 +2,8 @@
 import type { ApiListResponse } from '~/lib/api'
 import type {
   EventRoleAssignment,
-  EventRoleUserSummary
+  EventRoleUserSummary,
+  EventStaffScope
 } from '~/domains/events/access'
 import type {
   EventRoleRosterBadge,
@@ -18,6 +19,7 @@ import {
   isAdminCapableEventUser,
   listEventRoleRosterBadges
 } from '~/domains/events/role-roster'
+import { keepStaffScope, wholeEventStaffScope } from '~/domains/events/access'
 import { useApiClient } from '~/composables/useApiClient'
 
 const props = withDefaults(defineProps<{
@@ -179,14 +181,13 @@ async function normalizeAdminCapableAssignment(
 ) {
   const assignment = findRoleAssignment(userId)
   const nextFlags = deriveAdminCapableRoleFlags(assignment, overrides)
-  const staffTrackId = nextFlags.isStaff ? assignment?.staffTrackId ?? null : null
 
   await putRoleAssignment(
     userId,
     'event_admin',
     nextFlags.isInJudgePool,
     nextFlags.isStaff,
-    staffTrackId,
+    keepStaffScope(assignment, nextFlags.isStaff),
     successTitle,
     successDescription
   )
@@ -293,7 +294,7 @@ async function putRoleAssignment(
   role: EventRoleAssignment['role'],
   isInJudgePool: boolean,
   isStaff: boolean,
-  staffTrackId: string | null,
+  staffScope: EventStaffScope,
   successTitle: string,
   successDescription: string
 ) {
@@ -306,7 +307,7 @@ async function putRoleAssignment(
           role,
           isInJudgePool,
           isStaff,
-          staffTrackId
+          ...staffScope
         }
       })
     },
@@ -317,10 +318,9 @@ async function putRoleAssignment(
 
 async function patchRoleCapabilities(
   userId: string,
-  updates: {
+  updates: Partial<EventStaffScope> & {
     isInJudgePool?: boolean
     isStaff?: boolean
-    staffTrackId?: string | null
   },
   successTitle: string,
   successDescription: string
@@ -374,7 +374,7 @@ async function assignRole(userId: string) {
       'event_admin',
       nextFlags.isInJudgePool,
       nextFlags.isStaff,
-      nextFlags.isStaff ? existingAssignment?.staffTrackId ?? null : null,
+      keepStaffScope(existingAssignment, nextFlags.isStaff),
       existingAssignment ? 'Admin access granted' : 'Admin added',
       existingAssignment?.role === 'judge'
         ? 'Judging stayed enabled on the new admin assignment.'
@@ -417,7 +417,7 @@ async function assignRole(userId: string) {
       'staff',
       false,
       true,
-      null,
+      wholeEventStaffScope,
       existingAssignment?.role === 'judge' ? 'Staff access granted' : 'Staff member added',
       existingAssignment?.role === 'judge'
         ? 'Judge access was replaced with staff access.'
@@ -457,7 +457,7 @@ async function assignRole(userId: string) {
     'judge',
     true,
     false,
-    null,
+    wholeEventStaffScope,
     'Judge added',
     existingAssignment?.role === 'staff'
       ? 'Staff access was replaced with judge access.'

@@ -45,7 +45,7 @@ export const accountEventPageKeys: Record<string, readonly string[]> = {
     'event', 'applicationStatus', 'ownTeamId', 'selectedTeam',
     'pendingJoinRequests', 'visibleTeams', 'visibleTeamsMeta'
   ],
-  rosters: ['publishedJudges', 'publishedStaff', 'roleAssignments', 'canManageRoles'],
+  rosters: ['publishedJudges', 'publishedStaff', 'roleAssignments', 'staffChallengeOptions', 'canManageRoles'],
   program: ['program', 'challenges'],
   gallery: ['photos', 'canAddParticipantPhotos', 'mustFinishCheckInFlowToAddPhotos'],
   feedback: ['summary'],
@@ -62,7 +62,10 @@ const publishedRosterKeys = new Set([
   'githubProfileUrl',
   'profileIconUpdatedAt',
   'profileIconRevision',
-  'staffTrack'
+  'staffTrack',
+  // The challenge or open track of a staff member. The server sends it only to a person who
+  // may read the challenges of the event.
+  'staffChallenge'
 ])
 
 export interface TopologyRequestEvidence {

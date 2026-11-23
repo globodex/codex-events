@@ -8,9 +8,10 @@ import {
   assertCompetitionEvent,
   assertRoleCapabilityInvariant,
   getActiveUserOrThrow,
+  getRequestedStaffScope,
   requireEventAdmin,
   getRoleAssignmentOrThrow,
-  resolveRoleAssignmentStaffTrackId,
+  resolveRoleAssignmentStaffScope,
   roleAssignmentParamsSchema,
   roleAssignmentPatchBodySchema,
   serializeEventRoleAssignment
@@ -39,15 +40,6 @@ export const applicationOperation = defineStructuredRouteOperation({
   const user = await getActiveUserOrThrow(database, userId)
   const nextIsInJudgePool = body.isInJudgePool ?? assignment.isInJudgePool
   const nextIsStaff = body.isStaff ?? assignment.isStaff
-  let nextRequestedStaffTrackId: string | null | undefined = null
-
-  if (nextIsStaff) {
-    nextRequestedStaffTrackId = body.staffTrackId !== undefined
-      ? body.staffTrackId
-      : assignment.staffTrackId
-  } else if (body.staffTrackId !== undefined) {
-    nextRequestedStaffTrackId = body.staffTrackId
-  }
 
   assertRoleCapabilityInvariant(assignment.role, {
     isInJudgePool: nextIsInJudgePool,
@@ -58,9 +50,9 @@ export const applicationOperation = defineStructuredRouteOperation({
     assertCompetitionEvent(event)
   }
 
-  const staffTrackId = await resolveRoleAssignmentStaffTrackId(database, event, {
+  const staffScope = await resolveRoleAssignmentStaffScope(database, event, {
     isStaff: nextIsStaff,
-    staffTrackId: nextRequestedStaffTrackId
+    ...getRequestedStaffScope({ isStaff: nextIsStaff, stored: assignment, requested: body })
   })
 
   await database
@@ -68,7 +60,7 @@ export const applicationOperation = defineStructuredRouteOperation({
     .set({
       isInJudgePool: nextIsInJudgePool,
       isStaff: nextIsStaff,
-      staffTrackId
+      ...staffScope
     })
     .where(eq(eventRoleAssignments.id, assignment.id))
 
@@ -85,7 +77,7 @@ export const applicationOperation = defineStructuredRouteOperation({
       role: assignment.role,
       isInJudgePool: nextIsInJudgePool,
       isStaff: nextIsStaff,
-      staffTrackId
+      ...staffScope
     }
   })
 

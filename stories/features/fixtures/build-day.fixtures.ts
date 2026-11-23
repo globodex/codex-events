@@ -1,5 +1,4 @@
-import type { EventChallenge } from '#shared/domains/events/challenges'
-import type { EventFloorPlan, ParticipantEventProgram } from '#shared/domains/events/program'
+import type { AgendaChallenge, EventFloorPlan, ParticipantEventProgram } from '#shared/domains/events/program'
 import groundFloorImage from './build-day-ground-floor.svg?inline'
 import upperFloorImage from './build-day-upper-floor.svg?inline'
 
@@ -34,20 +33,23 @@ export const buildDayUpperFloor: EventFloorPlan = {
 
 /** The event's public agenda: the block that holds the program, and two blocks that start when it ends. */
 // A published challenge and a published open track. The rooms above name them: "Build your own
-// idea" has the Main Hall, "Build a site someone can use" has the Studio.
-export const buildDayChallenges: EventChallenge[] = [{
+// idea" has the Main Hall, "Build a site someone can use" has the Studio. Two staff members
+// support the challenge, and nobody is assigned to the open track.
+export const buildDayChallenges: AgendaChallenge[] = [{
   id: 'sites',
   title: 'Build a site someone can use',
   instructions: 'Publish a small site that one real person can open and use today.',
   resources: [{ label: 'Site guide', url: 'https://example.com/sites' }],
-  isPublished: true
+  isPublished: true,
+  staffNames: ['Mira Example', 'Tom Sample']
 }, {
   id: 'own-idea',
   title: 'Build your own idea',
   instructions: 'Bring your own idea and build it.',
   resources: [],
   isPublished: true,
-  isOpenTrack: true
+  isOpenTrack: true,
+  staffNames: []
 }]
 
 export const buildDayAgendaItems = [{

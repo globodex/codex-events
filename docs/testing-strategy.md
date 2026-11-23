@@ -330,6 +330,16 @@ state.
   and keeps what was typed while another extra is open; the state on the
   tiles for credits, challenges, photos, Luma, and rooms and sessions; and the
   level buttons and the save bar on a phone width.
+- Staff challenge coverage includes an event admin and a platform admin giving
+  a staff member a challenge, an open track and a draft; the track and the
+  challenge replacing each other; a refused unknown challenge, a refused
+  challenge without staff visibility, a refused request with both, and a
+  refused request by staff; the staff names on the Agenda page; the Staff tab
+  page for a confirmed participant, for a person who may not read the
+  challenges, and before and after a draft is published; and the order of the
+  sections on the Staff tab. A browser scenario covers an event admin choosing
+  a challenge on the Staff tab and a participant reading it on the Agenda and
+  on the Staff tab.
 - Public session coverage includes the public event detail and the Agenda page
   of a pending participant and of event staff, which hold the sessions that
   the organizer made public in the order of their start; the rooms, details

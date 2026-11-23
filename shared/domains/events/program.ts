@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { eventChallengesSchema } from '#shared/domains/events/challenges'
+import { eventChallengeSchema } from '#shared/domains/events/challenges'
 
 const id = z.string().trim().min(1).max(100)
 const name = z.string().trim().min(1).max(120)
@@ -139,6 +139,12 @@ export function canViewEventProgram(isEventAdmin: boolean, approved: boolean) {
   return isEventAdmin || approved
 }
 
+/** A challenge as the Agenda tab shows it: with the names of the staff members who support it. */
+export const agendaChallengeSchema = eventChallengeSchema.extend({
+  staffNames: z.array(z.string())
+})
+export type AgendaChallenge = z.infer<typeof agendaChallengeSchema>
+
 // The page behind the Agenda tab.
 export const accountEventAgendaPageSchema = z.object({
   // Null when the event has no program, and for people who may not read it. They see the
@@ -149,7 +155,7 @@ export const accountEventAgendaPageSchema = z.object({
   publicSessions: publicProgramSessionsSchema.nullable(),
   // The published challenges that the caller may read, in display order. Empty for a caller who
   // may not read them (`canReadEventChallenges`). A room of a floor plan names its challenge.
-  challenges: eventChallengesSchema
+  challenges: z.array(agendaChallengeSchema)
 })
 
 export type AccountEventAgendaPage = z.infer<typeof accountEventAgendaPageSchema>

@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import type { EventChallenge } from '#shared/domains/events/challenges'
-import type { EventFloorPlan } from '#shared/domains/events/program'
+import type { AgendaChallenge, EventFloorPlan } from '#shared/domains/events/program'
 
 import AccountEventChallengeCard from '~/components/account/events/molecules/AccountEventChallengeCard.vue'
 
 // The challenges of the event on the Agenda tab, each with the rooms that name it.
 // The server sends this list only to a person who may read it, and it never holds a draft.
 const props = defineProps<{
-  challenges: EventChallenge[]
+  challenges: AgendaChallenge[]
   /** The floor plans that the person may see. Empty for a person who does not see the map. */
   floorPlans: EventFloorPlan[]
   /** The challenge whose rooms the map shows, or null. */
@@ -26,7 +25,7 @@ const groups = computed(() => [
 ].filter(group => group.challenges.length > 0))
 
 /** The rooms that name the challenge, on every floor plan. */
-function roomsOf(challenge: EventChallenge) {
+function roomsOf(challenge: AgendaChallenge) {
   return props.floorPlans.flatMap(plan => plan.rooms.filter(room => room.challengeId === challenge.id))
 }
 </script>

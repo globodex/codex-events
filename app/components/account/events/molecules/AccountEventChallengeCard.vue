@@ -1,16 +1,15 @@
 <script setup lang="ts">
-import type { EventChallenge } from '#shared/domains/events/challenges'
-import type { ProgramRoom } from '#shared/domains/events/program'
+import type { AgendaChallenge, ProgramRoom } from '#shared/domains/events/program'
 
 import AppButton from '~/components/AppButton.vue'
 import AccountEventDetailsDialog from '~/components/account/events/molecules/AccountEventDetailsDialog.vue'
 import EventTrackDetails from '~/components/events/molecules/EventTrackDetails.vue'
 import { roomLabel } from '~/domains/events/program-map'
 
-// One challenge on the Agenda tab. The card looks like an agenda session: the title, the rooms
-// of the challenge, and a Details button for its instructions and links.
+// One challenge on the Agenda tab. The card looks like an agenda session: the title, the staff
+// members and the rooms of the challenge, and a Details button for its instructions and links.
 const props = defineProps<{
-  challenge: EventChallenge
+  challenge: AgendaChallenge
   /** The rooms that name this challenge on the event's floor plans. */
   rooms: ProgramRoom[]
   /** True while the map shows the rooms of this challenge. */
@@ -55,6 +54,13 @@ const detailResources = computed(() => props.challenge.resources.map((resource, 
       :data-testid="`program-challenge-${challenge.id}`"
     >
       <span class="break-words text-sm font-semibold leading-snug text-highlighted">{{ challenge.title }}</span>
+      <span
+        v-if="challenge.staffNames.length > 0"
+        class="break-words text-xs leading-tight text-toned"
+        data-testid="program-challenge-staff"
+      >
+        Staff: {{ challenge.staffNames.join(', ') }}
+      </span>
       <!--
         The rooms by their names, like on a session. The Details button sits in the bottom right
         corner of the card: the last room is as high as the button and keeps its right end free,

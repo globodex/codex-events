@@ -6,15 +6,18 @@ import agendaPageGetHandler from '../../../../server/api/account/events/[slug]/p
 import rostersPageGetHandler from '../../../../server/api/account/events/[slug]/rosters.get'
 import settingsPageGetHandler from '../../../../server/api/account/events/[slug]/settings.get'
 import eventPatchHandler from '../../../../server/api/events/[eventId]/index.patch'
+import rolePatchHandler from '../../../../server/api/events/[eventId]/roles/[userId].patch'
 import {
   eventCreditCodes,
   eventCreditOffers,
   eventRoleAssignments,
+  eventTracks,
   events,
   userApplications,
   users
 } from '../../../../server/database/schema'
 import { accountEventEntryPageSchema } from '../../../../shared/domains/events/account-event-entry-page'
+import { accountEventRostersPageSchema } from '../../../../shared/domains/events/account-event-rosters-page'
 import type { AccountEventPageShell } from '../../../../shared/domains/events/account-event-page-shell'
 import { accountEventSettingsPageSchema } from '../../../../shared/domains/events/account-event-settings-page'
 import { accountEventAgendaPageSchema } from '../../../../shared/domains/events/program'
@@ -63,7 +66,9 @@ const reviewChallenge = {
 }
 // The stored order: a draft sits between the two published challenges.
 const storedChallenges = [skillChallenge, draftChallenge, reviewChallenge]
-const publishedChallenges = [skillChallenge, reviewChallenge]
+// The published challenges as the Agenda page sends them: each with the names of its staff.
+// Nobody is assigned to a challenge unless a test does it.
+const publishedChallenges = [skillChallenge, reviewChallenge].map(challenge => ({ ...challenge, staffNames: [] as string[] }))
 
 /** Every test user signs in with `auth0|<user id>`. */
 function sessionFor(userId: string) {
@@ -90,6 +95,7 @@ describe('TASK-450 event challenges', () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'patch', path: '/api/events/:eventId', handler: eventPatchHandler },
+        { method: 'patch', path: '/api/events/:eventId/roles/:userId', handler: rolePatchHandler },
         { method: 'get', path: '/api/account/events/:slug/entry', handler: entryPageGetHandler },
         { method: 'get', path: '/api/account/events/:slug/program', handler: agendaPageGetHandler },
         { method: 'get', path: '/api/account/events/:slug/rosters', handler: rostersPageGetHandler },
@@ -478,6 +484,160 @@ describe('TASK-450 event challenges', () => {
 
       expect(response.status).toBe(200)
       expect(await readStoredChallenges(harness)).toEqual(storedChallenges)
+    })
+  })
+
+  // TASK-488: a staff member supports one challenge or one open track of the event.
+  describe('staff of a challenge', () => {
+    /** Changes the role assignment of the given user in `event_1` as `actorUserId`. */
+    function patchRole(harness: Harness, actorUserId: string, userId: string, body: Record<string, unknown>) {
+      stubAuth0Session(sessionFor(actorUserId))
+
+      return harness.request(`/api/events/event_1/roles/${userId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+        headers: { 'content-type': 'application/json' }
+      })
+    }
+
+    /** The track and the challenge that the database holds for the staff member of `event_1`. */
+    async function readStoredStaffScope(harness: Harness) {
+      const assignment = await harness.database.query.eventRoleAssignments.findFirst({
+        where: eq(eventRoleAssignments.id, 'role_staff')
+      })
+
+      return { staffTrackId: assignment!.staffTrackId, staffChallengeId: assignment!.staffChallengeId }
+    }
+
+    /** What the Staff tab of `event_1` gives the given user. */
+    async function readStaffTab(harness: Harness, userId: string) {
+      stubAuth0Session(sessionFor(userId))
+      const response = await harness.request('/api/account/events/build-day/rosters')
+      const body = await response.json() as { data: { page: unknown } }
+
+      expect(response.status).toBe(200)
+      return accountEventRostersPageSchema.parse(body.data.page)
+    }
+
+    /** The names of the staff on each challenge of the Agenda page, by challenge id. */
+    async function readStaffNamesOnAgenda(harness: Harness, userId: string) {
+      const response = await requestAgendaPage(harness, userId)
+      const body = await response.json() as { data: { page: unknown } }
+
+      expect(response.status).toBe(200)
+      return Object.fromEntries(accountEventAgendaPageSchema.parse(body.data.page).challenges
+        .map(challenge => [challenge.id, challenge.staffNames]))
+    }
+
+    async function expectRefused(response: Response, code: string) {
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({ error: { code } })
+    }
+
+    test('an event admin gives a staff member a challenge, and the Agenda and the Staff tab name it', async () => {
+      const harness = await createContext()
+      await addApplication(harness)
+
+      const response = await patchRole(harness, 'event_admin', 'staff', { staffChallengeId: 'review' })
+
+      expect(response.status).toBe(200)
+      expect(await response.json()).toMatchObject({ data: { staffTrackId: null, staffChallengeId: 'review' } })
+      expect(await readStaffNamesOnAgenda(harness, 'participant')).toEqual({ skill: [], review: ['staff'] })
+
+      const participantStaffTab = await readStaffTab(harness, 'participant')
+
+      // `review` is the second of the two challenges that the participant may read.
+      expect(participantStaffTab.publishedStaff).toMatchObject([{
+        id: 'staff',
+        staffTrack: null,
+        staffChallenge: { id: 'review', title: 'Review a pull request', isOpenTrack: true, displayOrder: 1 }
+      }])
+      // Only an event admin gets the options of the staff select. They include the draft.
+      expect(participantStaffTab.staffChallengeOptions).toEqual([])
+      expect((await readStaffTab(harness, 'event_admin')).staffChallengeOptions).toEqual([
+        { id: 'skill', title: 'Ship a Codex skill', isOpenTrack: false, isPublished: true },
+        { id: 'draft', title: 'Unfinished idea', isOpenTrack: false, isPublished: false },
+        { id: 'review', title: 'Review a pull request', isOpenTrack: true, isPublished: true }
+      ])
+    })
+
+    test('a person who may not read the challenges gets the staff member without the challenge', async () => {
+      const harness = await createContext()
+      // A registration that waits for approval opens the Staff tab, but not the challenges.
+      await addApplication(harness, { status: 'submitted' })
+      await patchRole(harness, 'event_admin', 'staff', { staffChallengeId: 'skill' })
+
+      const staffTab = await readStaffTab(harness, 'participant')
+
+      expect(staffTab.publishedStaff).toMatchObject([{ id: 'staff', staffChallenge: null }])
+      expect(JSON.stringify(staffTab)).not.toContain(skillChallenge.title)
+      expect(await readStaffNamesOnAgenda(harness, 'participant')).toEqual({})
+    })
+
+    test('a draft can be assigned, and participants see the staff member with it only after it is published', async () => {
+      const harness = await createContext()
+      await addApplication(harness)
+
+      const response = await patchRole(harness, 'platform_admin', 'staff', { staffChallengeId: 'draft' })
+
+      expect(response.status).toBe(200)
+      expect(await readStoredStaffScope(harness)).toEqual({ staffTrackId: null, staffChallengeId: 'draft' })
+      expect((await readStaffTab(harness, 'participant')).publishedStaff).toMatchObject([{ staffChallenge: null }])
+      expect(JSON.stringify(await readStaffTab(harness, 'participant'))).not.toContain(draftChallenge.title)
+
+      await patchEvent(harness, 'event_admin', {
+        challenges: storedChallenges.map(challenge => ({ ...challenge, isPublished: true }))
+      })
+
+      expect((await readStaffTab(harness, 'participant')).publishedStaff).toMatchObject([{
+        staffChallenge: { id: 'draft', displayOrder: 1 }
+      }])
+      expect(await readStaffNamesOnAgenda(harness, 'participant')).toEqual({ skill: [], draft: ['staff'], review: [] })
+    })
+
+    test('a staff member has a track or a challenge, never both', async () => {
+      const harness = await createContext()
+      await harness.database.insert(eventTracks).values({
+        id: 'track_1',
+        eventId: 'event_1',
+        name: 'Agents',
+        shortDescription: 'Build agent projects.',
+        fullDescription: 'Follow the agent track.',
+        displayOrder: 0
+      })
+
+      await patchRole(harness, 'event_admin', 'staff', { staffTrackId: 'track_1' })
+      expect(await readStoredStaffScope(harness)).toEqual({ staffTrackId: 'track_1', staffChallengeId: null })
+
+      // Choosing a challenge drops the track, and choosing a track drops the challenge.
+      await patchRole(harness, 'event_admin', 'staff', { staffChallengeId: 'skill' })
+      expect(await readStoredStaffScope(harness)).toEqual({ staffTrackId: null, staffChallengeId: 'skill' })
+      await patchRole(harness, 'event_admin', 'staff', { staffTrackId: 'track_1' })
+      expect(await readStoredStaffScope(harness)).toEqual({ staffTrackId: 'track_1', staffChallengeId: null })
+
+      await expectRefused(
+        await patchRole(harness, 'event_admin', 'staff', { staffTrackId: 'track_1', staffChallengeId: 'skill' }),
+        'staff_scope_invalid'
+      )
+      // "Whole event" clears both.
+      await patchRole(harness, 'event_admin', 'staff', { staffTrackId: null, staffChallengeId: null })
+      expect(await readStoredStaffScope(harness)).toEqual({ staffTrackId: null, staffChallengeId: null })
+    })
+
+    test('refuses an unknown challenge, a challenge without staff visibility, and an assignment by staff', async () => {
+      const harness = await createContext()
+
+      await expectRefused(
+        await patchRole(harness, 'event_admin', 'staff', { staffChallengeId: 'missing' }),
+        'staff_challenge_not_found'
+      )
+      // The event admin of the fixture is not shown as staff.
+      await expectRefused(
+        await patchRole(harness, 'platform_admin', 'event_admin', { staffChallengeId: 'skill' }),
+        'staff_challenge_scope_invalid'
+      )
+      expect((await patchRole(harness, 'staff', 'staff', { staffChallengeId: 'skill' })).status).toBe(403)
+      expect(await readStoredStaffScope(harness)).toEqual({ staffTrackId: null, staffChallengeId: null })
     })
   })
 })

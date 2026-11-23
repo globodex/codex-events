@@ -237,7 +237,7 @@ Rules:
 - An entry of the challenge list can be marked as an open track: participants bring their own idea, and no task is given. An open track has the same fields and the same rules as a challenge. The Agenda tab lists the challenges under "Challenges" and the open tracks in a second group under "Open track", each in the saved order.
 - Challenges are ordered for admin editing and participant display.
 - Event admins and platform admins write, order, publish, and remove challenges in the event builder at any time. Every challenge needs a title and instructions, also while it is a draft.
-- Published challenges appear on the Agenda tab of the account event workspace, as a list next to the map: beside it where the screen is wide enough, and below it otherwise. Each challenge shows its title and the rooms that name it, and a Details button opens its instructions and resource links. Staff, event admins, and platform admins read them in every event. An approved participant reads them from the moment the application is approved, also before the event and without effective attendance.
+- Published challenges appear on the Agenda tab of the account event workspace, as a list next to the map: beside it where the screen is wide enough, and below it otherwise. Each challenge shows its title, the staff members assigned to it under "Staff", and the rooms that name it, and a Details button opens its instructions and resource links. Staff, event admins, and platform admins read them in every event. An approved participant reads them from the moment the application is approved, also before the event and without effective attendance.
 - A person who can read the published challenges but not the program's sessions sees the challenges next to the public agenda blocks, without a map and without rooms.
 - The Agenda tab exists for a person who can read at least one published challenge, also when the event has no agenda. Nobody else receives challenge content. Drafts appear only in the event builder.
 - Challenges are a list to read. The platform records nothing when a participant opens, picks, or completes a challenge.
@@ -397,12 +397,16 @@ Rules:
 - A user with role `event_admin` can be in or out of the automatic judge distribution pool and can be in or out of staff designation.
 - Only a user with role `event_admin` can combine admin access with judging participation and/or staff designation.
 - A staff track is display-only. It tells participants whether a staff member supports the whole event or a specific track, and it does not change authorization.
-- A staff assignment without a staff track is shown as whole-event staff.
+- `EventRoleAssignment` can include one staff challenge instead of a staff track: a challenge or an open track from the challenge list of the event. A staff member has a staff track or a staff challenge, never both, and several staff members can share one challenge. Choosing one clears the other.
+- A staff challenge is display-only, like a staff track. It tells participants which challenge or open track a staff member supports, and it does not change authorization.
+- Event admins and platform admins choose the staff track or the staff challenge of a staff member on the Staff tab of the account event workspace, in one select. They can choose a draft challenge.
+- Participants see a staff member with a staff challenge only while that challenge is published and they may read the challenges of the event. In every other case, also after the challenge was removed from the event, the staff member is shown as whole-event staff.
+- A staff assignment without a staff track and without a staff challenge is shown as whole-event staff.
 - Account workspace participant roster and certificate-management surfaces omit users who currently have staff designation for that event. The application record remains unchanged, so removing staff designation makes the user appear through participant surfaces again.
 - The account-scoped event workspace publishes a judge roster and a staff roster derived from `EventRoleAssignment`.
 - The published judge roster includes explicit `judge` assignments plus `event_admin` assignments with `is_in_judge_pool = true`.
 - The published staff roster includes explicit `staff` assignments plus `event_admin` assignments with `is_staff = true`.
-- The published staff roster includes each staff member's whole-event or track-specific display context.
+- The published staff roster includes each staff member's whole-event, track-specific, or challenge-specific display context. The Staff tab lists the whole-event staff first, then the staff of each track, then the staff of each challenge, and then the staff of each open track, each group in the saved order.
 - Published judge and staff rosters are visible to any platform user who can access that event in the account-scoped workspace.
 - Published roster cards expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
 - Any actor performing a blind judge review sees the blind judging view rather than the admin view.

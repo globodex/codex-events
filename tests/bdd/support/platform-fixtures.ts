@@ -77,6 +77,7 @@ const fixtureChallenges = [
   },
   { id: 'unfinished-idea', title: 'Unfinished idea', instructions: 'Still being written.', resources: [], isPublished: false }
 ]
+const fixtureStaffChallengeEventId = 'event_e2e_staff_challenge_fixture'
 const fixtureParticipantPhotosEventId = 'event_e2e_participant_photos_fixture'
 const fixtureParticipantPhotosBuilderEventId = 'event_e2e_participant_photos_builder_fixture'
 const fixtureParticipantTeamCreateEventId = 'event_e2e_participant_team_create_fixture'
@@ -1447,6 +1448,24 @@ function buildFixtureSql(personas: StablePersona[]) {
       id, event_id, user_id, status, submitted_at, checked_in_at, check_in_source, created_at, updated_at
     ) values
       ('application_participant_photos_fixture_regular_user', ${sqlLiteral(fixtureParticipantPhotosEventId)}, ${sqlLiteral(regularUserId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, 'staff', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
+    // A Build event for the staff assignment scenario, with the fixture challenges. The event
+    // admin persona manages it, the judge persona is its staff, and the regular user is a
+    // confirmed participant. The old created_at keeps it at the end of the public event list.
+    `insert into events (
+      id, event_type, name, slug, description, city, country, address,
+      registration_opens_at, registration_closes_at, state, max_team_members,
+      agenda_items_json, challenges_json, created_by_user_id, created_at, updated_at
+    ) values
+      (${sqlLiteral(fixtureStaffChallengeEventId)}, 'build', 'Staff Challenge Fixture Build', 'staff-challenge-fixture-event', 'Build fixture for assigning staff to a challenge.', 'Vienna', 'Austria', 'Fixture Venue', '2020-01-01T00:00:00.000Z', '2030-01-01T00:00:00.000Z', 'registration_open', 1, '[]', ${sqlLiteral(JSON.stringify(fixtureChallenges))}, ${sqlLiteral(eventAdminId)}, '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z')`,
+    `insert into event_role_assignments (
+      id, event_id, user_id, role, is_in_judge_pool, is_staff, created_at
+    ) values
+      ('role_event_admin_staff_challenge_fixture', ${sqlLiteral(fixtureStaffChallengeEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, 0, ${sqlLiteral(fixtureTimestamp)}),
+      ('role_staff_staff_challenge_fixture', ${sqlLiteral(fixtureStaffChallengeEventId)}, ${sqlLiteral(judgeId)}, 'staff', 0, 1, ${sqlLiteral(fixtureTimestamp)})`,
+    `insert into user_applications (
+      id, event_id, user_id, status, submitted_at, created_at, updated_at
+    ) values
+      ('application_staff_challenge_fixture_regular_user', ${sqlLiteral(fixtureStaffChallengeEventId)}, ${sqlLiteral(regularUserId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into event_terms_documents (
       id, event_id, document_type, version, title, content, published_at, created_at
     ) values

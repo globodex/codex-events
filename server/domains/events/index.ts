@@ -53,6 +53,7 @@ import {
   customQuestionsSchema
 } from '#shared/domains/events/custom-questions'
 import { eventChallengesSchema, parseEventChallengesJson } from '#shared/domains/events/challenges'
+import type { EventChallenge } from '#shared/domains/events/challenges'
 
 const isoTimestampSchema = z.string().refine(
   value => !Number.isNaN(Date.parse(value)),
@@ -637,15 +638,17 @@ export const roleAssignmentUpsertBodySchema = z.object({
   role: roleEnumSchema,
   isInJudgePool: z.coerce.boolean().default(false),
   isStaff: z.coerce.boolean().default(false),
-  staffTrackId: z.string().trim().min(1).nullable().optional().default(null)
+  staffTrackId: z.string().trim().min(1).nullable().optional().default(null),
+  staffChallengeId: z.string().trim().min(1).nullable().optional().default(null)
 })
 
 export const roleAssignmentPatchBodySchema = z.object({
   isInJudgePool: z.coerce.boolean().optional(),
   isStaff: z.coerce.boolean().optional(),
-  staffTrackId: z.string().trim().min(1).nullable().optional()
+  staffTrackId: z.string().trim().min(1).nullable().optional(),
+  staffChallengeId: z.string().trim().min(1).nullable().optional()
 }).refine(
-  input => input.isInJudgePool !== undefined || input.isStaff !== undefined || input.staffTrackId !== undefined,
+  input => Object.values(input).some(value => value !== undefined),
   'At least one role capability field must be provided.'
 )
 
@@ -1314,12 +1317,12 @@ export function assertRoleCapabilityInvariant(
   }
 }
 
-export async function resolveRoleAssignmentStaffTrackId(
+async function resolveRoleAssignmentStaffTrackId(
   database: AppDatabase,
   event: Pick<EventRecord, 'id' | 'eventType'>,
   input: {
     isStaff: boolean
-    staffTrackId: string | null | undefined
+    staffTrackId?: string | null
   }
 ) {
   const staffTrackId = input.staffTrackId?.trim() || null
@@ -1367,6 +1370,106 @@ export async function resolveRoleAssignmentStaffTrackId(
   })
 
   return staffTrackId
+}
+
+/** What participants read next to a staff member: a track, a challenge, or neither. */
+export interface StaffScope {
+  staffTrackId: string | null
+  /** The id of a challenge or open track in the challenge list of the event. */
+  staffChallengeId: string | null
+}
+
+/**
+ * The track and the challenge that an update of a role assignment asks for.
+ *
+ * A value that the update leaves out keeps what is stored, with one exception: a staff member
+ * has a track or a challenge, never both. So choosing a track drops the stored challenge, and
+ * choosing a challenge drops the stored track.
+ */
+export function getRequestedStaffScope(input: {
+  /** Whether the person has staff visibility after the update. */
+  isStaff: boolean
+  stored: StaffScope
+  requested: Partial<StaffScope>
+}): StaffScope {
+  const { requested } = input
+  // Without staff visibility nothing is kept. A value that the update names is still checked.
+  const kept = input.isStaff ? input.stored : { staffTrackId: null, staffChallengeId: null }
+
+  return {
+    staffTrackId: requested.staffTrackId !== undefined
+      ? requested.staffTrackId
+      : (requested.staffChallengeId ? null : kept.staffTrackId),
+    staffChallengeId: requested.staffChallengeId !== undefined
+      ? requested.staffChallengeId
+      : (requested.staffTrackId ? null : kept.staffChallengeId)
+  }
+}
+
+function resolveRoleAssignmentStaffChallengeId(
+  event: Pick<EventRecord, 'id' | 'challengesJson'>,
+  input: {
+    isStaff: boolean
+    staffChallengeId?: string | null
+  }
+) {
+  const staffChallengeId = input.staffChallengeId?.trim() || null
+
+  if (!staffChallengeId) {
+    return null
+  }
+
+  assertGuard(input.isStaff, {
+    statusCode: 400,
+    code: 'staff_challenge_scope_invalid',
+    message: 'A staff challenge can only be set when staff visibility is enabled.',
+    details: {
+      eventId: event.id,
+      staffChallengeId
+    }
+  })
+
+  // A draft counts: an organizer can assign the staff before publishing the challenges.
+  const isChallengeOfEvent = parseEventChallengesJson(event.challengesJson)
+    .some(challenge => challenge.id === staffChallengeId)
+
+  assertGuard(isChallengeOfEvent, {
+    statusCode: 400,
+    code: 'staff_challenge_not_found',
+    message: 'The staff challenge must be a challenge or open track of this event.',
+    details: {
+      eventId: event.id,
+      staffChallengeId
+    }
+  })
+
+  return staffChallengeId
+}
+
+/**
+ * Checks the track and the challenge of a role assignment before they are stored.
+ * This is the one place that knows which values a role assignment may hold.
+ */
+export async function resolveRoleAssignmentStaffScope(
+  database: AppDatabase,
+  event: Pick<EventRecord, 'id' | 'eventType' | 'challengesJson'>,
+  input: { isStaff: boolean } & Partial<StaffScope>
+): Promise<StaffScope> {
+  const staffTrackId = await resolveRoleAssignmentStaffTrackId(database, event, input)
+  const staffChallengeId = resolveRoleAssignmentStaffChallengeId(event, input)
+
+  assertGuard(!staffTrackId || !staffChallengeId, {
+    statusCode: 400,
+    code: 'staff_scope_invalid',
+    message: 'A staff member can have a track or a challenge, not both.',
+    details: {
+      eventId: event.id,
+      staffTrackId,
+      staffChallengeId
+    }
+  })
+
+  return { staffTrackId, staffChallengeId }
 }
 
 export function assertEventSchedule(input: {
@@ -2064,10 +2167,31 @@ export async function listEventRoleCandidates(
   }
 }
 
+/**
+ * The challenge or open track that a staff member supports, as the staff list shows it.
+ * Null when the id is not in the given list, for example for a draft or a removed challenge.
+ */
+function findStaffChallenge(challenges: EventChallenge[], staffChallengeId: string | null) {
+  const displayOrder = challenges.findIndex(challenge => challenge.id === staffChallengeId)
+  const challenge = challenges[displayOrder]
+
+  return challenge
+    ? { id: challenge.id, title: challenge.title, isOpenTrack: challenge.isOpenTrack ?? false, displayOrder }
+    : null
+}
+
+/**
+ * The judges or the staff of an event as participants see them.
+ *
+ * `readableChallenges` are the challenges that the reader may read (`listReadableEventChallenges`).
+ * A staff member is shown with a challenge only when it is in this list, so a person who may not
+ * read the challenges never gets a challenge title, and nobody gets the title of a draft.
+ */
 export async function listPublishedEventRosterMembers(
   database: AppDatabase,
   eventId: string,
-  role: PublishedEventRosterRole
+  role: PublishedEventRosterRole,
+  readableChallenges: EventChallenge[] = []
 ) {
   const publishedJudgeWhere = or(
     eq(eventRoleAssignments.role, 'judge'),
@@ -2094,6 +2218,7 @@ export async function listPublishedEventRosterMembers(
         isInJudgePool: eventRoleAssignments.isInJudgePool,
         isStaff: eventRoleAssignments.isStaff,
         staffTrackId: eventRoleAssignments.staffTrackId,
+        staffChallengeId: eventRoleAssignments.staffChallengeId,
         createdAt: eventRoleAssignments.createdAt
       },
       user: publishedEventRosterUserProjection
@@ -2132,7 +2257,12 @@ export async function listPublishedEventRosterMembers(
   return assignmentUserRows
     .map(row => serializePublishedEventRosterMember(
       row.user as UserRecord,
-      role === 'staff' ? staffTracksById.get(row.assignment.staffTrackId ?? '') ?? null : undefined
+      role === 'staff'
+        ? {
+            staffTrack: staffTracksById.get(row.assignment.staffTrackId ?? '') ?? null,
+            staffChallenge: findStaffChallenge(readableChallenges, row.assignment.staffChallengeId)
+          }
+        : undefined
     ))
     .sort(comparePublishedEventRosterMembers)
 }
@@ -2510,6 +2640,7 @@ export function serializeEventRoleAssignment(
     isInJudgePool: assignment.isInJudgePool,
     isStaff: assignment.isStaff,
     staffTrackId: assignment.staffTrackId,
+    staffChallengeId: assignment.staffChallengeId,
     createdAt: assignment.createdAt,
     ...(user
       ? {
@@ -2531,7 +2662,11 @@ export function serializeEventRoleUserSummary(user: typeof users.$inferSelect) {
 
 export function serializePublishedEventRosterMember(
   user: PublishedEventRosterUser,
-  staffTrack?: EventTrackRecord | null
+  /** What a staff member supports. Left out for a judge. */
+  staffScope?: {
+    staffTrack: EventTrackRecord | null
+    staffChallenge: ReturnType<typeof findStaffChallenge>
+  }
 ) {
   return {
     id: user.id,
@@ -2543,9 +2678,10 @@ export function serializePublishedEventRosterMember(
     githubProfileUrl: user.githubProfileUrl,
     profileIconUpdatedAt: user.profileIconUpdatedAt,
     profileIconRevision: user.profileIconObjectKey ? user.profileIconRevision : null,
-    ...(staffTrack !== undefined
+    ...(staffScope
       ? {
-          staffTrack: staffTrack ? serializePublishedStaffTrack(staffTrack) : null
+          staffTrack: staffScope.staffTrack ? serializePublishedStaffTrack(staffScope.staffTrack) : null,
+          staffChallenge: staffScope.staffChallenge
         }
       : {})
   }

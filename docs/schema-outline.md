@@ -353,6 +353,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `is_in_judge_pool`
 - `is_staff`
 - `staff_track_id`
+- `staff_challenge_id`
 - `created_at`
 
 ### Enums
@@ -369,6 +370,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `role = staff` requires `is_staff = true and is_in_judge_pool = false`
 - `staff_track_id` must be null unless `is_staff = true`
 - `staff_track_id` references an `EventTrack` belonging to the same event
+- `staff_challenge_id` must be null unless `is_staff = true` and `staff_track_id` is null
 
 ### Notes
 
@@ -379,9 +381,10 @@ It describes the intended persistent model at the level of entities, key fields,
 - `is_in_judge_pool` controls automatic blind-review distribution and pitch-panel membership.
 - `is_staff` records staff designation for the assignment.
 - `staff_track_id` records participant-facing staff display context only.
-- A null `staff_track_id` means the staff member is shown as whole-event staff.
+- `staff_challenge_id` records participant-facing staff display context only: the `id` of a challenge or open track in `Event.challenges_json` of the same event. The challenges are stored as JSON, so no foreign key guards the value. The server accepts only an `id` from the challenge list when the value is written, and it resolves the value against the published challenges when it reads.
+- A null `staff_track_id` together with a null `staff_challenge_id` means the staff member is shown as whole-event staff. A `staff_challenge_id` that is not a published challenge of the event is shown the same way.
 - `event_admin` can set `is_in_judge_pool` and `is_staff` independently.
-- `event_admin` assignments with `is_staff = true` can also set `staff_track_id`.
+- `event_admin` assignments with `is_staff = true` can also set `staff_track_id` or `staff_challenge_id`.
 - Non-admin `staff` and `judge` assignments remain distinct.
 - `judge` assignments and `is_in_judge_pool = true` are valid only for Hackathon events.
 - `staff_track_id` is valid only for Hackathon and Build events with a matching track.

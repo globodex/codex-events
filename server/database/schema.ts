@@ -509,6 +509,10 @@ export const eventRoleAssignments = sqliteTable(
     isInJudgePool: integer('is_in_judge_pool', { mode: 'boolean' }).notNull().default(false),
     isStaff: integer('is_staff', { mode: 'boolean' }).notNull().default(false),
     staffTrackId: text('staff_track_id').references(() => eventTracks.id, { onDelete: 'set null' }),
+    // The id of an entry in `events.challenges_json`: the challenge or open track that the staff
+    // member supports. The challenges are stored as JSON, so no foreign key guards this id. The
+    // server resolves it against the challenge list when it reads (`findStaffChallenge`).
+    staffChallengeId: text('staff_challenge_id'),
     createdAt: createdAtColumn()
   },
   table => [
@@ -530,6 +534,11 @@ export const eventRoleAssignments = sqliteTable(
     check(
       'event_role_assignments_staff_track_check',
       sql`(${table.staffTrackId} is null) or (${table.isStaff} = 1)`
+    ),
+    // A staff member is shown with a track or with a challenge, never with both.
+    check(
+      'event_role_assignments_staff_challenge_check',
+      sql`(${table.staffChallengeId} is null) or ((${table.isStaff} = 1) and (${table.staffTrackId} is null))`
     )
   ]
 )

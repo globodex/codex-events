@@ -20,8 +20,45 @@ export interface EventRoleAssignment {
   isInJudgePool: boolean
   isStaff: boolean
   staffTrackId: string | null
+  /** The challenge or open track that the staff member supports. Never set together with a track. */
+  staffChallengeId: string | null
   createdAt: string
   user?: EventRoleUserSummary
+}
+
+/** What participants read next to a staff member: a track, a challenge, or neither. */
+export type EventStaffScope = Pick<EventRoleAssignment, 'staffTrackId' | 'staffChallengeId'>
+
+/** A staff member who supports the whole event. */
+export const wholeEventStaffScope: EventStaffScope = { staffTrackId: null, staffChallengeId: null }
+
+/**
+ * The track or the challenge that a role assignment keeps when it is saved again.
+ * A person without staff visibility keeps neither.
+ */
+export function keepStaffScope(assignment: EventRoleAssignment | null | undefined, isStaff: boolean): EventStaffScope {
+  return isStaff && assignment
+    ? { staffTrackId: assignment.staffTrackId, staffChallengeId: assignment.staffChallengeId }
+    : wholeEventStaffScope
+}
+
+/** The value of the staff select for a scope: empty for the whole event. */
+export function formatStaffScopeValue(scope: EventStaffScope) {
+  if (scope.staffChallengeId) {
+    return `challenge:${scope.staffChallengeId}`
+  }
+
+  return scope.staffTrackId ? `track:${scope.staffTrackId}` : ''
+}
+
+/** The scope behind a value of the staff select (`formatStaffScopeValue`). */
+export function parseStaffScopeValue(value: string): EventStaffScope {
+  const id = value.slice(value.indexOf(':') + 1)
+
+  return {
+    staffTrackId: value.startsWith('track:') ? id : null,
+    staffChallengeId: value.startsWith('challenge:') ? id : null
+  }
 }
 
 export function isAdminActor(actor: SessionActor | null | undefined) {

@@ -11,7 +11,7 @@ import {
   assertRoleCapabilityInvariant,
   getActiveUserOrThrow,
   requireEventAdmin,
-  resolveRoleAssignmentStaffTrackId,
+  resolveRoleAssignmentStaffScope,
   roleAssignmentParamsSchema,
   roleAssignmentUpsertBodySchema,
   serializeEventRoleAssignment
@@ -45,10 +45,7 @@ export const applicationOperation = defineStructuredRouteOperation({
     assertCompetitionEvent(event)
   }
 
-  const staffTrackId = await resolveRoleAssignmentStaffTrackId(database, event, {
-    isStaff: body.isStaff,
-    staffTrackId: body.staffTrackId
-  })
+  const staffScope = await resolveRoleAssignmentStaffScope(database, event, body)
 
   const existingAssignment = await database.query.eventRoleAssignments.findFirst({
     where: and(
@@ -66,7 +63,7 @@ export const applicationOperation = defineStructuredRouteOperation({
         role: body.role,
         isInJudgePool: body.isInJudgePool,
         isStaff: body.isStaff,
-        staffTrackId
+        ...staffScope
       })
       .where(eq(eventRoleAssignments.id, existingAssignment.id))
   } else {
@@ -77,7 +74,7 @@ export const applicationOperation = defineStructuredRouteOperation({
       role: body.role,
       isInJudgePool: body.isInJudgePool,
       isStaff: body.isStaff,
-      staffTrackId,
+      ...staffScope,
       createdAt
     })
   }
@@ -100,7 +97,7 @@ export const applicationOperation = defineStructuredRouteOperation({
       role: body.role,
       isInJudgePool: body.isInJudgePool,
       isStaff: body.isStaff,
-      staffTrackId
+      ...staffScope
     }
   })
 

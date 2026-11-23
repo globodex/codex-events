@@ -27,6 +27,7 @@ This document defines the canonical permissions for the Codex event platform.
 - The automatic judge distribution pool is controlled by `EventRoleAssignment.is_in_judge_pool` for Hackathon events.
 - Staff designation is controlled by `EventRoleAssignment.is_staff`.
 - Staff track display is controlled by `EventRoleAssignment.staff_track_id` and does not limit staff permissions.
+- Staff challenge display is controlled by `EventRoleAssignment.staff_challenge_id` and does not limit staff permissions.
 - Non-admin `judge` and `staff` assignments are mutually exclusive.
 - A `judge` role must be in the automatic judge distribution pool and must not be marked as staff.
 - A `staff` role must be marked as staff and must not be in the automatic judge distribution pool.
@@ -89,6 +90,7 @@ This document defines the canonical permissions for the Codex event platform.
 | Update explicit judging participation for an admin assignment | Yes, Hackathon only | Yes, Hackathon only |
 | Update explicit staff designation for an admin assignment | Yes | Yes |
 | Update participant-facing staff track display | Yes | Yes |
+| Update participant-facing staff challenge display | Yes | Yes |
 
 ## Published Roster Permissions
 
@@ -326,6 +328,7 @@ required-document changes take effect on the next MCP request.
 - Workspace users can view the published judge and staff rosters for events they can access in `/account/events/:slug`.
 - Published judge and staff rosters expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
 - Published staff rosters also show whether each staff member supports the whole event or a specific event track. Track-specific staff roster entries include the track ID, name, short description, and display order so participant account pages can highlight staff connected to the participant's selected track.
+- Published staff rosters and the Agenda tab name the challenge or open track of a staff member only for a person who can read the published challenges of the event. Every other person who can view the published staff roster sees that staff member as whole-event staff, and nobody sees a draft challenge through the staff roster.
 - Public event detail pages show track names and short descriptions by default. Links with `tracks=full` also show participant-facing full guidelines and resource links. Account-scoped participant details show full guidelines and resources only for the participant's selected track.
 - Account-scoped event details show the street address, Discord server URL, and slides URL only to approved participants, judges, staff, event admins, and platform admins.
 - The Overview and the direct-link shell include full guidelines, resources, and staff instructions for every track an event or platform admin manages or a staff member supports. Staff with an active registration also receive participant details for their own selected track and can change that selection until event completion.

@@ -3,7 +3,8 @@ import type { ApiListResponse } from '~/lib/api'
 import type { AccountEventRostersPage } from '#shared/domains/events/account-event-rosters-page'
 import type {
   EventRoleAssignment,
-  EventRoleUserSummary
+  EventRoleUserSummary,
+  EventStaffScope
 } from '~/domains/events/access'
 import type {
   EventRoleRosterBadge,
@@ -28,6 +29,12 @@ import {
   getPublishedEventRosterLinks
 } from '~/domains/events/published-roster'
 import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
+import {
+  formatStaffScopeValue,
+  keepStaffScope,
+  parseStaffScopeValue,
+  wholeEventStaffScope
+} from '~/domains/events/access'
 import { useApiClient } from '~/composables/useApiClient'
 
 const props = defineProps<{
@@ -116,8 +123,31 @@ const sortedTracks = computed(() =>
     left.displayOrder - right.displayOrder || left.name.localeCompare(right.name) || left.id.localeCompare(right.id)
   )
 )
-const canSetStaffTrackScope = computed(() =>
-  props.role === 'staff' && canManageRoster.value && sortedTracks.value.length > 0
+/** The challenges or the open tracks of the event as options of the staff select, in the saved order. */
+function listStaffChallengeOptions(isOpenTrack: boolean) {
+  return (props.page?.staffChallengeOptions ?? [])
+    .filter(option => option.isOpenTrack === isOpenTrack)
+    .map(option => ({
+      value: formatStaffScopeValue({ staffTrackId: null, staffChallengeId: option.id }),
+      // Participants do not see a draft. Until it is published, they see the person for the whole event.
+      label: option.isPublished ? option.title : `${option.title} (draft)`
+    }))
+}
+
+// What an event admin can choose for a staff member besides the whole event, grouped by kind.
+const staffScopeGroups = computed(() => [
+  {
+    label: 'Tracks',
+    options: sortedTracks.value.map(track => ({
+      value: formatStaffScopeValue({ staffTrackId: track.id, staffChallengeId: null }),
+      label: track.name
+    }))
+  },
+  { label: 'Challenges', options: listStaffChallengeOptions(false) },
+  { label: 'Open tracks', options: listStaffChallengeOptions(true) }
+].filter(group => group.options.length > 0))
+const canSetStaffScope = computed(() =>
+  props.role === 'staff' && canManageRoster.value && staffScopeGroups.value.length > 0
 )
 const staffRosterSections = computed(() => props.role === 'staff'
   ? buildPublishedStaffRosterSections({
@@ -237,7 +267,7 @@ async function putRoleAssignment(
   role: EventRoleAssignment['role'],
   isInJudgePool: boolean,
   isStaff: boolean,
-  staffTrackId: string | null,
+  staffScope: EventStaffScope,
   successTitle: string,
   successDescription: string
 ) {
@@ -250,7 +280,7 @@ async function putRoleAssignment(
           role,
           isInJudgePool,
           isStaff,
-          staffTrackId
+          ...staffScope
         }
       })
     },
@@ -261,10 +291,9 @@ async function putRoleAssignment(
 
 async function patchRoleCapabilities(
   userId: string,
-  updates: {
+  updates: Partial<EventStaffScope> & {
     isInJudgePool?: boolean
     isStaff?: boolean
-    staffTrackId?: string | null
   },
   successTitle: string,
   successDescription: string
@@ -307,44 +336,50 @@ async function normalizeAdminCapableAssignment(
 ) {
   const assignment = findRoleAssignment(userId)
   const nextFlags = deriveAdminCapableRoleFlags(assignment, overrides)
-  const staffTrackId = nextFlags.isStaff ? assignment?.staffTrackId ?? null : null
 
   await putRoleAssignment(
     userId,
     'event_admin',
     nextFlags.isInJudgePool,
     nextFlags.isStaff,
-    staffTrackId,
+    keepStaffScope(assignment, nextFlags.isStaff),
     successTitle,
     successDescription
   )
 }
 
-async function updateMemberStaffTrackScope(userId: string, value: unknown) {
+/** The value of the staff select for a staff member. */
+function getMemberStaffScopeValue(userId: string) {
   const assignment = getAssignedRosterAssignment(userId)
+  const value = assignment ? formatStaffScopeValue(assignment) : ''
+  const isOption = staffScopeGroups.value.some(group => group.options.some(option => option.value === value))
 
-  if (!assignment) {
+  // A challenge that was removed from the event is not an option anymore. Participants see the
+  // person for the whole event, so the select says the same.
+  return isOption ? value : ''
+}
+
+function describeStaffScope(staffScope: EventStaffScope) {
+  if (staffScope.staffChallengeId) {
+    return 'Participants will see this staff member with the selected challenge or open track.'
+  }
+
+  return staffScope.staffTrackId
+    ? 'Participants will see this staff member with the selected track.'
+    : 'Participants will see this staff member for the whole event.'
+}
+
+async function updateMemberStaffScope(userId: string, value: unknown) {
+  const assignment = getAssignedRosterAssignment(userId)
+  const scopeValue = typeof value === 'string' ? value : ''
+
+  if (!assignment || scopeValue === formatStaffScopeValue(assignment)) {
     return
   }
 
-  const staffTrackId = typeof value === 'string' && value.trim().length > 0
-    ? value.trim()
-    : null
+  const staffScope = parseStaffScopeValue(scopeValue)
 
-  if (staffTrackId === assignment.staffTrackId) {
-    return
-  }
-
-  await patchRoleCapabilities(
-    userId,
-    {
-      staffTrackId
-    },
-    'Staff display updated',
-    staffTrackId
-      ? 'Participants will see this staff member with the selected track.'
-      : 'Participants will see this staff member for the whole event.'
-  )
+  await patchRoleCapabilities(userId, staffScope, 'Staff display updated', describeStaffScope(staffScope))
 }
 
 function getCandidateActionLabel(row: EventRoleRosterRow) {
@@ -420,7 +455,7 @@ async function assignRosterAccess(userId: string) {
       'judge',
       true,
       false,
-      null,
+      wholeEventStaffScope,
       'Judge added',
       existingAssignment?.role === 'staff'
         ? 'Staff access was replaced with judge access.'
@@ -460,7 +495,7 @@ async function assignRosterAccess(userId: string) {
     'staff',
     false,
     true,
-    null,
+    wholeEventStaffScope,
     existingAssignment?.role === 'judge' ? 'Staff access granted' : 'Staff member added',
     existingAssignment?.role === 'judge'
       ? 'Judge access was replaced with staff access.'
@@ -701,28 +736,35 @@ async function removePublishedRosterMember(userId: string) {
 
               <div class="mt-auto space-y-3 pt-1">
                 <label
-                  v-if="canSetStaffTrackScope && getAssignedRosterAssignment(member.id)"
+                  v-if="canSetStaffScope && getAssignedRosterAssignment(member.id)"
                   class="block space-y-2 border-t border-black/8 pt-3 dark:border-white/[0.08]"
                 >
                   <span class="block text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                     Shown to participants
                   </span>
                   <AppSelect
-                    :model-value="getAssignedRosterAssignment(member.id)?.staffTrackId ?? ''"
+                    :model-value="getMemberStaffScopeValue(member.id)"
                     :disabled="isPendingAction(member.id)"
+                    :aria-label="`Shown to participants: ${member.fullName}`"
                     size="sm"
-                    @update:model-value="updateMemberStaffTrackScope(member.id, $event)"
+                    @update:model-value="updateMemberStaffScope(member.id, $event)"
                   >
                     <option value="">
                       Whole event
                     </option>
-                    <option
-                      v-for="track in sortedTracks"
-                      :key="track.id"
-                      :value="track.id"
+                    <optgroup
+                      v-for="group in staffScopeGroups"
+                      :key="group.label"
+                      :label="group.label"
                     >
-                      {{ track.name }}
-                    </option>
+                      <option
+                        v-for="option in group.options"
+                        :key="option.value"
+                        :value="option.value"
+                      >
+                        {{ option.label }}
+                      </option>
+                    </optgroup>
                   </AppSelect>
                 </label>
 

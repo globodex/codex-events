@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { useIntervalFn, useNow } from '@vueuse/core'
 
-import type { EventChallenge } from '#shared/domains/events/challenges'
-import type { ParticipantEventProgram, ProgramSession } from '#shared/domains/events/program'
+import type { AgendaChallenge, ParticipantEventProgram, ProgramSession } from '#shared/domains/events/program'
 
 import AccountEventProgramFloorPlan from '~/components/account/events/molecules/AccountEventProgramFloorPlan.vue'
 import AccountEventChallengeList from '~/components/account/events/organisms/AccountEventChallengeList.vue'
@@ -14,7 +13,7 @@ const props = defineProps<{
   /** The event's public agenda blocks. One of them holds the program. */
   agendaItems: PublicEventAgendaItem[]
   /** The published challenges that this person may read. A room of a floor plan names its challenge. */
-  challenges: EventChallenge[]
+  challenges: AgendaChallenge[]
 }>()
 
 // The public agenda blocks before and after the program's block. The sessions cover the block itself.

@@ -2,6 +2,7 @@ import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/
 import { accountEventAgendaPageSchema, canViewEventProgram } from '#shared/domains/events/program'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
 import { getAccountEventPageAccess } from './account-event-page-context'
+import { listPublishedEventRosterMembers } from '#server/domains/events'
 import { listReadableEventChallenges } from './challenges'
 import { loadParticipantEventProgram, loadPublicProgramSessions } from './program'
 
@@ -19,11 +20,22 @@ export const accountEventProgramPageRoute = defineAccountEventPageRoute({
     const application = isEventAdmin ? null : (await getAccountEventPageAccess(context)).application
     const approved = application?.status === 'approved'
 
-    const challenges = listReadableEventChallenges({
+    const readableChallenges = listReadableEventChallenges({
       event: context.event,
       authorization: context.authorization,
       application
     })
+    // Each challenge names the staff members who support it. An event without a readable
+    // challenge has nobody to name, so it does not read the staff.
+    const staff = readableChallenges.length > 0
+      ? await listPublishedEventRosterMembers(context.database, context.event.id, 'staff', readableChallenges)
+      : []
+    const challenges = readableChallenges.map(challenge => ({
+      ...challenge,
+      staffNames: staff
+        .filter(member => member.staffChallenge?.id === challenge.id)
+        .map(member => member.fullName)
+    }))
 
     if (!canViewEventProgram(isEventAdmin, approved)) {
       return {

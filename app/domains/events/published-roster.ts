@@ -10,6 +10,15 @@ export interface PublishedEventStaffTrack {
   displayOrder: number
 }
 
+/** The published challenge or open track that a staff member supports. */
+export interface PublishedEventStaffChallenge {
+  id: string
+  title: string
+  isOpenTrack: boolean
+  /** The position of the challenge among the challenges that the reader may read. */
+  displayOrder: number
+}
+
 export interface PublishedEventRosterMember {
   id: string
   fullName: string
@@ -20,6 +29,7 @@ export interface PublishedEventRosterMember {
   githubProfileUrl: string | null
   profileIconRevision: number | null
   staffTrack?: PublishedEventStaffTrack | null
+  staffChallenge?: PublishedEventStaffChallenge | null
 }
 
 export interface PublishedEventRosterLink {
@@ -101,6 +111,11 @@ export function buildPublishedStaffRosterSections(input: {
   }
 
   for (const member of input.members) {
+    // A staff member with a challenge is listed under the challenge, below the tracks.
+    if (member.staffChallenge) {
+      continue
+    }
+
     const track = member.staffTrack
 
     if (!track) {
@@ -150,7 +165,27 @@ export function buildPublishedStaffRosterSections(input: {
     sections.push(createStaffTrackSection(track, trackMembers, selectedTrackId))
   }
 
-  return sections
+  return [...sections, ...buildStaffChallengeSections(input.members)]
+}
+
+/**
+ * One section for every challenge and open track that has staff: the challenges first, then
+ * the open tracks, each in the saved order. The Agenda tab lists them in the same order.
+ */
+function buildStaffChallengeSections(members: PublishedEventRosterMember[]): PublishedStaffRosterSection[] {
+  const challengesById = new Map(members.flatMap(member =>
+    member.staffChallenge ? [[member.staffChallenge.id, member.staffChallenge] as const] : []
+  ))
+
+  return [...challengesById.values()]
+    .sort((left, right) => Number(left.isOpenTrack) - Number(right.isOpenTrack) || left.displayOrder - right.displayOrder)
+    .map(challenge => ({
+      id: `challenge:${challenge.id}`,
+      title: challenge.title,
+      description: null,
+      members: members.filter(member => member.staffChallenge?.id === challenge.id),
+      isSelectedTrack: false
+    }))
 }
 
 export function formatPublishedStaffRosterSectionCount(count: number) {
