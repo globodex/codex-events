@@ -40,7 +40,7 @@ const createEventWebMcpTool = computed<WebMcpTool | null>(() => {
 
       return {
         event,
-        url: new URL(`/account/events/${event.slug}?tab=settings`, window.location.origin).href
+        url: new URL(`/account/events/${event.slug}`, window.location.origin).href
       }
     }
   }
@@ -55,13 +55,13 @@ async function createEvent() {
   isSubmitting.value = true
 
   try {
-    const event = await createDraft({ ...builder.buildCreateBody(), creationFlow: 'builder' })
+    const event = await createDraft(builder.buildCreateBody())
 
     builder.markSubmitted()
     toast.add({ title: 'Event created', color: 'success' })
 
     await session.refresh()
-    await navigateTo(`/account/events/${event.slug}?tab=settings`)
+    await navigateTo(`/account/events/${event.slug}`)
   } catch (error) {
     submitError.value = normalizeApiError(error).message
   } finally {

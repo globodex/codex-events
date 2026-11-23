@@ -191,10 +191,10 @@ describe('TASK-450 event challenges', () => {
   }
 
   /** Requests the event page of `event_1` as the given user. */
-  function requestEventPage(harness: Harness, userId: string, query = '') {
+  function requestEventPage(harness: Harness, userId: string) {
     stubAuth0Session(sessionFor(userId))
 
-    return harness.request(`/api/account/events/build-day/entry${query}`)
+    return harness.request('/api/account/events/build-day/entry')
   }
 
   /** Requests the Agenda page of `event_1` as the given user. The challenges travel with it. */
@@ -462,13 +462,12 @@ describe('TASK-450 event challenges', () => {
     test('the Agenda page exposes only published challenges to the event admin, and the entry page none', async () => {
       const harness = await createContext()
 
-      const entryResponse = await requestEventPage(harness, 'event_admin', '?includeAdminEventConfiguration=true')
+      const entryResponse = await requestEventPage(harness, 'event_admin')
       const entryBody = await entryResponse.json() as { data: { page: unknown } }
       const agendaResponse = await requestAgendaPage(harness, 'event_admin')
       const agendaBody = await agendaResponse.json() as { data: { page: unknown } }
 
       expect(entryResponse.status).toBe(200)
-      expect(entryBody.data.page).not.toHaveProperty('adminSettingsEvent')
       expect(entryBody.data.page).not.toHaveProperty('challenges')
       expect(accountEventAgendaPageSchema.parse(agendaBody.data.page).challenges).toEqual(publishedChallenges)
     })

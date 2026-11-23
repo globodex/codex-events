@@ -60,15 +60,9 @@ When('I restore my saved Luma email', async ({ page }) => {
 
 When('I open the simplified claiming settings with the saved {string} session', async ({ page }, personaKey: string) => {
   await signInAs(parsePersonaKey(personaKey), page)
-  await page.goto(`/account/events/${fixtureSlug}?tab=settings`)
-})
-
-When('I prepare simplified claiming on a new Meetup with the saved {string} session', async ({ page }, personaKey: string) => {
-  await signInAs(parsePersonaKey(personaKey), page)
-  await page.goto('/admin/events/new')
+  await page.goto(`/admin/events/builder/${fixtureSlug}`)
   await waitForNuxtHydration(page)
-  await page.getByLabel('Event type').selectOption('meetup')
-  await page.getByRole('checkbox', { name: 'Simplified attendee claiming' }).check()
+  await openBuilderExtra(page, 'credits')
 })
 
 Then('I should be redirected to the simplified claiming coupon', async ({ page }) => {
@@ -96,26 +90,16 @@ Then('I should see that redemption has closed', async ({ page }) => {
 
 Then('I should see the attendee claiming QR settings', async ({ page }) => {
   const redemptionUrl = new URL(`/events/${fixtureSlug}/redeem`, page.url()).toString()
-  const checkbox = page.getByRole('checkbox', { name: 'Simplified attendee claiming' })
-  const compoundControl = page.getByTestId('simplified-claiming-control')
-  const inlinePanel = compoundControl.getByTestId('simplified-claiming-settings-panel')
+  const inlinePanel = page.getByTestId('simplified-claiming-settings-panel')
 
-  await expect(checkbox).toBeChecked()
-  await expect(compoundControl).toBeVisible()
+  await expect(page.getByRole('radio', { name: /^Simplified claiming/ })).toBeChecked()
   await expect(inlinePanel).toBeVisible()
-  const [controlBox, panelBox] = await Promise.all([
-    compoundControl.boundingBox(),
-    inlinePanel.boundingBox()
-  ])
-  expect(controlBox).not.toBeNull()
-  expect(panelBox).not.toBeNull()
-  expect(Math.abs((controlBox?.x ?? 0) - (panelBox?.x ?? 0))).toBeLessThanOrEqual(1)
-  expect(Math.abs((controlBox?.width ?? 0) - (panelBox?.width ?? 0))).toBeLessThanOrEqual(2)
+  // The setup fits the screen of a phone.
   await page.setViewportSize({ width: 390, height: 844 })
-  const narrowControlBox = await compoundControl.boundingBox()
-  expect(narrowControlBox).not.toBeNull()
-  expect(narrowControlBox?.x ?? -1).toBeGreaterThanOrEqual(0)
-  expect((narrowControlBox?.x ?? 0) + (narrowControlBox?.width ?? 391)).toBeLessThanOrEqual(390)
+  const narrowPanelBox = await inlinePanel.boundingBox()
+  expect(narrowPanelBox).not.toBeNull()
+  expect(narrowPanelBox?.x ?? -1).toBeGreaterThanOrEqual(0)
+  expect((narrowPanelBox?.x ?? 0) + (narrowPanelBox?.width ?? 391)).toBeLessThanOrEqual(390)
   await expect(page.getByRole('heading', { name: 'Attendee claiming setup' })).toBeVisible()
   await expect(page.getByText('3 of 3 prepared', { exact: true })).toBeVisible()
   await expect(page.getByText(redemptionUrl, { exact: true })).toBeVisible()
@@ -134,21 +118,6 @@ Then('I should see the attendee claiming QR settings', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Add giveaway' })).toBeEnabled()
   await expect(page.getByRole('button', { name: 'Import attendees CSV' })).toBeEnabled()
   await expect(inlinePanel.getByText('Locked', { exact: true })).toHaveCount(0)
-  await expect(page.getByRole('tab', { name: 'Credits' })).toHaveCount(0)
-})
-
-Then('I should see the nested attendee claiming creation state', async ({ page }) => {
-  const checkbox = page.getByRole('checkbox', { name: 'Simplified attendee claiming' })
-  const compoundControl = page.getByTestId('simplified-claiming-control')
-  const saveNotice = page.getByTestId('simplified-claiming-save-notice')
-
-  await expect(checkbox).toBeChecked()
-  await expect(compoundControl).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Attendee claiming setup' })).toBeVisible()
-  await expect(saveNotice).toBeVisible()
-  await expect(saveNotice).toContainText('Create the event to continue')
-  await checkbox.uncheck()
-  await expect(saveNotice).toBeHidden()
 })
 
 Then('the {string} should see the simplified claiming participant checked in', async ({ page }, personaKey: string) => {
@@ -228,6 +197,8 @@ Then('I can edit and cancel the saved Luma connection without losing it', async 
   await expect(luma.getByText('Connected', { exact: true })).toBeVisible()
   await expect(luma.getByText('evt-bdd-simplified', { exact: true })).toBeVisible()
   await expect(luma.getByLabel('Luma API key', { exact: true })).toBeHidden()
+  // A saved connection shows the address that Luma sends its updates to.
+  await expect(luma.getByTestId('event-builder-luma-webhook')).toContainText(/\/api\/public\/events\/.+\/luma\/webhooks$/)
   await expect(luma.getByRole('button', { name: 'Import existing check-ins' })).toBeEnabled()
   await luma.getByRole('button', { name: 'Change connection' }).click()
   await expect(luma.getByLabel('Luma event ID', { exact: true })).toHaveValue('evt-bdd-simplified')

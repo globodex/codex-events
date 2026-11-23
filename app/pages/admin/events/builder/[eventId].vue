@@ -70,6 +70,14 @@ const sessionCount = computed(() => programRequest.data.value
   ? countProgramSessions(programRequest.data.value.program)
   : settingsPage.value?.builder.programSessionCount ?? 0)
 
+// A change that the builder saved can show on every tab of the event workspace and on the score
+// sheet of a judge. Those reads expire here. The builder keeps its own settings on screen and
+// reads them again.
+async function refreshAfterWrite(slug: string) {
+  clearReads([`account-event-page:${slug}`, `account-event-judge-assignment:${slug}`], settingsRequest.requestKey.value)
+  await settingsRequest.refresh()
+}
+
 function clearAgendaReads(slug: string, includeParent: boolean, keepKey?: string) {
   const family = includeParent ? `account-event-page:${slug}` : buildAccountEventPageCacheKey(slug, 'program')
   clearReads([family], keepKey)
@@ -160,8 +168,7 @@ async function saveEvent() {
     if (data.slug !== event.slug) {
       await navigateTo({ path: `/admin/events/builder/${data.slug}`, query: route.query, hash: route.hash }, { replace: true })
     } else {
-      clearAgendaReads(event.slug, true, settingsRequest.requestKey.value)
-      await settingsRequest.refresh()
+      await refreshAfterWrite(event.slug)
     }
   } catch (error) {
     submitError.value = normalizeApiError(error).message
@@ -202,7 +209,7 @@ async function uploadEventImage(slot: 'background' | 'banner', file: File) {
       body: formData
     })
 
-    await settingsRequest.refresh()
+    await refreshAfterWrite(event.slug)
     toast.add({
       title: slot === 'background' ? 'Background image updated' : 'Banner image updated',
       color: 'success'
@@ -231,7 +238,7 @@ async function removeEventImage(slot: 'background' | 'banner') {
       method: 'DELETE'
     })
 
-    await settingsRequest.refresh()
+    await refreshAfterWrite(event.slug)
     toast.add({
       title: slot === 'background' ? 'Background image removed' : 'Banner image removed',
       color: 'success'
@@ -287,7 +294,7 @@ async function saveTerms(documentType: TermsDocument['documentType'], content: s
       title: documentType === 'application_terms' ? 'Application terms updated' : 'Winner terms updated',
       color: 'success'
     })
-    await settingsRequest.refresh()
+    await refreshAfterWrite(event.slug)
   } catch (error) {
     submitError.value = normalizeApiError(error).message
   } finally {
@@ -327,8 +334,8 @@ useSeoMeta({
   <AppContainer class="max-w-none space-y-6 py-6 sm:py-8">
     <AdminWorkspaceHeader
       title="Rework your event"
-      :back-to="currentEvent ? `/account/events/${currentEvent.slug}?tab=settings` : undefined"
-      back-label="Event settings"
+      :back-to="currentEvent ? `/account/events/${currentEvent.slug}` : undefined"
+      back-label="Back to event"
     />
 
     <AppAlert
@@ -367,7 +374,7 @@ useSeoMeta({
       @upload-banner-image="file => uploadEventImage('banner', file)"
       @remove-banner-image="removeEventImage('banner')"
       @save-terms="saveTerms"
-      @updated="settingsRequest.refresh"
+      @updated="refreshAfterWrite(eventSlug)"
     >
       <template #rooms>
         <div ref="programPanel">

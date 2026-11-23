@@ -30,7 +30,6 @@ function buildAgendaEvent(overrides: Partial<EventRecord> = {}): EventRecord {
   return {
     id: 'event-1',
     eventType: 'meetup',
-    creationFlow: 'builder',
     name: 'Test Meetup',
     slug: 'test-meetup',
     description: 'A test meetup for hydration.',
@@ -232,7 +231,7 @@ describe('createBuilderStateFromEvent', () => {
     expect(items[0]?.details).toBe('Doors at 17:30, talk starts sharp.')
   })
 
-  test('keeps exact agenda times across gaps in the edit payload', () => {
+  test('keeps exact agenda times across a gap, an overlap and a block without an end in the edit payload', () => {
     const event = buildAgendaEvent({
       agendaItems: [
         {
@@ -252,6 +251,25 @@ describe('createBuilderStateFromEvent', () => {
           details: null,
           displayOrder: 1,
           builderBlockType: 'talk'
+        },
+        {
+          // Starts while "Late Talk" still runs.
+          id: 'a3',
+          startsAt: '2026-09-12T20:15:00.000Z',
+          endsAt: '2026-09-12T21:00:00.000Z',
+          title: 'Side Talk',
+          details: null,
+          displayOrder: 2,
+          builderBlockType: 'talk'
+        },
+        {
+          id: 'a4',
+          startsAt: '2026-09-12T21:30:00.000Z',
+          endsAt: null,
+          title: 'Open end',
+          details: null,
+          displayOrder: 3,
+          builderBlockType: 'networking'
         }
       ]
     })

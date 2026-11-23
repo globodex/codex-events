@@ -348,14 +348,41 @@ Then('the current terms response should expose the remembered current applicatio
   })
 })
 
-When('I edit the remembered event name and upload a banner from Settings', async ({ page }) => {
-  const { eventSlug } = getScenarioState(page)
+// A managed event is created without an agenda. The builder saves an event only when it has at
+// least one agenda block, so the event gets one here.
+async function addAgendaBlockToManagedEvent(eventId: string) {
+  const apiClient = await createAuthenticatedApiClient('platform_admin')
+  const startsAt = Date.now() + 3 * 86_400_000
+
+  try {
+    await expect(await apiClient.patch(`/api/events/${eventId}`, {
+      data: {
+        agendaItems: [{
+          id: 'bdd-opening',
+          startsAt: new Date(startsAt).toISOString(),
+          endsAt: new Date(startsAt + 3_600_000).toISOString(),
+          title: 'Opening',
+          details: null,
+          displayOrder: 0
+        }]
+      }
+    })).toBeOK()
+  } finally {
+    await apiClient.dispose()
+  }
+}
+
+When('I edit the remembered event name and upload a banner in the event builder', async ({ page }) => {
+  const { eventId, eventSlug } = getScenarioState(page)
+  await addAgendaBlockToManagedEvent(eventId!)
   await signInAs('platform_admin', page)
-  await page.goto(`/account/events/${eventSlug}?tab=settings`)
-  await page.getByRole('textbox', { name: 'Event name' }).fill('Updated event draft')
+  await page.goto(`/admin/events/builder/${eventSlug}`)
+  await page.getByTestId('event-builder-name').fill('Updated event draft')
+
+  const images = await openBuilderExtra(page, 'images')
   await Promise.all([
     page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/settings') && response.ok()),
-    page.getByLabel('Banner image file').setInputFiles({ name: 'banner.png', mimeType: 'image/png', buffer: pngFixtureBytes })
+    images.getByLabel('Banner image file').setInputFiles({ name: 'banner.png', mimeType: 'image/png', buffer: pngFixtureBytes })
   ])
 })
 
@@ -363,26 +390,32 @@ Then('the new banner and my unsaved event name should both be visible', async ({
   const banner = page.getByAltText('Event banner preview')
   await expect(banner).toBeVisible()
   await expect.poll(() => banner.evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
-  await expect(page.getByRole('textbox', { name: 'Event name' })).toHaveValue('Updated event draft')
+  await openBuilderLevel(page, 'event')
+  await expect(page.getByTestId('event-builder-name')).toHaveValue('Updated event draft')
 })
 
-When('I change the event slug and save the configuration', async ({ page }) => {
+When('I change the event slug and save the event', async ({ page }) => {
   const state = getScenarioState(page)
   state.eventSlug = `${state.eventSlug}-renamed`
-  await page.getByRole('textbox', { name: 'Slug', exact: true }).fill(state.eventSlug)
-  await page.getByRole('button', { name: 'Save Configuration' }).click()
+  await page.getByTestId('event-builder-slug').fill(state.eventSlug)
+  await page.getByTestId('event-builder-submit').click()
 })
 
-Then('the updated settings should appear at the new event URL', async ({ page }) => {
+Then('the builder should show the saved event at its new address', async ({ page }) => {
   const { eventSlug } = getScenarioState(page)
-  await expect(page).toHaveURL(url => url.pathname === `/account/events/${eventSlug}` && url.searchParams.get('tab') === 'settings')
-  await expect(page.getByRole('textbox', { name: 'Event name' })).toHaveValue('Updated event draft')
+  await expect(page).toHaveURL(url => url.pathname === `/admin/events/builder/${eventSlug}`)
+  await expect(page.getByTestId('event-builder-name')).toHaveValue('Updated event draft')
+  // The event workspace reads the saved event at the new address too.
+  await page.getByRole('link', { name: 'Back to event', exact: true }).click()
+  await expect(page).toHaveURL(url => url.pathname === `/account/events/${eventSlug}`)
+  await expect(page.getByRole('heading', { level: 1, name: 'Updated event draft' })).toBeVisible()
 })
 
 When('I save two judging criteria and the second one fails', async ({ page }) => {
   const state = getScenarioState(page)
   await signInAs('platform_admin', page)
-  await page.goto(`/account/events/${state.eventSlug}?tab=settings`)
+  await page.goto(`/admin/events/builder/${state.eventSlug}`)
+  await openBuilderExtra(page, 'criteria')
   const rows = page.locator('[data-criterion-row]')
   for (const name of ['Impact', 'Originality']) {
     await page.getByRole('button', { name: /^Add (first )?criterion$/ }).click()
@@ -431,6 +464,7 @@ Then('retrying the criteria save should create only the remaining draft and pres
     page.getByRole('button', { name: 'Save criteria' }).click()
   ])
   await page.reload()
+  await openBuilderExtra(page, 'criteria')
   await expect(rows).toHaveCount(2)
   await expect(rows.first()).toHaveAttribute('data-criterion-id', criterionId!)
   await expect(rows.first().getByLabel('Criterion name')).toHaveValue('Impact')

@@ -8,10 +8,6 @@ import type {
 import {
   accountOverviewOutcomeSummarySchema
 } from '#shared/domains/account/account-overview-page'
-import {
-  accountEventSettingsEventSchema,
-  type AccountEventSettingsEvent
-} from './account-event-settings-page'
 import { accountPrizeRedemptionPrizeSchema } from '#shared/domains/prize-redemptions/account-prize-redemptions-page'
 
 export const accountEventPrizesPagePath = '/api/account/events/:slug/prizes' as const
@@ -67,7 +63,6 @@ export interface AccountEventWinner extends AccountEventPublishedProject {
 
 export interface AccountEventPrizesPage {
   event: AccountEventPrizesEvent
-  adminSettingsEvent: AccountEventSettingsEvent | null
   prizes: AccountEventPrize[]
   winners: AccountEventWinner[]
   publishedProjects: AccountEventPublishedProject[]
@@ -133,7 +128,6 @@ export const accountEventPrizesPageSchema = z.object({
       'completed'
     ])
   }),
-  adminSettingsEvent: accountEventSettingsEventSchema.nullable(),
   prizes: z.array(prizeSchema),
   winners: z.array(winnerSchema),
   publishedProjects: z.array(publishedProjectSchema),

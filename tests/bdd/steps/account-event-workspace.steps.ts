@@ -52,7 +52,7 @@ type CancellationMeasurement = {
   capture: AccountEventTopologyCapture
   slug: string
   operationsPath: string
-  settingsPath: string
+  participantsPath: string
 }
 
 type Measurement = EventMeasurement | GlobalMeasurement | CancellationMeasurement
@@ -65,7 +65,6 @@ const tabLabels: Record<string, string> = {
   participants: 'Participants',
   submissions: 'Submissions',
   judging: 'Judging',
-  settings: 'Settings',
   workspace: 'Workspace',
   teams: 'Teams',
   gallery: 'Gallery',
@@ -465,14 +464,14 @@ When('I cold-start the judging workspace while holding the account bootstrap res
   })
 })
 
-When('I measure account event cancellation from Operations to Settings for event slug {string} as {string}', async ({ page }, slug: string, persona: string) => {
+When('I measure account event cancellation from Operations to Participants for event slug {string} as {string}', async ({ page }, slug: string, persona: string) => {
   const personaKey = parsePersonaKey(persona)
   await signInAs(personaKey, page)
   await warmAccountEventSurface(page, slug, `/api/account/events/${encodeURIComponent(slug)}/entry`)
 
   const capture = capturePageTopology(page)
   const operationsPath = `/api/account/events/${encodeURIComponent(slug)}/operations`
-  const settingsPath = `/api/account/events/${encodeURIComponent(slug)}/settings`
+  const participantsPath = `/api/account/events/${encodeURIComponent(slug)}/participants`
   const operationsPattern = `**${operationsPath}*`
   let releaseDelayedResponse: (() => void) | null = null
   const delayedResponseReleased = new Promise<void>((resolve) => {
@@ -503,10 +502,10 @@ When('I measure account event cancellation from Operations to Settings for event
     await capture.waitForStartedPath(operationsPath)
     await Promise.all([
       page.waitForEvent('requestfailed', request => new URL(request.url()).pathname === operationsPath),
-      assertActiveAccountEventTab(page, 'Settings').click()
+      assertActiveAccountEventTab(page, 'Participants').click()
     ])
-    await waitForAccountEventTab(page, 'Settings')
-    await capture.waitForCompletedPath(settingsPath)
+    await waitForAccountEventTab(page, 'Participants')
+    await capture.waitForCompletedPath(participantsPath)
   } finally {
     releaseDelayedResponse?.()
     await page.unroute(operationsPattern, delayedRoute)
@@ -520,7 +519,7 @@ When('I measure account event cancellation from Operations to Settings for event
     capture,
     slug,
     operationsPath,
-    settingsPath
+    participantsPath
   })
 })
 
@@ -620,11 +619,7 @@ Then('the Feedback read should have exactly one terminal lifecycle response', as
 })
 
 Then('unrelated account event tabs should not request editor or sortable chunks', async ({ page }) => {
-  const measurement = eventMeasurement(page)
-
-  if (measurement.tab !== 'settings') {
-    assertNoEditorOrSortableRequests(measurement.capture)
-  }
+  assertNoEditorOrSortableRequests(eventMeasurement(page).capture)
 })
 
 Then('the browser topology should not request runtime CDN scripts', async ({ page }) => {
@@ -635,10 +630,6 @@ Then('the browser topology should not request runtime CDN scripts', async ({ pag
   }
 
   assertNoRuntimeCdnScripts(measurement.capture)
-})
-
-Then('the settings surface should expose its stable settings panel', async ({ page }) => {
-  await expect(page.locator('#account-tab-panel-settings')).toBeVisible()
 })
 
 Then('the overview topology should have one session and one entry read', async ({ page }) => {
@@ -684,23 +675,23 @@ Then('the global account workspace topology should have one session and one crit
   console.info(`[TASK-432.5.7] global-${globalMeasurement(page).workspace} ${formatTopologySummary(capture)}`)
 })
 
-Then('the delayed Operations request should be cancelled without stale Settings paint', async ({ page }) => {
+Then('the delayed Operations request should be cancelled without stale Participants paint', async ({ page }) => {
   const measurement = measurements.get(page)
 
   if (!measurement || measurement.kind !== 'cancellation') {
     throw new Error('No cancellation measurement is available.')
   }
 
-  const { capture, operationsPath, settingsPath } = measurement
+  const { capture, operationsPath, participantsPath } = measurement
   const operations = assertExactPathCount(capture, operationsPath, 1)[0]
-  assertExactPathCount(capture, settingsPath, 1)
+  assertExactPathCount(capture, participantsPath, 1)
   assertExactPathCount(capture, '/api/session', 1)
 
   if (!operations.failed) {
     throw topologyFailure(capture, 'The delayed Operations request completed instead of being cancelled.')
   }
 
-  await waitForAccountEventTab(page, 'Settings')
+  await waitForAccountEventTab(page, 'Participants')
   await expect(page.locator('#account-tab-panel-operations')).toBeHidden()
   assertNoLegacyFanOut(capture)
   assertBudget(capture)

@@ -22,10 +22,6 @@ Feature: Simplified Meetup claiming
     When I open the closed simplified claiming link with the saved "regular_user" session
     Then I should see that redemption has closed
 
-  Scenario: Organizer sees the nested claiming setup while creating a Meetup
-    When I prepare simplified claiming on a new Meetup with the saved "platform_admin" session
-    Then I should see the nested attendee claiming creation state
-
   Scenario: Organizer adds codes and previews the combined giveaway email in the builder
     When I add a code giveaway in the simplified event builder
     Then I should see automatically detected codes and the combined email preview

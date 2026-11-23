@@ -158,34 +158,24 @@ useSeoMeta({
                     ? 'Run platform-wide admin work, create events, and open any event workspace from one place.'
                     : isEventOrganizer
                       ? 'Create events and open the events you manage from one place.'
-                      : 'Open the events you manage and jump into their operations and settings tabs.'
+                      : 'Open the events you manage from one place.'
                 }}
               </p>
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
-              <AppDropdownMenu
+              <!-- The code of the builder is loaded only when the organizer opens it. -->
+              <AppButton
                 v-if="capabilities.canCreateEvent"
-                :items="[
-                  { label: 'Create event (builder)', to: '/admin/events/builder/new' },
-                  { label: 'Create event (classic)', to: '/admin/events/new' }
-                ]"
+                to="/admin/events/builder/new"
+                no-prefetch
+                color="neutral"
+                variant="solid"
+                data-testid="admin-create-event"
+                class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
               >
-                <AppButton
-                  color="neutral"
-                  variant="solid"
-                  data-testid="admin-create-event-menu"
-                  class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-                >
-                  Create event
-                  <template #trailing>
-                    <AppIcon
-                      name="i-lucide-chevron-down"
-                      class="size-3.5"
-                    />
-                  </template>
-                </AppButton>
-              </AppDropdownMenu>
+                Create event
+              </AppButton>
             </div>
           </div>
         </div>

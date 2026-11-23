@@ -25,7 +25,7 @@ export const accountEventPageKeys: Record<string, readonly string[]> = {
     'talkProposal', 'talkProposalReviews', 'talkProposalReviewTotal',
     'participantRank', 'tabVisibility', 'applicationStatus', 'lumaSyncStatus'
   ],
-  prizes: ['event', 'adminSettingsEvent', 'prizes', 'winners', 'publishedProjects', 'participantRank', 'participantOutcome'],
+  prizes: ['event', 'prizes', 'winners', 'publishedProjects', 'participantRank', 'participantOutcome'],
   operations: [
     'event', 'roles', 'assignments', 'judgingSummary', 'leaderboard', 'teams', 'prizes',
     'applications', 'submissionSummary', 'submissionMonitor', 'shortlist', 'finalDeliberation',
@@ -33,9 +33,6 @@ export const accountEventPageKeys: Record<string, readonly string[]> = {
   ],
   submissions: ['event', 'teams', 'applications', 'submissionSummary', 'submissionMonitor', 'noSubmissionTeams'],
   judging: ['event', 'assignments', 'criteria', 'summary'],
-  settings: [
-    'event', 'criteria', 'prizes', 'terms', 'roles', 'simplifiedClaiming', 'talkProposals', 'builder'
-  ],
   participants: ['event', 'applications', 'pagination', 'statusCounts', 'checkedInCount'],
   workspace: [
     'event', 'application', 'ownTeam', 'ownMembership', 'joinRequests', 'submission', 'outcome',

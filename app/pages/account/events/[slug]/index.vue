@@ -21,7 +21,6 @@ import type {
   AccountEventJudgingPage,
   AccountJudgeAssignmentWorkspacePage
 } from '#shared/domains/events/account-event-judging-page'
-import type { AccountEventSettingsPage } from '#shared/domains/events/account-event-settings-page'
 import type { AccountEventAgendaPage } from '#shared/domains/events/program'
 import type { AccountEventPageVisibility } from '~/domains/events/account-workspace-page'
 import {
@@ -42,7 +41,6 @@ import type {
 import { Switch as UiSwitch } from '~/components/ui/switch'
 import {
   LazyAccountEventsAccountEventAdminOperationsPanel as LazyAccountEventAdminOperationsPanel,
-  LazyAccountEventsAccountEventAdminSettingsPanel as LazyAccountEventAdminSettingsPanel,
   LazyAccountEventsAccountEventCertificatesPanel as LazyAccountEventCertificatesPanel,
   LazyAccountEventsAccountEventCreditsPanel as LazyAccountEventCreditsPanel,
   LazyAccountEventsAccountEventFeedbackPanel as LazyAccountEventFeedbackPanel,
@@ -160,7 +158,7 @@ const isDirectNonEntryNavigation = computed(() =>
   && getAccountEventPageForTab(requestedWorkspaceTab.value) !== 'entry'
 )
 // The entry page also feeds the header and the tab bar of every tab. Once it is loaded it stays
-// enabled, so a refresh from another tab (for example after a Settings save) reloads it at once.
+// enabled, so a refresh from another tab (for example after a check-in step) reloads it at once.
 const isEntryPageLoaded = shallowRef(false)
 const entryPageRequest = useAccountEventPageRequest<AccountEventEntryPage>(slug, 'entry', {
   enabled: () => isEntryPageLoaded.value || !isDirectNonEntryNavigation.value
@@ -177,18 +175,6 @@ const pageState = useAccountEventPageState({
   slug,
   authorizationGeneration: entryPageRequest.authorizationGeneration
 })
-const includePrizesAdminEventConfiguration = shallowRef(requestedTab.value === 'prizes')
-watch(requestedTab, (tab) => {
-  if (tab === 'prizes') {
-    includePrizesAdminEventConfiguration.value = true
-  }
-}, { immediate: true })
-const prizesPageQuery = computed(() => ({
-  ...pageState.queryForPage('prizes'),
-  ...(includePrizesAdminEventConfiguration.value
-    ? { includeAdminEventConfiguration: true }
-    : {})
-}))
 const entryPage = computed(() => entryPageRequest.data.value?.page ?? null)
 const pageShell = pageState.pageShell
 const pageVisibility = shallowRef<AccountEventPageVisibility | null>(null)
@@ -385,7 +371,6 @@ async function setCertificateGenerationDisabled(disabled: boolean) {
 }
 const tabAccess = computed(() => entryPage.value?.tabVisibility ?? pageShell.value?.tabVisibility ?? {
   availableTabs: ['overview'] as AccountEventWorkspaceTab[],
-  showPrizeConfiguration: false,
   hasPublishedPrizes: false,
   hasPublishedStaff: false,
   hasEligibleTalkProposalApplicant: false,
@@ -444,14 +429,9 @@ const activeSection = computed<AccountEventWorkspaceTab>(() => {
 })
 const prizesPageRequest = useAccountEventPageRequest<AccountEventPrizesPage>(slug, 'prizes', {
   enabled: () => activeSection.value === 'prizes',
-  query: prizesPageQuery
+  query: pageState.queryForPage('prizes')
 })
 const prizesPage = computed(() => prizesPageRequest.data.value?.page ?? null)
-const settingsPageRequest = useAccountEventPageRequest<AccountEventSettingsPage>(slug, 'settings', {
-  enabled: () => activeSection.value === 'settings' && (isDirectNonEntryNavigation.value || canAdmin.value),
-  query: pageState.queryForPage('settings')
-})
-const settingsPage = computed(() => settingsPageRequest.data.value?.page ?? null)
 const selectedTeamSlug = computed(() => normalizeTeamSlugQueryValue(route.query.team))
 const selectedJudgeAssignmentId = computed(() => normalizeJudgeAssignmentIdQueryValue(route.query.assignment))
 const workspacePageRequest = useAccountEventPageRequest<AccountEventWorkspacePage>(slug, 'workspace', {
@@ -595,7 +575,6 @@ const selectedPageRequest = computed(() => {
     case 'submissions': return submissionsPageRequest
     case 'judging': return judgingPageRequest
     case 'operations': return operationsPageRequest
-    case 'settings': return settingsPageRequest
     default: return null
   }
 })
@@ -614,11 +593,6 @@ watchEffect(() => {
 })
 const participationRank = computed<EventParticipationRankSummary | null>(() => entryPage.value?.participantRank ?? null)
 async function refreshAccountEvent() {
-  if (activeSection.value === 'prizes') {
-    await prizesPageRequest.refresh()
-    return
-  }
-
   await entryPageRequest.refresh()
 }
 
@@ -627,29 +601,6 @@ async function refreshAccountEvent() {
 // again on the next visit.
 async function refreshAfterCheckInStep() {
   await Promise.all([refreshAccountEvent(), galleryPageRequest.refresh(), programPageRequest.refresh()])
-}
-
-async function refreshCriteria(eventSlug: string) {
-  // Keep the current score sheet and its draft when a catalog save finishes in another tab.
-  if (slug.value !== eventSlug || assignmentPageRequest.status.value !== 'pending') {
-    clearReads([`account-event-judge-assignment:${eventSlug}`], assignmentPageRequest.requestKey.value)
-  }
-  await Promise.all([settingsPageRequest.refreshFor(eventSlug), judgingPageRequest.refreshFor(eventSlug)])
-}
-
-// A Settings save can change the header, the tab bar and the agenda. The Agenda tab reads its page
-// again on the next visit.
-async function refreshSettingsPage(savedSlug?: string) {
-  if (savedSlug && savedSlug !== slug.value) {
-    await navigateTo({ path: `/account/events/${savedSlug}`, query: route.query, hash: route.hash }, { replace: true })
-    return
-  }
-
-  await Promise.all([
-    settingsPageRequest.refresh(),
-    entryPageRequest.refresh(),
-    programPageRequest.refresh()
-  ])
 }
 
 async function refreshMemberTeam(eventSlug: string) {
@@ -1166,6 +1117,25 @@ useSeoMeta({
                     {{ applicationStatusLabel }}
                   </AppBadge>
                 </div>
+                <!-- The event builder is the one place where an event is changed. Its code, with
+                     the editors, is loaded only when the admin opens it. -->
+                <AppButton
+                  v-if="canAdmin"
+                  :to="`/admin/events/builder/${slug}`"
+                  no-prefetch
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  data-testid="account-event-edit"
+                >
+                  <template #leading>
+                    <AppIcon
+                      name="i-lucide-pencil"
+                      class="size-3.5"
+                    />
+                  </template>
+                  Edit event
+                </AppButton>
               </div>
 
               <p class="text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
@@ -1681,21 +1651,6 @@ useSeoMeta({
             v-else
             :prizes="prizesPage.prizes"
           />
-
-          <LazyAccountEventAdminSettingsPanel
-            v-if="tabAccess.showPrizeConfiguration"
-            :key="workspaceEventId"
-            :event-id="workspaceEventId"
-            :on-catalog-saved="prizesPageRequest.refreshFor"
-            :event-data="prizesPage.adminSettingsEvent"
-            :prizes-data="prizesPage.prizes"
-            :can-manage="canAdmin"
-            :show-program-settings="false"
-            :show-terms-management="false"
-            :show-criteria-configuration="false"
-            :show-prize-configuration="true"
-            @updated="refreshAccountEvent"
-          />
         </template>
         <p
           v-else
@@ -1980,28 +1935,6 @@ useSeoMeta({
           :is-loading="operationsPageRequest.isLoading.value"
           :load-error-message="operationsPageRequest.errorMessage.value"
           :refresh-page="operationsPageRequest.refreshFor"
-        />
-      </section>
-
-      <section
-        v-else
-        id="account-tab-panel-settings"
-        role="tabpanel"
-        aria-labelledby="account-tab-settings"
-        class="space-y-8"
-      >
-        <LazyAccountEventAdminSettingsPanel
-          :key="workspaceEventId"
-          :event-id="workspaceEventId"
-          :on-catalog-saved="refreshCriteria"
-          :page="settingsPage"
-          :can-manage="canAdmin"
-          :is-loading="settingsPageRequest.isLoading.value"
-          :load-error-message="settingsPageRequest.errorMessage.value"
-          :show-terms-management="true"
-          :show-criteria-configuration="true"
-          :show-prize-configuration="false"
-          @updated="refreshSettingsPage"
         />
       </section>
     </AppContainer>

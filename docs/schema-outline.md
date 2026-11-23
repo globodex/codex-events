@@ -169,7 +169,6 @@ It describes the intended persistent model at the level of entities, key fields,
 - `require_submission_demo_url`
 - `current_application_terms_document_id`
 - `current_winner_terms_document_id`
-- `creation_flow`
 - `balance_score`
 - `balance_breakdown_json`
 - `created_by_user_id`
@@ -182,9 +181,6 @@ It describes the intended persistent model at the level of entities, key fields,
   - `hackathon`
   - `meetup`
   - `build`
-- `creation_flow`
-  - `classic`
-  - `builder`
 - `state`
   - `draft`
   - `registration_open`
@@ -269,8 +265,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `agenda_items_json` stores a validated ordered JSON array of agenda items (`id`, `startsAt`, optional `endsAt`, `title`, optional `details`, `displayOrder`, optional `builderBlockType`, optional `builderFocusCost`, optional `builderEnergyDelta`). `builderBlockType` is a bounded string annotation written by the event builder; `builderFocusCost` (0..99) and `builderEnergyDelta` (-99..99) are organizer-declared scoring dials for custom builder blocks. A malformed annotation or dial is dropped during parsing without affecting the agenda, unknown block types resolve to a custom block in the builder, and all three annotations are suppressed from public event payloads.
 - `event_agenda_programs` stores one program per event, its public agenda item ID, and the ordered tracks and sessions. Session IDs are unique within the program. A session stores its start offset and duration in minutes and an optional floor plan and room reference.
 - `event_floor_plans` stores each floor's name, private image object and revision, and named rooms. A room ID is unique within its floor. Room rectangles use coordinates relative to the full image. A room rectangle can store a rotation in degrees, clockwise around its center, from -180 to 180; without one it is upright. A room can store a route as an ordered list of 2 to 40 points in the same coordinates. A room can store a `number`, its number at the venue in up to 30 characters, and a `challengeId`, the `id` of the challenge in `events.challenges_json` that takes place in it. Several rooms can store the same `challengeId`. A `challengeId` without a published challenge of that id has no effect. Sessions can reference rooms in the same event. A session can store `afterCheckIn`, a second title and an optional second room for participants who are checked in; both rooms of a session must exist on a floor plan of the event, and neither can be removed from its plan while the session names it. A session can store `isPublic`; a session with `isPublic: true` is listed on the public event page with its start time and title, and a session without it is not public.
-- `creation_flow` records which flow created the event (`classic` or `builder`). It is set at creation, immutable through updates, and used only to route builder-created events to the builder editor — it never changes how event data is interpreted. Builder events remain fully editable in the classic form.
-- `balance_score` (0–100) and `balance_breakdown_json` persist the Event Balance Score computed by the shared builder scoring engine from the event's own fields. They are recomputed server-side on every create and update for all events regardless of flow, are never accepted from clients, embed an `engineVersion` for staleness detection, and are exposed only in admin event payloads. `NULL` means the row has not been written since the feature shipped.
+- `balance_score` (0–100) and `balance_breakdown_json` persist the Event Balance Score computed by the shared builder scoring engine from the event's own fields. They are recomputed server-side on every create and update for all events, are never accepted from clients, embed an `engineVersion` for staleness detection, and are exposed only in admin event payloads. `NULL` means the row has not been written since the feature shipped.
 
 ## EventTrack
 

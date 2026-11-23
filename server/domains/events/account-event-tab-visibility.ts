@@ -105,7 +105,7 @@ export function buildAccountEventTabVisibility(input: {
       }
     }
 
-    availableTabs.push('operations', 'settings')
+    availableTabs.push('operations')
   } else if (authorization.canViewParticipantsAndTeams) {
     if (isCompetitionEvent && authorization.canReviewThroughAssignment) {
       availableTabs.push('judging')
@@ -120,9 +120,6 @@ export function buildAccountEventTabVisibility(input: {
 
   return {
     availableTabs,
-    showPrizeConfiguration: isCompetitionEvent
-      && authorization.isEventAdmin
-      && !['winners_announced', 'completed'].includes(event.state),
     hasPublishedPrizes,
     hasPublishedStaff,
     hasEligibleTalkProposalApplicant,

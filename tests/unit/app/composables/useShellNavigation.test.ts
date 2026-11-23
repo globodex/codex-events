@@ -117,8 +117,8 @@ describe('useShellNavigation', () => {
     expect(useAccountBootstrap).toHaveBeenCalledOnce()
     expect(useApiData).not.toHaveBeenCalled()
 
-    route.query.tab = 'settings'
-    route.fullPath = '/account/events/e2e-fixture-event?tab=settings'
+    route.query.tab = 'operations'
+    route.fullPath = '/account/events/e2e-fixture-event?tab=operations'
     await nextTick()
 
     expect(navigation.accountEventNavigationMode.value).toBe('admin')

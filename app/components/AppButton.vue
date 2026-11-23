@@ -17,6 +17,11 @@ type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 
 const props = withDefaults(defineProps<{
   to?: string
+  /**
+   * Keeps the code of the linked page unloaded until the link is used. Without it the page is
+   * loaded in advance, as soon as the link is on screen.
+   */
+  noPrefetch?: boolean
   external?: boolean
   target?: string
   rel?: string
@@ -116,7 +121,7 @@ const targetAttributes = computed(() => {
   if (!props.to) return { type: props.type, disabled: inactive.value }
   if (inactive.value) return { 'role': 'link', 'aria-disabled': true, 'class': 'pointer-events-none opacity-50' }
   if (props.external) return { href: props.to, target: props.target, rel: props.rel }
-  return { to: props.to }
+  return { to: props.to, noPrefetch: props.noPrefetch }
 })
 </script>
 

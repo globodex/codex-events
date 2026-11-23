@@ -64,7 +64,6 @@ export interface AccountEventEntryTrack {
 export interface AccountEventEntryEvent {
   id: string
   eventType: AccountEventEntryEventType
-  creationFlow: 'classic' | 'builder'
   name: string
   slug: string
   description: string
@@ -224,15 +223,13 @@ export const accountEventEntryTabs = [
   'certificates',
   'submissions',
   'judging',
-  'operations',
-  'settings'
+  'operations'
 ] as const
 
 export type AccountEventEntryTab = (typeof accountEventEntryTabs)[number]
 
 export interface AccountEventEntryTabVisibility {
   availableTabs: AccountEventEntryTab[]
-  showPrizeConfiguration: boolean
   hasPublishedPrizes: boolean
   hasPublishedStaff: boolean
   hasEligibleTalkProposalApplicant: boolean
@@ -297,7 +294,6 @@ const accountEventEntryTrackSchema = z.object({
 const accountEventEntryEventSchema = z.object({
   id: z.string(),
   eventType: z.enum(['hackathon', 'meetup', 'build']),
-  creationFlow: z.enum(['classic', 'builder']),
   name: z.string(),
   slug: z.string(),
   description: z.string(),
@@ -459,7 +455,6 @@ const accountEventEntryRankSummarySchema = z.object({
 
 const accountEventEntryTabVisibilitySchema = z.object({
   availableTabs: z.array(z.enum(accountEventEntryTabs)),
-  showPrizeConfiguration: z.boolean(),
   hasPublishedPrizes: z.boolean(),
   hasPublishedStaff: z.boolean(),
   hasEligibleTalkProposalApplicant: z.boolean(),

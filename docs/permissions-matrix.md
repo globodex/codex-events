@@ -258,7 +258,7 @@ Event credit permissions apply to every event type.
 | View credit inventory and claim records | No | No | Yes | Yes |
 | Create or update credit offers | No | No | Yes | Yes |
 | Upload additional credit inventory to an offer | No | No | Yes | Yes |
-| Manage simplified giveaways and upload credits in Settings | No | No | Yes, including after claiming begins | Yes, including after claiming begins |
+| Manage simplified giveaways and upload credits in the event builder | No | No | Yes, including after claiming begins | Yes, including after claiming begins |
 | Import approved Luma attendee eligibility | No | No | Yes, including after claiming begins | Yes, including after claiming begins |
 | Import existing Luma check-ins | No | No | Yes | Yes |
 | Claim available simplified Meetup giveaways | Yes, with attendee-email verification | Yes, with attendee-email verification | Yes, only when also an eligible attendee | Yes, only when also an eligible attendee |

@@ -190,7 +190,7 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
     }
 
     state.form.eventType = eventType
-    // Every event type has its own sign-up form, as in the classic editor. A Build or a Meetup
+    // Every event type has its own sign-up form. A Build or a Meetup
     // does not ask for the ChatGPT email and the OpenAI org ID that a Hackathon requires.
     applyEventTypeApplicationFieldDefaults(state.form, eventType)
     state.eventTypeChosen = true
@@ -262,17 +262,7 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
   function buildPatchBody() {
     const form = toEventBuilderFormState(state)
 
-    // The settings below have an editor only in the builder, so only the builder sends them.
-    // A save from the settings form sends none of them, and the event keeps what it has stored.
-    return {
-      ...buildEventConfigurationPatch(form, form.eventType),
-      checkInFlowEnabled: form.checkInFlowEnabled,
-      // The question editor is hidden while the switch is off. The questions are not sent then, so
-      // the event keeps its stored questions and an unfinished hidden question cannot block the save.
-      ...(form.checkInFlowEnabled ? { questionnaireQuestions: form.questionnaireQuestions } : {}),
-      challenges: form.challenges,
-      participantPhotosEnabled: form.participantPhotosEnabled
-    }
+    return buildEventConfigurationPatch(form, form.eventType)
   }
 
   return {

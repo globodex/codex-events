@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// The judging criteria of a Hackathon: an organizer writes, orders and saves them here.
-// The event builder and the Settings tab of the event workspace both show this editor.
+// The judging criteria of a Hackathon: an organizer writes, orders and saves them here, in the
+// event builder.
 import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
 import type { EvaluationCriterion } from '~/domains/judging/criteria-config'
 import { getCriteriaConfigurationValidationIssues } from '~/domains/judging/criteria-config'

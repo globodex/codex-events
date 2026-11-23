@@ -1,7 +1,7 @@
 Feature: Gamified event builder creation flow
   Event organizers can assemble an event from typed session blocks in the builder,
-  watch the balance score respond, and create a real draft event. Builder-created
-  events open the builder as their editor while the classic form stays available.
+  watch the balance score respond, and create a real draft event. The builder is
+  also the editor of a saved event, and the event workspace leads to it.
 
   Scenario: Platform admin builds a meetup through the event builder
     When I open the event builder with the saved "platform_admin" session
@@ -14,9 +14,8 @@ Feature: Gamified event builder creation flow
     When I fill the builder basics for "BDD Builder Meetup"
     Then the builder description editor should match the color theme
     When I submit the event builder
-    Then I should land on the workspace settings tab for "bdd-builder-meetup"
-    And the workspace settings should show the builder banner
-    When I open the event in the builder from the workspace banner
+    Then I should land on the event workspace for "bdd-builder-meetup"
+    When I open the event in the builder from the event workspace
     Then the builder should hydrate 7 agenda blocks
     And the builder should retain the saved rich basics
 
@@ -74,8 +73,8 @@ Feature: Gamified event builder creation flow
     And I fill the builder basics for "BDD Staged <method> Credits"
     And I stage link and code giveaways with "<method>" claiming
     And I create the draft after a failed save
-    Then I should land on the workspace settings tab for "bdd-staged-<method>-credits"
-    When I open the event in the builder from the workspace banner
+    Then I should land on the event workspace for "bdd-staged-<method>-credits"
+    When I open the event in the builder from the event workspace
     Then the builder should show the saved staged credits
 
     Examples:

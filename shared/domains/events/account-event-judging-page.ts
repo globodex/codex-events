@@ -48,7 +48,6 @@ const eventTermsDocumentSchema = z.object({
 const eventSchema = z.object({
   id: z.string(),
   eventType: z.enum(['hackathon', 'meetup', 'build']),
-  creationFlow: z.enum(['classic', 'builder']),
   name: z.string(),
   slug: z.string(),
   description: z.string(),

@@ -48,8 +48,8 @@ export interface EventBuilderState {
   eventStartsAt: string
   blocks: EventBuilderBlockInstance[]
   /**
-   * The classic form state is the single field store: basics and every settings
-   * slice live here so submit paths reuse the classic mappers unchanged.
+   * The form state is the single field store: the basics and every setting live here, and the
+   * save requests are built from it (`buildEventCreateBody`, `buildEventConfigurationPatch`).
    * `form.agendaItems` is derived from `blocks` at submit time.
    */
   form: EventFormState
@@ -712,7 +712,7 @@ function getUnfinishedEntryChecklistItems(form: EventFormState) {
       schema: eventChallengesSchema,
       fieldIdPrefix: eventBuilderChallengeTitleIdPrefix
     }),
-    // The questions are sent only while the next step is on (see `buildPatchBody` in `useEventBuilder`).
+    // The questions are sent only while the next step is on (see `buildEventConfigurationPatch`).
     form.checkInFlowEnabled
       ? getUnfinishedEntryChecklistItem({
           checklistId: 'questionnaire-questions',

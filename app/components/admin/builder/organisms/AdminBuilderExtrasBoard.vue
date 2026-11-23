@@ -615,7 +615,6 @@ function removeTrackResource(track: EventFormTrack, resourceId: string) {
           :current-winner-terms="currentWinnerTerms ?? null"
           :saving-terms-document-type="savingTermsDocumentType ?? null"
           :show-winner-terms="form.eventType === 'hackathon'"
-          :show-heading="false"
           @save-terms="(type, content) => emit('saveTerms', type, content)"
         />
 

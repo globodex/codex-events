@@ -18,14 +18,14 @@ Feature: Parallel event agenda
     Given the event has two parallel sessions with rooms on "Editing floor"
     When I replace the "Editing floor" image while editing a track
     Then I can save the track edit in the event builder
-    When I leave the builder for event settings
-    And I reopen the rooms and sessions from event settings
+    When I leave the builder for the event workspace
+    And I reopen the rooms and sessions from the event workspace
     Then the builder should show the saved track name
 
   Scenario: A confirmed participant follows the route an organizer drew to a room
     Given the event has two parallel sessions with rooms on "Route floor"
     When I draw a route to "Makers Room" on "Route floor" and leave before the save finishes
-    And I reopen the rooms and sessions from event settings
+    And I reopen the rooms and sessions from the event workspace
     Then the builder should show the saved route to "Makers Room" on "Route floor"
     When I open the Agenda tab 5 minutes into Build Time
     Then both sessions should start next in 10 minutes

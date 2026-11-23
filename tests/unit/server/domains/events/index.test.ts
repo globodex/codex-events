@@ -93,7 +93,6 @@ function buildEventRecord(
     requireSubmissionDemoUrl: false,
     currentApplicationTermsDocumentId: null,
     currentWinnerTermsDocumentId: null,
-    creationFlow: 'classic',
     balanceScore: null,
     balanceBreakdownJson: null,
     createdByUserId: 'creator_1',
@@ -918,46 +917,11 @@ describe('event management utilities', () => {
 })
 
 describe('event builder metadata', () => {
-  test('createEventBodySchema defaults creationFlow to classic and accepts builder', () => {
-    const baseBody = {
-      eventType: 'meetup',
-      name: 'Flow Event',
-      slug: 'flow-event',
-      description: 'Testing flows',
-      agendaItems: [],
-      tracks: [],
-      city: 'Vienna',
-      country: 'Austria',
-      address: 'Somewhere 1',
-      registrationOpensAt: '2026-03-20T12:00:00.000Z',
-      registrationClosesAt: '2026-03-23T12:00:00.000Z'
-    }
-
-    expect(createEventBodySchema.parse(baseBody)).toMatchObject({ creationFlow: 'classic' })
-    expect(createEventBodySchema.parse({ ...baseBody, creationFlow: 'builder' }))
-      .toMatchObject({ creationFlow: 'builder' })
-    expect(() => createEventBodySchema.parse({ ...baseBody, creationFlow: 'wizard' })).toThrow()
-  })
-
-  test('updateEventBodySchema strips creationFlow so the flow is immutable', () => {
-    const parsed = updateEventBodySchema.parse({
-      name: 'Renamed',
-      creationFlow: 'classic'
-    })
-
-    expect(parsed).toMatchObject({ name: 'Renamed' })
-    expect('creationFlow' in parsed).toBe(false)
-  })
-
-  test('serializeEvent exposes creationFlow and admin payloads carry balance data', () => {
+  test('admin payloads carry balance data', () => {
     const record = buildEventRecord({
-      creationFlow: 'builder',
       agendaItemsJson: builderAgendaItemsJson,
       ...computeEventBalanceColumns(buildEventRecord({ agendaItemsJson: builderAgendaItemsJson }))
     })
-
-    expect(serializeEvent(record).creationFlow).toBe('builder')
-
     const admin = serializeAdminEvent(record)
 
     expect(admin.balanceScore).toBe(record.balanceScore)
@@ -991,14 +955,12 @@ describe('event builder metadata', () => {
 
   test('public payloads never expose builder metadata', () => {
     const record = buildEventRecord({
-      creationFlow: 'builder',
       agendaItemsJson: builderAgendaItemsJson,
       balanceScore: 80,
       balanceBreakdownJson: '{}'
     })
     const publicEvent = serializePublicEvent(record) as Record<string, unknown>
 
-    expect('creationFlow' in publicEvent).toBe(false)
     expect('balanceScore' in publicEvent).toBe(false)
     expect('balanceBreakdown' in publicEvent).toBe(false)
 

@@ -54,7 +54,6 @@ export type EventType = 'hackathon' | 'meetup' | 'build'
 export interface EventRecord {
   id: string
   eventType: EventType
-  creationFlow?: 'classic' | 'builder'
   balanceScore?: number | null
   balanceBreakdown?: EventBalanceBreakdown | null
   name: string

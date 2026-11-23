@@ -29,7 +29,6 @@ export interface AccountEventPageQuery {
    * lists `participantListStep` registrations. "Load more" raises the value by one step.
    */
   participantRows?: number | null
-  includeAdminEventConfiguration?: boolean
   includeEventShell?: boolean
 }
 
@@ -70,7 +69,6 @@ export function normalizeAccountEventPageQuery(
   const selectedTeamSlug = query?.selectedTeamSlug?.trim().toLowerCase()
   const participantSearch = query?.participantSearch?.trim()
   const participantRows = query?.participantRows ?? participantListStep
-  const includeAdminEventConfiguration = query?.includeAdminEventConfiguration === true
   const includeEventShell = query?.includeEventShell === true
 
   return {
@@ -78,7 +76,6 @@ export function normalizeAccountEventPageQuery(
     ...(participantSearch ? { participantSearch } : {}),
     // The first step is what the page lists without a value, so it is left out.
     ...(participantRows > participantListStep ? { participantRows } : {}),
-    ...(includeAdminEventConfiguration ? { includeAdminEventConfiguration: true } : {}),
     ...(includeEventShell ? { includeEventShell: true } : {})
   }
 }
@@ -104,13 +101,6 @@ export function buildAccountEventPagePath(
     searchParams.set('participantRows', String(normalizedQuery.participantRows))
   }
 
-  if (
-    page === 'prizes'
-    && normalizedQuery.includeAdminEventConfiguration
-  ) {
-    searchParams.set('includeAdminEventConfiguration', 'true')
-  }
-
   if (normalizedQuery.includeEventShell) {
     searchParams.set('includeEventShell', 'true')
   }
@@ -134,12 +124,8 @@ export function buildAccountEventPageCacheKey(
   const participantRowsKey = page === 'participants' && normalizedQuery.participantRows
     ? `:participantRows=${normalizedQuery.participantRows}`
     : ''
-  const adminEventConfigurationKey = page === 'prizes'
-    && normalizedQuery.includeAdminEventConfiguration
-    ? ':includeAdminEventConfiguration'
-    : ''
   const eventShellKey = normalizedQuery.includeEventShell ? ':includeEventShell' : ''
-  const queryKey = `${selectedTeamKey}${participantSearchKey}${participantRowsKey}${adminEventConfigurationKey}${eventShellKey}`
+  const queryKey = `${selectedTeamKey}${participantSearchKey}${participantRowsKey}${eventShellKey}`
 
   return `account-event-page:${slug}:${page}${queryKey}`
 }

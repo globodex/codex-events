@@ -59,10 +59,9 @@ const eventBalanceBreakdownSchema = z.object({
   returnIntent: z.number()
 })
 
-export const accountEventSettingsEventSchema = z.object({
+const accountEventSettingsEventSchema = z.object({
   id: z.string(),
   eventType: eventTypeSchema,
-  creationFlow: z.enum(['classic', 'builder']).optional(),
   balanceScore: z.number().nullable().optional(),
   balanceBreakdown: eventBalanceBreakdownSchema.nullable().optional(),
   name: z.string(),
@@ -321,7 +320,6 @@ export const accountEventSettingsPageSchema = z.object({
   lumaGuestList: accountEventLumaGuestListSchema,
   talkProposals: accountEventTalkProposalConfigurationSchema,
   builder: z.object({
-    creationFlow: z.enum(['classic', 'builder']),
     agendaBlockCount: z.number().int().nonnegative(),
     typedAgendaBlockCount: z.number().int().nonnegative(),
     // The sessions in the rooms of the event. The builder shows the number on a tile before
@@ -333,7 +331,6 @@ export const accountEventSettingsPageSchema = z.object({
 })
 
 export type AccountEventSettingsPage = z.infer<typeof accountEventSettingsPageSchema>
-export type AccountEventSettingsEvent = z.infer<typeof accountEventSettingsEventSchema>
 export type AccountEventSettingsCreditOffer = z.infer<typeof accountEventSettingsCreditOfferSchema>
 export type AccountEventSimplifiedClaimingStatus = z.infer<typeof accountEventSimplifiedClaimingStatusSchema>
 export type AccountEventLumaGuestList = z.infer<typeof accountEventLumaGuestListSchema>
@@ -341,5 +338,4 @@ export type AccountEventTalkProposalConfiguration = z.infer<typeof accountEventT
 export type AccountEventSettingsTermsDocument = z.infer<typeof termsDocumentSchema>
 export type AccountEventSettingsTermsVersion = z.infer<typeof termsVersionSummarySchema>
 export type AccountEventSettingsCriterion = z.infer<typeof evaluationCriterionSchema>
-export type AccountEventSettingsPrize = z.infer<typeof prizeDefinitionSchema>
 export type AccountEventSettingsRoleAssignment = z.infer<typeof roleAssignmentSchema>

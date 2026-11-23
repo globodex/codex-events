@@ -53,7 +53,6 @@ export const applicationOperation = defineStructuredRouteOperation({
   const eventValues = {
     id: eventId,
     eventType: body.eventType,
-    creationFlow: body.creationFlow,
     name: body.name,
     slug: body.slug,
     description: body.description,

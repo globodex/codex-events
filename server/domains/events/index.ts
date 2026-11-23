@@ -19,7 +19,6 @@ import {
   eventStates,
   eventTermsDocumentTypes,
   eventTermsDocuments,
-  eventCreationFlows,
   eventTypes,
   events,
   platformDocumentTypes,
@@ -437,7 +436,6 @@ function addTalkProposalConfigurationIssues(
 
 const eventConfigShape = {
   eventType: eventTypeEnumSchema,
-  creationFlow: z.enum(eventCreationFlows).default('classic'),
   name: z.string().trim().min(1),
   slug: slugSchema,
   description: z.string().trim().min(1),
@@ -2342,7 +2340,6 @@ export function serializeEvent(
   return {
     id: event.id,
     eventType: event.eventType,
-    creationFlow: event.creationFlow,
     name: event.name,
     slug: event.slug,
     description: event.description,

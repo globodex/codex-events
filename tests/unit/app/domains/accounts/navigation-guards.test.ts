@@ -149,7 +149,7 @@ describe('navigation guards', () => {
     const { isClientRenderedAuthenticatedShellPath } = await import('../../../../../app/domains/accounts/navigation-guards')
 
     expect(isClientRenderedAuthenticatedShellPath('/account')).toBe(true)
-    expect(isClientRenderedAuthenticatedShellPath('/admin/events/new')).toBe(true)
+    expect(isClientRenderedAuthenticatedShellPath('/admin/events/builder/new')).toBe(true)
     expect(isClientRenderedAuthenticatedShellPath('/prize-redemptions')).toBe(true)
     expect(isClientRenderedAuthenticatedShellPath('/events/codex/register')).toBe(false)
   })
@@ -304,7 +304,7 @@ describe('navigation guards', () => {
     })
 
     await expect(ensureAccountPageAccess(
-      { fullPath: '/admin/events/new' } as never,
+      { fullPath: '/admin/events/builder/new' } as never,
       actor => canCreateEvent(actor),
       'Event creator access required.',
       createBootstrap(actor) as never
@@ -336,7 +336,7 @@ describe('navigation guards', () => {
     })
 
     await expect(ensureAccountPageAccess(
-      { fullPath: '/admin/events/new' } as never,
+      { fullPath: '/admin/events/builder/new' } as never,
       actor => canCreateEvent(actor),
       'Event creator access required.',
       createBootstrap(actor) as never

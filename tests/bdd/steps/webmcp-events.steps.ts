@@ -204,10 +204,7 @@ Then('the WebMCP event draft should persist through the local API', async ({ pag
     slug: validCreatedSlug,
     state: 'draft'
   })
-  expect(result?.value?.url).toBe(new URL(
-    `/account/events/${validCreatedSlug}?tab=settings`,
-    page.url()
-  ).href)
+  expect(result?.value?.url).toBe(new URL(`/account/events/${validCreatedSlug}`, page.url()).href)
 
   const persisted = await page.evaluate(async (slug) => {
     const response = await fetch(`/api/events/slug/${slug}`)

@@ -48,7 +48,6 @@ describe('event builder creation flow routes', () => {
 
   const builderCreateBody = {
     eventType: 'meetup',
-    creationFlow: 'builder',
     name: 'Builder Meetup',
     slug: 'builder-meetup',
     description: 'Assembled with the event builder.',
@@ -93,7 +92,6 @@ describe('event builder creation flow routes', () => {
 
     const payload = await response.json()
 
-    expect(payload.data.creationFlow).toBe('builder')
     expect(typeof payload.data.balanceScore).toBe('number')
     expect(payload.data.balanceScore).toBeGreaterThanOrEqual(0)
     expect(payload.data.balanceScore).toBeLessThanOrEqual(100)
@@ -104,7 +102,6 @@ describe('event builder creation flow routes', () => {
       where: eq(events.slug, 'builder-meetup')
     })
 
-    expect(storedEvent?.creationFlow).toBe('builder')
     expect(storedEvent?.balanceScore).toBe(payload.data.balanceScore)
     expect(storedEvent?.agendaItemsJson).toContain('builderBlockType')
   })
@@ -184,26 +181,7 @@ describe('event builder creation flow routes', () => {
     expect(await harness.database.select().from(events)).toHaveLength(0)
   })
 
-  test('POST /api/events without creationFlow stays classic and still gets a score', async () => {
-    const harness = createHarness()
-
-    await seedPlatformAdmin(harness)
-
-    const { creationFlow: _creationFlow, ...classicBody } = builderCreateBody
-    const response = await harness.request('/api/events', {
-      method: 'POST',
-      body: JSON.stringify({ ...classicBody, slug: 'classic-meetup' })
-    })
-
-    expect(response.status).toBe(200)
-
-    const payload = await response.json()
-
-    expect(payload.data.creationFlow).toBe('classic')
-    expect(typeof payload.data.balanceScore).toBe('number')
-  })
-
-  test('PATCH keeps the flow immutable, recomputes the score, and round-trips annotations', async () => {
+  test('PATCH recomputes the score and round-trips annotations', async () => {
     const harness = createHarness()
 
     await seedPlatformAdmin(harness)
@@ -218,7 +196,6 @@ describe('event builder creation flow routes', () => {
     const patchResponse = await harness.request(`/api/events/${created.data.id}`, {
       method: 'PATCH',
       body: JSON.stringify({
-        creationFlow: 'classic',
         agendaItems: [
           {
             id: 'block_1',
@@ -247,7 +224,6 @@ describe('event builder creation flow routes', () => {
 
     const patched = await patchResponse.json()
 
-    expect(patched.data.creationFlow).toBe('builder')
     expect(patched.data.agendaItems).toHaveLength(2)
     expect(patched.data.agendaItems[0].builderBlockType).toBe('talk')
     expect(patched.data.agendaItems[1].builderFocusCost).toBe(14)
@@ -258,7 +234,6 @@ describe('event builder creation flow routes', () => {
       where: eq(events.id, created.data.id)
     })
 
-    expect(storedEvent?.creationFlow).toBe('builder')
     expect(storedEvent?.balanceScore).toBe(patched.data.balanceScore)
   })
 
@@ -285,7 +260,6 @@ describe('event builder creation flow routes', () => {
 
     const publicPayload = await publicResponse.json()
 
-    expect('creationFlow' in publicPayload.data).toBe(false)
     expect('balanceScore' in publicPayload.data).toBe(false)
     expect('balanceBreakdown' in publicPayload.data).toBe(false)
 

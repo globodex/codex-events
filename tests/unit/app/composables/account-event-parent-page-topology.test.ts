@@ -18,20 +18,12 @@ const participantTeamPanelSource = readFileSync(
   new URL('../../../../app/components/account/events/AccountEventParticipantTeamPanel.vue', import.meta.url),
   'utf8'
 )
-const settingsPanelSource = readFileSync(
-  new URL('../../../../app/components/account/events/AccountEventAdminSettingsPanel.vue', import.meta.url),
-  'utf8'
-)
 const talkControlSource = readFileSync(
   new URL('../../../../app/components/admin/EventTalkProposalControl.vue', import.meta.url),
   'utf8'
 )
 const simplifiedClaimingPanelSource = readFileSync(
   new URL('../../../../app/components/account/events/AccountEventSimplifiedClaimingPanel.vue', import.meta.url),
-  'utf8'
-)
-const configFormSource = readFileSync(
-  new URL('../../../../app/components/admin/EventConfigForm.vue', import.meta.url),
   'utf8'
 )
 const builderPageSource = readFileSync(
@@ -44,10 +36,6 @@ const builderWorkspaceSource = readFileSync(
 )
 const builderExtrasBoardSource = readFileSync(
   new URL('../../../../app/components/admin/builder/organisms/AdminBuilderExtrasBoard.vue', import.meta.url),
-  'utf8'
-)
-const dateTimeInputSource = readFileSync(
-  new URL('../../../../app/components/AppDateTimeInput.vue', import.meta.url),
   'utf8'
 )
 const dateTimePickerSource = readFileSync(
@@ -76,7 +64,7 @@ describe('account event parent page request topology', () => {
       pageSource.indexOf('const prizesPageRequest'),
       pageSource.indexOf('const prizesPage =')
     )
-    expect(prizesRequestSource).toContain('query: prizesPageQuery')
+    expect(prizesRequestSource).toContain('query: pageState.queryForPage(\'prizes\')')
     expect(pageSource).toContain('const initialPageFamily = resolveInitialAccountEventPageFamily({')
     expect(pageSource).toContain('const pageState = useAccountEventPageState({')
     expect(pageSource).not.toContain('initialRouteFullPath')
@@ -102,28 +90,19 @@ describe('account event parent page request topology', () => {
     expect(participantTeamPanelSource).not.toContain('findVisibleTeamBySlug')
   })
 
-  test('owns the settings read and keeps admin controls on props-down/events-up boundaries', () => {
-    expect(pageSource).toContain('useAccountEventPageRequest<AccountEventSettingsPage>(slug, \'settings\'')
-    expect(pageSource).toContain(':page="settingsPage"')
-    expect(pageSource).toContain('@updated="refreshSettingsPage"')
-    expect(pageSource).toContain('includeAdminEventConfiguration: true')
-    expect(settingsPanelSource).not.toContain('useAccountEventPageRequest')
-    expect(settingsPanelSource).not.toContain('useRoute()')
-    expect(settingsPanelSource).not.toMatch(/^\s*eventSlug\??:/m)
-    expect(settingsPanelSource).toContain('page?: AccountEventSettingsPage | null')
-    expect(settingsPanelSource).toContain('emit(\'updated\')')
+  test('the builder page owns the settings read and keeps admin controls on props-down/events-up boundaries', () => {
+    // The event workspace has no editor of its own. It links to the builder.
+    expect(pageSource).not.toContain('AccountEventSettingsPage')
+    expect(pageSource).toContain(':to="`/admin/events/builder/${slug}`"')
+    expect(builderPageSource).toContain('useAccountEventPageRequest<AccountEventSettingsPage>(eventSlug, \'settings\')')
     expect(talkControlSource).toContain('hasExistingProposal')
     expect(talkControlSource).toContain('<AppDateTimePicker')
-    expect(talkControlSource).not.toContain('<AppDateTimeInput')
     expect(talkControlSource).toContain('<AdminCustomQuestionEditor')
     expect(talkControlSource).not.toContain('useApiClient')
     expect(talkControlSource).not.toContain('onMounted')
     expect(simplifiedClaimingPanelSource).toContain('initialStatus: AccountEventSimplifiedClaimingStatus')
     expect(simplifiedClaimingPanelSource).not.toMatch(/useApi(?:Data|Response)/)
     expect(simplifiedClaimingPanelSource).not.toContain('statusUrl')
-    expect(configFormSource).toContain('initialSimplifiedClaimingStatus')
-    expect(configFormSource).toContain('hasExistingTalkProposal')
-    expect(configFormSource).toContain('emit(\'updated\')')
     expect(builderPageSource).toContain('const hasExistingTalkProposal = computed(() => settingsPage.value?.talkProposals.hasExistingProposal ?? false)')
     expect(builderWorkspaceSource).toContain('hasExistingTalkProposal?: boolean')
     expect(builderWorkspaceSource).toContain(':has-existing-talk-proposal="hasExistingTalkProposal"')
@@ -131,8 +110,6 @@ describe('account event parent page request topology', () => {
     expect(builderExtrasBoardSource).toContain(':has-existing-proposal="props.hasExistingTalkProposal ?? false"')
     expect(builderExtrasBoardSource).toContain('question-editor-variant="builder"')
     expect(talkControlSource).toContain(':variant="props.questionEditorVariant"')
-    expect(dateTimeInputSource).toContain('<AppDateTimePicker')
-    expect(dateTimeInputSource).not.toContain('datetime-local')
     expect(dateTimePickerSource).toContain(':hour-cycle="12"')
   })
 })

@@ -45,7 +45,6 @@ export const accountEventPageQuerySchema = z.object({
   selectedTeamSlug: z.string().trim().toLowerCase().min(1).max(120).optional(),
   participantSearch: z.string().trim().min(1).max(participantSearchMaxLength).optional(),
   participantRows: z.coerce.number().int().min(participantListStep).max(participantListMaxRows).optional(),
-  includeAdminEventConfiguration: z.coerce.boolean().optional(),
   includeEventShell: z.union([z.boolean(), z.stringbool({ truthy: ['true'], falsy: ['false'] })]).optional()
 }).passthrough()
 

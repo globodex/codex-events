@@ -65,6 +65,11 @@ async function retryConnection() {
   }
 }
 
+async function copyWebhookUrl() {
+  await navigator.clipboard.writeText(props.event!.lumaWebhookUrl!)
+  toast.add({ title: 'Webhook address copied', color: 'success' })
+}
+
 function cancelEditing() {
   form.value.lumaEventApiId = props.event?.lumaEventApiId ?? ''
   form.value.lumaApiKey = props.event?.lumaApiKey ?? ''
@@ -245,6 +250,30 @@ async function refreshGuestList() {
         Try again
       </AppButton>
     </AppAlert>
+    <!-- The address that Luma sends its updates to. An organizer needs it to check the connection in Luma. -->
+    <div
+      v-if="hasSavedCredentials && event?.lumaWebhookUrl && !editing"
+      class="space-y-1.5"
+      data-testid="event-builder-luma-webhook"
+    >
+      <p class="text-xs font-medium text-toned">
+        Webhook address
+      </p>
+      <div class="flex items-start gap-2">
+        <code class="min-w-0 flex-1 break-all rounded-lg bg-black/[0.04] px-3 py-2 font-mono text-xs text-highlighted dark:bg-white/[0.06]">
+          {{ event.lumaWebhookUrl }}
+        </code>
+        <AppButton
+          color="neutral"
+          variant="outline"
+          size="sm"
+          icon="i-lucide-copy"
+          aria-label="Copy the webhook address"
+          class="w-8 px-0"
+          @click="copyWebhookUrl"
+        />
+      </div>
+    </div>
     <template v-if="connected && !editing">
       <p class="text-sm text-muted">
         {{ form.simplifiedClaimingEnabled

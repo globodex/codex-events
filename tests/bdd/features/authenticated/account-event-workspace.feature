@@ -45,14 +45,6 @@ Feature: Account event workspace browser topology
     When I measure a direct account event "feedback" tab for event slug "operations-fixture-event" as "event_admin" with page family "feedback" for protected request settlement
     Then the Feedback read should have exactly one terminal lifecycle response
 
-  Scenario: direct settings loads the admin surface without legacy fan-out
-    Given the saved "event_admin" local session state exists for account topology
-    When I warm and measure a direct account event "settings" tab for event slug "operations-fixture-event" as "event_admin" with page family "settings"
-    Then the direct account event topology should have one bootstrap and one selected read without legacy fan-out
-    And the measured account event topology should include a generous local timing budget
-    And the settings surface should expose its stable settings panel
-    And the browser topology should not request runtime CDN scripts
-
   Scenario: the account event overview uses one entry read
     Given the saved "event_admin" local session state exists for account topology
     When I warm and measure the account event overview for event slug "operations-fixture-event" as "event_admin"
@@ -94,7 +86,7 @@ Feature: Account event workspace browser topology
     Then the global account workspace topology should have one session and one critical read
     And the browser topology should not request runtime CDN scripts
 
-  Scenario: an abandoned Operations request cannot paint after navigating to Settings
+  Scenario: an abandoned Operations request cannot paint after navigating to Participants
     Given the saved "event_admin" local session state exists for account topology
-    When I measure account event cancellation from Operations to Settings for event slug "operations-fixture-event" as "event_admin"
-    Then the delayed Operations request should be cancelled without stale Settings paint
+    When I measure account event cancellation from Operations to Participants for event slug "operations-fixture-event" as "event_admin"
+    Then the delayed Operations request should be cancelled without stale Participants paint

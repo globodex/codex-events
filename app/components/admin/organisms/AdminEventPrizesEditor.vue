@@ -1,6 +1,5 @@
 <script setup lang="ts">
-// The prizes of a Hackathon: an organizer writes, orders and saves them here.
-// The event builder and the Settings tab of the event workspace both show this editor.
+// The prizes of a Hackathon: an organizer writes, orders and saves them here, in the event builder.
 import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
 import type { PrizeDefinition } from '~/domains/outcomes/prizes'
 import { normalizeApiError } from '~/lib/api'

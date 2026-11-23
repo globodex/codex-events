@@ -9,16 +9,12 @@ const editorClientSource = readFileSync(
   new URL('../../../../../app/components/admin/AdminMarkdownEditorClient.client.vue', import.meta.url),
   'utf8'
 )
-const settingsPanelSource = readFileSync(
-  new URL('../../../../../app/components/account/events/AccountEventAdminSettingsPanel.vue', import.meta.url),
-  'utf8'
-)
 const builderPageSource = readFileSync(
   new URL('../../../../../app/pages/admin/events/builder/[eventId].vue', import.meta.url),
   'utf8'
 )
-// The criteria editor and the prize editor are the sortable lists of the Settings tab and of
-// the event builder. Both load the sorting library through the shared helper.
+// The criteria editor and the prize editor are the sortable lists of the event builder. Both
+// load the sorting library through the shared helper.
 const sortableHelperSource = readFileSync(
   new URL('../../../../../app/composables/useAdminSortableLists.ts', import.meta.url),
   'utf8'
@@ -57,17 +53,10 @@ describe('local editor and sortable loading boundaries', () => {
       expect(editorSource).toContain('useAdminSortableLists(')
       expect(editorSource).not.toContain('sortablejs')
     }
-    expect(settingsPanelSource).not.toContain('sortablejs')
-    expect(settingsPanelSource).toContain('page?: AccountEventSettingsPage | null')
-    expect(settingsPanelSource).toContain('emit(\'updated\')')
-    expect(settingsPanelSource).not.toContain('settingsRequest.abort()')
-    expect(settingsPanelSource).not.toContain('useAccountEventPageRequest')
-    expect(settingsPanelSource).not.toContain('useAdminEventSettingsWorkspace')
-    expect(settingsPanelSource).not.toContain('workspace.refreshWorkspace')
     expect(builderPageSource).toContain('useAccountEventPageRequest<AccountEventSettingsPage>')
     expect(builderPageSource).toContain('enabled: () => Boolean(currentEvent.value) && isProgramOpen.value')
     expect(builderPageSource).not.toContain('/terms/current')
     expect(builderPageSource).not.toContain('settingsRequest.abort()')
-    expect(settingsPanelSource).not.toContain('unpkg')
+    expect(builderPageSource).not.toContain('unpkg')
   })
 })

@@ -20,10 +20,10 @@ Feature: TASK-3.9 authenticated admin configuration coverage
   Scenario: An organizer edits event details while uploading a new banner
     When the saved "platform_admin" session creates a managed event named "BDD Event drafts"
     And the saved "platform_admin" session opens registration for the remembered managed event
-    And I edit the remembered event name and upload a banner from Settings
+    And I edit the remembered event name and upload a banner in the event builder
     Then the new banner and my unsaved event name should both be visible
-    When I change the event slug and save the configuration
-    Then the updated settings should appear at the new event URL
+    When I change the event slug and save the event
+    Then the builder should show the saved event at its new address
 
   Scenario: An organizer retries two judging criteria after a partial save
     When the saved "platform_admin" session creates a managed event named "BDD criteria retry"

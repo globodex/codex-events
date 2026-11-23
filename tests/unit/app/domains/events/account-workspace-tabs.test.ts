@@ -23,8 +23,7 @@ describe('account event workspace tabs', () => {
       'certificates': 'certificates',
       'submissions': 'submissions',
       'judging': 'judging',
-      'operations': 'operations',
-      'settings': 'settings'
+      'operations': 'operations'
     })
   })
 

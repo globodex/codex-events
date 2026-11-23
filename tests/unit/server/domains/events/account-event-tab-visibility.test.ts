@@ -72,7 +72,7 @@ describe('buildAccountEventTabVisibility', () => {
       hasPublishedPrizes: true
     })).toEqual([
       'overview', 'prizes', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams',
-      'participants', 'certificates', 'submissions', 'judging', 'operations', 'settings'
+      'participants', 'certificates', 'submissions', 'judging', 'operations'
     ])
   })
 
@@ -83,8 +83,7 @@ describe('buildAccountEventTabVisibility', () => {
       applicationStatus: 'approved',
       hasPublishedPrizes: true
     })).toMatchObject({
-      availableTabs: ['overview', 'gallery', 'staff', 'feedback', 'participants', 'certificates', 'operations', 'settings'],
-      showPrizeConfiguration: false
+      availableTabs: ['overview', 'gallery', 'staff', 'feedback', 'participants', 'certificates', 'operations']
     })
   })
 
@@ -95,19 +94,12 @@ describe('buildAccountEventTabVisibility', () => {
       .toEqual(['overview', 'prizes', 'judges', 'workspace', 'teams'])
   })
 
-  test('offers prize configuration to an admin until winners are announced, and keeps the Prizes tab after that', () => {
-    expect(visibilityFor({ authorization: admin })).toMatchObject({
-      availableTabs: [
-        'overview', 'prizes', 'gallery', 'judges', 'staff', 'feedback',
-        'participants', 'certificates', 'teams', 'submissions', 'operations', 'settings'
-      ],
-      showPrizeConfiguration: true
-    })
-
-    const afterWinners = visibilityFor({ event: { state: 'winners_announced' }, authorization: admin })
-
-    expect(afterWinners.availableTabs).toContain('prizes')
-    expect(afterWinners.showPrizeConfiguration).toBe(false)
+  test('shows the Prizes tab to an admin before prizes are published and after winners are announced', () => {
+    expect(tabsFor({ authorization: admin })).toEqual([
+      'overview', 'prizes', 'gallery', 'judges', 'staff', 'feedback',
+      'participants', 'certificates', 'teams', 'submissions', 'operations'
+    ])
+    expect(tabsFor({ event: { state: 'winners_announced' }, authorization: admin })).toContain('prizes')
   })
 
   test('shows Call for talks only for an eligible applicant, a retained proposal owner, or the event team', () => {

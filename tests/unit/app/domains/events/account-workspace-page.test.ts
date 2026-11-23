@@ -94,21 +94,6 @@ describe('account-event page contract boundary', () => {
     })).toBe('/api/account/events/fixture-event/teams')
   })
 
-  test('makes active admin configuration state part of the prizes contract only', () => {
-    expect(buildAccountEventPagePath('fixture-event', 'entry', {
-      includeAdminEventConfiguration: true
-    })).toBe('/api/account/events/fixture-event/entry')
-    expect(buildAccountEventPagePath('fixture-event', 'prizes', {
-      includeAdminEventConfiguration: true
-    })).toBe('/api/account/events/fixture-event/prizes?includeAdminEventConfiguration=true')
-    expect(buildAccountEventPageCacheKey('fixture-event', 'entry', {
-      includeAdminEventConfiguration: true
-    })).toBe(buildAccountEventPageCacheKey('fixture-event', 'entry'))
-    expect(buildAccountEventPagePath('fixture-event', 'settings', {
-      includeAdminEventConfiguration: true
-    })).toBe('/api/account/events/fixture-event/settings')
-  })
-
   test('makes direct-link shell state part of the selected page path and cache key', () => {
     expect(buildAccountEventPagePath('fixture-event', 'operations', {
       includeEventShell: true

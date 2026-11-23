@@ -261,12 +261,12 @@ Then('I can save the track edit in the event builder', async ({ page }) => {
   expect(data.program.tracks[0]?.name).toBe('Updated build track')
 })
 
-When('I leave the builder for event settings', async ({ page }) => {
-  await page.getByRole('link', { name: 'Event settings', exact: true }).click()
+When('I leave the builder for the event workspace', async ({ page }) => {
+  await page.getByRole('link', { name: 'Back to event', exact: true }).click()
 })
 
-When('I reopen the rooms and sessions from event settings', async ({ page }) => {
-  await page.getByTestId('event-builder-open-in-builder').click()
+When('I reopen the rooms and sessions from the event workspace', async ({ page }) => {
+  await page.getByTestId('account-event-edit').click()
   // The tile shows the sessions of the event before its editor has loaded.
   await openBuilderLevel(page, 'extras')
   await expect(page.getByTestId('event-builder-extra-rooms')).toContainText(/\d+ sessions?/)
@@ -301,8 +301,8 @@ When('I draw a route to {string} on {string} and leave before the save finishes'
   await expect(saved).toBeOK()
   const { data }: { data: EventFloorPlan } = await saved.json()
   expect(data.rooms.find(room => room.name === roomName)?.route).toHaveLength(3)
-  await page.getByRole('link', { name: 'Event settings', exact: true }).click()
-  await expect(page.getByTestId('event-builder-open-in-builder')).toBeVisible()
+  await page.getByRole('link', { name: 'Back to event', exact: true }).click()
+  await expect(page.getByTestId('account-event-edit')).toBeVisible()
   await route.fulfill({ response: saved })
 })
 

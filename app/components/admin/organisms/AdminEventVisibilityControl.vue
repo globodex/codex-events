@@ -1,7 +1,6 @@
 <script setup lang="ts">
 // Hides an event from the public pages and from the event lists of participants, and makes it
-// visible again. The event builder and the Settings tab of the event workspace both show this
-// control.
+// visible again. The event builder shows this control.
 import type { ApiDataResponse } from '~/lib/api'
 import type { EventRecord } from '~/domains/events/records'
 import { normalizeApiError } from '~/lib/api'

@@ -45,9 +45,8 @@ export interface EventFormState {
   talkProposalOpensAt: string
   talkProposalClosesAt: string
   talkProposalQuestions: CustomQuestionDefinition[]
-  // The four settings below have an editor only in the event builder. Only the builder sends
-  // them when it saves (`buildPatchBody` in `useEventBuilder`). `buildEventConfigurationPatch`
-  // leaves them out, so a save from the settings form keeps what the event has stored.
+  // The four settings below need a saved event. `buildEventConfigurationPatch` sends them when
+  // the event is edited, and `buildEventCreateBody` leaves them out.
   /** Shows participants their next step around check-in. Edited in the builder's "After check-in" group. */
   checkInFlowEnabled: boolean
   /** The questions a participant answers after check-in. Edited in the same builder group. */
@@ -727,33 +726,6 @@ export function createEmptyEventFormState(): EventFormState {
   }
 }
 
-export function getNextAgendaItemDefaultTimes(previousItem?: EventFormAgendaItem | null) {
-  const previousEndsAt = previousItem?.endsAt?.trim() ?? ''
-
-  if (!previousEndsAt) {
-    return {
-      startsAt: '',
-      endsAt: ''
-    }
-  }
-
-  return {
-    startsAt: previousEndsAt,
-    endsAt: previousEndsAt
-  }
-}
-
-export function getAgendaItemEndAfterStartChange(startsAt: string, endsAt: string) {
-  const startsAtTime = Date.parse(startsAt)
-  const endsAtTime = Date.parse(endsAt)
-
-  if (Number.isNaN(startsAtTime) || Number.isNaN(endsAtTime) || endsAtTime >= startsAtTime) {
-    return endsAt
-  }
-
-  return startsAt
-}
-
 export function createEventFormState(event: EventRecord): EventFormState {
   return {
     eventType: event.eventType,
@@ -903,6 +875,12 @@ export function buildEventConfigurationPatch(configForm: EventFormState, eventTy
     requireProofOfExecution: configForm.requireProofOfExecution,
     requireTeamIntent: configForm.requireTeamIntent,
     requireAiKnowledge: configForm.requireAiKnowledge,
+    checkInFlowEnabled: configForm.checkInFlowEnabled,
+    // The question editor is hidden while the switch is off. The questions are not sent then, so
+    // the event keeps its stored questions and an unfinished hidden question cannot block the save.
+    ...(configForm.checkInFlowEnabled ? { questionnaireQuestions: configForm.questionnaireQuestions } : {}),
+    challenges: configForm.challenges,
+    participantPhotosEnabled: configForm.participantPhotosEnabled,
     ...(supportsTracks
       ? {
           tracks: toEventTracksPayload(configForm.tracks)

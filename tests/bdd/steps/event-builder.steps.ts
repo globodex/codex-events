@@ -178,18 +178,13 @@ When('I submit the event builder', async ({ page }) => {
   await submitButton.click()
 })
 
-Then('I should land on the workspace settings tab for {string}', async ({ page }, slug: string) => {
-  await page.waitForURL(url => url.pathname === `/account/events/${slug}` && url.searchParams.get('tab') === 'settings')
+Then('I should land on the event workspace for {string}', async ({ page }, slug: string) => {
+  await page.waitForURL(url => url.pathname === `/account/events/${slug}`)
 })
 
-Then('the workspace settings should show the builder banner', async ({ page }) => {
+When('I open the event in the builder from the event workspace', async ({ page }) => {
   await waitForNuxtHydration(page)
-  await expect(page.getByTestId('event-builder-settings-banner')).toBeVisible()
-  await expect(page.getByTestId('event-builder-open-in-builder')).toBeVisible()
-})
-
-When('I open the event in the builder from the workspace banner', async ({ page }) => {
-  await page.getByTestId('event-builder-open-in-builder').click()
+  await page.getByTestId('account-event-edit').click()
   await page.waitForURL(url => url.pathname.startsWith('/admin/events/builder/'))
   await waitForNuxtHydration(page)
 })

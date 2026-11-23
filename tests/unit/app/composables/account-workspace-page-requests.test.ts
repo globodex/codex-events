@@ -16,7 +16,6 @@ const prizeWorkspaceSource = readFileSync(
 )
 
 const creationPageSources = [
-  '../../../../app/pages/admin/events/new.vue',
   '../../../../app/pages/admin/events/builder/new.vue'
 ].map(path => readFileSync(new URL(path, import.meta.url), 'utf8'))
 

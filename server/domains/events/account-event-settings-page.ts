@@ -178,7 +178,8 @@ export const createAccountEventSettingsPageRoute = (appBaseUrl: string) => defin
       undefined,
       tracks,
       {
-        appBaseUrl: '',
+        // The admin event carries the address that Luma sends its updates to. The event builder shows it.
+        appBaseUrl,
         ...imageOptions
       }
     )
@@ -223,7 +224,6 @@ export const createAccountEventSettingsPageRoute = (appBaseUrl: string) => defin
         hasExistingProposal: existingTalkProposals.length > 0
       },
       builder: {
-        creationFlow: event.creationFlow,
         agendaBlockCount: agendaItems.length,
         typedAgendaBlockCount,
         programSessionCount,

@@ -21,8 +21,7 @@ export const accountEventWorkspacePageByTab: Readonly<Record<AccountEventWorkspa
   'certificates': 'certificates',
   'submissions': 'submissions',
   'judging': 'judging',
-  'operations': 'operations',
-  'settings': 'settings'
+  'operations': 'operations'
 }
 
 export function getAccountEventPageForTab(tab: AccountEventWorkspaceTab) {
@@ -59,8 +58,7 @@ const defaultAccountEventTabLabels: Record<AccountEventWorkspaceTab, string> = {
   'certificates': 'Certificates',
   'teams': 'Teams',
   'submissions': 'Submissions',
-  'operations': 'Operations',
-  'settings': 'Settings'
+  'operations': 'Operations'
 }
 
 export function getAccountEventTabLabel(

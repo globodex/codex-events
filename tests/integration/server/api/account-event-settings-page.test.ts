@@ -49,7 +49,6 @@ describe('GET /api/account/events/:slug/settings', () => {
     await harness.database.insert(events).values({
       id: 'event_settings',
       eventType: 'hackathon',
-      creationFlow: 'builder',
       balanceScore: 84,
       balanceBreakdownJson: JSON.stringify({
         engineVersion: 1,
@@ -263,6 +262,8 @@ describe('GET /api/account/events/:slug/settings', () => {
         description: 'A complete settings page fixture.',
         talkProposalQuestions: [],
         talkProposalQuestionsRevision: 0,
+        // The address that Luma sends its updates to. The event builder shows it.
+        lumaWebhookUrl: 'https://events.example.com/api/public/events/event_settings/luma/webhooks',
         tracks: [{ id: 'track_1', staffInstructions: 'Keep this track moving.' }]
       },
       criteria: [{ id: 'criterion_1', weight: 100 }],
@@ -299,7 +300,6 @@ describe('GET /api/account/events/:slug/settings', () => {
         hasExistingProposal: false
       },
       builder: {
-        creationFlow: 'builder',
         agendaBlockCount: 1,
         typedAgendaBlockCount: 1,
         programSessionCount: 3,

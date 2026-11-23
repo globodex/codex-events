@@ -220,19 +220,24 @@ describe('event config form schema', () => {
     })
   })
 
-  test('leaves the builder-only settings out of configuration patches, so a save from the settings form keeps the stored ones', () => {
-    const patch = buildEventConfigurationPatch({
+  test('sends the check-in flow, the challenges and the photo setting with an edit, and the questions only while the check-in flow is on', () => {
+    const form = {
       ...createValidEventFormState(),
       checkInFlowEnabled: true,
-      questionnaireQuestions: [{ id: 'q1', type: 'short_text', prompt: 'What do you build?', required: true, options: [] }],
+      questionnaireQuestions: [{ id: 'q1', type: 'short_text' as const, prompt: 'What do you build?', required: true, options: [] }],
       challenges: [{ id: 'c1', title: 'Ship a skill', instructions: 'Build one skill.', resources: [], isPublished: true }],
       participantPhotosEnabled: true
-    }, 'build')
+    }
 
-    expect(patch).not.toHaveProperty('checkInFlowEnabled')
-    expect(patch).not.toHaveProperty('questionnaireQuestions')
-    expect(patch).not.toHaveProperty('challenges')
-    expect(patch).not.toHaveProperty('participantPhotosEnabled')
+    expect(buildEventConfigurationPatch(form, 'build')).toMatchObject({
+      checkInFlowEnabled: true,
+      questionnaireQuestions: form.questionnaireQuestions,
+      challenges: form.challenges,
+      participantPhotosEnabled: true
+    })
+    // The question editor is hidden while the check-in flow is off, so its questions stay as stored.
+    expect(buildEventConfigurationPatch({ ...form, checkInFlowEnabled: false }, 'build'))
+      .not.toHaveProperty('questionnaireQuestions')
   })
 
   test('accepts configured submission tracks with markdown descriptions', () => {

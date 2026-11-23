@@ -80,10 +80,5 @@ export function getAccountEventSeoContent(
         title: `Manage ${eventName} | Codex Events`,
         description: `Run approvals, judging, and outcomes for ${eventName}.`
       }
-    case 'settings':
-      return {
-        title: `Settings | ${eventName} | Codex Events`,
-        description: `Update the configuration, terms, and judging criteria for ${eventName}.`
-      }
   }
 }

@@ -315,9 +315,9 @@ state.
   registration; the Agenda tab of an event without an agenda; the direct-link
   event shell; and the admin event of the settings page, which carries drafts
   for the event builder. Unit tests cover the open steps of the builder for an unfinished
-  challenge and an unfinished questionnaire question, and their order by level, and a settings form
-  save that sends neither challenges nor the check-in flow settings, which
-  only the event builder edits. Browser scenarios run on dedicated fixture
+  challenge and an unfinished questionnaire question, and their order by level, and an event edit
+  that sends the challenges and the check-in flow settings, and the
+  questionnaire questions only while the check-in flow is on. Browser scenarios run on dedicated fixture
   events and cover an organizer publishing a challenge in the event builder,
   and a participant reading a challenge and its details on the Agenda, opened
   from the next step after check-in and before check-in.
@@ -335,7 +335,12 @@ state.
   loses or regains its end. Browser scenarios cover a judging criterion and a
   prize saved in the builder, hiding an event and making it visible again, an
   exact start and a removed end on the Agenda level, the order of two tracks,
-  and the Luma API key that can be shown.
+  the Luma API key that can be shown, and the webhook address of a saved Luma
+  connection. Browser scenarios also cover the way between the event workspace
+  and the builder: a new event that lands on its workspace, "Edit event" that
+  opens the builder, a banner upload that keeps an unsaved event name, a
+  changed slug that moves the builder and the workspace to the new address,
+  and a criteria save that fails halfway and is finished by a second save.
 - Staff challenge coverage includes an event admin and a platform admin giving
   a staff member a challenge, an open track and a draft; the track and the
   challenge replacing each other; a refused unknown challenge, a refused
@@ -369,8 +374,8 @@ state.
   when it is shown again; refused highlight and public changes of a hidden
   photo; who learns the uploader of a participant photo; the Gallery tab on
   the event page and on a direct link; and the event setting with the admin
-  event of the settings page. A unit test covers a settings form save that
-  does not send the participant photo setting. Browser scenarios run on
+  event of the settings page. A unit test covers an event edit that sends
+  the participant photo setting. Browser scenarios run on
   dedicated fixture events and cover a participant adding a photo from the
   next step, event staff hiding it, and an organizer allowing participant
   photos in the event builder.
