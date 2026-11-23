@@ -113,6 +113,39 @@ describe('shared database migration', () => {
     }
   })
 
+  test('drops the creation flow marker and keeps the event and the rows that point at it', async () => {
+    const migration = '0087_drop_event_creation_flow.sql'
+    const earlierMigrations = readdirSync(join(process.cwd(), 'drizzle'))
+      .filter(name => /^\d+.*\.sql$/.test(name) && name < migration)
+      .sort()
+      .map(name => readFileSync(join(process.cwd(), 'drizzle', name), 'utf8'))
+    const db = createTestD1Database({ applyMigrations: false })
+    try {
+      await db.exec(earlierMigrations.join('\n'))
+      const now = isoTimestamp(0)
+      await seedUser(db, 'organizer', now)
+      await seedEvent(db, 'kept', 'registration_open', now, 'organizer')
+      await db.exec(`
+        update events set creation_flow = 'builder';
+        insert into user_applications (id,event_id,user_id,status) values ('a','kept','organizer','submitted');
+      `)
+      const readEvent = () => db.prepare('select * from events where id = ?').bind('kept').first<Record<string, unknown>>()
+      const { creation_flow: marker, ...eventWithoutMarker } = (await readEvent())!
+      expect(marker).toBe('builder')
+
+      const statements = splitSqlStatements(readFileSync(join(process.cwd(), 'drizzle', migration), 'utf8'))
+      await db.batch(statements.map(statement => db.prepare(statement)))
+
+      const application = db.prepare('select event_id from user_applications where id = ?').bind('a')
+      const brokenForeignKeys = await db.prepare('pragma foreign_key_check').all()
+      expect(await readEvent()).toEqual(eventWithoutMarker)
+      expect(await application.first('event_id')).toBe('kept')
+      expect(brokenForeignKeys.results).toEqual([])
+    } finally {
+      await db.close()
+    }
+  })
+
   test('migrates the existing simplified giveaway without changing assigned credits', async () => {
     const migration = '0078_simplified_claiming_giveaways.sql'
     const previous = readdirSync(join(process.cwd(), 'drizzle')).filter(name => /^\d+.*\.sql$/.test(name) && name < migration).sort()
