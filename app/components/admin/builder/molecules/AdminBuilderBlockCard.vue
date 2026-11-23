@@ -2,6 +2,7 @@
 import type { EventBuilderBlockInstance, EventBuilderScheduleEntry } from '~/domains/events/builder'
 import { eventBuilderBlockDefinitions } from '#shared/domains/events/builder-blocks'
 import { getScaledBlockEnergyDelta, getScaledBlockFocusCost } from '#shared/domains/events/builder-scoring'
+import { toDateTimeLocalValue } from '~/domains/events/admin-event'
 import { eventBuilderBlockIcons, getBlockDurationMinutes } from '~/domains/events/builder'
 import { formatLocalTime } from '~/lib/date-formatting'
 import AdminBuilderDurationStepper from '~/components/admin/builder/molecules/AdminBuilderDurationStepper.vue'
@@ -16,6 +17,10 @@ const emit = defineEmits<{
   updateTitle: [id: string, title: string]
   updateDetails: [id: string, details: string]
   updateDuration: [id: string, minutes: number]
+  /** An exact start, as a local date and time ('YYYY-MM-DDTHH:mm'). */
+  updateStart: [id: string, startsAt: string]
+  /** An exact end, as a local date and time, or `null` for a block without an end. */
+  updateEnd: [id: string, endsAt: string | null]
   updateFocusCost: [id: string, value: number]
   updateEnergyDelta: [id: string, value: number]
   clone: [id: string]
@@ -99,9 +104,16 @@ const durationModel = computed({
       </span>
 
       <AdminBuilderDurationStepper
+        v-if="block.durationMinutes !== null"
         v-model="durationModel"
         :block-id="block.id"
       />
+      <span
+        v-else
+        class="shrink-0 px-2 text-xs text-dimmed"
+      >
+        No end
+      </span>
 
       <span class="hidden w-44 shrink-0 items-center justify-center gap-2 sm:flex">
         <template v-if="block.custom">
@@ -186,8 +198,8 @@ const durationModel = computed({
         variant="ghost"
         size="xs"
         :aria-expanded="detailsOpen"
-        :aria-label="hasDetails ? `Edit the description of ${block.title}` : `Add a description to ${block.title}`"
-        :title="hasDetails ? 'Edit description' : 'Add description'"
+        :aria-label="`Times and description of ${block.title}`"
+        title="Times and description"
         :data-testid="`event-builder-block-details-toggle-${block.id}`"
         class="w-7 rounded-lg px-0"
         :class="{ 'text-highlighted': hasDetails }"
@@ -216,8 +228,49 @@ const durationModel = computed({
 
     <div
       v-if="detailsOpen"
-      class="mt-2 pl-11.5 animate-in fade-in slide-in-from-top-1 duration-200"
+      class="mt-2 grid gap-3 animate-in fade-in slide-in-from-top-1 duration-200 sm:pl-11.5"
     >
+      <!-- The exact times need the event start, which the level "When and where" sets. -->
+      <div
+        v-if="schedule?.startsAt"
+        class="grid gap-3 sm:grid-cols-2"
+      >
+        <label class="grid gap-1.5">
+          <span class="text-xs font-medium text-toned">Starts at</span>
+          <AppDateTimePicker
+            :model-value="toDateTimeLocalValue(schedule.startsAt)"
+            size="sm"
+            picker-aria-label="Choose the start of this block"
+            :data-testid="`event-builder-block-starts-at-${block.id}`"
+            @update:model-value="value => value && emit('updateStart', block.id, value)"
+          />
+        </label>
+        <div class="grid gap-1.5">
+          <span class="text-xs font-medium text-toned">Ends at</span>
+          <div class="flex items-center gap-2">
+            <AppDateTimePicker
+              :model-value="schedule.endsAt ? toDateTimeLocalValue(schedule.endsAt) : undefined"
+              size="sm"
+              class="min-w-0 flex-1"
+              picker-aria-label="Choose the end of this block"
+              :data-testid="`event-builder-block-ends-at-${block.id}`"
+              @update:model-value="value => emit('updateEnd', block.id, value || null)"
+            />
+            <AppButton
+              v-if="block.durationMinutes !== null"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              icon="i-lucide-x"
+              :aria-label="`Remove the end of ${block.title}`"
+              title="No end"
+              class="w-7 shrink-0 rounded-lg px-0"
+              @click="emit('updateEnd', block.id, null)"
+            />
+          </div>
+        </div>
+      </div>
+
       <label class="grid gap-1.5">
         <span class="text-xs font-medium text-toned">Description</span>
         <AppTextarea

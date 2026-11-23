@@ -21,6 +21,8 @@ const emit = defineEmits<{
   updateTitle: [id: string, title: string]
   updateDetails: [id: string, details: string]
   updateDuration: [id: string, minutes: number]
+  updateStart: [id: string, startsAt: string]
+  updateEnd: [id: string, endsAt: string | null]
   updateFocusCost: [id: string, value: number]
   updateEnergyDelta: [id: string, value: number]
 }>()
@@ -205,6 +207,8 @@ useAdminSortableLists({
             @update-details="(id, details) => emit('updateDetails', id, details)"
             @clone="id => emit('clone', id)"
             @update-duration="(id, minutes) => emit('updateDuration', id, minutes)"
+            @update-start="(id, startsAt) => emit('updateStart', id, startsAt)"
+            @update-end="(id, endsAt) => emit('updateEnd', id, endsAt)"
             @update-focus-cost="(id, value) => emit('updateFocusCost', id, value)"
             @update-energy-delta="(id, value) => emit('updateEnergyDelta', id, value)"
             @remove="id => emit('remove', id)"

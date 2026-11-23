@@ -35,6 +35,8 @@ Feature: Gamified event builder creation flow
     And I choose the "build" event type in the builder
     And I add Markdown to the first builder track short description
     Then the builder track short description should retain its Markdown
+    When I add a second builder track and move it up
+    Then the builder should list the second track first
 
   Scenario: Platform admin directly edits an agenda block duration
     When I open the event builder with the saved "platform_admin" session
@@ -45,6 +47,17 @@ Feature: Gamified event builder creation flow
     And I clear and type "17" minutes into the first builder block
     Then the first builder block duration should be 17 minutes
     And the second builder block should run from 8:17 AM to 8:32 AM
+
+  Scenario: Platform admin sets an exact start and removes an end of an agenda block
+    When I open the event builder with the saved "platform_admin" session
+    And I name the event "BDD Times Meetup"
+    And I choose the "meetup" event type in the builder
+    And I apply the "meetup-community-evening" builder template
+    And I set a builder event start
+    And I start the second builder block one hour later
+    Then the first builder block should run from 8:00 AM to 8:15 AM and the second should start at 9:15 AM
+    When I remove the end of the first builder block
+    Then the first builder block should have no end and the second should start at 9:15 AM
 
   Scenario: Organizer keeps one Luma connection across claiming methods
     When I open the event builder with the saved "platform_admin" session

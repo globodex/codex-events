@@ -78,6 +78,49 @@ When('I clear and type {string} minutes into the first builder block', async ({ 
   await input.pressSequentially(minutes)
 })
 
+/** One agenda block of the builder with its times and description open. */
+async function openBuilderBlockDetails(page: Page, index: number) {
+  const row = page.locator('[data-builder-block-row]').nth(index)
+
+  await row.getByRole('button', { name: /^Times and description of/ }).click()
+
+  return row
+}
+
+When('I start the second builder block one hour later', async ({ page }) => {
+  await openBuilderLevel(page, 'agenda')
+
+  const row = await openBuilderBlockDetails(page, 1)
+  // The field has the parts day, month, year, hour, minute and AM or PM. The hour is the fourth.
+  const hour = row.locator('[data-testid^="event-builder-block-starts-at-"]').getByRole('spinbutton').nth(3)
+
+  await hour.focus()
+  await hour.press('ArrowUp')
+})
+
+Then('the first builder block should run from 8:00 AM to 8:15 AM and the second should start at 9:15 AM', async ({ page }) => {
+  const rows = page.locator('[data-builder-block-row]')
+
+  // The second block keeps its 15 minutes, and the pause before it is now one hour.
+  await expect(rows.nth(0)).toContainText('8:00 AM – 8:15 AM')
+  await expect(rows.nth(1)).toContainText('9:15 AM – 9:30 AM')
+})
+
+When('I remove the end of the first builder block', async ({ page }) => {
+  const row = await openBuilderBlockDetails(page, 0)
+
+  await row.getByRole('button', { name: /^Remove the end of/ }).click()
+})
+
+Then('the first builder block should have no end and the second should start at 9:15 AM', async ({ page }) => {
+  const rows = page.locator('[data-builder-block-row]')
+
+  await expect(rows.nth(0)).toContainText('No end')
+  await expect(rows.nth(0)).not.toContainText('8:15 AM')
+  // The blocks after a block that lost its end keep their times.
+  await expect(rows.nth(1)).toContainText('9:15 AM – 9:30 AM')
+})
+
 Then('the first builder block duration should be {int} minutes', async ({ page }, minutes: number) => {
   await expect(page.locator('[data-testid^="event-builder-duration-input-"]').first()).toHaveValue(String(minutes))
 })
@@ -209,6 +252,22 @@ Then('the builder rich basics should fit the mobile viewport', async ({ page }) 
   }
 })
 
+When('I add a second builder track and move it up', async ({ page }) => {
+  const tracks = await openBuilderExtra(page, 'tracks')
+
+  await tracks.getByLabel('Name', { exact: true }).fill('First track')
+  await page.getByTestId('event-builder-add-track').click()
+  await tracks.getByLabel('Name', { exact: true }).last().fill('Second track')
+  await tracks.getByRole('button', { name: 'Move track 2 up' }).click()
+})
+
+Then('the builder should list the second track first', async ({ page }) => {
+  const names = (await openBuilderExtra(page, 'tracks')).getByLabel('Name', { exact: true })
+
+  await expect(names.first()).toHaveValue('Second track')
+  await expect(names.last()).toHaveValue('First track')
+})
+
 Then('the builder track short description should retain its Markdown', async ({ page }) => {
   const editor = page.locator('[data-testid^="event-builder-track-short-"]').first()
 
@@ -224,6 +283,11 @@ Then('Luma credentials stay in one section when I change claiming methods', asyn
   await luma.getByRole('button', { name: 'Connect Luma', exact: true }).click()
   await luma.getByLabel('Luma event ID', { exact: true }).fill('evt-bdd')
   await luma.getByLabel('Luma API key', { exact: true }).fill('bdd-key')
+  await expect(luma.getByLabel('Luma API key', { exact: true })).toHaveAttribute('type', 'password')
+  // The organizer can show the key to check it, and hide it again.
+  await luma.getByRole('button', { name: 'Show the Luma API key' }).click()
+  await expect(luma.getByLabel('Luma API key', { exact: true })).toHaveAttribute('type', 'text')
+  await luma.getByRole('button', { name: 'Hide the Luma API key' }).click()
   await expect(luma.getByLabel('Luma API key', { exact: true })).toHaveAttribute('type', 'password')
   for (const method of ['Simplified claiming', 'Regular claiming', 'Simplified claiming']) {
     const credits = await openBuilderExtra(page, 'credits')

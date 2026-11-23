@@ -25,6 +25,8 @@ import {
   getVisibleApplicationFieldCount,
   pruneBlocksForEventType,
   reorderAgendaBlocks,
+  setBlockEnd,
+  setBlockStart,
   toEventBalanceInputFromState,
   toEventBuilderFormState
 } from '~/domains/events/builder'
@@ -224,6 +226,20 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
     }
   }
 
+  function setBlockStartsAt(id: string, startsAt: string) {
+    // The first block starts with the event.
+    if (state.blocks[0]?.id === id) {
+      setEventStartsAt(startsAt)
+    } else {
+      state.blocks = setBlockStart(state.blocks, schedule.value, id, startsAt)
+    }
+  }
+
+  /** Sets the end of a block. `null` removes the end. */
+  function setBlockEndsAt(id: string, endsAt: string | null) {
+    state.blocks = setBlockEnd(state.blocks, schedule.value, id, endsAt)
+  }
+
   function markSubmitted() {
     justSubmitted.value = true
   }
@@ -286,6 +302,8 @@ export function useEventBuilder(options: UseEventBuilderOptions) {
     setEventType,
     markSlugEdited,
     setEventStartsAt,
+    setBlockStartsAt,
+    setBlockEndsAt,
     markSubmitted,
     draftSnapshot,
     markSaved,

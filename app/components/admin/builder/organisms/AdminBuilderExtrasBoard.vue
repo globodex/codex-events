@@ -19,10 +19,16 @@ import AccountEventAdminTermsCard from '~/components/account/events/AccountEvent
 import EventConfigProgramIdentitySection from '~/components/admin/EventConfigProgramIdentitySection.vue'
 import EventTalkProposalControl from '~/components/admin/EventTalkProposalControl.vue'
 import AdminCustomQuestionEditor from '~/components/admin/organisms/AdminCustomQuestionEditor.vue'
+import AdminEventCriteriaEditor from '~/components/admin/organisms/AdminEventCriteriaEditor.vue'
+import AdminEventPrizesEditor from '~/components/admin/organisms/AdminEventPrizesEditor.vue'
+import AdminEventVisibilityControl from '~/components/admin/organisms/AdminEventVisibilityControl.vue'
+import type { EvaluationCriterion } from '~/domains/judging/criteria-config'
+import type { PrizeDefinition } from '~/domains/outcomes/prizes'
 import AdminBuilderChallengesEditor from '~/components/admin/builder/organisms/AdminBuilderChallengesEditor.vue'
 import AdminBuilderLumaConnection from '~/components/admin/builder/organisms/AdminBuilderLumaConnection.vue'
 import AdminBuilderCreditsSection from '~/components/admin/builder/organisms/AdminBuilderCreditsSection.vue'
 import AdminBuilderCreditsInfoDialog from '~/components/admin/builder/molecules/AdminBuilderCreditsInfoDialog.vue'
+import { moveListItemByIndex } from '~/utils/reorder-list'
 import type {
   AccountEventLumaGuestList,
   AccountEventSettingsCreditOffer,
@@ -44,6 +50,9 @@ const props = defineProps<{
   event: EventRecord | null
   /** The sessions in the rooms of the event. The tile "Rooms and sessions" shows the number. */
   sessionCount?: number
+  /** The saved judging criteria and prizes of a Hackathon. */
+  criteria?: EvaluationCriterion[]
+  prizes?: PrizeDefinition[]
   backgroundImageUploadPending?: boolean
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
@@ -65,6 +74,8 @@ const emit = defineEmits<{
   saveTerms: [documentType: TermsDocument['documentType'], content: string]
   updated: []
   save: []
+  /** True while an extra with its own save button holds a change that is not saved. */
+  unsavedChange: [unsaved: boolean]
 }>()
 
 defineSlots<{
@@ -96,8 +107,24 @@ const summaryContext = computed<EventBuilderExtraContext>(() => ({
   form: form.value,
   event: props.event,
   creditCount: creditCount.value,
-  sessionCount: props.sessionCount ?? 0
+  sessionCount: props.sessionCount ?? 0,
+  criteriaCount: props.criteria?.length ?? 0,
+  prizeCount: props.prizes?.length ?? 0
 }))
+
+// The criteria and the prizes are saved with their own buttons. The page warns before the
+// organizer leaves the builder while one of them holds a change that is not saved.
+const unsavedExtraIds = ref<EventBuilderExtraId[]>([])
+
+function setExtraUnsaved(id: EventBuilderExtraId, unsaved: boolean) {
+  unsavedExtraIds.value = unsavedExtraIds.value.filter(entry => entry !== id)
+
+  if (unsaved) {
+    unsavedExtraIds.value.push(id)
+  }
+
+  emit('unsavedChange', unsavedExtraIds.value.length > 0)
+}
 
 const blindReviewEnabled = computed(() => form.value.blindReviewCount > 0)
 
@@ -169,6 +196,18 @@ function removeTrack(id: string) {
     .map((track, index) => ({ ...track, displayOrder: index }))
 }
 
+/** Moves a track one place up or down. Participants see the tracks in this order. */
+function moveTrack(index: number, direction: -1 | 1) {
+  form.value.tracks = moveListItemByIndex(form.value.tracks, index, index + direction)
+    .map((track, displayOrder) => ({ ...track, displayOrder }))
+}
+
+/** Moves a resource of a track one place up or down. */
+function moveTrackResource(track: EventFormTrack, index: number, direction: -1 | 1) {
+  track.resources = moveListItemByIndex(track.resources, index, index + direction)
+    .map((resource, displayOrder) => ({ ...resource, displayOrder }))
+}
+
 function addTrackResource(track: EventFormTrack) {
   track.resources.push({
     id: crypto.randomUUID(),
@@ -234,10 +273,30 @@ function removeTrackResource(track: EventFormTrack, resourceId: string) {
             :key="track.id"
             class="space-y-3 rounded-xl border border-black/8 p-3 dark:border-white/[0.08]"
           >
-            <div class="flex items-center justify-between gap-3">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+            <div class="flex items-center gap-1">
+              <p class="mr-auto text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                 Track {{ index + 1 }}
               </p>
+              <AppButton
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                icon="i-lucide-arrow-up"
+                :aria-label="`Move track ${index + 1} up`"
+                :disabled="index === 0"
+                class="w-7 rounded-lg px-0"
+                @click="moveTrack(index, -1)"
+              />
+              <AppButton
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                icon="i-lucide-arrow-down"
+                :aria-label="`Move track ${index + 1} down`"
+                :disabled="index === form.tracks.length - 1"
+                class="w-7 rounded-lg px-0"
+                @click="moveTrack(index, 1)"
+              />
               <AppButton
                 color="error"
                 variant="ghost"
@@ -249,8 +308,12 @@ function removeTrackResource(track: EventFormTrack, resourceId: string) {
               />
             </div>
             <div class="grid gap-3">
-              <AppFormField label="Name">
+              <AppFormField
+                :name="`event-builder-track-name-${track.id}`"
+                label="Name"
+              >
                 <AppInput
+                  :id="`event-builder-track-name-${track.id}`"
                   v-model="track.name"
                   size="sm"
                 />
@@ -292,7 +355,7 @@ function removeTrackResource(track: EventFormTrack, resourceId: string) {
                 </AppButton>
               </div>
               <div
-                v-for="resource in track.resources"
+                v-for="(resource, resourceIndex) in track.resources"
                 :key="resource.id"
                 class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
               >
@@ -311,15 +374,37 @@ function removeTrackResource(track: EventFormTrack, resourceId: string) {
                   size="sm"
                   placeholder="Description"
                 />
-                <AppButton
-                  color="error"
-                  variant="ghost"
-                  size="sm"
-                  icon="i-lucide-trash-2"
-                  aria-label="Remove resource"
-                  class="w-8 px-0 text-muted hover:text-error"
-                  @click="removeTrackResource(track, resource.id)"
-                />
+                <div class="flex items-center gap-1">
+                  <AppButton
+                    color="neutral"
+                    variant="ghost"
+                    size="sm"
+                    icon="i-lucide-arrow-up"
+                    :aria-label="`Move resource ${resourceIndex + 1} up`"
+                    :disabled="resourceIndex === 0"
+                    class="w-8 px-0"
+                    @click="moveTrackResource(track, resourceIndex, -1)"
+                  />
+                  <AppButton
+                    color="neutral"
+                    variant="ghost"
+                    size="sm"
+                    icon="i-lucide-arrow-down"
+                    :aria-label="`Move resource ${resourceIndex + 1} down`"
+                    :disabled="resourceIndex === track.resources.length - 1"
+                    class="w-8 px-0"
+                    @click="moveTrackResource(track, resourceIndex, 1)"
+                  />
+                  <AppButton
+                    color="error"
+                    variant="ghost"
+                    size="sm"
+                    icon="i-lucide-trash-2"
+                    aria-label="Remove resource"
+                    class="w-8 px-0 text-muted hover:text-error"
+                    @click="removeTrackResource(track, resource.id)"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -446,6 +531,14 @@ function removeTrackResource(track: EventFormTrack, resourceId: string) {
           </div>
         </div>
 
+        <AdminEventCriteriaEditor
+          v-if="extra.id === 'criteria' && event"
+          :event-id="event.id"
+          :criteria="props.criteria ?? []"
+          @saved="emit('updated')"
+          @dirty-change="unsaved => setExtraUnsaved('criteria', unsaved)"
+        />
+
         <div
           v-if="extra.id === 'submissions'"
           class="space-y-2"
@@ -463,6 +556,14 @@ function removeTrackResource(track: EventFormTrack, resourceId: string) {
             label="Require a demo URL"
           />
         </div>
+
+        <AdminEventPrizesEditor
+          v-if="extra.id === 'prizes' && event"
+          :event-id="event.id"
+          :prizes="props.prizes ?? []"
+          @saved="emit('updated')"
+          @dirty-change="unsaved => setExtraUnsaved('prizes', unsaved)"
+        />
 
         <div
           v-if="extra.id === 'links'"
@@ -525,6 +626,12 @@ function removeTrackResource(track: EventFormTrack, resourceId: string) {
           :saving="saving"
           :luma-guest-list="props.lumaGuestList ?? null"
           @save="emit('save')"
+          @updated="emit('updated')"
+        />
+
+        <AdminEventVisibilityControl
+          v-if="extra.id === 'visibility' && event"
+          :event="event"
           @updated="emit('updated')"
         />
       </AdminBuilderExtraPanel>

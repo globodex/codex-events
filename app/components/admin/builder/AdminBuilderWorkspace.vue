@@ -23,6 +23,8 @@ import AdminBuilderRegistrationForm from '~/components/admin/builder/organisms/A
 import AdminBuilderScorePanel from '~/components/admin/builder/organisms/AdminBuilderScorePanel.vue'
 import AdminBuilderTemplateGallery from '~/components/admin/builder/organisms/AdminBuilderTemplateGallery.vue'
 import AdminBuilderWhenWhereForm from '~/components/admin/builder/organisms/AdminBuilderWhenWhereForm.vue'
+import type { EvaluationCriterion } from '~/domains/judging/criteria-config'
+import type { PrizeDefinition } from '~/domains/outcomes/prizes'
 import type {
   AccountEventLumaGuestList,
   AccountEventSettingsCreditOffer,
@@ -37,6 +39,9 @@ const props = defineProps<{
   submitError: string
   /** The sessions in the rooms of the event. The tile "Rooms and sessions" shows the number. */
   sessionCount?: number
+  /** The saved judging criteria and prizes of a Hackathon. */
+  criteria?: EvaluationCriterion[]
+  prizes?: PrizeDefinition[]
   backgroundImageUploadPending?: boolean
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
@@ -58,6 +63,8 @@ const emit = defineEmits<{
   removeBannerImage: []
   saveTerms: [documentType: TermsDocument['documentType'], content: string]
   updated: []
+  /** True while an extra with its own save button holds a change that is not saved. */
+  extrasUnsavedChange: [unsaved: boolean]
 }>()
 
 defineSlots<{
@@ -289,6 +296,8 @@ function onSubmit() {
           @update-details="(id, details) => builder.setBlockDetails(id, details)"
           @clone="id => builder.cloneBlock(id)"
           @update-duration="(id, minutes) => builder.setBlockDuration(id, minutes)"
+          @update-start="(id, startsAt) => builder.setBlockStartsAt(id, startsAt)"
+          @update-end="(id, endsAt) => builder.setBlockEndsAt(id, endsAt)"
           @update-focus-cost="(id, value) => builder.setBlockFocusCost(id, value)"
           @update-energy-delta="(id, value) => builder.setBlockEnergyDelta(id, value)"
         />
@@ -322,6 +331,8 @@ function onSubmit() {
       :mode="mode"
       :event="event ?? null"
       :session-count="sessionCount"
+      :criteria="criteria"
+      :prizes="prizes"
       :background-image-upload-pending="backgroundImageUploadPending"
       :background-image-upload-error="backgroundImageUploadError"
       :banner-image-upload-pending="bannerImageUploadPending"
@@ -341,6 +352,7 @@ function onSubmit() {
       @remove-banner-image="emit('removeBannerImage')"
       @save-terms="(documentType, content) => emit('saveTerms', documentType, content)"
       @updated="emit('updated')"
+      @unsaved-change="unsaved => emit('extrasUnsavedChange', unsaved)"
     >
       <template #rooms>
         <slot name="rooms" />

@@ -29,3 +29,12 @@ Feature: TASK-3.9 authenticated admin configuration coverage
     When the saved "platform_admin" session creates a managed event named "BDD criteria retry"
     And I save two judging criteria and the second one fails
     Then retrying the criteria save should create only the remaining draft and preserve both rows
+
+  Scenario: An organizer sets judging criteria, a prize and the visibility in the event builder
+    When the saved "platform_admin" session creates a managed event named "BDD builder extras"
+    And I save the judging criterion "Impact" and the prize "Best overall" in the event builder
+    Then the builder tiles should count 1 criterion and 1 prize after a reload
+    When I hide the remembered event in the event builder with the reason "Fixing the venue"
+    Then the builder tile should show the remembered event as hidden
+    When I make the remembered event visible again in the event builder
+    Then the builder tile should show the remembered event as visible

@@ -23,6 +23,9 @@ const connected = computed(() => credentialsSaved.value && props.event?.lumaWebh
 const editing = shallowRef(!connected.value && Boolean(form.value.lumaEventApiId || form.value.lumaApiKey))
 const importPending = shallowRef(false)
 const importError = shallowRef('')
+// The API key is hidden while it is typed. The organizer can show it to check it.
+const apiKeyVisible = shallowRef(false)
+const retryPending = shallowRef(false)
 const canImport = computed(() => connected.value && form.value.simplifiedClaimingEnabled && props.event?.simplifiedClaimingEnabled)
 const guestListSaved = computed(() => props.event?.lumaGuestListEnabled ?? false)
 // What the organizer reads while the saved connection does not work. The server stores why the
@@ -46,6 +49,21 @@ const guestListFailure = computed(() => guestListRequestError.value || props.lum
 watch([connected, hasSavedCredentials, () => props.event], ([isConnected, hasCredentials]) => {
   if (isConnected || (!hasCredentials && !form.value.lumaEventApiId && !form.value.lumaApiKey)) editing.value = false
 })
+
+/** Asks Luma again to send its updates to this event, with the saved connection details. */
+async function retryConnection() {
+  retryPending.value = true
+
+  try {
+    await apiFetch(`/api/events/${props.event!.id}/luma/actions/retry-configuration`, { method: 'POST' })
+  } catch (error) {
+    toast.add({ title: 'Luma could not be reached', description: normalizeApiError(error).message, color: 'error' })
+  } finally {
+    retryPending.value = false
+    // The saved event says whether Luma is connected now, or why it is not.
+    emit('updated')
+  }
+}
 
 function cancelEditing() {
   form.value.lumaEventApiId = props.event?.lumaEventApiId ?? ''
@@ -126,12 +144,26 @@ async function refreshGuestList() {
           name="builder-luma-api-key"
           label="Luma API key"
         >
-          <AppInput
-            id="builder-luma-api-key"
-            v-model="form.lumaApiKey"
-            type="password"
-            :disabled="saving"
-          />
+          <span class="relative block">
+            <AppInput
+              id="builder-luma-api-key"
+              v-model="form.lumaApiKey"
+              :type="apiKeyVisible ? 'text' : 'password'"
+              class="pr-11"
+              :disabled="saving"
+            />
+            <AppButton
+              type="button"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              :icon="apiKeyVisible ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+              class="absolute right-1.5 top-1/2 w-8 -translate-y-1/2 px-0"
+              :aria-label="apiKeyVisible ? 'Hide the Luma API key' : 'Show the Luma API key'"
+              :aria-pressed="apiKeyVisible"
+              @click="apiKeyVisible = !apiKeyVisible"
+            />
+          </span>
         </AppFormField>
       </div>
       <div class="flex flex-wrap gap-2">
@@ -201,7 +233,18 @@ async function refreshGuestList() {
       color="warning"
       title="Luma is not connected"
       :description="notConnectedDescription"
-    />
+    >
+      <AppButton
+        color="neutral"
+        size="sm"
+        class="mt-2"
+        :loading="retryPending"
+        :disabled="saving"
+        @click="retryConnection"
+      >
+        Try again
+      </AppButton>
+    </AppAlert>
     <template v-if="connected && !editing">
       <p class="text-sm text-muted">
         {{ form.simplifiedClaimingEnabled

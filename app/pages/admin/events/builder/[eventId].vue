@@ -39,6 +39,8 @@ const AdminBuilderProgramEditor = defineAsyncComponent(() =>
 // builder renders the panel of the extra only then, and it keeps the panel after that.
 const isProgramOpen = shallowRef(false)
 const isProgramDirty = shallowRef(false)
+// True while the criteria or the prizes hold a change that their own save button has not saved.
+const hasUnsavedExtras = shallowRef(false)
 const isProgramSaving = shallowRef(false)
 const programSaveError = shallowRef('')
 const programPanel = useTemplateRef<HTMLElement>('programPanel')
@@ -293,7 +295,7 @@ async function saveTerms(documentType: TermsDocument['documentType'], content: s
   }
 }
 
-const hasUnsavedChanges = computed(() => builder.isDirty.value || isProgramDirty.value)
+const hasUnsavedChanges = computed(() => builder.isDirty.value || isProgramDirty.value || hasUnsavedExtras.value)
 
 onBeforeRouteLeave(() => {
   if (hasUnsavedChanges.value && !window.confirm('Leave the builder? Unsaved changes will be lost.')) {
@@ -356,7 +358,10 @@ useSeoMeta({
       :credit-offers="creditOffers"
       :has-existing-talk-proposal="hasExistingTalkProposal"
       :session-count="sessionCount"
+      :criteria="settingsPage?.criteria"
+      :prizes="settingsPage?.prizes"
       @submit="saveEvent"
+      @extras-unsaved-change="hasUnsavedExtras = $event"
       @upload-background-image="file => uploadEventImage('background', file)"
       @remove-background-image="removeEventImage('background')"
       @upload-banner-image="file => uploadEventImage('banner', file)"

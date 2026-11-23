@@ -210,6 +210,93 @@ export function reorderAgendaBlocks(blocks: EventBuilderBlockInstance[], oldInde
   return reordered.map((block, index) => ({ ...block, gapBeforeMs: blocks[index]!.gapBeforeMs }))
 }
 
+/**
+ * The blocks after the organizer set an exact start for one block.
+ *
+ * The start of a block is stored as the gap after the block before it. So the block keeps its
+ * duration, and the blocks after it move with it and keep their durations and gaps. The first
+ * block starts with the event: its start is the event start, which is not set here.
+ *
+ * `startsAt` and the schedule hold times that `Date.parse` reads.
+ */
+export function setBlockStart(
+  blocks: EventBuilderBlockInstance[],
+  schedule: EventBuilderScheduleEntry[],
+  blockId: string,
+  startsAt: string
+) {
+  const previous = schedule[blocks.findIndex(block => block.id === blockId) - 1]
+  const start = Date.parse(startsAt)
+
+  if (!previous || Number.isNaN(start)) {
+    return blocks
+  }
+
+  // A block without an end takes no time, so the block after it is measured from its start.
+  const previousEnd = Date.parse(previous.endsAt || previous.startsAt)
+
+  return blocks.map(block => block.id === blockId ? { ...block, gapBeforeMs: start - previousEnd } : block)
+}
+
+/**
+ * How the pause before the next block changes when a block gets or loses its end, so that the
+ * blocks after it keep their times.
+ */
+function getPauseChangeAfterBlock(
+  block: EventBuilderBlockInstance,
+  next: EventBuilderBlockInstance | undefined,
+  durationMs: number | null
+) {
+  if (!next) {
+    return 0
+  }
+
+  // The block loses its end: the time it took becomes a pause.
+  if (durationMs === null) {
+    return Math.round((block.durationMinutes ?? 0) * 60_000)
+  }
+
+  // The block had no end and gets one: its time comes out of the pause, as far as the pause reaches.
+  return block.durationMinutes === null ? -Math.min(durationMs, Math.max(0, next.gapBeforeMs)) : 0
+}
+
+/**
+ * The blocks after the organizer set an exact end for one block, or removed its end with `null`.
+ *
+ * - A block with an end gets another end: its duration changes, and the blocks after it move
+ *   with it, as with the duration buttons.
+ * - A block loses its end: the blocks after it keep their times.
+ * - A block without an end gets one: the blocks after it keep their times as long as the pause
+ *   after the block is long enough, and move by the rest otherwise.
+ *
+ * An end that is not after the start of the block changes nothing.
+ */
+export function setBlockEnd(
+  blocks: EventBuilderBlockInstance[],
+  schedule: EventBuilderScheduleEntry[],
+  blockId: string,
+  endsAt: string | null
+) {
+  const index = blocks.findIndex(block => block.id === blockId)
+  const block = blocks[index]
+  const durationMs = endsAt === null ? null : Date.parse(endsAt) - Date.parse(schedule[index]?.startsAt ?? '')
+
+  // The comparison is false for a missing start and for an unreadable end as well.
+  if (!block || (durationMs !== null && !(durationMs > 0))) {
+    return blocks
+  }
+
+  const pauseChangeMs = getPauseChangeAfterBlock(block, blocks[index + 1], durationMs)
+
+  return blocks.map((entry, position) => {
+    if (position === index) {
+      return { ...entry, durationMinutes: durationMs === null ? null : durationMs / 60_000 }
+    }
+
+    return position === index + 1 ? { ...entry, gapBeforeMs: entry.gapBeforeMs + pauseChangeMs } : entry
+  })
+}
+
 export function getBlockDurationMinutes(block: EventBuilderBlockInstance) {
   return Math.round(block.durationMinutes ?? eventBuilderBlockDefinitions[block.type].defaultDurationMinutes)
 }
@@ -766,11 +853,14 @@ export type EventBuilderExtraId
     | 'photos'
     | 'talks'
     | 'judging'
+    | 'criteria'
     | 'submissions'
+    | 'prizes'
     | 'links'
     | 'images'
     | 'terms'
     | 'luma'
+    | 'visibility'
 
 /** What a tile reads to describe its option. */
 export interface EventBuilderExtraContext {
@@ -780,6 +870,10 @@ export interface EventBuilderExtraContext {
   creditCount: number
   /** The sessions in the rooms of the event. */
   sessionCount: number
+  /** The saved judging criteria of the event. */
+  criteriaCount: number
+  /** The saved prizes of the event. */
+  prizeCount: number
 }
 
 /** One optional part of an event. The extras level shows it as a tile. */
@@ -915,6 +1009,16 @@ const eventBuilderExtraDefinitions: readonly EventBuilderExtraDefinition[] = [
     summary: ({ form }) => describeJudging(form)
   },
   {
+    id: 'criteria',
+    icon: 'i-lucide-sliders-horizontal',
+    title: 'Judging criteria',
+    appliesTo: ['hackathon'],
+    // Each criterion is saved with its own request.
+    editOnly: true,
+    hasOwnSave: true,
+    summary: ({ criteriaCount }) => describeCount(criteriaCount)
+  },
+  {
     id: 'submissions',
     icon: 'i-lucide-clipboard-check',
     title: 'Submissions',
@@ -925,6 +1029,16 @@ const eventBuilderExtraDefinitions: readonly EventBuilderExtraDefinition[] = [
       form.requireSubmissionRepositoryUrl,
       form.requireSubmissionDemoUrl
     ].filter(Boolean).length, 'required field')
+  },
+  {
+    id: 'prizes',
+    icon: 'i-lucide-trophy',
+    title: 'Prizes',
+    appliesTo: ['hackathon'],
+    // Each prize is saved with its own request.
+    editOnly: true,
+    hasOwnSave: true,
+    summary: ({ prizeCount }) => describeCount(prizeCount)
   },
   {
     id: 'links',
@@ -960,6 +1074,16 @@ const eventBuilderExtraDefinitions: readonly EventBuilderExtraDefinition[] = [
     appliesTo: allTypes,
     editOnly: false,
     summary: ({ event }) => describeLumaConnection(event)
+  },
+  {
+    id: 'visibility',
+    icon: 'i-lucide-eye-off',
+    title: 'Hide event',
+    appliesTo: allTypes,
+    // Hiding is an action on a saved event, with its own button.
+    editOnly: true,
+    hasOwnSave: true,
+    summary: ({ event }) => event?.hiddenAt ? 'Hidden' : null
   }
 ]
 

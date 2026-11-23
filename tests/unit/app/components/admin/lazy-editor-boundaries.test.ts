@@ -17,6 +17,16 @@ const builderPageSource = readFileSync(
   new URL('../../../../../app/pages/admin/events/builder/[eventId].vue', import.meta.url),
   'utf8'
 )
+// The criteria editor and the prize editor are the sortable lists of the Settings tab and of
+// the event builder. Both load the sorting library through the shared helper.
+const sortableHelperSource = readFileSync(
+  new URL('../../../../../app/composables/useAdminSortableLists.ts', import.meta.url),
+  'utf8'
+)
+const catalogEditorSources = ['AdminEventCriteriaEditor', 'AdminEventPrizesEditor'].map(name => readFileSync(
+  new URL(`../../../../../app/components/admin/organisms/${name}.vue`, import.meta.url),
+  'utf8'
+))
 
 describe('local editor and sortable loading boundaries', () => {
   test('keeps the markdown editor local and behind ClientOnly/lazy loading', () => {
@@ -41,8 +51,13 @@ describe('local editor and sortable loading boundaries', () => {
   })
 
   test('loads sortable only through the local interaction boundary', () => {
-    expect(settingsPanelSource).toContain('await import(\'sortablejs\')')
-    expect(settingsPanelSource).toContain('onBeforeUnmount')
+    expect(sortableHelperSource).toContain('await import(\'sortablejs\')')
+    expect(sortableHelperSource).toContain('onBeforeUnmount')
+    for (const editorSource of catalogEditorSources) {
+      expect(editorSource).toContain('useAdminSortableLists(')
+      expect(editorSource).not.toContain('sortablejs')
+    }
+    expect(settingsPanelSource).not.toContain('sortablejs')
     expect(settingsPanelSource).toContain('page?: AccountEventSettingsPage | null')
     expect(settingsPanelSource).toContain('emit(\'updated\')')
     expect(settingsPanelSource).not.toContain('settingsRequest.abort()')

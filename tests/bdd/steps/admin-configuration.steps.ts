@@ -4,6 +4,7 @@ import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import { createAuthenticatedApiClient } from '../support/api-client'
+import { openBuilderExtra, openBuilderLevel } from '../support/event-builder.ts'
 import { parsePersonaKey } from '../support/personas.ts'
 import { signInAs } from '../support/session-state.ts'
 
@@ -436,4 +437,62 @@ Then('retrying the criteria save should create only the remaining draft and pres
   await expect(rows.last().getByLabel('Criterion name')).toHaveValue('Originality')
   await expect(rows.last().getByLabel('Description')).toHaveValue('Rate project originality.')
   expect(creates).toEqual(['Originality'])
+})
+
+// The criteria, the prizes and the visibility are extras of the builder with their own buttons.
+When('I save the judging criterion {string} and the prize {string} in the event builder', async ({ page }, criterionName: string, prizeName: string) => {
+  const { eventSlug } = getScenarioState(page)
+  await signInAs('platform_admin', page)
+  await page.goto(`/admin/events/builder/${eventSlug}`)
+
+  const criteria = await openBuilderExtra(page, 'criteria')
+  // "Save event" would not save the criteria, so the builder hides its save bar here.
+  await expect(page.getByTestId('event-builder-submit')).toBeHidden()
+  await criteria.getByRole('button', { name: /^Add (first )?criterion$/ }).click()
+  await criteria.getByLabel('Criterion name').fill(criterionName)
+  await criteria.getByLabel('Description').fill('Rate the impact of the project.')
+  await criteria.getByRole('button', { name: 'Save criteria' }).click()
+  await expect(page.getByText('Criteria updated')).toBeVisible()
+
+  const prizes = await openBuilderExtra(page, 'prizes')
+  await prizes.getByRole('button', { name: /^Add (first )?prize$/ }).click()
+  await prizes.getByLabel('Prize name').fill(prizeName)
+  await prizes.getByLabel('Reward value').fill('500')
+  await prizes.getByLabel('Description').fill('For the best project of the event.')
+  await prizes.getByRole('button', { name: 'Save prizes' }).click()
+  await expect(page.getByText('Prizes updated')).toBeVisible()
+})
+
+Then('the builder tiles should count 1 criterion and 1 prize after a reload', async ({ page }) => {
+  await page.reload()
+  await openBuilderLevel(page, 'extras')
+  await expect(page.getByTestId('event-builder-extra-criteria')).toContainText('1')
+  await expect(page.getByTestId('event-builder-extra-prizes')).toContainText('1')
+})
+
+When('I hide the remembered event in the event builder with the reason {string}', async ({ page }, reason: string) => {
+  const visibility = await openBuilderExtra(page, 'visibility')
+
+  await visibility.getByPlaceholder('What needs to be fixed').fill(reason)
+  await visibility.getByRole('button', { name: 'Hide event' }).click()
+  await expect(visibility.getByText(`Reason: ${reason}`)).toBeVisible()
+})
+
+When('I make the remembered event visible again in the event builder', async ({ page }) => {
+  const visibility = await openBuilderExtra(page, 'visibility')
+
+  await visibility.getByRole('button', { name: 'Make event visible' }).click()
+  await expect(visibility.getByRole('button', { name: 'Hide event' })).toBeVisible()
+})
+
+Then('the builder tile should show the remembered event as {word}', async ({ page }, visibility: string) => {
+  await page.locator('[data-testid="event-builder-extras-back"]:visible').click()
+
+  const tile = page.getByTestId('event-builder-extra-visibility')
+
+  if (visibility === 'hidden') {
+    await expect(tile).toContainText('Hidden')
+  } else {
+    await expect(tile).not.toContainText('Hidden')
+  }
 })

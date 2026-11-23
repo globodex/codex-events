@@ -7,6 +7,7 @@ import { getEventBuilderTemplates } from '../../../../../shared/domains/events/b
 import {
   applyTemplateToState,
   blocksToFormAgendaItems,
+  computeBlockSchedule,
   createBlockInstance,
   createBuilderStateFromEvent,
   createEmptyEventBuilderState,
@@ -15,6 +16,8 @@ import {
   eventBuilderLevels,
   getBuilderChecklist,
   parseEventBuilderDurationMinutes,
+  setBlockEnd,
+  setBlockStart,
   toEventBuilderFormState
 } from '../../../../../app/domains/events/builder'
 import {
@@ -383,6 +386,60 @@ describe('deriveScheduleDefaults', () => {
     })
 
     expect(basics.success).toBe(true)
+  })
+})
+
+describe('exact times of an agenda block', () => {
+  const eventStart = '2026-09-12T09:00:00.000Z'
+
+  /** 09:00 welcome for 30 minutes, 09:30 talk for 60 minutes, 10:30 break for 15 minutes. */
+  function createDay() {
+    return [
+      { ...createBlockInstance('welcome'), id: 'welcome', durationMinutes: 30 },
+      { ...createBlockInstance('talk'), id: 'talk', durationMinutes: 60 },
+      { ...createBlockInstance('break'), id: 'break', durationMinutes: 15 }
+    ]
+  }
+
+  /** The start and the end of every block as "HH:MM-HH:MM". A block without an end has none. */
+  function readTimes(blocks: ReturnType<typeof createDay>) {
+    return computeBlockSchedule(eventStart, blocks)
+      .map(entry => `${entry.startsAt.slice(11, 16)}-${entry.endsAt.slice(11, 16)}`)
+  }
+
+  function changeEnd(blocks: ReturnType<typeof createDay>, blockId: string, endsAt: string | null) {
+    return setBlockEnd(blocks, computeBlockSchedule(eventStart, blocks), blockId, endsAt)
+  }
+
+  test('a later start leaves a pause, keeps the duration and moves the blocks after it', () => {
+    const blocks = createDay()
+
+    const moved = setBlockStart(blocks, computeBlockSchedule(eventStart, blocks), 'talk', '2026-09-12T09:45:00.000Z')
+
+    expect(readTimes(moved)).toEqual(['09:00-09:30', '09:45-10:45', '10:45-11:00'])
+  })
+
+  test('a new end changes the duration and moves the blocks after it', () => {
+    expect(readTimes(changeEnd(createDay(), 'talk', '2026-09-12T11:00:00.000Z')))
+      .toEqual(['09:00-09:30', '09:30-11:00', '11:00-11:15'])
+  })
+
+  test('a block that loses its end or gets one again leaves the blocks after it where they are', () => {
+    const withoutEnd = changeEnd(createDay(), 'talk', null)
+
+    expect(readTimes(withoutEnd)).toEqual(['09:00-09:30', '09:30-', '10:30-10:45'])
+    expect(readTimes(changeEnd(withoutEnd, 'talk', '2026-09-12T10:00:00.000Z')))
+      .toEqual(['09:00-09:30', '09:30-10:00', '10:30-10:45'])
+    // An end later than the next block pushes the next block to that end.
+    expect(readTimes(changeEnd(withoutEnd, 'talk', '2026-09-12T11:00:00.000Z')))
+      .toEqual(['09:00-09:30', '09:30-11:00', '11:00-11:15'])
+  })
+
+  test('an end that is not after the start changes nothing', () => {
+    const blocks = createDay()
+
+    expect(changeEnd(blocks, 'talk', '2026-09-12T09:30:00.000Z')).toBe(blocks)
+    expect(changeEnd(blocks, 'talk', 'not a time')).toBe(blocks)
   })
 })
 

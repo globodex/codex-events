@@ -329,7 +329,13 @@ state.
   step; templates and blocks on the Agenda level; an extra that opens alone
   and keeps what was typed while another extra is open; the state on the
   tiles for credits, challenges, photos, Luma, and rooms and sessions; and the
-  level buttons and the save bar on a phone width.
+  level buttons and the save bar on a phone width. Unit tests cover the exact
+  start and end of an agenda block: the pause a later start leaves, the
+  duration a new end gives, and the blocks that keep their times when a block
+  loses or regains its end. Browser scenarios cover a judging criterion and a
+  prize saved in the builder, hiding an event and making it visible again, an
+  exact start and a removed end on the Agenda level, the order of two tracks,
+  and the Luma API key that can be shown.
 - Staff challenge coverage includes an event admin and a platform admin giving
   a staff member a challenge, an open track and a draft; the track and the
   challenge replacing each other; a refused unknown challenge, a refused

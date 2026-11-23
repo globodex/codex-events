@@ -4,7 +4,7 @@ title: Consolidate event creation and editing in the event builder
 status: To Do
 assignee: []
 created_date: '2026-11-21T15:22:00Z'
-updated_date: '2026-11-21T23:43:00Z'
+updated_date: '2026-11-23T21:14:00Z'
 labels:
   - build-day
 milestone: m-3
@@ -53,4 +53,8 @@ The build-day branch contains the first agenda timing refactor. Classic editor r
 Stack acceptance goal: deliver more Build Day features and make failures easier to recover from, while reducing the amount and complexity of production code. Review the stack against its base and count test deletions separately. A junior developer should be able to follow the main paths and understand why the code behaves as it does.
 
 Decision by Alex on 2026-11-22: the remaining work (moving the last controls into the builder and removing the old editor) waits until after the event on 28 November.
+
+Decision by Alex on 2026-11-23: build the options that only the old editor has into the builder now, before the event (TASK-442.1). Removing the old editor, its entry points and its logic is not part of that decision and stays open here.
+
+TASK-442.1 is done (2026-11-23): every option of the old editor that the Settings tab still showed is in the builder now. Open in this task: removing the old editor, its entry points and its obsolete logic, and making the builder the editor for events created in the old editor.
 <!-- SECTION:NOTES:END -->
