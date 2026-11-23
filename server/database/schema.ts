@@ -236,7 +236,7 @@ export const events = sqliteTable(
     currentWinnerTermsDocumentId: text('current_winner_terms_document_id'),
     // The database still has the column `creation_flow` (migration 0073). Nothing reads or writes
     // it. A migration can drop it only in a release after the one that stopped reading it, because
-    // a release applies migrations while the previous Worker still runs (see TASK-442).
+    // a release applies migrations while the previous Worker still runs (TASK-489).
     balanceScore: integer('balance_score'),
     balanceBreakdownJson: text('balance_breakdown_json'),
     createdByUserId: text('created_by_user_id')

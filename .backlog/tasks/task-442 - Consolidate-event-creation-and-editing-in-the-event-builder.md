@@ -4,7 +4,7 @@ title: Consolidate event creation and editing in the event builder
 status: Done
 assignee: []
 created_date: '2026-11-21T15:22:00Z'
-updated_date: '2026-11-23T22:11:00Z'
+updated_date: '2026-11-23T22:18:00Z'
 labels:
   - build-day
 milestone: m-3
@@ -163,12 +163,12 @@ Removal of the old editor on 2026-11-23 (decision by Alex the same day: every op
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-The event builder is the only editor of an event. The old editor, its create page, the Settings tab of the event workspace and the prize configuration on the Prizes tab are removed, together with the code that only they used (about 3,650 lines removed, 320 added). Event admins open the builder with "Edit event" in the header of the event workspace; the builder leads back to the workspace; a new event lands on its workspace. The Luma extra shows the webhook address of a saved connection.
+The event builder is the only editor of an event. The old editor, its create page, the Settings tab of the event workspace and the prize configuration on the Prizes tab are removed, together with the code that only they used (3,669 lines removed, 466 added, commit 019d813b). Event admins open the builder with "Edit event" in the header of the event workspace; the builder leads back to the workspace; a new event lands on its workspace. The Luma extra shows the webhook address of a saved connection.
 
 Verification: lint, typecheck, 719 unit tests, 774 integration tests and 144 browser tests pass; the pages were checked in a real browser at two widths and in both themes.
 
 Risks and follow-ups:
-1. The database column events.creation_flow still exists and is unused. A migration that drops it must ship in a release after the one that contains this change: a release applies migrations before it deploys the Worker, and the Worker that still runs reads that column. No task exists for it yet.
+1. The database column events.creation_flow still exists and is unused. A migration that drops it must ship in a release after the one that contains this change: a release applies migrations before it deploys the Worker, and the Worker that still runs reads that column. TASK-489 tracks it.
 2. The builder saves an event only when it has an event start and at least one agenda block. An event that was saved without an agenda (possible in the old editor and through the API) needs both before "Save event" works. Its extras with their own save button (images, terms, credits, criteria, prizes, rooms, hide event) work without that.
 3. Choices made by the agent that Alex has not confirmed: the Settings tab is removed completely; the entry is an "Edit event" button in the workspace header; after creating an event the organizer lands on its workspace; the figures of the old Settings tab (created by, number of admins, staff and judges) are not shown anymore.
 4. A link button (AppButton with "to") prints the Vue development warning "toRefs() expects a reactive object". It existed before this change and does not appear in production builds.
