@@ -28,8 +28,12 @@ const router = useRouter()
 const tabParam = normalizeTabQueryValue(route.query.tab)
 const requestedTab = tabParam === 'active' || tabParam === 'past' ? tabParam : undefined
 
+// On the server, the request fetch hands the Cloudflare context of the page request, with the
+// database binding, to the API route. A plain $fetch there has no binding and fails on Cloudflare.
+const requestFetch = useRequestFetch()
+
 function fetchDiscovery(page: number, tab?: DiscoveryTab, signal?: AbortSignal) {
-  return $fetch<{ data: PublicDiscoveryPage }>('/api/public/discovery', { query: { page, tab }, signal })
+  return requestFetch<{ data: PublicDiscoveryPage }>('/api/public/discovery', { query: { page, tab }, signal })
     .then(response => response.data)
 }
 
