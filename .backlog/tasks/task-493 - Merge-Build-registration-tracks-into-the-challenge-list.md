@@ -1,10 +1,10 @@
 ---
 id: TASK-493
 title: Merge Build registration tracks into the challenge list
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-24T19:39:00Z'
-updated_date: '2026-11-24T20:17:00Z'
+updated_date: '2026-11-24T20:33:00Z'
 labels: []
 milestone: m-3
 dependencies:
@@ -84,7 +84,7 @@ Alex decided on 2026-11-24 that Build events keep one list that participants cho
 - [x] #2 Challenges and open tracks can carry staff instructions, edited in the event builder and shown only to staff, event admins and platform admins
 - [x] #3 A migration turns every Build track into a published open track of its event without loss (name, short and full description, links with their descriptions, staff instructions) and moves participants' track choices and staff tracks to it; it stops instead of cutting data that does not fit the challenge rules
 - [x] #4 Hackathon tracks, submissions and judging are unchanged
-- [ ] #5 A migration test proves the move with sample tracks, choices and staff tracks, and the remote test environment migrates its Build event with public reads still working
+- [x] #5 A migration test proves the move with sample tracks, choices and staff tracks, and the remote test environment migrates its Build event with public reads still working
 - [x] #6 Docs and tests describe Build events without registration tracks
 <!-- AC:END -->
 
@@ -116,3 +116,9 @@ Built 2026-11-24 after Alex chose "Full merge now" and "Keep those too". Product
 No certificate changes: the single-track Build certificate rule applied to no existing event (4 and 2 tracks).
 Verification: lint, typecheck, unit 719 (Build track tests moved to Hackathons or turned into refusals), integration 775 (two migration tests: the full move and the stop), full BDD (builder track scenario now on a Hackathon), browser check: the demo Build event has no Tracks tile and every challenge has the staff instructions field.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Build events have no registration tracks. The builder offers the Tracks extra for Hackathons only, the registration form never asks Build participants for a track, and the server refuses tracks for Build events (409 event_tracks_unavailable). Challenges and open tracks carry optional staff instructions (up to 4,000 characters), edited in the builder and sent only to staff, event admins and platform admins. Migration 0090 turns each Build track into a published open track of its event with its name, descriptions, links (as a Markdown list) and staff instructions, and moves participants' track choices and staff tracks to it. A check table stops the migration when an entry would break a challenge rule; two migration tests prove the move and the stop. Checks for commit d08f883c: lint, typecheck, unit tests (719), integration tests (775), browser scenarios (145 and the account deletion scenario). Test environment, run 45479220540: migrations 0089 and 0090 applied, and the public event list, the event JSON and the event pages of both completed Build events answer 200. I did not read the moved entries in the test database. Risk: the next production release runs 0090 on the June Build event with 4 tracks. If one breaks a challenge rule, the release stops at 'Apply production D1 migrations' before the Worker deploys.
+<!-- SECTION:FINAL_SUMMARY:END -->
