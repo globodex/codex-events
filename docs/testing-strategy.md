@@ -326,8 +326,8 @@ state.
   the number of sessions that the settings page carries for the tile of the
   rooms and sessions. Browser scenarios cover the levels of a new event, which
   stay locked until the event type is chosen and become done as the organizer
-  fills them; saving with an open step, which sends nothing and opens the
-  step; templates and blocks on the Agenda level; an extra that opens alone
+  fills them; saving with an open step, which sends nothing, names the step
+  next to the save button, and opens the step; templates and blocks on the Agenda level; an extra that opens alone
   and keeps what was typed while another extra is open; the state on the
   tiles for credits, challenges, photos, Luma, and rooms and sessions; and the
   level buttons and the save bar on a phone width. Unit tests cover the exact

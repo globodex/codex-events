@@ -14,7 +14,6 @@ import {
 import type { EventBuilderChecklistItem, EventBuilderExtraId, EventBuilderLevelId } from '~/domains/events/builder'
 import AdminBuilderLevelBar from '~/components/admin/builder/molecules/AdminBuilderLevelBar.vue'
 import AdminBuilderLevelNav from '~/components/admin/builder/molecules/AdminBuilderLevelNav.vue'
-import AdminBuilderStepChip from '~/components/admin/builder/molecules/AdminBuilderStepChip.vue'
 import AdminBuilderAgendaTrack from '~/components/admin/builder/organisms/AdminBuilderAgendaTrack.vue'
 import AdminBuilderBlockPalette from '~/components/admin/builder/organisms/AdminBuilderBlockPalette.vue'
 import AdminBuilderEventForm from '~/components/admin/builder/organisms/AdminBuilderEventForm.vue'
@@ -86,8 +85,6 @@ const levelBarItems = computed(() => getEventBuilderLevelBarItems({
   eventTypeChosen: props.builder.state.eventTypeChosen
 }))
 const currentLevelIndex = computed(() => eventBuilderLevels.findIndex(level => level.id === currentLevelId.value))
-const openSteps = computed(() => props.builder.checklist.value
-  .filter(item => !item.complete && item.level === currentLevelId.value))
 
 /** Brings the level bar back into view, for example after the level changed far down a long page. */
 async function scrollToTop() {
@@ -132,6 +129,11 @@ const paletteDragActive = ref(false)
 
 // The messages below the fields appear after the organizer tried to save.
 const saveAttempted = ref(false)
+// After a save that did not happen, the note next to the save button names every open step. It
+// gets shorter while the organizer fills in what is missing.
+const missingSteps = computed(() => saveAttempted.value
+  ? props.builder.checklist.value.filter(item => !item.complete).map(item => item.label)
+  : [])
 
 const fieldErrors = computed<Record<string, string>>(() => {
   if (!saveAttempted.value) {
@@ -206,27 +208,13 @@ function onSubmit() {
   <div class="space-y-6">
     <div
       ref="top"
-      class="flex scroll-mt-4 flex-wrap items-center justify-between gap-x-6 gap-y-3"
+      class="scroll-mt-4"
     >
       <AdminBuilderLevelBar
         :levels="levelBarItems"
         :current-id="currentLevelId"
         @select="openLevel"
       />
-
-      <ul
-        v-if="openSteps.length > 0"
-        aria-label="Open steps of this level"
-        class="flex flex-wrap gap-2"
-      >
-        <AdminBuilderStepChip
-          v-for="item in openSteps"
-          :key="item.id"
-          :item="item"
-          :urgent="saveAttempted"
-          @focus-field="showStep"
-        />
-      </ul>
     </div>
 
     <AdminBuilderEventForm
@@ -366,6 +354,7 @@ function onSubmit() {
       :next-locked="!builder.state.eventTypeChosen"
       :submit-label="mode === 'create' ? 'Create draft event' : 'Save event'"
       :ready-to-submit="builder.canSubmit.value"
+      :missing-steps="missingSteps"
       :is-submitting="isSubmitting"
       :submit-error="submitError"
       @back="openNeighbourLevel(-1)"

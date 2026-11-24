@@ -23,9 +23,6 @@ When('I open the event builder with the saved {string} session', async ({ page }
 
 When('I name the event {string}', async ({ page }, eventName: string) => {
   await page.getByTestId('event-builder-name').fill(eventName)
-  // The step of the level that is now done is no longer named.
-  await expect(page.getByTestId('event-builder-step-name')).toHaveCount(0)
-  await expect(page.getByTestId('event-builder-step-event-type')).toBeVisible()
 })
 
 When('I choose the {string} event type in the builder', async ({ page }, eventType: string) => {

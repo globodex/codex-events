@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-11-23T19:15:00Z'
-updated_date: '2026-11-23T19:54:00Z'
+updated_date: '2026-11-24T19:05:00Z'
 labels: []
 milestone: m-3
 dependencies: []
@@ -128,6 +128,8 @@ Save bar: one bar at the bottom for all widths with Back, Next and the save butt
 New components and their closest analogs: AdminBuilderLevelBar (closest: AdminBuilderEventTypePicker, a row of radio buttons; it cannot show a state per step and a current step). AdminBuilderExtraTile (closest: AdminBuilderChoiceCard, a radio or checkbox card with a description; a tile is a button that opens something and shows an icon and a state). AdminBuilderLevelNav (closest: the phone-only strip that was inline in the workspace; now one bar for all widths with Back and Next). AdminBuilderEventForm and AdminBuilderRegistrationForm hold what was inline in the basics form and in the settings board, one organism per level. Renamed with a new role: SettingsGroupCard to ExtraPanel, ChecklistRow to StepChip, SidePanel to ScorePanel, SettingsBoard to ExtrasBoard, BasicsForm to WhenWhereForm.
 
 Also changed: AppMeter takes a name for screen readers; the images section and the terms card show no heading of their own inside the builder; an agenda row uses two lines on a phone, where its delete button was outside the window before.
+
+2026-11-24, on Alex's feedback after TASK-490: the open-step chips next to the level bar are gone (criterion #2 described them). Alex chose a note next to the save button instead: after a save that did not happen, one line above the buttons names every open step ("Before saving: ..."), it gets shorter while the organizer fills in what is missing, and the builder still opens the field of the first open step. The bottom bar lost its card (border, round corners, shadow, blur); it stays sticky with the page color behind the buttons so content scrolls under it. AdminBuilderStepChip is removed. Browser steps now read the note (event-builder-missing-steps) instead of the chips.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

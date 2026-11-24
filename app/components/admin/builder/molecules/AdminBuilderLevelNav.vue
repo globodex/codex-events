@@ -10,6 +10,8 @@ const props = defineProps<{
   submitLabel: string
   /** True when the event has no open step, so it can be saved. */
   readyToSubmit: boolean
+  /** What the event still needs after a save that did not happen. Empty hides the note. */
+  missingSteps: string[]
   isSubmitting: boolean
   submitError: string
 }>()
@@ -26,7 +28,8 @@ const submitStandsOut = computed(() => props.readyToSubmit || !props.canGoNext)
 </script>
 
 <template>
-  <div class="sticky bottom-3 z-40 space-y-2">
+  <!-- The page color behind the buttons hides the content that scrolls under the bar. -->
+  <div class="sticky bottom-0 z-40 space-y-2 bg-background py-3">
     <AppAlert
       v-if="submitError"
       color="error"
@@ -35,7 +38,16 @@ const submitStandsOut = computed(() => props.readyToSubmit || !props.canGoNext)
       :description="submitError"
     />
 
-    <div class="flex items-center gap-2 rounded-2xl border border-black/8 bg-white/90 p-2 shadow-[0_18px_40px_-24px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#111111]/90">
+    <p
+      v-if="missingSteps.length > 0"
+      role="status"
+      class="text-right text-xs font-medium text-amber-700 dark:text-amber-300"
+      data-testid="event-builder-missing-steps"
+    >
+      Before saving: {{ missingSteps.join(' · ') }}
+    </p>
+
+    <div class="flex items-center gap-2">
       <AppButton
         v-if="canGoBack"
         color="neutral"

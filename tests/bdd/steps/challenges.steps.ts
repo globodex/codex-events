@@ -26,10 +26,9 @@ When('I add a challenge in the builder', async ({ page }) => {
   await (await challengeSettings(page)).getByRole('button', { name: 'Add challenge' }).click()
 })
 
-// The level names what the organizer still has to finish. Saving with such an open step sends
-// nothing: the builder stays on the step.
+// Saving with an open step sends nothing: the note next to the save button names what the
+// organizer still has to finish, and the builder stays on the step.
 Then('the builder should name the open step {string}', async ({ page }, line: string) => {
-  const step = page.getByTestId('event-builder-step-challenges')
   const title = (await challengeSettings(page)).getByLabel('Title', { exact: true })
   const saves: string[] = []
   const trackSave = (request: Request) => {
@@ -38,9 +37,9 @@ Then('the builder should name the open step {string}', async ({ page }, line: st
     }
   }
 
-  await expect(step).toHaveText(line)
   page.on('request', trackSave)
   await page.getByTestId('event-builder-submit').click()
+  await expect(page.getByTestId('event-builder-missing-steps')).toContainText(line)
   // The cursor lands in the field that the step names.
   await expect(title).toBeFocused()
   page.off('request', trackSave)
