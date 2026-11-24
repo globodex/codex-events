@@ -81,6 +81,7 @@ export const applicationOperation = defineStructuredRouteOperation({
     talkProposalClosesAt: body.eventType === 'meetup' ? body.talkProposalClosesAt : null,
     talkProposalQuestionsJson: JSON.stringify(body.eventType === 'meetup' ? body.talkProposalQuestions : []),
     talkProposalQuestionsRevision: 0,
+    registrationQuestionsJson: JSON.stringify(body.registrationQuestions),
     maxTeamMembers: isHackathon ? body.maxTeamMembers : 1,
     participantsLimit: body.participantsLimit,
     autoApproveApplications: body.autoApproveApplications,

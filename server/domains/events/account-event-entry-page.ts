@@ -382,9 +382,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
       tabVisibility,
       applicationStatus: application?.status ?? null,
       lumaSyncStatus: application?.lumaSyncStatus ?? null,
-      checkInFlowEnabled: event.checkInFlowEnabled,
-      questionnaireQuestions: parseCustomQuestionsJson(event.questionnaireQuestionsJson),
-      questionnaireCompletedAt: application?.questionnaireCompletedAt ?? null
+      checkInFlowEnabled: event.checkInFlowEnabled
     }
   }
 })

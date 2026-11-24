@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 // Custom questions are the questions an organizer writes for an event. The Call for talks and
-// the event questionnaire both use this model. Wording that fits only one of them belongs to
+// the registration questions both use this model. Wording that fits only one of them belongs to
 // that feature and is passed in (see `getCustomQuestionAnswerIssues`).
 
 export const customQuestionTypes = [
@@ -124,7 +124,7 @@ export function parseCustomQuestionAnswersJson(value: string) {
  * Checks answers against the questions they belong to and returns one issue per problem.
  *
  * Call it through the function of the feature that owns the questions
- * (`getTalkProposalAnswerIssues`, `getQuestionnaireAnswerIssues`). That function supplies the
+ * (`getTalkProposalAnswerIssues`, `getRegistrationAnswerIssues`). That function supplies the
  * feature's wording for an answer to a question the feature does not have.
  */
 export function getCustomQuestionAnswerIssues(

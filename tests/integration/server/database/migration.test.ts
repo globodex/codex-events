@@ -146,6 +146,46 @@ describe('shared database migration', () => {
     }
   })
 
+  test('moves the questionnaire questions and answers to the registration and drops the completion time', async () => {
+    const migration = '0088_registration_questions.sql'
+    const earlierMigrations = readdirSync(join(process.cwd(), 'drizzle'))
+      .filter(name => /^\d+.*\.sql$/.test(name) && name < migration)
+      .sort()
+      .map(name => readFileSync(join(process.cwd(), 'drizzle', name), 'utf8'))
+    const questions = '[{"id":"project","type":"short_text","prompt":"What do you build?","required":true,"options":[]}]'
+    const answers = '[{"questionId":"project","prompt":"What do you build?","value":"A compiler"}]'
+    const db = createTestD1Database({ applyMigrations: false })
+    try {
+      await db.exec(earlierMigrations.join('\n'))
+      const now = isoTimestamp(0)
+      for (const id of ['answered', 'unanswered']) await seedUser(db, id, now)
+      await seedEvent(db, 'build', 'registration_open', now, 'answered')
+      await db.exec(`
+        insert into user_applications (id,event_id,user_id,status) values ('answered','build','answered','approved');
+        insert into user_applications (id,event_id,user_id,status) values ('unanswered','build','unanswered','approved');
+      `)
+      await db.prepare('update events set questionnaire_questions_json = ?').bind(questions).run()
+      await db.prepare('update user_applications set questionnaire_answers_json = ?, questionnaire_completed_at = ? where id = ?')
+        .bind(answers, now, 'answered')
+        .run()
+
+      const statements = splitSqlStatements(readFileSync(join(process.cwd(), 'drizzle', migration), 'utf8'))
+      await db.batch(statements.map(statement => db.prepare(statement)))
+
+      const event = db.prepare('select registration_questions_json from events where id = ?').bind('build')
+      const registrations = await db.prepare('select id, registration_answers_json from user_applications order by id').all()
+      const questionnaireColumns = await db.prepare(`select name from pragma_table_info('user_applications') where name like 'questionnaire%'`).all()
+      expect(await event.first('registration_questions_json')).toBe(questions)
+      expect(registrations.results).toEqual([
+        { id: 'answered', registration_answers_json: answers },
+        { id: 'unanswered', registration_answers_json: '[]' }
+      ])
+      expect(questionnaireColumns.results).toEqual([])
+    } finally {
+      await db.close()
+    }
+  })
+
   test('migrates the existing simplified giveaway without changing assigned credits', async () => {
     const migration = '0078_simplified_claiming_giveaways.sql'
     const previous = readdirSync(join(process.cwd(), 'drizzle')).filter(name => /^\d+.*\.sql$/.test(name) && name < migration).sort()

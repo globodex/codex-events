@@ -9,6 +9,7 @@ import {
   createParticipantRegistrationDraft,
   evaluateParticipantRegistration,
   participantRegistrationProfileFieldId,
+  participantRegistrationQuestionFieldId,
   participantRegistrationTalkQuestionFieldId,
   participantRegistrationTeammateFieldId,
   projectParticipantRegistrationAccountPatch,
@@ -34,6 +35,7 @@ function createInput(overrides: Partial<ParticipantRegistrationDefinitionInput> 
     trackOptions: [],
     maxTeamMembers: 1,
     currentApplicationTerms: null,
+    registrationQuestions: [],
     talkProposal: null,
     ...overrides
   }
@@ -269,6 +271,33 @@ describe('participant registration definition', () => {
           { questionId: 'format', value: true }
         ]
       }
+    })
+  })
+
+  test('asks the event\'s own questions in the application section and sends the answers in their order', () => {
+    const registrationQuestions = [
+      { id: 'build', type: 'short_text' as const, prompt: 'What do you want to build?', required: true, options: [] },
+      { id: 'notes', type: 'long_text' as const, prompt: 'Anything we should know?', required: false, options: [] }
+    ]
+    const definition = resolveParticipantRegistrationDefinition(createInput({ registrationQuestions }))
+    const draft = completeIdentity(createParticipantRegistrationDraft())
+    // An answer to a question that the organizer removed while the form was open.
+    draft.registrationAnswers.removed = 'Old answer'
+    let evaluation = evaluateParticipantRegistration(definition, draft, true)
+
+    expect(definition.sections.map(section => section.id)).toEqual(['details', 'application'])
+    expect(evaluation.firstInvalidFieldId).toBe(participantRegistrationQuestionFieldId('build'))
+    expect(evaluation.readyToSubmit).toBe(false)
+
+    draft.registrationAnswers.build = 'A check-in helper'
+    evaluation = evaluateParticipantRegistration(definition, draft, true)
+
+    expect(evaluation.readyToSubmit).toBe(true)
+    expect(projectParticipantRegistrationApplicationPayload(definition, draft)).toEqual({
+      registrationAnswers: [
+        { questionId: 'build', value: 'A check-in helper' },
+        { questionId: 'notes', value: '' }
+      ]
     })
   })
 })

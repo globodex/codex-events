@@ -9,7 +9,7 @@ import { getDatabase } from '#server/database/client'
 import type { events } from '#server/database/schema'
 import { eventCreditCodes, eventCreditOffers, userApplications, users } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
-import { hasApplicationFinishedCheckInFlow } from '#server/domains/applications/check-in-flow'
+import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
 import { getVisibleEventOrThrow, routeIdParamsSchema } from '#server/domains/events'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 import {
@@ -272,7 +272,7 @@ export function getEventCreditClaimAccess(input: {
     isEventStaff: input.isEventStaff,
     isApprovedParticipant: application?.status === 'approved',
     checkInFlowEnabled: event.checkInFlowEnabled,
-    hasFinishedCheckInFlow: application ? hasApplicationFinishedCheckInFlow(event, application) : false
+    hasFinishedCheckInFlow: application ? isApplicationEffectivelyCheckedIn(application) : false
   })
 }
 

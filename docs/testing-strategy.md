@@ -279,25 +279,27 @@ state.
   browser scenario runs on a fixture event with 105 registrations and loads
   the rest of the list with "Load more"; the other browser fixtures hold
   smaller events, where the search stays in the browser and sends no request.
-- Check-in flow coverage includes saving the switch and the questions for
-  every event type, invalid question definitions, and refusal for staff,
-  judges, and participants; the event page content before check-in, with an
-  open questionnaire, after completion, without questions, and with the flow
-  off; the questionnaire operation for a missing check-in, the admin joined
-  and not-joined overrides, a pending registration, an event without a
-  questionnaire, missing required answers, invalid choices, answers to
-  unknown questions, a repeated request, and an audit record without answer
-  text; the same steps after a Luma check-in and a staff check-in; stored
-  answers that stay readable after the questions change; restoring a
-  withdrawn registration; and who reads the answers in the participant list.
-  Server tests change approval, effective attendance, and the questions between validation and the write.
-  Browser scenarios run on dedicated fixture events and cover the three next
-  steps of a participant, the answers in the admin participant list, and the
-  event builder setting.
+- Check-in flow coverage includes saving the switch for every event type and
+  refusal for staff, judges, and participants; the event page content before
+  check-in and with the flow off; and the same step after a Luma check-in and
+  a staff check-in. Browser scenarios run on dedicated fixture events and cover
+  both next steps of a participant and the event builder setting.
+- Registration question coverage includes saving the questions for every
+  event type, invalid question definitions, refusal for staff, judges, and
+  participants, and a required question refused while simplified claiming is
+  on; a registration that stores one answer per question with its text, an
+  event without questions, missing required answers, an unconfirmed
+  acknowledgment, invalid choices, and answers to unknown questions; stored
+  answers that keep their text after the questions change; restoring a
+  withdrawn registration, which keeps the answers; and who reads the answers in
+  the participant list. Unit tests cover the registration form with a required
+  question and answers in question order, and the builder step for an
+  unfinished question on the Registration level. Browser scenarios run on
+  dedicated fixture events and cover a participant who answers a question when
+  registering, the answer in the admin participant list, and an organizer who
+  adds a question in the event builder.
 - Credit claim coverage for the check-in flow includes a refused claim before
-  check-in and with an open questionnaire, an accepted claim after the
-  questionnaire and right after check-in in an event without a questionnaire,
-  unchanged claims in an event with the check-in flow off, event staff
+  check-in, an accepted claim right after check-in, unchanged claims in an event with the check-in flow off, event staff
   claiming without the check-in flow, a claimed value that stays visible to a
   participant who has not finished the check-in flow, and the last value of
   an offer. Server tests cover unfinished check-in after completion, the
@@ -315,9 +317,8 @@ state.
   registration; the Agenda tab of an event without an agenda; the direct-link
   event shell; and the admin event of the settings page, which carries drafts
   for the event builder. Unit tests cover the open steps of the builder for an unfinished
-  challenge and an unfinished questionnaire question, and their order by level, and an event edit
-  that sends the challenges and the check-in flow settings, and the
-  questionnaire questions only while the check-in flow is on. Browser scenarios run on dedicated fixture
+  challenge, and an event edit that sends the registration questions, the challenges, and the
+  check-in flow settings, and an event creation that sends the registration questions. Browser scenarios run on dedicated fixture
   events and cover an organizer publishing a challenge in the event builder,
   and a participant reading a challenge and its details on the Agenda, opened
   from the next step after check-in and before check-in.
@@ -357,9 +358,8 @@ state.
   and second versions that stay out of both; a confirmed participant, who
   gets the whole program and no separate public list; and the revision of the
   public event content after a program is saved and after it is removed.
-- Participant photo coverage includes an upload before check-in, with an open
-  questionnaire, after finishing the check-in flow without a credit claim, in
-  an event without a questionnaire, with the check-in flow off, with
+- Participant photo coverage includes an upload before check-in, after
+  finishing the check-in flow without a credit claim, with the check-in flow off, with
   participant photos not allowed, and by users without an approved
   application; the limit of 20 photos for one participant, where hidden
   photos count; uploads by staff, judges, event admins, and platform admins,

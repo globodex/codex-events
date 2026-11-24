@@ -54,6 +54,8 @@ export const applicationOperation = defineStructuredRouteOperation({
         : undefined
     }),
     ...restrictedFields,
+    // The registration form shows these questions next to the fixed registration fields.
+    registrationQuestions: parseCustomQuestionsJson(event.registrationQuestionsJson),
     ...(event.eventType === 'meetup' && event.talkProposalsEnabled
       ? {
           talkProposalQuestions: parseCustomQuestionsJson(event.talkProposalQuestionsJson),

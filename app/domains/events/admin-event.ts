@@ -45,12 +45,12 @@ export interface EventFormState {
   talkProposalOpensAt: string
   talkProposalClosesAt: string
   talkProposalQuestions: CustomQuestionDefinition[]
-  // The four settings below need a saved event. `buildEventConfigurationPatch` sends them when
+  /** The organizer's own questions on the registration form. Edited in the builder's Registration level. */
+  registrationQuestions: CustomQuestionDefinition[]
+  // The three settings below need a saved event. `buildEventConfigurationPatch` sends them when
   // the event is edited, and `buildEventCreateBody` leaves them out.
   /** Shows participants their next step around check-in. Edited in the builder's "After check-in" group. */
   checkInFlowEnabled: boolean
-  /** The questions a participant answers after check-in. Edited in the same builder group. */
-  questionnaireQuestions: CustomQuestionDefinition[]
   /** Every challenge of the event, drafts included. Edited in the builder's "Challenges" group. */
   challenges: EventChallenge[]
   /** Lets participants add photos to the gallery after check-in. Edited in the builder's "After check-in" group. */
@@ -387,8 +387,8 @@ const eventConfigFormBaseSchema = z.object({
   talkProposalOpensAt: z.string().trim(),
   talkProposalClosesAt: z.string().trim(),
   talkProposalQuestions: customQuestionsSchema,
+  registrationQuestions: customQuestionsSchema,
   checkInFlowEnabled: z.boolean(),
-  questionnaireQuestions: customQuestionsSchema,
   challenges: eventChallengesSchema,
   participantPhotosEnabled: z.boolean(),
   blindReviewCount: z.number().int().min(0).max(2),
@@ -432,6 +432,7 @@ const eventConfigFormBaseSchema = z.object({
   const hasLumaRegistrationEmail = input.applicationLumaEmailVisible && input.requireLumaEmail
   const hasRequiredRegistrationFields = applicationFieldRequirementPairs
     .some(([, requiredKey]) => input[requiredKey])
+    || input.registrationQuestions.some(question => question.required)
 
   // An online event has no venue, so its location may stay empty.
   if (input.inPersonEvent) {
@@ -690,8 +691,8 @@ export function createEmptyEventFormState(): EventFormState {
     talkProposalOpensAt: '',
     talkProposalClosesAt: '',
     talkProposalQuestions: [],
+    registrationQuestions: [],
     checkInFlowEnabled: false,
-    questionnaireQuestions: [],
     challenges: [],
     participantPhotosEnabled: false,
     blindReviewCount: 1,
@@ -785,8 +786,8 @@ export function createEventFormState(event: EventRecord): EventFormState {
     talkProposalOpensAt: toDateTimeLocalValue(event.talkProposalOpensAt),
     talkProposalClosesAt: toDateTimeLocalValue(event.talkProposalClosesAt),
     talkProposalQuestions: event.talkProposalQuestions ?? [],
+    registrationQuestions: event.registrationQuestions ?? [],
     checkInFlowEnabled: event.checkInFlowEnabled ?? false,
-    questionnaireQuestions: event.questionnaireQuestions ?? [],
     challenges: event.challenges ?? [],
     participantPhotosEnabled: event.participantPhotosEnabled ?? false,
     blindReviewCount: event.blindReviewCount,
@@ -875,10 +876,8 @@ export function buildEventConfigurationPatch(configForm: EventFormState, eventTy
     requireProofOfExecution: configForm.requireProofOfExecution,
     requireTeamIntent: configForm.requireTeamIntent,
     requireAiKnowledge: configForm.requireAiKnowledge,
+    registrationQuestions: configForm.registrationQuestions,
     checkInFlowEnabled: configForm.checkInFlowEnabled,
-    // The question editor is hidden while the switch is off. The questions are not sent then, so
-    // the event keeps its stored questions and an unfinished hidden question cannot block the save.
-    ...(configForm.checkInFlowEnabled ? { questionnaireQuestions: configForm.questionnaireQuestions } : {}),
     challenges: configForm.challenges,
     participantPhotosEnabled: configForm.participantPhotosEnabled,
     ...(supportsTracks
@@ -941,6 +940,7 @@ export function buildEventCreateBody(form: EventFormState) {
     talkProposalQuestions: form.eventType === 'meetup' && form.talkProposalsEnabled
       ? form.talkProposalQuestions
       : [],
+    registrationQuestions: form.registrationQuestions,
     inPersonEvent: form.inPersonEvent,
     applicationXProfileVisible: form.applicationXProfileVisible,
     applicationLinkedinProfileVisible: form.applicationLinkedinProfileVisible,

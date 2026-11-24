@@ -253,12 +253,9 @@ export interface AccountEventEntryPage {
   tabVisibility: AccountEventEntryTabVisibility
   applicationStatus: AccountOverviewApplicationStatus | null
   lumaSyncStatus: AccountOverviewLumaSyncStatus
-  // The check-in flow: the event's settings and the caller's own questionnaire completion time.
-  // Together with `participation.application.isCheckedIn` they decide the next step that the
-  // overview shows (see `shared/domains/applications/check-in-flow.ts`).
+  // Together with `participation.application.isCheckedIn` it decides the next step around
+  // check-in that the overview shows.
   checkInFlowEnabled: boolean
-  questionnaireQuestions: CustomQuestionDefinition[]
-  questionnaireCompletedAt: string | null
 }
 
 const accountEventEntryAgendaItemSchema = z.object({
@@ -473,7 +470,5 @@ export const accountEventEntryPageSchema = z.object({
   tabVisibility: accountEventEntryTabVisibilitySchema,
   applicationStatus: accountOverviewApplicationStatusSchema.nullable(),
   lumaSyncStatus: accountOverviewLumaSyncStatusSchema,
-  checkInFlowEnabled: z.boolean(),
-  questionnaireQuestions: z.array(customQuestionDefinitionSchema),
-  questionnaireCompletedAt: z.string().nullable()
+  checkInFlowEnabled: z.boolean()
 })

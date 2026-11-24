@@ -59,7 +59,7 @@ export function canAddParticipantPhotos(person: {
   participantPhotosEnabled: boolean
   /** The person has a confirmed (approved) registration of the event. */
   isApprovedParticipant: boolean
-  /** What the check-in flow rule says about this person (`hasParticipantFinishedCheckInFlow`). */
+  /** The person is checked in (`isApplicationEffectivelyCheckedIn`), which finishes the check-in flow. */
   hasFinishedCheckInFlow: boolean
 }) {
   return !person.managesGallery

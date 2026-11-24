@@ -4,7 +4,7 @@ import type {
   ApplicationCheckInOverrideStatus,
   ApplicationCheckInSource
 } from '#shared/domains/applications/check-in'
-import type { QuestionnaireAnswerRecord } from '#shared/domains/applications/check-in-flow'
+import type { RegistrationAnswerRecord } from '#shared/domains/applications/registration-answers'
 import {
   isApplicationEffectivelyCheckedIn,
   resolveApplicationAttendanceSource
@@ -35,8 +35,11 @@ export interface AdminApplicationRecord {
   applicationTermsDocumentId: string | null
   applicationTermsAcceptedAt: string | null
   registrationDetailsJson: string
-  /** The participant's answers to the event questionnaire. Null or missing until they completed it. */
-  questionnaireAnswers?: QuestionnaireAnswerRecord[] | null
+  /**
+   * The answers to the event's registration questions, each with the question text of that moment.
+   * Only the participant list carries them.
+   */
+  registrationAnswers?: RegistrationAnswerRecord[]
   createdAt: string
   updatedAt: string
   user?: OperationalUserSummary

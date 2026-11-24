@@ -101,7 +101,7 @@ export interface EventRecord {
   /** Present only in payloads for event admins. */
   checkInFlowEnabled?: boolean
   /** Present only in payloads for event admins. */
-  questionnaireQuestions?: CustomQuestionDefinition[]
+  registrationQuestions?: CustomQuestionDefinition[]
   /** Every challenge, drafts included. Present only in payloads for event admins. */
   challenges?: EventChallenge[]
   /** Present only in payloads for event admins. */

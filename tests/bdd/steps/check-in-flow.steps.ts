@@ -94,22 +94,6 @@ When('the event team checks me in', async () => {
   }
 })
 
-Then('my next step should be to answer the event questions', async ({ page }) => {
-  await expect(nextStepCard(page).getByRole('heading', { name: 'A few questions before you start' })).toBeVisible()
-})
-
-When('I send the event questions', async ({ page }) => {
-  await nextStepCard(page).getByRole('button', { name: 'Send answers' }).click()
-})
-
-Then('I should be asked to answer the required question', async ({ page }) => {
-  await expect(nextStepCard(page).getByText('Answer this required question before submitting.')).toHaveCount(1)
-})
-
-When('I answer the event question {string} with {string}', async ({ page }, question: string, answer: string) => {
-  await nextStepCard(page).getByLabel(question).fill(answer)
-})
-
 Then('my next step should list the activity {string}', async ({ page }, activity: string) => {
   await expectActivity(page, activity)
 })
@@ -123,19 +107,6 @@ When('I open the activity {string} from my next step', async ({ page }, activity
   await nextStepCard(page).getByRole('link', { name: activity }).click()
 })
 
-// This step signs the browser in as the event admin, so it has to be the last step of a scenario.
-Then('the event admin should read my answer {string} in the participant list', async ({ page }, answer: string) => {
-  await signInAs(eventAdminPersona, page)
-  await page.goto('/account/events/check-in-flow-fixture-event?tab=participants')
-  // Confirmed participants are behind the Approved filter of the admin list.
-  await page.getByRole('button', { name: /^Approved/ }).click()
-
-  const answers = page.getByTestId(`admin-application-questionnaire-${platformFixtureIds.checkInFlowApplicationId}`)
-
-  await expect(answers.getByText('What do you want to build today?')).toBeVisible()
-  await expect(answers.getByText(answer, { exact: true })).toBeVisible()
-})
-
 Given('I open the event {string} in the builder as its event admin', async ({ page }, eventSlug: string) => {
   await signInAs(eventAdminPersona, page)
   await page.goto(`/admin/events/builder/${eventSlug}`)
@@ -147,25 +118,17 @@ When('I turn on the next step for participants', async ({ page }) => {
   await (await checkInSettings(page)).getByLabel('Show participants their next step on their event page').check()
 })
 
-When('I add the question {string} for after check-in', async ({ page }, question: string) => {
-  const settings = await checkInSettings(page)
-
-  await settings.getByRole('button', { name: 'Add question' }).click()
-  await settings.getByLabel('Question', { exact: true }).fill(question)
-})
-
 When('I save the event in the builder', async ({ page }) => {
   await page.getByTestId('event-builder-submit').click()
   // The toast appears after the event was saved and the builder has read it again.
   await expect(page.getByText('Event saved')).toBeVisible()
 })
 
-Then('the builder should keep the question {string} after a reload', async ({ page }, question: string) => {
+Then('the builder should keep the next step on after a reload', async ({ page }) => {
   await page.reload()
   await waitForNuxtHydration(page)
 
   const settings = await checkInSettings(page)
 
   await expect(settings.getByLabel('Show participants their next step on their event page')).toBeChecked()
-  await expect(settings.getByLabel('Question', { exact: true })).toHaveValue(question)
 })

@@ -15,7 +15,7 @@ import { resolveEventAuthorization, type EventAuthorization } from '#server/auth
 import { getDatabase, type AppDatabase } from '#server/database/client'
 import { eventPhotos, events, userApplications, users } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
-import { hasApplicationFinishedCheckInFlow } from '#server/domains/applications/check-in-flow'
+import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
 import { getEventImagesBucket } from './images'
 import {
   publicEventCacheControl,
@@ -944,7 +944,7 @@ function readParticipantPhotoFacts({ event, viewer, application }: ParticipantPh
     managesGallery: viewer.canManage,
     participantPhotosEnabled: event.participantPhotosEnabled,
     isApprovedParticipant: application?.status === 'approved',
-    hasFinishedCheckInFlow: application ? hasApplicationFinishedCheckInFlow(event, application) : false
+    hasFinishedCheckInFlow: application ? isApplicationEffectivelyCheckedIn(application) : false
   }
 }
 

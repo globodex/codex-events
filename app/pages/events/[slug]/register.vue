@@ -199,6 +199,7 @@ const registrationRouteState = await useApiData(
         eventId: visibleEvent.id,
         terms: terms.application_terms,
         tracks: listRegistrationTrackOptions(visibleEvent),
+        registrationQuestions: visibleEvent.registrationQuestions,
         questions: visibleEvent.talkProposalQuestions ?? [],
         questionSetRevision: visibleEvent.talkProposalQuestionsRevision ?? 0
       }
@@ -224,6 +225,7 @@ watch(redirectTo, (to) => {
 const form = computed(() => registrationRouteState.data.value?.form)
 const currentApplicationTerms = computed(() => form.value?.terms ?? null)
 const registrationTrackOptions = computed(() => form.value?.tracks ?? [])
+const registrationQuestions = computed(() => form.value?.registrationQuestions ?? [])
 const talkProposalQuestions = computed(() => form.value?.questions ?? [])
 const talkProposalQuestionsRevision = computed(() => form.value?.questionSetRevision ?? 0)
 const workspaceErrorMessage = computed(() => registrationRouteState.error.value
@@ -271,6 +273,7 @@ const registrationDefinition = computed(() => resolveParticipantRegistrationDefi
   trackOptions: registrationTrackOptions.value,
   maxTeamMembers: event.value.maxTeamMembers,
   currentApplicationTerms: currentApplicationTerms.value,
+  registrationQuestions: registrationQuestions.value,
   talkProposal: isTalkProposalRegistration.value
     ? {
         questions: talkProposalQuestions.value,

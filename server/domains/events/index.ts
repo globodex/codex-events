@@ -49,7 +49,8 @@ import { computeEventBalance } from '#shared/domains/events/builder-scoring'
 import type { AccountEventEntryTrack } from '#shared/domains/events/account-event-entry-page'
 import {
   parseCustomQuestionsJson,
-  customQuestionsSchema
+  customQuestionsSchema,
+  type CustomQuestionDefinition
 } from '#shared/domains/events/custom-questions'
 import { eventChallengesSchema, parseEventChallengesJson } from '#shared/domains/events/challenges'
 import type { EventChallenge } from '#shared/domains/events/challenges'
@@ -385,7 +386,13 @@ function addSimplifiedClaimingConfigurationIssues(
     )
   }
 
-  if (applicationFieldRequirementPairs.some(([, requiredKey]) => input[requiredKey] === true)) {
+  // A simplified claim registers the attendee without the registration form, so nothing on the
+  // form may be required. An update is checked again with its stored questions after the merge.
+  const registrationQuestions = (input.registrationQuestions ?? []) as CustomQuestionDefinition[]
+  if (
+    applicationFieldRequirementPairs.some(([, requiredKey]) => input[requiredKey] === true)
+    || registrationQuestions.some(question => question.required)
+  ) {
     addIssue(
       ['simplifiedClaimingEnabled'],
       'Remove required registration fields before enabling simplified claiming.'
@@ -464,6 +471,7 @@ const eventConfigShape = {
   talkProposalOpensAt: isoTimestampSchema.nullable().default(null),
   talkProposalClosesAt: isoTimestampSchema.nullable().default(null),
   talkProposalQuestions: customQuestionsSchema.default([]),
+  registrationQuestions: customQuestionsSchema.default([]),
   blindReviewCount: blindReviewCountSchema.default(1),
   pitchReviewEnabled: pitchReviewEnabledSchema.default(false),
   blindScoreWeightPercent: blindScoreWeightPercentSchema.default(70),
@@ -572,7 +580,7 @@ export const updateEventBodySchema = z.object({
   talkProposalClosesAt: isoTimestampSchema.nullable().optional(),
   talkProposalQuestions: customQuestionsSchema.optional(),
   checkInFlowEnabled: checkInFlowEnabledSchema.optional(),
-  questionnaireQuestions: customQuestionsSchema.optional(),
+  registrationQuestions: customQuestionsSchema.optional(),
   challenges: eventChallengesSchema.optional(),
   participantPhotosEnabled: participantPhotosEnabledSchema.optional(),
   blindReviewCount: blindReviewCountSchema.optional(),
@@ -1709,7 +1717,7 @@ export function buildEventUpdatePayload(
     agendaItemsJson?: string
     talkProposalQuestionsJson?: string
     talkProposalQuestionsRevision?: SQL<unknown>
-    questionnaireQuestionsJson?: string
+    registrationQuestionsJson?: string
     challengesJson?: string
   } = {
     ...patch
@@ -1733,9 +1741,9 @@ export function buildEventUpdatePayload(
     }
   }
 
-  if (normalizedPatch.questionnaireQuestions !== undefined) {
-    normalizedPatch.questionnaireQuestionsJson = JSON.stringify(normalizedPatch.questionnaireQuestions)
-    Reflect.deleteProperty(normalizedPatch, 'questionnaireQuestions')
+  if (normalizedPatch.registrationQuestions !== undefined) {
+    normalizedPatch.registrationQuestionsJson = JSON.stringify(normalizedPatch.registrationQuestions)
+    Reflect.deleteProperty(normalizedPatch, 'registrationQuestions')
   }
 
   if (normalizedPatch.challenges !== undefined) {
@@ -1762,7 +1770,10 @@ export function buildEventUpdatePayload(
     submissionClosesAt: mergedEvent.submissionClosesAt
   })
   assertEventApplicationFieldConfiguration(mergedEvent, existingEvent.id)
-  assertSimplifiedClaimingConfiguration(mergedEvent, existingEvent.id)
+  assertSimplifiedClaimingConfiguration({
+    ...mergedEvent,
+    registrationQuestions: parseCustomQuestionsJson(mergedEvent.registrationQuestionsJson)
+  }, existingEvent.id)
   assertLumaGuestListConfiguration(mergedEvent, existingEvent.id)
 
   return {
@@ -2495,7 +2506,7 @@ export function serializeAdminEvent(
     talkProposalQuestions: parseCustomQuestionsJson(event.talkProposalQuestionsJson),
     talkProposalQuestionsRevision: event.talkProposalQuestionsRevision,
     checkInFlowEnabled: event.checkInFlowEnabled,
-    questionnaireQuestions: parseCustomQuestionsJson(event.questionnaireQuestionsJson),
+    registrationQuestions: parseCustomQuestionsJson(event.registrationQuestionsJson),
     // Every challenge, drafts included. Only the admin event carries drafts.
     challenges: parseEventChallengesJson(event.challengesJson),
     participantPhotosEnabled: event.participantPhotosEnabled,

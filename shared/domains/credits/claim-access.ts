@@ -17,7 +17,7 @@ export function resolveEventCreditClaimAccess(input: {
   isApprovedParticipant: boolean
   /** Whether the event has its check-in flow on. */
   checkInFlowEnabled: boolean
-  /** What the check-in flow rule says about this person (`hasParticipantFinishedCheckInFlow`). */
+  /** The person is checked in (`isApplicationEffectivelyCheckedIn`), which finishes the check-in flow. */
   hasFinishedCheckInFlow: boolean
 }): EventCreditClaimAccess {
   // Event staff can claim in every event. The check-in flow is for participants.

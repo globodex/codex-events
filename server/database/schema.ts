@@ -182,10 +182,10 @@ export const events = sqliteTable(
     talkProposalClosesAt: text('talk_proposal_closes_at'),
     talkProposalQuestionsJson: text('talk_proposal_questions_json').notNull().default('[]'),
     talkProposalQuestionsRevision: integer('talk_proposal_questions_revision').notNull().default(0),
-    // The steps a participant sees around check-in. The event has a questionnaire when the
-    // flow is on and it has at least one question (`eventHasQuestionnaire`).
+    // Shows confirmed participants their next step around check-in on their event page.
     checkInFlowEnabled: integer('check_in_flow_enabled', { mode: 'boolean' }).notNull().default(false),
-    questionnaireQuestionsJson: text('questionnaire_questions_json').notNull().default('[]'),
+    // The organizer's own questions on the registration form, in display order (`customQuestionsSchema`).
+    registrationQuestionsJson: text('registration_questions_json').notNull().default('[]'),
     // The event's challenges, drafts included, in display order (`eventChallengesSchema`).
     challengesJson: text('challenges_json').notNull().default('[]'),
     // True when participants who finished the check-in flow may add photos to the gallery
@@ -707,9 +707,9 @@ export const userApplications = sqliteTable(
       .default(emptyRegistrationDetailsJson),
     // Maintained by D1 when a registration, account email, or Luma connection changes.
     activeLumaEmail: text('active_luma_email'),
-    // Both stay null until the participant completes the event questionnaire.
-    questionnaireAnswersJson: text('questionnaire_answers_json'),
-    questionnaireCompletedAt: text('questionnaire_completed_at'),
+    // The answers to the registration questions of the event at the moment of registration, each
+    // with the question text the participant answered (`registrationAnswerRecordsSchema`).
+    registrationAnswersJson: text('registration_answers_json').notNull().default('[]'),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn()
   },

@@ -22,17 +22,6 @@ type EventInsert = typeof events.$inferInsert
 type ApplicationInsert = typeof userApplications.$inferInsert
 
 const checkedInAt = '2026-11-28T08:45:00.000Z'
-const completedAt = '2026-11-28T08:50:00.000Z'
-
-const questions = [
-  { id: 'project', type: 'short_text', prompt: 'What do you want to build today?', required: true, options: [] }
-]
-const completedQuestionnaire = {
-  questionnaireAnswersJson: JSON.stringify([
-    { questionId: 'project', prompt: 'What do you want to build today?', value: 'A check-in helper' }
-  ]),
-  questionnaireCompletedAt: completedAt
-}
 
 const checkInFlowUnfinishedError = {
   error: {
@@ -95,7 +84,6 @@ describe('TASK-449 credit claims and the check-in flow', () => {
       state: 'registration_open',
       maxTeamMembers: 1,
       checkInFlowEnabled: true,
-      questionnaireQuestionsJson: JSON.stringify(questions),
       createdByUserId: 'event_admin',
       ...eventOverrides
     })
@@ -201,20 +189,9 @@ describe('TASK-449 credit claims and the check-in flow', () => {
       expect(await readClaimAuditRecords(harness)).toEqual([])
     })
 
-    test('refuses a claim after check-in while the questionnaire is open', async () => {
+    test('accepts a claim right after check-in', async () => {
       const harness = await createContext()
       await addCheckedInApplication(harness, 'participant')
-
-      const response = await claimCredit(harness, 'participant')
-
-      expect(response.status).toBe(409)
-      expect(await response.json()).toEqual(checkInFlowUnfinishedError)
-      expect(await readCodeHolders(harness)).toEqual({ 'CODE-1': null, 'CODE-2': null })
-    })
-
-    test('accepts a claim after the questionnaire', async () => {
-      const harness = await createContext()
-      await addCheckedInApplication(harness, 'participant', completedQuestionnaire)
 
       const response = await claimCredit(harness, 'participant')
 
@@ -226,23 +203,12 @@ describe('TASK-449 credit claims and the check-in flow', () => {
       ])
     })
 
-    test('accepts a claim right after check-in when the event has no questions', async () => {
-      const harness = await createContext({ questionnaireQuestionsJson: '[]' })
-      await addCheckedInApplication(harness, 'participant')
-
-      const response = await claimCredit(harness, 'participant')
-
-      expect(response.status).toBe(200)
-      expect(await readCodeHolders(harness)).toEqual({ 'CODE-1': 'participant', 'CODE-2': null })
-    })
-
     test('refuses a participant whom an event admin marked as not joined', async () => {
       const harness = await createContext()
-      // The recorded check-in and the completed questionnaire do not count: the admin decision wins.
+      // The recorded check-in does not count: the admin decision wins.
       await addCheckedInApplication(harness, 'participant', {
-        ...completedQuestionnaire,
         checkInOverrideStatus: 'not_joined',
-        checkInOverrideAt: completedAt,
+        checkInOverrideAt: checkedInAt,
         checkInOverrideByUserId: 'event_admin'
       })
 
@@ -272,7 +238,7 @@ describe('TASK-449 credit claims and the check-in flow', () => {
     test('shows the offers on the Overview tab only to a participant who finished the check-in flow', async () => {
       const harness = await createContext()
       await addApplication(harness, 'participant')
-      await addCheckedInApplication(harness, 'second_participant', completedQuestionnaire)
+      await addCheckedInApplication(harness, 'second_participant')
 
       // The credit list still names the offer to the participant who has not finished.
       expect(await readListedOffer(harness, 'participant')).toMatchObject({ availableCount: 2, claimedCode: null })
@@ -284,7 +250,7 @@ describe('TASK-449 credit claims and the check-in flow', () => {
 
     test('shows no offer without uploaded codes on the Overview tab', async () => {
       const harness = await createContext()
-      await addCheckedInApplication(harness, 'participant', completedQuestionnaire)
+      await addCheckedInApplication(harness, 'participant')
       await harness.database.insert(eventCreditOffers).values({
         id: 'offer_without_codes',
         eventId: 'event_1',
@@ -340,8 +306,8 @@ describe('TASK-449 credit claims and the check-in flow', () => {
   describe('the last code', () => {
     test('the next participant is told that no credits are left and nothing changes for them', async () => {
       const harness = await createContext()
-      await addCheckedInApplication(harness, 'participant', completedQuestionnaire)
-      await addCheckedInApplication(harness, 'second_participant', completedQuestionnaire)
+      await addCheckedInApplication(harness, 'participant')
+      await addCheckedInApplication(harness, 'second_participant')
       await giveFirstCodeTo(harness, 'staff')
       const applicationsBefore = await harness.database.select().from(userApplications)
 

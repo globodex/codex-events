@@ -3,7 +3,7 @@ import { and, asc, count, desc, eq, isNull, sql } from 'drizzle-orm'
 import { assertEventParticipantVisibilityAccess } from '#server/auth/authorization'
 import { listAdminApplicationWithdrawalAvailabilityByApplicationId } from '#server/domains/applications'
 import { effectivelyCheckedInCondition } from '#server/domains/applications/check-in'
-import { parseQuestionnaireAnswersJson } from '#server/domains/applications/check-in-flow'
+import { parseRegistrationAnswersJson } from '#shared/domains/applications/registration-answers'
 import { participantSearchTextMatches } from '#shared/domains/applications/participant-search'
 import { participantListStep } from '#shared/domains/events/account-event-page-registry'
 import type { AccountEventParticipantsPage } from '#shared/domains/events/account-event-participants-page'
@@ -168,7 +168,7 @@ async function listParticipantApplications(
   const selectRows = database.select({
     application: participantApplicationProjection,
     user: participantUserProjection,
-    questionnaireAnswersJson: userApplications.questionnaireAnswersJson
+    registrationAnswersJson: userApplications.registrationAnswersJson
   })
   // Start with the short list of matches so SQLite looks up each full row by primary key.
   const registrations = applicationIds
@@ -192,7 +192,7 @@ async function listParticipantApplications(
 
   return rows.map(row => ({
     ...row.application,
-    questionnaireAnswers: parseQuestionnaireAnswersJson(row.questionnaireAnswersJson),
+    registrationAnswers: parseRegistrationAnswersJson(row.registrationAnswersJson),
     isEventStaff: false,
     user: row.user,
     // The map has an entry for every registration that was passed to it.

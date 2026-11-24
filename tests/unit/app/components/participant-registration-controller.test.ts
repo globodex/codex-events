@@ -108,6 +108,7 @@ function mountController(draft: ParticipantRegistrationDraft) {
     trackOptions: [],
     maxTeamMembers: 1,
     currentApplicationTerms: null,
+    registrationQuestions: [],
     talkProposal: null
   })
   let controller: ReturnType<typeof useParticipantRegistrationController> | null = null

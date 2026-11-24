@@ -375,9 +375,9 @@ function shouldShowProofOfExecutionLinks(applicant: AdminApplicationReviewGroup[
   return getProofOfExecutionLinks(applicant).length > 0
 }
 
-/** The answers the participant gave after check-in. Empty until they completed the questionnaire. */
-function getQuestionnaireAnswers(applicant: AdminApplicationReviewGroup['applicants'][number]) {
-  return applicant.application.questionnaireAnswers ?? []
+/** The answers to the event's registration questions. Empty when the form had no questions. */
+function getRegistrationAnswers(applicant: AdminApplicationReviewGroup['applicants'][number]) {
+  return applicant.application.registrationAnswers ?? []
 }
 
 function shouldShowApplicantMetadata(applicant: AdminApplicationReviewGroup['applicants'][number]) {
@@ -1072,7 +1072,7 @@ const emptyState = computed(() => {
                   </div>
 
                   <div
-                    v-if="shouldShowWhyThisEvent(applicant) || shouldShowProofOfExecutionLinks(applicant) || getQuestionnaireAnswers(applicant).length > 0"
+                    v-if="shouldShowWhyThisEvent(applicant) || shouldShowProofOfExecutionLinks(applicant) || getRegistrationAnswers(applicant).length > 0"
                     class="space-y-3"
                   >
                     <div
@@ -1138,15 +1138,15 @@ const emptyState = computed(() => {
                     </section>
 
                     <section
-                      v-if="getQuestionnaireAnswers(applicant).length > 0"
-                      :data-testid="`admin-application-questionnaire-${applicant.application.id}`"
+                      v-if="getRegistrationAnswers(applicant).length > 0"
+                      :data-testid="`admin-application-registration-answers-${applicant.application.id}`"
                       class="space-y-3 rounded-lg border border-black/8 bg-black/[0.02] px-4 py-3 dark:border-white/[0.08] dark:bg-white/[0.02]"
                     >
                       <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                        Answers after check-in
+                        Registration questions
                       </p>
                       <CustomQuestionAnswerReview
-                        v-for="answer in getQuestionnaireAnswers(applicant)"
+                        v-for="answer in getRegistrationAnswers(applicant)"
                         :key="answer.questionId"
                         :prompt="answer.prompt"
                         :value="answer.value"

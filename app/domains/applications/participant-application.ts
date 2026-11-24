@@ -118,6 +118,7 @@ export interface ParticipantApplicationRecord {
 export interface VisibleEventRecord extends Omit<PublicEvent, 'tracks'> {
   id: string
   tracks?: ParticipantRegistrationTrackOption[]
+  registrationQuestions: CustomQuestionDefinition[]
   talkProposalQuestions?: CustomQuestionDefinition[]
   talkProposalQuestionsRevision?: number
 }

@@ -18,7 +18,6 @@ import AdminMarkdownEditorField from '~/components/admin/AdminMarkdownEditorFiel
 import AccountEventAdminTermsCard from '~/components/account/events/AccountEventAdminTermsCard.vue'
 import EventConfigProgramIdentitySection from '~/components/admin/EventConfigProgramIdentitySection.vue'
 import EventTalkProposalControl from '~/components/admin/EventTalkProposalControl.vue'
-import AdminCustomQuestionEditor from '~/components/admin/organisms/AdminCustomQuestionEditor.vue'
 import AdminEventCriteriaEditor from '~/components/admin/organisms/AdminEventCriteriaEditor.vue'
 import AdminEventPrizesEditor from '~/components/admin/organisms/AdminEventPrizesEditor.vue'
 import AdminEventVisibilityControl from '~/components/admin/organisms/AdminEventVisibilityControl.vue'
@@ -441,20 +440,11 @@ function removeTrackResource(track: EventFormTrack, resourceId: string) {
           @updated="emit('updated')"
         />
 
-        <div
+        <AppCheckbox
           v-if="extra.id === 'check-in'"
-          class="space-y-4"
-        >
-          <AppCheckbox
-            v-model="form.checkInFlowEnabled"
-            label="Show participants their next step on their event page"
-          />
-          <AdminCustomQuestionEditor
-            v-if="form.checkInFlowEnabled"
-            v-model="form.questionnaireQuestions"
-            variant="builder"
-          />
-        </div>
+          v-model="form.checkInFlowEnabled"
+          label="Show participants their next step on their event page"
+        />
 
         <AppCheckbox
           v-if="extra.id === 'photos'"

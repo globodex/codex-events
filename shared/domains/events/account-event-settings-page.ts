@@ -107,7 +107,7 @@ const accountEventSettingsEventSchema = z.object({
   talkProposalQuestions: customQuestionsSchema,
   talkProposalQuestionsRevision: z.number().int().nonnegative(),
   checkInFlowEnabled: z.boolean(),
-  questionnaireQuestions: customQuestionsSchema,
+  registrationQuestions: customQuestionsSchema,
   // Every challenge, drafts included. The event builder fills its challenge editor from this
   // field and sends the list back when it saves, so the field must stay in this schema: without
   // it a save in the builder would remove the stored challenges.

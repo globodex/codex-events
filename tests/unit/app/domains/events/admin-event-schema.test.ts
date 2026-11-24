@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import {
   buildEventConfigurationPatch,
+  buildEventCreateBody,
   createEmptyEventFormState,
   eventConfigFormSchema
 } from '../../../../../app/domains/events/admin-event'
@@ -220,24 +221,25 @@ describe('event config form schema', () => {
     })
   })
 
-  test('sends the check-in flow, the challenges and the photo setting with an edit, and the questions only while the check-in flow is on', () => {
+  test('sends the registration questions, the check-in flow, the challenges and the photo setting with an edit', () => {
     const form = {
       ...createValidEventFormState(),
+      registrationQuestions: [{ id: 'q1', type: 'short_text' as const, prompt: 'What do you build?', required: true, options: [] }],
       checkInFlowEnabled: true,
-      questionnaireQuestions: [{ id: 'q1', type: 'short_text' as const, prompt: 'What do you build?', required: true, options: [] }],
       challenges: [{ id: 'c1', title: 'Ship a skill', instructions: 'Build one skill.', resources: [], isPublished: true }],
       participantPhotosEnabled: true
     }
 
     expect(buildEventConfigurationPatch(form, 'build')).toMatchObject({
+      registrationQuestions: form.registrationQuestions,
       checkInFlowEnabled: true,
-      questionnaireQuestions: form.questionnaireQuestions,
       challenges: form.challenges,
       participantPhotosEnabled: true
     })
-    // The question editor is hidden while the check-in flow is off, so its questions stay as stored.
-    expect(buildEventConfigurationPatch({ ...form, checkInFlowEnabled: false }, 'build'))
-      .not.toHaveProperty('questionnaireQuestions')
+    // The Registration level is open before the first save, so a new event keeps its questions.
+    expect(buildEventCreateBody({ ...form, eventType: 'build' })).toMatchObject({
+      registrationQuestions: form.registrationQuestions
+    })
   })
 
   test('accepts configured submission tracks with markdown descriptions', () => {

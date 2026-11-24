@@ -27,7 +27,13 @@ import {
 import { applyPostRegistrationApplicationOutcome } from '#server/domains/applications/review-finalization'
 import { createApplicationWithSubmittedTalkProposal } from '#server/domains/applications/talk-proposal-registration'
 import { getVisibleEventOrThrow, routeIdParamsSchema } from '#server/domains/events'
+import { assertGuard } from '#server/domains/lifecycle-guard'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
+import {
+  buildRegistrationAnswerRecords,
+  getRegistrationAnswerIssues
+} from '#shared/domains/applications/registration-answers'
+import { parseCustomQuestionsJson } from '#shared/domains/events/custom-questions'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'post.events.by-eventId.applications',
@@ -48,6 +54,17 @@ export const applicationOperation = defineStructuredRouteOperation({
   assertEventAllowsApplications(event)
   assertUserMeetsEventProfileRequirements(actor.platformUser, event)
   assertInPersonAttendanceCommitment(event, body)
+
+  const registrationQuestions = parseCustomQuestionsJson(event.registrationQuestionsJson)
+  const answerIssues = getRegistrationAnswerIssues(registrationQuestions, body.registrationAnswers)
+
+  assertGuard(answerIssues.length === 0, {
+    statusCode: 422,
+    code: 'registration_answers_invalid',
+    message: answerIssues[0]?.message ?? 'The answers are invalid.',
+    details: { questions: answerIssues.map(issue => issue.questionId) }
+  })
+
   await assertNoExistingApplication(database, eventId, actor.platformUser.id)
   const currentTermsDocument = await assertCurrentApplicationTermsAcceptance(
     database,
@@ -198,6 +215,7 @@ export const applicationOperation = defineStructuredRouteOperation({
     applicationTermsDocumentId: currentTermsDocument?.id ?? null,
     applicationTermsAcceptedAt: currentTermsDocument ? submittedAt : null,
     registrationDetailsJson,
+    registrationAnswersJson: JSON.stringify(buildRegistrationAnswerRecords(registrationQuestions, body.registrationAnswers)),
     createdAt: submittedAt,
     updatedAt: submittedAt
   } satisfies typeof userApplications.$inferInsert

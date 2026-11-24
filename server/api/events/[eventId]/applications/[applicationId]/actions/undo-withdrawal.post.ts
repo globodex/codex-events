@@ -78,9 +78,6 @@ export const applicationOperation = defineStructuredRouteOperation({
     checkInOverrideStatus: null,
     checkInOverrideAt: null,
     checkInOverrideByUserId: null,
-    // A restored participant starts again before check-in, so the questionnaire is open again.
-    questionnaireAnswersJson: null,
-    questionnaireCompletedAt: null,
     reviewedAt: null,
     reviewedByUserId: null,
     updatedAt: restoredAt
@@ -97,8 +94,6 @@ export const applicationOperation = defineStructuredRouteOperation({
       checkInOverrideStatus: restoredApplication.checkInOverrideStatus,
       checkInOverrideAt: restoredApplication.checkInOverrideAt,
       checkInOverrideByUserId: restoredApplication.checkInOverrideByUserId,
-      questionnaireAnswersJson: restoredApplication.questionnaireAnswersJson,
-      questionnaireCompletedAt: restoredApplication.questionnaireCompletedAt,
       reviewedAt: restoredApplication.reviewedAt,
       reviewedByUserId: restoredApplication.reviewedByUserId,
       updatedAt: restoredApplication.updatedAt

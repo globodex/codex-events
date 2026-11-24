@@ -30,7 +30,6 @@ import {
 } from '~/domains/events/presentation'
 import type { EventParticipationRankSummary } from '~/domains/events/participation'
 import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
-import type { CheckInFlowProgress, CheckInFlowSettings } from '#shared/domains/applications/check-in-flow'
 import { buildEventCertificatePath } from '#shared/domains/events/certificates'
 import { canViewEventProgram } from '#shared/domains/events/program'
 import type {
@@ -756,19 +755,10 @@ const showOverviewApplicationStatusBanner = computed(() =>
   shouldShowParticipantOverviewStatusBanner(applicationStatus.value)
 )
 const participantApplication = computed(() => participationRecord.value?.application ?? null)
-// The check-in flow of this event and how far the participant is in it, for the next-step card.
-const checkInFlowSettings = computed<CheckInFlowSettings>(() => ({
-  checkInFlowEnabled: entryPage.value?.checkInFlowEnabled ?? false,
-  questionnaireQuestions: entryPage.value?.questionnaireQuestions ?? []
-}))
-const checkInFlowProgress = computed<CheckInFlowProgress>(() => ({
-  isCheckedIn: participantApplication.value?.isCheckedIn ?? false,
-  questionnaireCompletedAt: entryPage.value?.questionnaireCompletedAt ?? null
-}))
 // The next-step card is for a confirmed participant of an event that uses the check-in flow.
 // A completed event has no next step.
 const showNextStepCard = computed(() =>
-  checkInFlowSettings.value.checkInFlowEnabled
+  entryPage.value?.checkInFlowEnabled === true
   && applicationStatus.value === 'approved'
   && event.value?.state !== 'completed'
 )
@@ -1188,9 +1178,7 @@ useSeoMeta({
       >
         <AccountEventNextStepCard
           v-if="showNextStepCard"
-          :event-id="event.id"
-          :settings="checkInFlowSettings"
-          :progress="checkInFlowProgress"
+          :is-checked-in="participantApplication?.isCheckedIn ?? false"
           :activities="participantActivities"
           :refresh-page="refreshAfterCheckInStep"
         />

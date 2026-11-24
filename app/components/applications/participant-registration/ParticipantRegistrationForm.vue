@@ -209,6 +209,7 @@ watch(() => props.profileError || props.submissionError, async (error) => {
               @update-ai-knowledge-level="draft.aiKnowledgeLevel = $event"
               @update-why-this-event="draft.whyThisEvent = $event"
               @update-proof-of-execution-url="draft.proofOfExecutionUrl = $event"
+              @update-registration-answer="(questionId, value) => { draft.registrationAnswers[questionId] = value }"
             />
 
             <ParticipantRegistrationParticipationSection

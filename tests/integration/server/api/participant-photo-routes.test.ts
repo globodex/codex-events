@@ -45,18 +45,8 @@ type PhotoInsert = typeof eventPhotos.$inferInsert
 const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 const imageRequests = ['variant=preview', 'variant=original', 'variant=original&download=1']
 
+/** A registration that finished the check-in flow of `event_1`: the participant is checked in. */
 const checkedIn = { checkedInAt: '2026-11-28T08:45:00.000Z', checkInSource: 'staff' as const }
-const questions = [
-  { id: 'project', type: 'short_text', prompt: 'What do you want to build today?', required: true, options: [] }
-]
-/** A registration that finished the check-in flow of `event_1`: checked in, questionnaire completed. */
-const finishedCheckInFlow = {
-  ...checkedIn,
-  questionnaireAnswersJson: JSON.stringify([
-    { questionId: 'project', prompt: 'What do you want to build today?', value: 'A check-in helper' }
-  ]),
-  questionnaireCompletedAt: '2026-11-28T08:50:00.000Z'
-}
 
 /** Every test user signs in with `auth0|<user id>`. */
 function sessionFor(userId: string) {
@@ -175,7 +165,6 @@ describe('TASK-451 participant photos', () => {
       state: 'registration_open',
       maxTeamMembers: 1,
       checkInFlowEnabled: true,
-      questionnaireQuestionsJson: JSON.stringify(questions),
       participantPhotosEnabled: true,
       createdByUserId: 'event_admin',
       ...eventOverrides
@@ -323,7 +312,7 @@ describe('TASK-451 participant photos', () => {
   describe('adding photos as a participant', () => {
     test('a participant who finished the check-in flow adds a participant photo, without a credit claim', async () => {
       const context = await createContext()
-      await addApplication(context, finishedCheckInFlow)
+      await addApplication(context, checkedIn)
 
       const response = await uploadPhotos(context, 'participant')
 
@@ -347,10 +336,9 @@ describe('TASK-451 participant photos', () => {
 
     test.each([
       { who: 'a confirmed participant before check-in', application: {} },
-      { who: 'a checked-in participant with an open questionnaire', application: checkedIn },
-      { who: 'a participant with a submitted registration', application: { ...finishedCheckInFlow, status: 'submitted' as const } },
-      { who: 'a participant with a rejected registration', application: { ...finishedCheckInFlow, status: 'rejected' as const } },
-      { who: 'a participant with a withdrawn registration', application: { ...finishedCheckInFlow, status: 'withdrawn' as const } }
+      { who: 'a participant with a submitted registration', application: { ...checkedIn, status: 'submitted' as const } },
+      { who: 'a participant with a rejected registration', application: { ...checkedIn, status: 'rejected' as const } },
+      { who: 'a participant with a withdrawn registration', application: { ...checkedIn, status: 'withdrawn' as const } }
     ])('refuses $who', async ({ application }) => {
       const context = await createContext()
       await addApplication(context, application)
@@ -364,19 +352,12 @@ describe('TASK-451 participant photos', () => {
 
     test('refuses a participant who finished the check-in flow while the event does not allow participant photos', async () => {
       const context = await createContext({ participantPhotosEnabled: false })
-      await addApplication(context, finishedCheckInFlow)
+      await addApplication(context, checkedIn)
 
       const response = await uploadPhotos(context, 'participant')
 
       expect(response.status).toBe(403)
       expect(await readStoredPhotos(context)).toEqual([])
-    })
-
-    test('an event without questions: the participant adds photos right after check-in', async () => {
-      const context = await createContext({ questionnaireQuestionsJson: '[]' })
-      await addApplication(context, checkedIn)
-
-      expect((await uploadPhotos(context, 'participant')).status).toBe(200)
     })
 
     test('an event with the check-in flow off: refused before check-in', async () => {
@@ -408,7 +389,7 @@ describe('TASK-451 participant photos', () => {
   describe('the limit of photos per participant', () => {
     test('refuses the photo after the 20th and says how many photos are left', async () => {
       const context = await createContext()
-      await addApplication(context, finishedCheckInFlow)
+      await addApplication(context, checkedIn)
       // 19 photos. One of them is hidden: a hidden photo counts too.
       for (let index = 1; index < maxParticipantPhotosPerEvent; index += 1) {
         await addPhoto(context, { id: `photo_${index}`, isHidden: index === 1 })
@@ -436,7 +417,7 @@ describe('TASK-451 participant photos', () => {
 
     test('counts only the photos that this participant added', async () => {
       const context = await createContext()
-      await addApplication(context, finishedCheckInFlow)
+      await addApplication(context, checkedIn)
       for (let index = 1; index <= maxParticipantPhotosPerEvent; index += 1) {
         await addPhoto(context, { id: `photo_${index}`, uploadedByUserId: 'other_participant' })
       }
@@ -463,7 +444,7 @@ describe('TASK-451 participant photos', () => {
     ['participant', 404], ['staff', 404], ['judge', 404], ['event_admin', 200], ['platform_admin', 200]
   ] as const)('hidden event gallery access for %s', async (userId, status) => {
     const context = await createContext({ hiddenAt: checkedIn.checkedInAt })
-    await addApplication(context, finishedCheckInFlow)
+    await addApplication(context, checkedIn)
     await addPhoto(context, { id: 'hidden_event_photo' })
     signIn(userId)
     for (const response of [
@@ -479,7 +460,7 @@ describe('TASK-451 participant photos', () => {
 
   test('rolls back every chunk and deletes staged files when another upload takes the last space', async () => {
     const context = await createContext()
-    await addApplication(context, finishedCheckInFlow)
+    await addApplication(context, checkedIn)
     for (let i = 0; i < 12; i++) await addPhoto(context, { id: `existing_${i}` })
     const put = context.bucket.put.bind(context.bucket)
     vi.spyOn(context.bucket, 'put').mockImplementationOnce(async (key, bytes) => {
@@ -535,7 +516,7 @@ describe('TASK-451 participant photos', () => {
 
     test('a staff member with a finished registration still adds a photo of the event team', async () => {
       const context = await createContext()
-      await addApplication(context, { ...finishedCheckInFlow, userId: 'staff' })
+      await addApplication(context, { ...checkedIn, userId: 'staff' })
 
       expect((await uploadPhotos(context, 'staff')).status).toBe(200)
       expect(await readStoredPhotos(context)).toEqual([expect.objectContaining({ isParticipantUpload: false })])
@@ -601,8 +582,8 @@ describe('TASK-451 participant photos', () => {
       { userId: null, status: 401, who: 'a visitor without a session' }
     ])('refuses $who', async ({ userId, status }) => {
       const context = await createContext()
-      await addApplication(context, finishedCheckInFlow)
-      await addApplication(context, { ...finishedCheckInFlow, userId: 'other_participant' })
+      await addApplication(context, checkedIn)
+      await addApplication(context, { ...checkedIn, userId: 'other_participant' })
       await addPhoto(context, { id: 'photo_1' })
 
       expect((await setHidden(context, userId, 'photo_1', true)).status).toBe(status)
@@ -630,7 +611,7 @@ describe('TASK-451 participant photos', () => {
     /** `participant` added both photos. `other_participant` is another confirmed participant. */
     async function createContextWithHiddenPhoto() {
       const context = await createContext()
-      await addApplication(context, finishedCheckInFlow)
+      await addApplication(context, checkedIn)
       await addApplication(context, { userId: 'other_participant' })
       await addPhoto(context, { id: 'visible_photo' })
       await addPhoto(context, { id: 'hidden_photo', isHidden: true, createdAt: '2026-11-28T11:00:00.000Z' })
@@ -781,7 +762,7 @@ describe('TASK-451 participant photos', () => {
   describe('the gallery page', () => {
     test('tells a participant who finished the check-in flow that they can add photos', async () => {
       const context = await createContext()
-      await addApplication(context, finishedCheckInFlow)
+      await addApplication(context, checkedIn)
 
       expect(await readGalleryPage(context, 'participant')).toEqual({
         photos: [],
@@ -790,9 +771,9 @@ describe('TASK-451 participant photos', () => {
       })
     })
 
-    test('tells a participant with an open questionnaire to finish the check-in flow before adding photos', async () => {
+    test('tells a participant before check-in to finish the check-in flow before adding photos', async () => {
       const context = await createContext()
-      await addApplication(context, checkedIn)
+      await addApplication(context)
 
       expect(await readGalleryPage(context, 'participant')).toMatchObject({
         canAddParticipantPhotos: false,
@@ -802,14 +783,14 @@ describe('TASK-451 participant photos', () => {
 
     test('does not offer adding photos while the event does not allow participant photos', async () => {
       const context = await createContext({ participantPhotosEnabled: false })
-      await addApplication(context, finishedCheckInFlow)
+      await addApplication(context, checkedIn)
 
       expect((await readGalleryPage(context, 'participant')).canAddParticipantPhotos).toBe(false)
     })
 
     test.each(['staff', 'judge', 'event_admin', 'platform_admin'])('%s uploads as the event team, also with a finished registration', async (userId) => {
       const context = await createContext()
-      await addApplication(context, { ...finishedCheckInFlow, userId })
+      await addApplication(context, { ...checkedIn, userId })
 
       expect((await readGalleryPage(context, userId)).canAddParticipantPhotos).toBe(false)
     })
@@ -856,7 +837,7 @@ describe('TASK-451 participant photos', () => {
 
     test('is there for a participant who can add photos, also while the gallery is empty', async () => {
       const context = await createContext()
-      await addApplication(context, finishedCheckInFlow)
+      await addApplication(context, checkedIn)
       const emptyGalleryWithTab = { hasTab: true, hasGallery: false }
 
       expect(await readGalleryTab(context, 'participant')).toEqual({
@@ -867,7 +848,8 @@ describe('TASK-451 participant photos', () => {
 
     test('is missing while the gallery is empty and the participant cannot add photos', async () => {
       const context = await createContext()
-      await addApplication(context, checkedIn)
+      // A confirmed participant who has not checked in yet.
+      await addApplication(context)
       const noGallery = { hasTab: false, hasGallery: false }
 
       expect(await readGalleryTab(context, 'participant')).toEqual({ eventPage: noGallery, directLink: noGallery })
@@ -875,7 +857,8 @@ describe('TASK-451 participant photos', () => {
 
     test('is missing while every photo is hidden and the participant cannot add photos', async () => {
       const context = await createContext()
-      await addApplication(context, checkedIn)
+      // A confirmed participant who has not checked in yet.
+      await addApplication(context)
       await addPhoto(context, { id: 'hidden_photo', uploadedByUserId: 'other_participant', isHidden: true })
       const noGallery = { hasTab: false, hasGallery: false }
       const galleryWithTab = { hasTab: true, hasGallery: true }
@@ -917,7 +900,7 @@ describe('TASK-451 participant photos', () => {
       { userId: null, status: 401, who: 'a visitor without a session' }
     ])('refuses $who', async ({ userId, status }) => {
       const context = await createContext()
-      await addApplication(context, finishedCheckInFlow)
+      await addApplication(context, checkedIn)
 
       expect((await patchEvent(context, userId, { participantPhotosEnabled: false })).status).toBe(status)
       expect((await readStoredEvent(context)).participantPhotosEnabled).toBe(true)

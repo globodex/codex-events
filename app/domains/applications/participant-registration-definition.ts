@@ -30,6 +30,8 @@ import {
   createTalkProposalAnswers,
   talkProposalFormSchema
 } from '~/domains/talk-proposals'
+import { getRegistrationAnswerIssues } from '#shared/domains/applications/registration-answers'
+import { getEmptyCustomQuestionAnswerValue } from '#shared/domains/events/custom-questions'
 import { getTalkProposalAnswerIssues } from '#shared/domains/talk-proposals/answer-issues'
 import { aiKnowledgeLevelValues } from '#ai-knowledge'
 
@@ -66,6 +68,8 @@ export interface ParticipantRegistrationDraft {
   teamIntent: ParticipantRegistrationTeamIntent
   teamMemberHints: ParticipantRegistrationTeamMemberHint[]
   profileForm: ParticipantRegistrationProfileForm
+  /** What the participant entered for the event's registration questions, by question id. */
+  registrationAnswers: Record<string, string | boolean>
   talkProposal: ParticipantRegistrationTalkProposalDraft | null
 }
 
@@ -91,6 +95,7 @@ export type ParticipantRegistrationFieldId
     | `teamMemberHints.${number}.${keyof ParticipantRegistrationTeamMemberHint}`
     | 'inPersonAttendanceCommitment'
     | 'termsAccepted'
+    | `registrationQuestion.${string}`
     | 'talkProposal.title'
     | 'talkProposal.abstract'
     | 'talkProposal.demoOrSlidesUrl'
@@ -107,6 +112,10 @@ export function participantRegistrationTeammateFieldId(
   key: keyof ParticipantRegistrationTeamMemberHint
 ): ParticipantRegistrationFieldId {
   return `teamMemberHints.${index}.${key}`
+}
+
+export function participantRegistrationQuestionFieldId(questionId: string): ParticipantRegistrationFieldId {
+  return `registrationQuestion.${questionId}`
 }
 
 export function participantRegistrationTalkQuestionFieldId(questionId: string): ParticipantRegistrationFieldId {
@@ -171,6 +180,8 @@ export interface ParticipantRegistrationDefinitionInput {
   trackOptions: ParticipantRegistrationTrackOption[]
   maxTeamMembers: number
   currentApplicationTerms: ParticipantApplicationTermsDocument | null
+  /** The organizer's own questions, asked in the "Your application" section. */
+  registrationQuestions: CustomQuestionDefinition[]
   talkProposal: {
     questions: CustomQuestionDefinition[]
     questionSetRevision: number
@@ -193,6 +204,7 @@ export interface ResolvedParticipantRegistrationDefinition {
     showWhyThisEvent: boolean
     showProofOfExecution: boolean
     trackOptions: ParticipantRegistrationTrackOption[]
+    questions: CustomQuestionDefinition[]
   }
   participation: {
     visible: boolean
@@ -222,6 +234,20 @@ function optionalSocialProfileUrlSchema(
   return z.string().trim()
     .refine(value => value.length === 0 || isAccountProfileUrlValid(value), formatMessage)
     .refine(value => value.length === 0 || isAccountSocialProfileUrlValid(key, value), domainMessage)
+}
+
+/**
+ * The answers to the current registration questions, in their order. An answer to a question the
+ * event no longer has is left out, and a question without an entry gets the empty value.
+ */
+function listRegistrationAnswers(
+  questions: CustomQuestionDefinition[],
+  draft: Pick<ParticipantRegistrationDraft, 'registrationAnswers'>
+): CustomQuestionAnswer[] {
+  return questions.map(question => ({
+    questionId: question.id,
+    value: draft.registrationAnswers[question.id] ?? getEmptyCustomQuestionAnswerValue(question)
+  }))
 }
 
 function field(
@@ -293,6 +319,7 @@ function buildDraftSchema(options: {
         : z.string(),
       lumaEmail: options.visibleProfileFieldKeys.has('lumaEmail') ? optionalEmailSchema : z.string()
     }),
+    registrationAnswers: z.record(z.string(), z.union([z.string(), z.boolean()])),
     talkProposal: input.talkProposal ? talkProposalFormSchema : z.null()
   }).superRefine((draft, context) => {
     if (input.currentApplicationTerms && !draft.termsAccepted) {
@@ -346,6 +373,13 @@ function buildDraftSchema(options: {
       context.addIssue({ code: 'custom', path: ['aiKnowledgeLevel'], message: 'Choose your AI Knowledge level.' })
     }
 
+    getRegistrationAnswerIssues(
+      input.registrationQuestions,
+      listRegistrationAnswers(input.registrationQuestions, draft)
+    ).forEach((issue) => {
+      context.addIssue({ code: 'custom', path: ['registrationQuestion', issue.questionId], message: issue.message })
+    })
+
     if (input.talkProposal && draft.talkProposal) {
       getTalkProposalAnswerIssues(input.talkProposal.questions, draft.talkProposal.answers, true).forEach((issue) => {
         context.addIssue({
@@ -371,6 +405,7 @@ export function createParticipantRegistrationDraft(
     teamIntent: 'unknown',
     teamMemberHints: [],
     profileForm: Object.fromEntries(participantRegistrationProfileFieldKeys.map(key => [key, ''])) as ParticipantRegistrationProfileForm,
+    registrationAnswers: {},
     talkProposal: talkProposal
       ? {
           title: '',
@@ -444,6 +479,14 @@ export function resolveParticipantRegistrationDefinition(
   if (input.event.applicationProofOfExecutionVisible) {
     applicationFields.push(field('proofOfExecutionUrl', 'Proof of execution links', input.event.requireProofOfExecution, draft => draft.proofOfExecutionUrl))
   }
+  for (const question of input.registrationQuestions) {
+    applicationFields.push(field(
+      participantRegistrationQuestionFieldId(question.id),
+      question.prompt,
+      question.required,
+      draft => draft.registrationAnswers[question.id] ?? getEmptyCustomQuestionAnswerValue(question)
+    ))
+  }
   if (applicationFields.length) {
     sections.push(section('application', 'Your application', applicationFields))
   }
@@ -509,7 +552,8 @@ export function resolveParticipantRegistrationDefinition(
       showAiKnowledge,
       showWhyThisEvent: input.event.applicationWhyThisEventVisible,
       showProofOfExecution: input.event.applicationProofOfExecutionVisible,
-      trackOptions
+      trackOptions,
+      questions: input.registrationQuestions
     },
     participation: {
       visible: input.event.applicationTeamIntentVisible,
@@ -645,6 +689,10 @@ export function projectParticipantRegistrationApplicationPayload(
     payload.registrationTeamMembers = definition.participation.teammateHintsVisible(draft)
       ? normalizeParticipantTeamMemberHintsForSubmission(draft.teamMemberHints, definition.participation.maxTeammates + 1)
       : []
+  }
+
+  if (definition.application.questions.length > 0) {
+    payload.registrationAnswers = listRegistrationAnswers(definition.application.questions, draft)
   }
 
   if (definition.talkProposal && draft.talkProposal) {

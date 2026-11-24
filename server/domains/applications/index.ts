@@ -42,7 +42,6 @@ import {
   serializeEventTermsDocument
 } from '#server/domains/events'
 import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
-import { parseQuestionnaireAnswersJson } from '#server/domains/applications/check-in-flow'
 import {
   buildApplicationLumaSyncQueueMessage,
   enqueueApplicationLumaSyncMessage,
@@ -53,6 +52,8 @@ import {
   isEventLumaSyncEnabled
 } from '#server/domains/applications/luma-config'
 import { talkProposalContentBodySchema } from '#server/domains/talk-proposals'
+import { parseRegistrationAnswersJson } from '#shared/domains/applications/registration-answers'
+import { customQuestionAnswersSchema } from '#shared/domains/events/custom-questions'
 
 export {
   getInitialApplicationLumaSyncStatus,
@@ -88,6 +89,8 @@ export const submitApplicationBodySchema = z.object({
   proofOfExecutionUrl: z.string().trim().max(2048).default(''),
   aiKnowledgeLevel: z.string().trim().max(32).default(''),
   selectedTrackId: z.string().trim().max(120).default(''),
+  // Answers to the event's registration questions (`events.registration_questions_json`).
+  registrationAnswers: customQuestionAnswersSchema.default([]),
   talkProposal: talkProposalContentBodySchema.optional()
 })
 
@@ -765,8 +768,7 @@ export function serializeUserApplication(
     applicationTermsDocumentId: application.applicationTermsDocumentId,
     applicationTermsAcceptedAt: application.applicationTermsAcceptedAt,
     registrationDetailsJson: application.registrationDetailsJson,
-    questionnaireCompletedAt: application.questionnaireCompletedAt,
-    questionnaireAnswers: parseQuestionnaireAnswersJson(application.questionnaireAnswersJson),
+    registrationAnswers: parseRegistrationAnswersJson(application.registrationAnswersJson),
     createdAt: application.createdAt,
     updatedAt: application.updatedAt,
     ...(options?.user

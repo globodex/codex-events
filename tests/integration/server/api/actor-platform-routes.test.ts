@@ -3962,7 +3962,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
         proofOfExecutionUrl: 'https://example.com/my-work',
         aiKnowledgeLevel: 'advanced'
       }),
-      questionnaireAnswersJson: JSON.stringify([
+      registrationAnswersJson: JSON.stringify([
         { questionId: 'project', prompt: 'What do you want to build today?', value: 'A compiler' }
       ])
     }
@@ -3975,7 +3975,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
         submittedAt: fixtureTimestamp(),
         checkedInAt: fixtureTimestamp(),
         checkInSource: 'staff',
-        questionnaireCompletedAt: fixtureTimestamp(),
         ...writtenAnswers
       },
       {
@@ -4011,9 +4010,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
       id: 'application_delete',
       status: 'approved',
       checkedInAt: fixtureTimestamp(),
-      questionnaireCompletedAt: fixtureTimestamp(),
       registrationDetailsJson: emptyRegistrationDetailsJson,
-      questionnaireAnswersJson: null
+      registrationAnswersJson: '[]'
     })
     // Another participant keeps their answers.
     expect(applications[1]).toMatchObject({ id: 'application_other', ...writtenAnswers })

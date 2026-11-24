@@ -9,11 +9,16 @@ import type {
 } from '~/domains/applications/participant-registration-definition'
 
 import ParticipantRegistrationField from './ParticipantRegistrationField.vue'
+import { getEmptyCustomQuestionAnswerValue } from '#shared/domains/events/custom-questions'
+import CustomQuestionInput from '~/components/events/molecules/CustomQuestionInput.vue'
 import {
   aiKnowledgeLevelOptionLabels,
   aiKnowledgeLevelValues
 } from '~/domains/applications/participant-application'
-import { participantRegistrationSectionDomId } from '~/domains/applications/participant-registration-definition'
+import {
+  participantRegistrationQuestionFieldId,
+  participantRegistrationSectionDomId
+} from '~/domains/applications/participant-registration-definition'
 
 const props = defineProps<{
   draft: ParticipantRegistrationDraft
@@ -27,6 +32,7 @@ const emit = defineEmits<{
   updateAiKnowledgeLevel: [value: ParticipantAiKnowledgeLevelInput]
   updateWhyThisEvent: [value: string]
   updateProofOfExecutionUrl: [value: string]
+  updateRegistrationAnswer: [questionId: string, value: string | boolean]
 }>()
 
 const selectedTrack = computed(() => props.definition.application.trackOptions
@@ -150,5 +156,19 @@ function required(fieldId: ParticipantRegistrationFieldId) {
         Separate multiple links with commas.
       </template>
     </ParticipantRegistrationField>
+
+    <div
+      v-for="question in props.definition.application.questions"
+      :key="question.id"
+      :data-registration-field="participantRegistrationQuestionFieldId(question.id)"
+    >
+      <CustomQuestionInput
+        :question="question"
+        :model-value="props.draft.registrationAnswers[question.id] ?? getEmptyCustomQuestionAnswerValue(question)"
+        :disabled="props.disabled"
+        :error="props.errors[participantRegistrationQuestionFieldId(question.id)]"
+        @update:model-value="emit('updateRegistrationAnswer', question.id, $event)"
+      />
+    </div>
   </section>
 </template>

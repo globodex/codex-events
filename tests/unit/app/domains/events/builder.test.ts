@@ -563,26 +563,20 @@ describe('getBuilderChecklist', () => {
     expect(findChallengeLine()).toBeUndefined()
   })
 
-  test('names an unfinished question for after check-in only while the next step is on', () => {
+  test('names the first unfinished registration question on the Registration level', () => {
     const state = createEmptyEventBuilderState()
-    const findQuestionLine = () => getBuilderChecklist(state).find(item => item.id === 'questionnaire-questions')
+    const findQuestionLine = () => getBuilderChecklist(state).find(item => item.id === 'registration-questions')
 
-    state.form.questionnaireQuestions = [
+    state.form.registrationQuestions = [
       { id: 'q1', type: 'short_text', prompt: 'What do you build?', required: true, options: [] },
       { id: 'q2', type: 'short_text', prompt: '', required: false, options: [] }
     ]
 
-    // The questions are hidden and not saved while the next step is off.
-    expect(findQuestionLine()).toBeUndefined()
-
-    state.form.checkInFlowEnabled = true
-
     expect(findQuestionLine()).toEqual({
-      id: 'questionnaire-questions',
+      id: 'registration-questions',
       label: 'Question 2: Write the question.',
       complete: false,
-      level: 'extras',
-      extra: 'check-in',
+      level: 'registration',
       fieldRef: 'event-builder-question-q2'
     })
   })

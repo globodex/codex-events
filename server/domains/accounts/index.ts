@@ -648,12 +648,12 @@ export async function deletePlatformAccount(
       .delete(talkProposals)
       .where(eq(talkProposals.userId, actor.userId)),
     // The registration records stay with their status and attendance. What the participant
-    // wrote in the registration form and in the questionnaire after check-in is removed.
+    // wrote in the registration form is removed.
     database
       .update(userApplications)
       .set({
         registrationDetailsJson: emptyRegistrationDetailsJson,
-        questionnaireAnswersJson: null
+        registrationAnswersJson: '[]'
       })
       .where(eq(userApplications.userId, actor.userId)),
     buildAuditLogInsert(database, {

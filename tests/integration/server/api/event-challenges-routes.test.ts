@@ -30,16 +30,6 @@ type ApplicationInsert = typeof userApplications.$inferInsert
 
 const checkedInAt = '2026-11-28T08:45:00.000Z'
 
-const questions = [
-  { id: 'project', type: 'short_text', prompt: 'What do you want to build today?', required: true, options: [] }
-]
-const completedQuestionnaire = {
-  questionnaireAnswersJson: JSON.stringify([
-    { questionId: 'project', prompt: 'What do you want to build today?', value: 'A check-in helper' }
-  ]),
-  questionnaireCompletedAt: '2026-11-28T08:50:00.000Z'
-}
-
 const skillChallenge = {
   id: 'skill',
   title: 'Ship a Codex skill',
@@ -133,7 +123,6 @@ describe('TASK-450 event challenges', () => {
       state: 'registration_open',
       maxTeamMembers: 1,
       checkInFlowEnabled: true,
-      questionnaireQuestionsJson: JSON.stringify(questions),
       challengesJson: JSON.stringify(storedChallenges),
       createdByUserId: 'event_admin',
       ...eventOverrides
@@ -330,7 +319,7 @@ describe('TASK-450 event challenges', () => {
       { actorUserId: null, status: 401, who: 'a visitor without a session' }
     ])('refuses $who', async ({ actorUserId, status }) => {
       const harness = await createContext()
-      await addCheckedInApplication(harness, completedQuestionnaire)
+      await addCheckedInApplication(harness)
 
       const response = await patchEvent(harness, actorUserId, { challenges: [] })
 
@@ -352,14 +341,14 @@ describe('TASK-450 event challenges', () => {
 
     test('after finishing the check-in flow: the same published challenges', async () => {
       const harness = await createContext()
-      await addCheckedInApplication(harness, completedQuestionnaire)
+      await addCheckedInApplication(harness)
 
       expect(await readChallengesOnEventPage(harness, 'participant')).toEqual(allPublishedChallenges)
     })
 
     test('an event with draft challenges only: no Agenda tab and no challenge', async () => {
       const harness = await createContext({ challengesJson: JSON.stringify([draftChallenge]) })
-      await addCheckedInApplication(harness, completedQuestionnaire)
+      await addCheckedInApplication(harness)
 
       expect(await readChallengesOnEventPage(harness, 'participant')).toEqual(noChallenges)
     })

@@ -31,8 +31,7 @@ describe('application utilities', () => {
       applicationTermsDocumentId: 'terms_app_2',
       applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
       registrationDetailsJson: '{"teamIntent":"unknown","teamMembers":[],"inPersonAttendanceCommitment":false,"whyThisEvent":"","proofOfExecutionUrl":""}',
-      questionnaireAnswersJson: null,
-      questionnaireCompletedAt: null,
+      registrationAnswersJson: '[]',
       createdAt: '2026-03-22T12:10:00.000Z',
       updatedAt: '2026-03-22T12:10:00.000Z'
     }, {

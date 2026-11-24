@@ -8,6 +8,7 @@ import {
   parseParticipantsLimitInput
 } from '~/domains/events/admin-event'
 import AdminBuilderFrictionGauge from '~/components/admin/builder/molecules/AdminBuilderFrictionGauge.vue'
+import AdminCustomQuestionEditor from '~/components/admin/organisms/AdminCustomQuestionEditor.vue'
 
 const form = defineModel<EventFormState>('form', { required: true })
 
@@ -190,5 +191,13 @@ const participantsLimitInput = computed({
         </div>
       </div>
     </div>
+
+    <!-- The organizer's own questions follow the fixed fields on the form. Full width gives
+         long question texts room. -->
+    <AdminCustomQuestionEditor
+      v-model="form.registrationQuestions"
+      variant="builder"
+      class="lg:col-span-2"
+    />
   </section>
 </template>

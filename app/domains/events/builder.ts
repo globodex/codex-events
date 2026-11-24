@@ -662,8 +662,10 @@ export const eventBuilderQuestionIdPrefix = 'event-builder-question-'
  */
 function getUnfinishedEntryChecklistItem(list: {
   checklistId: string
-  /** The extra that holds the list. */
-  extra: EventBuilderExtraId
+  /** The level that shows the list. */
+  level: EventBuilderLevelId
+  /** The extra that holds the list, for a list on the extras level. */
+  extra?: EventBuilderExtraId
   /** What the organizer calls one entry, for example "Challenge". */
   entryName: string
   entries: Array<{ id: string }>
@@ -682,47 +684,45 @@ function getUnfinishedEntryChecklistItem(list: {
 
   // A problem of the list itself, for example too many entries, points at no entry.
   if (typeof position !== 'number') {
-    return { id: list.checklistId, label: problem.message, complete: false, level: 'extras', extra: list.extra }
+    return { id: list.checklistId, label: problem.message, complete: false, level: list.level, extra: list.extra }
   }
 
   return {
     id: list.checklistId,
     label: `${list.entryName} ${position + 1}: ${problem.message}`,
     complete: false,
-    level: 'extras',
+    level: list.level,
     extra: list.extra,
     fieldRef: `${list.fieldIdPrefix}${list.entries[position]!.id}`
   }
 }
 
 /**
- * Steps for what the organizer wrote in an extra and has not finished: an incomplete challenge,
- * and an incomplete question for after check-in. The event is not saved while a step is open,
- * so it is never sent with such an entry.
+ * Steps for what the organizer wrote in a list and has not finished: an incomplete registration
+ * question and an incomplete challenge, in the order of their levels. The event is not saved
+ * while a step is open, so it is never sent with such an entry.
  *
  * This is the one place that tells the organizer about unfinished list entries.
  */
 function getUnfinishedEntryChecklistItems(form: EventFormState) {
   return [
     getUnfinishedEntryChecklistItem({
+      checklistId: 'registration-questions',
+      level: 'registration',
+      entryName: 'Question',
+      entries: form.registrationQuestions,
+      schema: customQuestionsSchema,
+      fieldIdPrefix: eventBuilderQuestionIdPrefix
+    }),
+    getUnfinishedEntryChecklistItem({
       checklistId: 'challenges',
+      level: 'extras',
       extra: 'challenges',
       entryName: 'Challenge',
       entries: form.challenges,
       schema: eventChallengesSchema,
       fieldIdPrefix: eventBuilderChallengeTitleIdPrefix
-    }),
-    // The questions are sent only while the next step is on (see `buildEventConfigurationPatch`).
-    form.checkInFlowEnabled
-      ? getUnfinishedEntryChecklistItem({
-          checklistId: 'questionnaire-questions',
-          extra: 'check-in',
-          entryName: 'Question',
-          entries: form.questionnaireQuestions,
-          schema: customQuestionsSchema,
-          fieldIdPrefix: eventBuilderQuestionIdPrefix
-        })
-      : null
+    })
   ].filter(item => item !== null)
 }
 
@@ -977,11 +977,9 @@ const eventBuilderExtraDefinitions: readonly EventBuilderExtraDefinition[] = [
     icon: 'i-lucide-list-checks',
     title: 'Check-in',
     appliesTo: allTypes,
-    // The next step and its questions are saved with an event update.
+    // The next step is saved with an event update.
     editOnly: true,
-    summary: ({ form }) => form.checkInFlowEnabled
-      ? describeCount(form.questionnaireQuestions.length, 'question') ?? 'On'
-      : null
+    summary: ({ form }) => form.checkInFlowEnabled ? 'On' : null
   },
   {
     id: 'photos',
