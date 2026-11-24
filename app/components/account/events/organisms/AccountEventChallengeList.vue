@@ -6,6 +6,8 @@ import AccountEventChallengeCard from '~/components/account/events/molecules/Acc
 // The challenges of the event on the Agenda tab, each with the rooms that name it.
 // The server sends this list only to a person who may read it, and it never holds a draft.
 const props = defineProps<{
+  /** The event whose staff icons the cards show. */
+  eventId: string
   challenges: AgendaChallenge[]
   /** The floor plans that the person may see. Empty for a person who does not see the map. */
   floorPlans: EventFloorPlan[]
@@ -52,6 +54,7 @@ function roomsOf(challenge: AgendaChallenge) {
           class="min-w-0"
         >
           <AccountEventChallengeCard
+            :event-id="eventId"
             :challenge="challenge"
             :rooms="roomsOf(challenge)"
             :selected="challenge.id === selectedChallengeId"

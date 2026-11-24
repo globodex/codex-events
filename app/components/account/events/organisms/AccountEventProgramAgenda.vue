@@ -197,6 +197,7 @@ function returnToSession() {
           <AccountEventChallengeList
             v-if="challenges.length"
             class="@xl:min-w-52 @xl:flex-1"
+            :event-id="program.eventId"
             :challenges="challenges"
             :floor-plans="program.floorPlans"
             :selected-challenge-id="selectedChallengeId"

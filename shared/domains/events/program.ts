@@ -139,9 +139,16 @@ export function canViewEventProgram(isEventAdmin: boolean, approved: boolean) {
   return isEventAdmin || approved
 }
 
-/** A challenge as the Agenda tab shows it: with the names of the staff members who support it. */
+/**
+ * A challenge as the Agenda tab shows it: with the staff members who support it. The card shows
+ * each one's profile icon, or the initials of the name when there is no icon.
+ */
 export const agendaChallengeSchema = eventChallengeSchema.extend({
-  staffNames: z.array(z.string())
+  staff: z.array(z.object({
+    id: z.string(),
+    fullName: z.string(),
+    profileIconRevision: z.number().int().nullable()
+  }))
 })
 export type AgendaChallenge = z.infer<typeof agendaChallengeSchema>
 

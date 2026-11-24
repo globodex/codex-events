@@ -27,7 +27,8 @@ Then('{string} should see the staff {string} on the challenge {string} on the Ag
 
   const challenge = page.getByTestId('program-challenges').getByRole('listitem').filter({ hasText: challengeTitle })
 
-  await expect(challenge.getByTestId('program-challenge-staff')).toHaveText(`Staff: ${staffName}`)
+  // The staff row shows icons or initials; its accessible name lists the staff members.
+  await expect(challenge.getByTestId('program-challenge-staff')).toHaveAttribute('aria-label', `Staff: ${staffName}`)
 })
 
 Then('the Staff tab of {string} should list {string} under {string}', async ({ page }, eventSlug: string, staffName: string, challengeTitle: string) => {

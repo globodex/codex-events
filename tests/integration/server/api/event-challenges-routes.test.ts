@@ -56,9 +56,9 @@ const reviewChallenge = {
 }
 // The stored order: a draft sits between the two published challenges.
 const storedChallenges = [skillChallenge, draftChallenge, reviewChallenge]
-// The published challenges as the Agenda page sends them: each with the names of its staff.
+// The published challenges as the Agenda page sends them: each with its staff members.
 // Nobody is assigned to a challenge unless a test does it.
-const publishedChallenges = [skillChallenge, reviewChallenge].map(challenge => ({ ...challenge, staffNames: [] as string[] }))
+const publishedChallenges = [skillChallenge, reviewChallenge].map(challenge => ({ ...challenge, staff: [] }))
 
 /** Every test user signs in with `auth0|<user id>`. */
 function sessionFor(userId: string) {
@@ -516,7 +516,7 @@ describe('TASK-450 event challenges', () => {
 
       expect(response.status).toBe(200)
       return Object.fromEntries(accountEventAgendaPageSchema.parse(body.data.page).challenges
-        .map(challenge => [challenge.id, challenge.staffNames]))
+        .map(challenge => [challenge.id, challenge.staff.map(member => member.fullName)]))
     }
 
     async function expectRefused(response: Response, code: string) {

@@ -1738,6 +1738,7 @@ useSeoMeta({
             <LazyAccountEventChallengeList
               v-if="programPage.challenges.length"
               :class="event.agendaItems.length ? 'lg:w-80 lg:shrink-0' : 'w-full'"
+              :event-id="event.id"
               :challenges="programPage.challenges"
               :floor-plans="[]"
               :selected-challenge-id="null"

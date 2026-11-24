@@ -5,11 +5,14 @@ import AppButton from '~/components/AppButton.vue'
 import AccountEventDetailsDialog from '~/components/account/events/molecules/AccountEventDetailsDialog.vue'
 import EventStaffInstructions from '~/components/events/molecules/EventStaffInstructions.vue'
 import EventTrackDetails from '~/components/events/molecules/EventTrackDetails.vue'
+import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
 import { roomLabel } from '~/domains/events/program-map'
 
 // One challenge on the Agenda tab. The card looks like an agenda session: the title, the staff
 // members and the rooms of the challenge, and a Details button for its instructions and links.
 const props = defineProps<{
+  /** The event in which the staff icons are read. */
+  eventId: string
   challenge: AgendaChallenge
   /** The rooms that name this challenge on the event's floor plans. */
   rooms: ProgramRoom[]
@@ -35,6 +38,9 @@ const summaryAttributes = computed(() => props.rooms.length
     }
   : { class: 'flex min-w-0 flex-col items-start gap-1 px-3 py-2.5 font-medium' })
 
+// The staff row is one image for screen readers, named by the staff members.
+const staffLabel = computed(() => `Staff: ${props.challenge.staff.map(member => member.fullName).join(', ')}`)
+
 // The resources of the challenge in the shape of the shared details block, in the saved order.
 const detailResources = computed(() => props.challenge.resources.map((resource, index) => ({
   title: resource.label,
@@ -55,12 +61,27 @@ const detailResources = computed(() => props.challenge.resources.map((resource, 
       :data-testid="`program-challenge-${challenge.id}`"
     >
       <span class="break-words text-sm font-semibold leading-snug text-highlighted">{{ challenge.title }}</span>
+      <!--
+        Each staff member's profile icon, or their initials without an icon. The name shows on hover.
+        The avatar has the card's background color, so `border-border` draws the visible circle.
+      -->
       <span
-        v-if="challenge.staffNames.length > 0"
-        class="break-words text-xs leading-tight text-toned"
+        v-if="challenge.staff.length > 0"
+        role="img"
+        :aria-label="staffLabel"
+        class="flex flex-wrap gap-1"
         data-testid="program-challenge-staff"
       >
-        Staff: {{ challenge.staffNames.join(', ') }}
+        <AppAvatar
+          v-for="member in challenge.staff"
+          :key="member.id"
+          size="xs"
+          :src="buildProfileIconHref(member.id, member.profileIconRevision, eventId)"
+          :alt="member.fullName"
+          :title="member.fullName"
+          aria-hidden="true"
+          class="border-border"
+        />
       </span>
       <!--
         The rooms by their names, like on a session. The Details button sits in the bottom right

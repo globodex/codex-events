@@ -32,9 +32,9 @@ export const accountEventProgramPageRoute = defineAccountEventPageRoute({
       : []
     const challenges = readableChallenges.map(challenge => ({
       ...challenge,
-      staffNames: staff
+      staff: staff
         .filter(member => member.staffChallenge?.id === challenge.id)
-        .map(member => member.fullName)
+        .map(member => ({ id: member.id, fullName: member.fullName, profileIconRevision: member.profileIconRevision }))
     }))
 
     if (!canViewEventProgram(isEventAdmin, approved)) {

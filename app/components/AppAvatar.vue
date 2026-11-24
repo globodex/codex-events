@@ -4,7 +4,7 @@ import { UserIcon } from 'lucide-vue-next'
 import { Avatar as UiAvatar, AvatarFallback as UiAvatarFallback } from '~/components/ui/avatar'
 import { cn } from '~/lib/utils'
 
-type AvatarSize = 'sm' | 'lg' | '3xl'
+type AvatarSize = 'xs' | 'sm' | 'lg' | '3xl'
 type AvatarFallbackMode = 'initials' | 'icon'
 
 const props = withDefaults(defineProps<{
@@ -20,6 +20,7 @@ const props = withDefaults(defineProps<{
 })
 
 const sizeClasses: Record<AvatarSize, string> = {
+  'xs': 'size-6',
   'sm': 'size-8',
   'lg': 'size-10',
   '3xl': 'size-16'

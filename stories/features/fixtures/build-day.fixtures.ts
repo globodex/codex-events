@@ -41,7 +41,10 @@ export const buildDayChallenges: AgendaChallenge[] = [{
   instructions: 'Publish a small site that one real person can open and use today.',
   resources: [{ label: 'Site guide', url: 'https://example.com/sites' }],
   isPublished: true,
-  staffNames: ['Mira Example', 'Tom Sample']
+  staff: [
+    { id: 'staff-mira', fullName: 'Mira Example', profileIconRevision: null },
+    { id: 'staff-tom', fullName: 'Tom Sample', profileIconRevision: null }
+  ]
 }, {
   id: 'own-idea',
   title: 'Build your own idea',
@@ -49,7 +52,7 @@ export const buildDayChallenges: AgendaChallenge[] = [{
   resources: [],
   isPublished: true,
   isOpenTrack: true,
-  staffNames: []
+  staff: []
 }]
 
 export const buildDayAgendaItems = [{
