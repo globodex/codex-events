@@ -8,9 +8,11 @@ import type {
   ResolvedParticipantRegistrationDefinition
 } from '~/domains/applications/participant-registration-definition'
 
+import type { CustomQuestionDefinition } from '#shared/domains/events/custom-questions'
+
 import ParticipantRegistrationField from './ParticipantRegistrationField.vue'
 import { getEmptyCustomQuestionAnswerValue } from '#shared/domains/events/custom-questions'
-import CustomQuestionInput from '~/components/events/molecules/CustomQuestionInput.vue'
+import CustomQuestionControl from '~/components/events/molecules/CustomQuestionControl.vue'
 import {
   aiKnowledgeLevelOptionLabels,
   aiKnowledgeLevelValues
@@ -40,6 +42,18 @@ const selectedTrack = computed(() => props.definition.application.trackOptions
 
 function required(fieldId: ParticipantRegistrationFieldId) {
   return props.definition.application.fields.find(field => field.id === fieldId)?.required ?? false
+}
+
+function questionControlId(question: CustomQuestionDefinition) {
+  return `registration-question-${question.id}`
+}
+
+/**
+ * The label above a question. An acknowledgment is a statement on its checkbox, so its label names
+ * the kind of field, like "Attendance confirmation" in the commitments section.
+ */
+function questionLabel(question: CustomQuestionDefinition) {
+  return question.type === 'acknowledgement' ? 'Confirmation' : question.prompt
 }
 </script>
 
@@ -157,18 +171,22 @@ function required(fieldId: ParticipantRegistrationFieldId) {
       </template>
     </ParticipantRegistrationField>
 
-    <div
+    <ParticipantRegistrationField
       v-for="question in props.definition.application.questions"
       :key="question.id"
-      :data-registration-field="participantRegistrationQuestionFieldId(question.id)"
+      :field-id="participantRegistrationQuestionFieldId(question.id)"
+      :label="questionLabel(question)"
+      :required="question.required"
+      :label-for="question.type === 'acknowledgement' ? undefined : questionControlId(question)"
+      :error="props.errors[participantRegistrationQuestionFieldId(question.id)]"
     >
-      <CustomQuestionInput
+      <CustomQuestionControl
+        :id="questionControlId(question)"
         :question="question"
         :model-value="props.draft.registrationAnswers[question.id] ?? getEmptyCustomQuestionAnswerValue(question)"
         :disabled="props.disabled"
-        :error="props.errors[participantRegistrationQuestionFieldId(question.id)]"
         @update:model-value="emit('updateRegistrationAnswer', question.id, $event)"
       />
-    </div>
+    </ParticipantRegistrationField>
   </section>
 </template>

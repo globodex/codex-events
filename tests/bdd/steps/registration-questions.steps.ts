@@ -28,9 +28,9 @@ async function registrationQuestionEditor(page: Page) {
   return page.locator('[data-testid="custom-question-editor"]:visible')
 }
 
-/** A required question is labeled with its text and a star. */
+/** The field of a question. Its label holds the question and, for a required one, the badge "Required". */
 function requiredQuestion(page: Page, question: string) {
-  return page.getByLabel(`${question} *`)
+  return page.getByLabel(question)
 }
 
 Given('I open the registration form of {string} as {string}', async ({ page }, eventSlug: string, personaKey: string) => {

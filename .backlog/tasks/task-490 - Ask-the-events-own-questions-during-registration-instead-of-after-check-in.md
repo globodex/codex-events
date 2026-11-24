@@ -4,7 +4,7 @@ title: Ask the event's own questions during registration instead of after check-
 status: Done
 assignee: []
 created_date: '2026-11-24T17:24:00Z'
-updated_date: '2026-11-24T18:13:00Z'
+updated_date: '2026-11-24T19:05:00Z'
 labels: []
 milestone: m-3
 dependencies: []
@@ -81,6 +81,8 @@ modified_files:
   - tests/unit/server/domains/applications/index.test.ts
   - tests/unit/server/domains/events/account-event-page-shell.test.ts
   - tests/unit/server/domains/events/index.test.ts
+  - app/components/events/molecules/CustomQuestionControl.vue
+  - app/components/events/molecules/CustomQuestionInput.vue
 type: enhancement
 ordinal: 207000
 ---
@@ -102,6 +104,7 @@ Alex was told on 2026-11-24 that events do not need a separate questionnaire aft
 - [x] #7 A migration moves the questionnaire questions and answers to registration columns and drops the questionnaire completion time; a migration test proves stored questions and answers survive, and the remote test environment migrates with public event reads still working
 - [x] #8 The canonical docs describe registration questions and no questionnaire
 - [x] #9 Unit, integration and browser tests cover the builder editor, registration with required, optional and choice answers, the participant list answers, and the check-in step without a questionnaire
+- [x] #10 Registration questions use the field look of the registration form: the same label, REQUIRED badge and error line as the fixed fields, while talk proposal questions keep their look
 <!-- AC:END -->
 
 ## Definition of Done
@@ -143,14 +146,18 @@ Alex was told on 2026-11-24 that events do not need a separate questionnaire aft
 - Visible detail left as it is: the questions mark required with "*" like talk proposal questions, while the fixed fields above use a REQUIRED badge.
 
 Remote test environment: CI run 45454761582 (deploy-test) passed backend checks and the account workspace topology job, applied migration 0088 on the test D1 database (18:11:51Z to 18:11:55Z) and deployed the Worker (18:11:55Z to 18:12:50Z). Afterwards https://test.codex-events.com returned HTTP 200 for the public event list (6 events), the public event JSON of astra-commons-vienna and its public event page.
+
+2026-11-24, on Alex's request ("Yes, match them"): registration questions now use the field shell of the registration form (ParticipantRegistrationField): the same label, the REQUIRED badge and the error line with its icon as the fixed fields. An acknowledgment gets the label "Confirmation" and keeps its statement on the checkbox, like "Attendance confirmation". Talk proposal questions keep CustomQuestionInput with the "*".
+New component CustomQuestionControl (events/molecules): the label-less control of one question (text field, text area, choice list, or checkbox). Closest analog: CustomQuestionInput; it always renders its own label and error line, so the registration field shell could not wrap it without a mode prop that switches its whole structure. CustomQuestionInput now composes CustomQuestionControl, so one component maps question types to controls.
+Verification: lint, typecheck, unit 720 (operations.test.ts timed out once at load 15 and passed alone), BDD registration questions, challenges, event builder, talk proposals, participant photos, check-in flow, admin configuration and simplified claiming (34 scenarios) pass; browser check at 1440 light and 390 dark shows the badges and the error lines under the questions.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Organizers write up to 20 questions of their own on the Registration level of the event builder, with the shared question editor placed full width under the field table. The registration form asks them in "Your application"; a required question blocks submitting. The server checks required answers, acknowledgments, choices and unknown questions (422 registration_answers_invalid) and stores one answer per question with its question text in user_applications.registration_answers_json. Staff, event admins and platform admins read the answers in the participant list; account deletion clears them; restoring a withdrawn registration keeps them. The questionnaire after check-in is gone: the check-in flow has two positions, the complete-questionnaire route and its MCP operation are removed, and credits and photos open right after check-in. Simplified claiming refuses a required question. Migration 0088 renames the questions column, moves stored answers into registration_answers_json and drops the questionnaire completion time. Docs updated (domain model, lifecycle, schema outline, API surface, permissions matrix, testing strategy).
+Organizers write up to 20 questions of their own on the Registration level of the event builder, with the shared question editor placed full width under the field table. The registration form asks them in "Your application" in the same field look as the fixed fields, with the REQUIRED badge; a required question blocks submitting. The server checks required answers, acknowledgments, choices and unknown questions (422 registration_answers_invalid) and stores one answer per question with its question text in user_applications.registration_answers_json. Staff, event admins and platform admins read the answers in the participant list; account deletion clears them; restoring a withdrawn registration keeps them. The questionnaire after check-in is gone: the check-in flow has two positions, the complete-questionnaire route and its MCP operation are removed, and credits and photos open right after check-in. Simplified claiming refuses a required question. Migration 0088 renames the questions column, moves stored answers into registration_answers_json and drops the questionnaire completion time. Docs updated (domain model, lifecycle, schema outline, API surface, permissions matrix, testing strategy).
 
-Verification: lint, typecheck, unit 720/720, integration 765/765, BDD 144 passed plus the destructive group (its known flaky MCP token step failed once and passed on rerun), browser check on the Vienna preview at 1440 light and 390 dark. CI run 45454761582 applied 0088 on the test environment and deployed the Worker; the public event list, event JSON and public page answer 200 there.
+Verification: lint, typecheck, unit 720/720, integration 765/765, BDD 144 passed plus the destructive group (its known flaky MCP token step failed once and passed on rerun), and after the badge change 34 affected scenarios; browser checks on the Vienna preview at 1440 light and 390 dark. CI run 45454761582 applied 0088 on the test environment and deployed the Worker; the public event list, event JSON and public page answer 200 there.
 
-Risks and notes: people who registered before a question existed have no answer to it (Alex decided they are not asked). The questions mark required with "*" like talk proposal questions, while the fixed fields use a REQUIRED badge; left as it is and offered to Alex. Answers given in the old questionnaire on the test environment now show as registration answers. Migration 0088 changes only columns that came after v1.20.10, so it adds no failure window; the window of about 80 seconds from migration 0087 at the first release after v1.20.10 still applies. Nothing is in production until a release.
+Risks and notes: people who registered before a question existed have no answer to it (Alex decided they are not asked). Talk proposal questions keep their "*" marker. Answers given in the old questionnaire on the test environment now show as registration answers. Migration 0088 changes only columns that came after v1.20.10, so it adds no failure window; the window of about 80 seconds from migration 0087 at the first release after v1.20.10 still applies. Nothing is in production until a release.
 <!-- SECTION:FINAL_SUMMARY:END -->

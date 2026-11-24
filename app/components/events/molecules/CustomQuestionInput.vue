@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { CustomQuestionDefinition } from '#shared/domains/events/custom-questions'
 
+import CustomQuestionControl from '~/components/events/molecules/CustomQuestionControl.vue'
+
 const modelValue = defineModel<string | boolean>({ required: true })
 
 const props = defineProps<{
@@ -11,14 +13,6 @@ const props = defineProps<{
 
 const inputId = computed(() => `custom-question-${props.question.id}`)
 const label = computed(() => `${props.question.prompt}${props.question.required ? ' *' : ''}`)
-const textValue = computed({
-  get: () => typeof modelValue.value === 'string' ? modelValue.value : '',
-  set: (value) => { modelValue.value = String(value ?? '') }
-})
-const checkedValue = computed({
-  get: () => modelValue.value === true,
-  set: (value) => { modelValue.value = value }
-})
 </script>
 
 <template>
@@ -27,34 +21,10 @@ const checkedValue = computed({
     :name="inputId"
     :label="label"
   >
-    <AppTextarea
-      v-if="question.type === 'long_text'"
+    <CustomQuestionControl
       :id="inputId"
-      v-model="textValue"
-      :disabled="props.disabled"
-      :rows="5"
-    />
-    <AppSelect
-      v-else-if="question.type === 'single_choice'"
-      :id="inputId"
-      v-model="textValue"
-      :disabled="props.disabled"
-    >
-      <option value="">
-        Select an option
-      </option>
-      <option
-        v-for="option in question.options"
-        :key="option"
-        :value="option"
-      >
-        {{ option }}
-      </option>
-    </AppSelect>
-    <AppInput
-      v-else
-      :id="inputId"
-      v-model="textValue"
+      v-model="modelValue"
+      :question="question"
       :disabled="props.disabled"
     />
     <p
@@ -69,11 +39,14 @@ const checkedValue = computed({
     v-else
     class="space-y-2"
   >
-    <AppCheckbox
-      v-model="checkedValue"
+    <CustomQuestionControl
+      :id="inputId"
+      v-model="modelValue"
+      :question="question"
       :disabled="props.disabled"
-      :label="label"
-    />
+    >
+      {{ label }}
+    </CustomQuestionControl>
     <p
       v-if="props.error"
       class="text-xs text-error"
