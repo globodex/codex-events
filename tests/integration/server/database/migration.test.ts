@@ -83,7 +83,11 @@ describe('shared database migration', () => {
     await database.close()
   })
 
-  test.each([false, true])('migrates existing Luma registrations with duplicate active ownership=%s', async (duplicate) => {
+  // Two accounts with the same Luma email register for one event: "a" first in the table, "b" earlier in time.
+  test.each([
+    { secondStatus: 'withdrawn', keptBy: 'a' },
+    { secondStatus: 'approved', keptBy: 'b' }
+  ])('gives the Luma email to the earliest active registration when the second one is $secondStatus', async ({ secondStatus, keptBy }) => {
     const migration = '0085_build_day_guards.sql'
     const files = readdirSync(join(process.cwd(), 'drizzle')).filter(name => /^\d+.*\.sql$/.test(name) && name < migration).sort()
     const db = createTestD1Database({ applyMigrations: false })
@@ -95,20 +99,19 @@ describe('shared database migration', () => {
       await db.exec(`
         update events set luma_guest_list_enabled = 1, luma_event_api_id = 'external', luma_api_key = 'key';
         update users set luma_email = '  Guest@Example.com ';
-        insert into user_applications (id,event_id,user_id,status) values ('a','linked','first','submitted');
+        insert into user_applications (id,event_id,user_id,status,submitted_at) values ('a','linked','first','submitted','2026-06-20T09:00:00.000Z');
       `)
-      await db.prepare('insert into user_applications (id,event_id,user_id,status) values (?,?,?,?)')
-        .run('b', 'linked', 'second', duplicate ? 'approved' : 'withdrawn')
+      await db.prepare('insert into user_applications (id,event_id,user_id,status,submitted_at) values (?,?,?,?,?)')
+        .run('b', 'linked', 'second', secondStatus, '2026-06-18T09:00:00.000Z')
       const statements = splitSqlStatements(readFileSync(join(process.cwd(), 'drizzle', migration), 'utf8'))
-      const apply = db.batch(statements.map(statement => db.prepare(statement)))
-      if (duplicate) {
-        await expect(apply).rejects.toThrow(/UNIQUE constraint failed/)
-        expect(await db.prepare('select count(*) as n from pragma_table_info(?) where name = ?').bind('user_applications', 'active_luma_email').first('n')).toBe(0)
-      } else {
-        await apply
-        expect(await db.prepare('select active_luma_email from user_applications where id = ?').bind('a').first('active_luma_email')).toBe('guest@example.com')
-        expect(await db.prepare('select active_luma_email from user_applications where id = ?').bind('b').first('active_luma_email')).toBeNull()
-      }
+
+      await db.batch(statements.map(statement => db.prepare(statement)))
+
+      const emails = await db.prepare('select id, active_luma_email as email from user_applications order by id').all()
+      expect(emails.results).toEqual([
+        { id: 'a', email: keptBy === 'a' ? 'guest@example.com' : null },
+        { id: 'b', email: keptBy === 'b' ? 'guest@example.com' : null }
+      ])
     } finally {
       await db.close()
     }

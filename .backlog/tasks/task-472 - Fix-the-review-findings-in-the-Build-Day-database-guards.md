@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-11-22T18:59:00Z'
-updated_date: '2026-11-22T19:20:00Z'
+updated_date: '2026-11-24T21:05:00Z'
 labels: []
 milestone: m-3
 dependencies:
@@ -31,6 +31,9 @@ modified_files:
   - docs/domain-model.md
   - docs/testing-strategy.md
   - app/components/admin/builder/organisms/AdminBuilderLumaConnection.vue
+  - drizzle/0085_build_day_guards.sql
+  - tests/integration/server/database/migration.test.ts
+  - docs/schema-outline.md
 type: bug
 ordinal: 188000
 ---
@@ -90,10 +93,14 @@ Browser check of the organizer message (local preview, demo event, staged with f
 Validation on the final working tree (2026-11-22): bun run lint passed; bun run typecheck passed; bun run test:unit 143 files, 727 tests passed; bun run test:integration 52 files, 764 tests passed (run before the last change, which only touched AdminBuilderLumaConnection.vue); bun run test:bdd 126 passed plus 1 destructive passed; bun run mcp:generate-output-schemas produced no change; git diff --check clean. codehygiene on the changed .ts files: one dense line in a new test was split; the remaining flags are on lines this task did not change.
 
 Test gap: no automated test reads the notice 'Luma is not connected' in the event builder. It was checked by hand in the local preview (see the browser check above). The server behavior behind it is covered by two integration tests in luma-guest-list-routes.test.ts.
+
+Changed on 2026-11-24 before the v1.21.0 release: a read-only check of production data found two pairs of approved registrations in the completed June Build event (codex-build-vienna-2026-06-20) that share a Luma email (two accounts each; the second registration was made on the event day). The unique index of 0085 refused them, so the release would have stopped at that migration. Alex chose that the earliest registration keeps the Luma email. The backfill in drizzle/0085_build_day_guards.sql now gives the email only to the earliest active registration per event and email (by submitted_at, then id); the later one stays approved without it. No registration or account changes. The schema, view and triggers are unchanged, and the test environment, which already applied 0085, is not affected. Replayed on production data (read-only): 119 active registrations with a Luma email, 117 get it, none twice. If an organizer later reconnects Luma for that event, the existing check refuses it with 409 luma_email_shared_in_event and names the two pairs.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
 Fixed four findings from the review of TASK-471, on top of that uncommitted work. (1) An event cannot be linked to Luma while two active registrations share a Luma email, and the organizer now reads who they are: turning on the guest list answers 409 luma_email_shared_in_event, the Luma webhook is not registered and its failed status stores the same sentence, and the event builder shows that stored reason. (2) The Luma email backfill reports a conflicting account as failed and continues. (3) The credit claim write only takes the oldest free code; the access rule lives in the shared TypeScript rule alone. (4) Two tests compare the TypeScript and SQL copies of the Luma link rule and of the participant photo limit, and comments at both rules point to the other copy. A fifth finding about the Credits tab layout was withdrawn after measuring: the spacing and the notice are the shared card and alert components. Checks: lint, typecheck, 727 unit, 764 integration, 126 + 1 browser tests. Risks and follow-ups: migration 0085 fails on a database where two active registrations of a Luma-linked event already share a Luma email, so the test and production databases need that check before the migration runs. The credit claim no longer rechecks access inside the write; the gap is the moment between the access check and the write. The builder notice now shows the stored reason for every failed Luma connection, not only for shared emails.
+
+2026-11-24: migration 0085 gives a shared Luma email to the earliest active registration of an event instead of stopping, so production data with two such pairs in the June Build event migrates. Checks: the migration and Luma guest list integration tests (85), eslint, typecheck, and a read-only replay on production data.
 <!-- SECTION:FINAL_SUMMARY:END -->

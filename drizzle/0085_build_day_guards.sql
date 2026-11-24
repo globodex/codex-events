@@ -25,8 +25,19 @@ WHERE (a.status = 'submitted' OR a.status = 'approved')
     AND trim(e.luma_webhook_secret) <> '' AND e.luma_webhook_status = 'configured'
   ));
 --> statement-breakpoint
+-- Existing data can hold several active registrations with the same Luma email in one event.
+-- Only the earliest of them (by submitted_at, then id) gets the email, so the unique index holds.
 UPDATE user_applications SET active_luma_email = (
-  SELECT email FROM active_application_luma_emails WHERE application_id = user_applications.id
+  SELECT own.email FROM active_application_luma_emails own
+  WHERE own.application_id = user_applications.id
+    AND NOT EXISTS (
+      SELECT 1 FROM active_application_luma_emails other
+      JOIN user_applications earlier ON earlier.id = other.application_id
+      WHERE other.email = own.email
+        AND earlier.event_id = user_applications.event_id
+        AND (earlier.submitted_at < user_applications.submitted_at
+          OR (earlier.submitted_at = user_applications.submitted_at AND earlier.id < user_applications.id))
+    )
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX user_applications_active_luma_email_idx
