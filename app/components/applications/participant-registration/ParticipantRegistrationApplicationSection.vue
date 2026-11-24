@@ -8,7 +8,7 @@ import type {
   ResolvedParticipantRegistrationDefinition
 } from '~/domains/applications/participant-registration-definition'
 
-import type { CustomQuestionDefinition } from '#shared/domains/events/custom-questions'
+import type { CustomQuestionAnswerValue, CustomQuestionDefinition } from '#shared/domains/events/custom-questions'
 
 import ParticipantRegistrationField from './ParticipantRegistrationField.vue'
 import { getEmptyCustomQuestionAnswerValue } from '#shared/domains/events/custom-questions'
@@ -33,7 +33,7 @@ const emit = defineEmits<{
   updateAiKnowledgeLevel: [value: ParticipantAiKnowledgeLevelInput]
   updateWhyThisEvent: [value: string]
   updateProofOfExecutionUrl: [value: string]
-  updateRegistrationAnswer: [questionId: string, value: string | boolean]
+  updateRegistrationAnswer: [questionId: string, value: CustomQuestionAnswerValue]
 }>()
 
 function required(fieldId: ParticipantRegistrationFieldId) {
@@ -137,7 +137,7 @@ function questionLabel(question: CustomQuestionDefinition) {
       :field-id="participantRegistrationQuestionFieldId(question.id)"
       :label="questionLabel(question)"
       :required="question.required"
-      :label-for="question.type === 'acknowledgement' ? undefined : questionControlId(question)"
+      :label-for="question.type === 'acknowledgement' || question.type === 'multiple_choice' ? undefined : questionControlId(question)"
       :error="props.errors[participantRegistrationQuestionFieldId(question.id)]"
     >
       <CustomQuestionControl

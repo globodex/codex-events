@@ -48,12 +48,23 @@ When('I fill in my name and send my registration', async ({ page }) => {
 })
 
 Then('I should be asked to answer the question {string}', async ({ page }, question: string) => {
+  // The error stands in the field of the question; other unanswered questions show their own.
+  const field = page.locator('[data-registration-field]', { has: page.getByText(question, { exact: true }) })
+
   await expect(requiredQuestion(page, question)).toBeFocused()
-  await expect(page.getByText('Answer this required question before submitting.')).toBeVisible()
+  await expect(field.getByText('Answer this required question before submitting.')).toBeVisible()
 })
 
 When('I answer the question {string} with {string}', async ({ page }, question: string, answer: string) => {
   await requiredQuestion(page, question).fill(answer)
+})
+
+// A multiple-choice question is a group of checkboxes named by the question.
+When('I tick {string} and {string} for {string}', async ({ page }, first: string, second: string, question: string) => {
+  const choices = page.getByRole('group', { name: question })
+
+  await choices.getByRole('checkbox', { name: first }).check()
+  await choices.getByRole('checkbox', { name: second }).check()
 })
 
 When('I send my registration', async ({ page }) => {
@@ -65,7 +76,7 @@ When('I send my registration', async ({ page }) => {
   expect(response.ok(), await response.text()).toBe(true)
 })
 
-// This step signs the browser in as the event admin, so it has to be the last step of a scenario.
+// This step signs the browser in as the event admin. Later steps can only read the participant list it opens.
 Then('the event admin should read my answer {string} to {string} in the participant list of {string}', async ({ page }, answer: string, question: string, eventSlug: string) => {
   await signInAs(eventAdminPersona, page)
   await page.goto(`/account/events/${eventSlug}?tab=participants`)
@@ -93,4 +104,13 @@ Then('the builder should keep the registration question {string} after a reload'
   const editor = await registrationQuestionEditor(page)
 
   await expect(editor.getByLabel('Question', { exact: true })).toHaveValue(question)
+})
+
+// Reads the participant list that the previous step opened. The review shows each ticked choice on
+// its own line; the text check compares with the line breaks as spaces.
+Then('the answer to {string} should list {string} and {string}', async ({ page }, question: string, first: string, second: string) => {
+  const answers = page.locator('[data-testid^="admin-application-registration-answers-"]')
+  const answer = answers.getByText(question).locator('xpath=..').locator('p')
+
+  await expect(answer).toHaveText(`${first}\n${second}`)
 })

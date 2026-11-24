@@ -49,10 +49,12 @@ const fixtureChallengeChoiceChallenges = [
   { id: 'one-minute-game', title: 'Make a one-minute game', instructions: 'Ship a game that takes one minute to play.', resources: [], isPublished: true },
   { id: 'own-idea', title: 'Build your own idea', instructions: 'Bring your own idea and build it.', resources: [], isPublished: true, isOpenTrack: true }
 ]
-// The registration questions of the registration questions fixture event: one required text and one optional choice.
+// The registration questions of the registration questions fixture event: one required text, one
+// optional choice, and one required question that takes several ticked choices.
 const fixtureRegistrationQuestions = [
   { id: 'project', type: 'short_text', prompt: 'What do you want to build today?', required: true, options: [] },
-  { id: 'codex-level', type: 'single_choice', prompt: 'How well do you know Codex?', required: false, options: ['New to it', 'I use it every week'] }
+  { id: 'codex-level', type: 'single_choice', prompt: 'How well do you know Codex?', required: false, options: ['New to it', 'I use it every week'] },
+  { id: 'connection', type: 'multiple_choice', prompt: 'What is your connection to TU Wien?', required: true, options: ['Student at TU Wien', 'Staff at TU Wien', 'Exchange student'] }
 ]
 // One agenda block. With the one session below, the check-in flow fixture event has an Agenda tab.
 const fixtureCheckInFlowAgendaItems = [

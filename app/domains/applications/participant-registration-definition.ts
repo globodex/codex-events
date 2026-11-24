@@ -12,6 +12,7 @@ import type {
 import type { PublicEvent } from '~/domains/events/presentation'
 import type {
   CustomQuestionAnswer,
+  CustomQuestionAnswerValue,
   CustomQuestionDefinition
 } from '#shared/domains/events/custom-questions'
 
@@ -30,7 +31,7 @@ import {
   talkProposalFormSchema
 } from '~/domains/talk-proposals'
 import { getRegistrationAnswerIssues } from '#shared/domains/applications/registration-answers'
-import { getEmptyCustomQuestionAnswerValue } from '#shared/domains/events/custom-questions'
+import { customQuestionAnswerValueSchema, getEmptyCustomQuestionAnswerValue } from '#shared/domains/events/custom-questions'
 import { getTalkProposalAnswerIssues } from '#shared/domains/talk-proposals/answer-issues'
 import { aiKnowledgeLevelValues } from '#ai-knowledge'
 
@@ -67,7 +68,7 @@ export interface ParticipantRegistrationDraft {
   teamMemberHints: ParticipantRegistrationTeamMemberHint[]
   profileForm: ParticipantRegistrationProfileForm
   /** What the participant entered for the event's registration questions, by question id. */
-  registrationAnswers: Record<string, string | boolean>
+  registrationAnswers: Record<string, CustomQuestionAnswerValue>
   talkProposal: ParticipantRegistrationTalkProposalDraft | null
 }
 
@@ -310,7 +311,7 @@ function buildDraftSchema(options: {
         : z.string(),
       lumaEmail: options.visibleProfileFieldKeys.has('lumaEmail') ? optionalEmailSchema : z.string()
     }),
-    registrationAnswers: z.record(z.string(), z.union([z.string(), z.boolean()])),
+    registrationAnswers: z.record(z.string(), customQuestionAnswerValueSchema),
     talkProposal: input.talkProposal ? talkProposalFormSchema : z.null()
   }).superRefine((draft, context) => {
     if (input.currentApplicationTerms && !draft.termsAccepted) {
@@ -555,6 +556,7 @@ export function resolveParticipantRegistrationDefinition(
 }
 
 function isFilled(value: unknown) {
+  if (Array.isArray(value)) return value.length > 0
   return typeof value === 'string' ? value.trim().length > 0 : value === true
 }
 

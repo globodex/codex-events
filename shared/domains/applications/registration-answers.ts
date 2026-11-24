@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import {
+  customQuestionAnswerValueSchema,
   getCustomQuestionAnswerIssues,
   getEmptyCustomQuestionAnswerValue,
   type CustomQuestionAnswer,
@@ -18,7 +19,7 @@ import {
 const registrationAnswerRecordSchema = z.object({
   questionId: z.string(),
   prompt: z.string(),
-  value: z.union([z.string(), z.boolean()])
+  value: customQuestionAnswerValueSchema
 })
 
 export const registrationAnswerRecordsSchema = z.array(registrationAnswerRecordSchema)

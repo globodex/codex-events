@@ -3,6 +3,7 @@ import type {
   CustomQuestionDefinition,
   CustomQuestionType
 } from '#shared/domains/events/custom-questions'
+import { customQuestionHasChoices } from '#shared/domains/events/custom-questions'
 import AdminBuilderTrackRow from '~/components/admin/builder/molecules/AdminBuilderTrackRow.vue'
 import { eventBuilderQuestionIdPrefix } from '~/domains/events/builder'
 
@@ -26,6 +27,7 @@ const questionTypeLabels: Record<CustomQuestionType, string> = {
   short_text: 'Short text',
   long_text: 'Long text',
   single_choice: 'Single choice',
+  multiple_choice: 'Multiple choice',
   acknowledgement: 'Required acknowledgment'
 }
 
@@ -35,7 +37,7 @@ function updateType(value: string | number | undefined) {
   emit('update', {
     type,
     required: type === 'acknowledgement' ? true : props.question.required,
-    options: type === 'single_choice' ? ['', ''] : []
+    options: customQuestionHasChoices(type) ? ['', ''] : []
   })
 }
 
@@ -125,7 +127,7 @@ function removeOption(optionIndex: number) {
       />
 
       <div
-        v-if="props.question.type === 'single_choice'"
+        v-if="customQuestionHasChoices(props.question.type)"
         class="space-y-2"
       >
         <span class="text-xs font-medium text-toned">Choices</span>

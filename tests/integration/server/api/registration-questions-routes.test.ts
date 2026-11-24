@@ -290,6 +290,31 @@ describe('TASK-490 registration questions', () => {
       expect(JSON.parse((await readOwnApplication(harness, 'participant'))!.registrationAnswersJson)).toEqual(storedValidAnswers)
     })
 
+    test('stores the ticked choices of a multiple-choice question and refuses a choice it does not have', async () => {
+      const connection = {
+        id: 'connection',
+        type: 'multiple_choice',
+        prompt: 'What is your connection to TU Wien?',
+        required: true,
+        options: ['Student', 'Staff', 'Exchange student']
+      }
+      const harness = await createContext({ registrationQuestionsJson: JSON.stringify([connection]) })
+
+      const refused = await register(harness, 'participant', [{ questionId: 'connection', value: ['Student', 'Guest'] }])
+
+      expect(refused.status).toBe(422)
+      expect(await refused.json()).toMatchObject({
+        error: { code: 'registration_answers_invalid', details: { questions: ['connection'] } }
+      })
+
+      const response = await register(harness, 'participant', [{ questionId: 'connection', value: ['Student', 'Exchange student'] }])
+
+      expect(response.status).toBe(200)
+      expect(JSON.parse((await readOwnApplication(harness, 'participant'))!.registrationAnswersJson)).toEqual([
+        { questionId: 'connection', prompt: 'What is your connection to TU Wien?', value: ['Student', 'Exchange student'] }
+      ])
+    })
+
     test('an event without questions takes a registration without answers', async () => {
       const harness = await createContext({ registrationQuestionsJson: '[]' })
 

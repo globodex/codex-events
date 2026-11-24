@@ -3,6 +3,7 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
 import type { AccountEventEntryEvent, AccountEventEntryTalkProposal } from '#shared/domains/events/account-event-entry-page'
+import type { CustomQuestionAnswerValue } from '#shared/domains/events/custom-questions'
 import { getEmptyCustomQuestionAnswerValue } from '#shared/domains/events/custom-questions'
 import { isTalkProposalWindowOpen } from '#shared/domains/talk-proposals/window'
 import { getTalkProposalAnswerIssues } from '#shared/domains/talk-proposals/answer-issues'
@@ -52,7 +53,7 @@ const canEdit = computed(() => canMutate.value && (!props.proposal || props.prop
 const statusLabel = computed(() => props.proposal ? talkProposalStatusLabels[props.proposal.status] : '')
 const questionErrors = ref<Record<string, string>>({})
 
-function updateAnswer(index: number, value: string | boolean) {
+function updateAnswer(index: number, value: CustomQuestionAnswerValue) {
   answers.value = proposalAnswers.value.map((answer, currentIndex) => currentIndex === index
     ? { ...answer, value }
     : answer)

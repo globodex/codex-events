@@ -4,6 +4,7 @@ import type {
   ResolvedParticipantRegistrationDefinition
 } from '~/domains/applications/participant-registration-definition'
 
+import type { CustomQuestionAnswerValue } from '#shared/domains/events/custom-questions'
 import { getEmptyCustomQuestionAnswerValue } from '#shared/domains/events/custom-questions'
 import CustomQuestionInput from '~/components/events/molecules/CustomQuestionInput.vue'
 import {
@@ -22,7 +23,7 @@ const emit = defineEmits<{
   updateTitle: [value: string]
   updateAbstract: [value: string]
   updateDemoOrSlidesUrl: [value: string]
-  updateAnswer: [index: number, value: string | boolean]
+  updateAnswer: [index: number, value: CustomQuestionAnswerValue]
 }>()
 </script>
 

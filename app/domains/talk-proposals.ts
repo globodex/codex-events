@@ -3,6 +3,7 @@ import type { AccountEventEntryTalkProposalStatus } from '#shared/domains/events
 import {
   customQuestionAnswersSchema,
   getEmptyCustomQuestionAnswerValue,
+  isCustomQuestionAnswered,
   type CustomQuestionAnswer,
   type CustomQuestionDefinition
 } from '#shared/domains/events/custom-questions'
@@ -70,10 +71,7 @@ export function validateTalkProposalSubmission(
     + Number(!values.abstract.trim())
     + questions.filter((question) => {
       if (!question.required) return false
-      const answer = answersById.get(question.id)
-      return question.type === 'acknowledgement'
-        ? answer?.value !== true
-        : typeof answer?.value !== 'string' || answer.value.length === 0
+      return !isCustomQuestionAnswered(question, answersById.get(question.id)?.value)
     }).length
   const invalidFieldCount = Object.values({
     title: values.title.trim() ? errors.title : undefined,
@@ -82,10 +80,7 @@ export function validateTalkProposalSubmission(
   }).filter(Boolean).length
   + answerIssues.filter(issue => !questions.some((question) => {
     if (question.id !== issue.questionId || !question.required) return false
-    const answer = answersById.get(question.id)
-    return question.type === 'acknowledgement'
-      ? answer?.value !== true
-      : typeof answer?.value !== 'string' || answer.value.length === 0
+    return !isCustomQuestionAnswered(question, answersById.get(question.id)?.value)
   })).length
 
   return {

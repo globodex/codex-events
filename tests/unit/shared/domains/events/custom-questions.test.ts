@@ -67,6 +67,27 @@ describe('Custom questions', () => {
     ])
   })
 
+  it('accepts ticked choices of a multiple-choice question only once each and only from its choices', () => {
+    const questions = customQuestionsSchema.parse([{
+      id: 'connection',
+      type: 'multiple_choice',
+      prompt: 'What is your connection to TU Wien?',
+      required: true,
+      options: ['Student', 'Staff', 'Exchange student']
+    }])
+    const messagesFor = (value: string[]) => getCustomQuestionAnswerIssues(
+      questions,
+      customQuestionAnswersSchema.parse([{ questionId: 'connection', value }]),
+      asSubmission
+    ).map(issue => issue.message)
+    const wrongChoice = 'Tick only the available options, each once.'
+
+    expect(messagesFor(['Student', 'Exchange student'])).toEqual([])
+    expect(messagesFor([])).toEqual(['Answer this required question before submitting.'])
+    expect(messagesFor(['Student', 'Student'])).toEqual([wrongChoice])
+    expect(messagesFor(['Student', 'Guest'])).toEqual([wrongChoice])
+  })
+
   it('rejects unknown questions, invalid choices, and mismatched answer types', () => {
     const questions = customQuestionsSchema.parse(referenceQuestions)
     const answers = customQuestionAnswersSchema.parse([

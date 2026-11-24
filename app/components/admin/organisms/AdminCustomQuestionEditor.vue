@@ -3,6 +3,7 @@ import type {
   CustomQuestionDefinition,
   CustomQuestionType
 } from '#shared/domains/events/custom-questions'
+import { customQuestionHasChoices } from '#shared/domains/events/custom-questions'
 import AdminSortableEditorRow from '~/components/admin/AdminSortableEditorRow.vue'
 import AdminBuilderCustomQuestionCard from '~/components/admin/builder/molecules/AdminBuilderCustomQuestionCard.vue'
 
@@ -59,6 +60,7 @@ const questionTypeLabels: Record<CustomQuestionType, string> = {
   short_text: 'Short text',
   long_text: 'Long text',
   single_choice: 'Single choice',
+  multiple_choice: 'Multiple choice',
   acknowledgement: 'Required acknowledgment'
 }
 
@@ -110,7 +112,7 @@ function updateType(index: number, value: string | number | undefined) {
   updateQuestion(index, {
     type,
     required: type === 'acknowledgement' ? true : questions.value[index]?.required ?? false,
-    options: type === 'single_choice' ? ['', ''] : []
+    options: customQuestionHasChoices(type) ? ['', ''] : []
   })
 }
 
@@ -260,7 +262,7 @@ function removeOption(questionIndex: number, optionIndex: number) {
         />
 
         <div
-          v-if="question.type === 'single_choice'"
+          v-if="customQuestionHasChoices(question.type)"
           class="space-y-2"
         >
           <span class="text-sm font-medium text-highlighted">Choices</span>

@@ -8,10 +8,16 @@ export const customQuestionTypes = [
   'short_text',
   'long_text',
   'single_choice',
+  'multiple_choice',
   'acknowledgement'
 ] as const
 
 export const customQuestionTypeSchema = z.enum(customQuestionTypes)
+
+/** True for the question types that offer choices: one of them, or any number of them. */
+export function customQuestionHasChoices(type: z.infer<typeof customQuestionTypeSchema>) {
+  return type === 'single_choice' || type === 'multiple_choice'
+}
 
 export const customQuestionDefinitionSchema = z.object({
   id: z.string().trim().min(1).max(64).regex(/^[A-Za-z0-9][A-Za-z0-9_-]*$/),
@@ -28,12 +34,12 @@ export const customQuestionDefinitionSchema = z.object({
       .max(200, 'Use choices of 200 characters or fewer.')
   ).max(20).default([])
 }).superRefine((question, context) => {
-  if (question.type === 'single_choice') {
+  if (customQuestionHasChoices(question.type)) {
     if (question.options.length < 2) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['options'],
-        message: 'Single-choice questions need at least two choices.'
+        message: 'Choice questions need at least two choices.'
       })
     }
 
@@ -48,7 +54,7 @@ export const customQuestionDefinitionSchema = z.object({
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['options'],
-      message: 'Only single-choice questions can define choices.'
+      message: 'Only choice questions can have choices.'
     })
   }
 
@@ -77,9 +83,19 @@ export const customQuestionsSchema = z.array(customQuestionDefinitionSchema)
     }
   })
 
+/**
+ * An answer value: text, a checkbox state for an acknowledgment, or the ticked choices of a
+ * multiple-choice question.
+ */
+export const customQuestionAnswerValueSchema = z.union([
+  z.string().trim().max(8000),
+  z.boolean(),
+  z.array(z.string().trim().max(200)).max(20)
+])
+
 export const customQuestionAnswerSchema = z.object({
   questionId: z.string().trim().min(1).max(64),
-  value: z.union([z.string().trim().max(8000), z.boolean()])
+  value: customQuestionAnswerValueSchema
 })
 
 export const customQuestionAnswersSchema = z.array(customQuestionAnswerSchema)
@@ -101,15 +117,30 @@ export const customQuestionAnswersSchema = z.array(customQuestionAnswerSchema)
 export type CustomQuestionType = z.infer<typeof customQuestionTypeSchema>
 export type CustomQuestionDefinition = z.infer<typeof customQuestionDefinitionSchema>
 export type CustomQuestionAnswer = z.infer<typeof customQuestionAnswerSchema>
+export type CustomQuestionAnswerValue = z.infer<typeof customQuestionAnswerValueSchema>
 
 export interface CustomQuestionAnswerIssue {
   questionId: string
   message: string
 }
 
-/** The value of a question nobody answered yet: unchecked for an acknowledgment, empty text otherwise. */
-export function getEmptyCustomQuestionAnswerValue(question: Pick<CustomQuestionDefinition, 'type'>) {
-  return question.type === 'acknowledgement' ? false : ''
+/**
+ * The value of a question nobody answered yet: unchecked for an acknowledgment, no ticked choice
+ * for a multiple-choice question, empty text otherwise.
+ */
+export function getEmptyCustomQuestionAnswerValue(question: Pick<CustomQuestionDefinition, 'type'>): CustomQuestionAnswerValue {
+  if (question.type === 'acknowledgement') return false
+  return question.type === 'multiple_choice' ? [] : ''
+}
+
+/** True when the value answers the question: a checked acknowledgment, a ticked choice, or text. */
+export function isCustomQuestionAnswered(
+  question: Pick<CustomQuestionDefinition, 'type'>,
+  value: CustomQuestionAnswerValue | undefined
+) {
+  if (question.type === 'acknowledgement') return value === true
+  if (question.type === 'multiple_choice') return Array.isArray(value) && value.length > 0
+  return typeof value === 'string' && value.length > 0
 }
 
 export function parseCustomQuestionsJson(value: string) {
@@ -154,6 +185,14 @@ export function getCustomQuestionAnswerIssues(
       continue
     }
 
+    if (question.type === 'multiple_choice') {
+      const ticked = Array.isArray(answer.value) ? answer.value : null
+      if (!ticked || new Set(ticked).size !== ticked.length || ticked.some(choice => !question.options.includes(choice))) {
+        issues.push({ questionId: question.id, message: 'Tick only the available options, each once.' })
+      }
+      continue
+    }
+
     if (typeof answer.value !== 'string') {
       issues.push({ questionId: question.id, message: 'This answer must be text.' })
       continue
@@ -171,11 +210,7 @@ export function getCustomQuestionAnswerIssues(
   if (options.requireComplete) {
     for (const question of questions) {
       if (!question.required) continue
-      const answer = answersById.get(question.id)
-      const complete = question.type === 'acknowledgement'
-        ? answer?.value === true
-        : typeof answer?.value === 'string' && answer.value.length > 0
-      if (!complete) {
+      if (!isCustomQuestionAnswered(question, answersById.get(question.id)?.value)) {
         issues.push({ questionId: question.id, message: question.type === 'acknowledgement'
           ? 'Confirm this acknowledgment before submitting.'
           : 'Answer this required question before submitting.' })

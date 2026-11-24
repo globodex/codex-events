@@ -1,10 +1,15 @@
 <script setup lang="ts">
+import type { CustomQuestionAnswerValue } from '#shared/domains/events/custom-questions'
+
 const props = defineProps<{
   /** The question text. */
   prompt: string
   required?: boolean
-  /** A boolean for an acknowledgment, text for every other question. Empty text means no answer. */
-  value: string | boolean
+  /**
+   * A boolean for an acknowledgment, the ticked choices of a multiple-choice question, text for
+   * every other question. Empty text or no ticked choice means no answer.
+   */
+  value: CustomQuestionAnswerValue
 }>()
 
 const displayValue = computed(() => {
@@ -12,7 +17,9 @@ const displayValue = computed(() => {
     return props.value ? 'Confirmed' : 'Not confirmed'
   }
 
-  return props.value.length > 0 ? props.value : 'No answer'
+  // Ticked choices show one per line; choices can contain commas.
+  const text = Array.isArray(props.value) ? props.value.join('\n') : props.value
+  return text.length > 0 ? text : 'No answer'
 })
 </script>
 

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { CustomQuestionDefinition } from '#shared/domains/events/custom-questions'
+import type { CustomQuestionAnswerValue, CustomQuestionDefinition } from '#shared/domains/events/custom-questions'
 
 import CustomQuestionControl from '~/components/events/molecules/CustomQuestionControl.vue'
 
-const modelValue = defineModel<string | boolean>({ required: true })
+const modelValue = defineModel<CustomQuestionAnswerValue>({ required: true })
 
 const props = defineProps<{
   question: CustomQuestionDefinition

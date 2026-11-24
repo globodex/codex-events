@@ -1,10 +1,11 @@
 <script setup lang="ts">
 // The control that answers one custom question, without a label: a text field, a text area, a
-// choice list, or a checkbox for an acknowledgment. `CustomQuestionInput` and the registration
-// form each put their own label and error line around it.
-import type { CustomQuestionDefinition } from '#shared/domains/events/custom-questions'
+// choice list, a group of checkboxes for a multiple-choice question, or a checkbox for an
+// acknowledgment. `CustomQuestionInput` and the registration form each put their own label and
+// error line around it.
+import type { CustomQuestionAnswerValue, CustomQuestionDefinition } from '#shared/domains/events/custom-questions'
 
-const modelValue = defineModel<string | boolean>({ required: true })
+const modelValue = defineModel<CustomQuestionAnswerValue>({ required: true })
 
 const props = defineProps<{
   question: CustomQuestionDefinition
@@ -21,6 +22,14 @@ const checkedValue = computed({
   get: () => modelValue.value === true,
   set: (value) => { modelValue.value = value }
 })
+const tickedChoices = computed(() => Array.isArray(modelValue.value) ? modelValue.value : [])
+
+/** Ticks or unticks one choice. The ticked choices keep the order of the question. */
+function setChoiceTicked(choice: string, ticked: boolean) {
+  modelValue.value = props.question.options.filter(option =>
+    option === choice ? ticked : tickedChoices.value.includes(option)
+  )
+}
 </script>
 
 <template>
@@ -32,6 +41,23 @@ const checkedValue = computed({
   >
     <slot>{{ props.question.prompt }}</slot>
   </AppCheckbox>
+  <div
+    v-else-if="props.question.type === 'multiple_choice'"
+    :id="props.id"
+    role="group"
+    :aria-label="props.question.prompt"
+    class="space-y-2"
+  >
+    <AppCheckbox
+      v-for="option in props.question.options"
+      :key="option"
+      :model-value="tickedChoices.includes(option)"
+      :disabled="props.disabled"
+      @update:model-value="setChoiceTicked(option, $event)"
+    >
+      {{ option }}
+    </AppCheckbox>
+  </div>
   <AppTextarea
     v-else-if="props.question.type === 'long_text'"
     :id="props.id"

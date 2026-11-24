@@ -165,7 +165,7 @@ Meetup and Build rules:
 - Meetups and Builds do not create teams, project submissions, judging assignments, prizes, winner records, or completed competition outcomes.
 - Competition-only APIs and UI surfaces are unavailable for Meetups and Builds.
 - Only Meetups can enable talk proposals. Enabling requires a Call for talks opening timestamp strictly before its closing timestamp; disabled Meetups and all non-Meetup events store both timestamps as null.
-- Call for talks questions support short text, long text, single choice, and required acknowledgment. Single-choice questions define at least two unique choices. Question order is the stored array order.
+- Call for talks questions support short text, long text, single choice, multiple choice, and required acknowledgment. Single-choice and multiple-choice questions define at least two unique choices. A multiple-choice question lets the person tick any number of its choices, and a required one needs at least one. Question order is the stored array order.
 - Required questions and acknowledgments are enforced when the proposal is submitted; a draft can retain incomplete answers.
 - After the first talk proposal exists, the Call for talks cannot be disabled and its question prompts, types, choices, required flags, and order cannot change. Proposal creation and question-definition updates use a revision check plus mutually exclusive conditional writes, so a concurrent first proposal cannot retain answers for an ambiguous question set. Event admins can adjust its closing timestamp before event completion.
 - Google Forms sections, conditional branching, file uploads, quiz scoring, response-sheet integrations, and arbitrary third-party field types are not Call for talks question features.

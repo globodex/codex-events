@@ -17,6 +17,7 @@ import ParticipantRegistrationParticipationSection from './ParticipantRegistrati
 import ParticipantRegistrationProfileSection from './ParticipantRegistrationProfileSection.vue'
 import ParticipantRegistrationProgressRail from './ParticipantRegistrationProgressRail.vue'
 import ParticipantRegistrationTalkProposalSection from './ParticipantRegistrationTalkProposalSection.vue'
+import type { CustomQuestionAnswerValue } from '#shared/domains/events/custom-questions'
 import { formatEventLocation } from '~/domains/events/presentation'
 import { participantRegistrationSectionDomId } from '~/domains/applications/participant-registration-definition'
 import { useParticipantRegistrationController } from './useParticipantRegistrationController'
@@ -94,7 +95,7 @@ function updateTeamMember(index: number, key: keyof ParticipantRegistrationTeamM
   if (member) member[key] = value
 }
 
-function updateTalkProposalAnswer(index: number, value: string | boolean) {
+function updateTalkProposalAnswer(index: number, value: CustomQuestionAnswerValue) {
   const proposal = draft.value.talkProposal
   if (!proposal) return
   proposal.answers = proposal.answers.map((answer, currentIndex) => currentIndex === index
