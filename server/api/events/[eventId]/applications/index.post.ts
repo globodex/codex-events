@@ -130,65 +130,32 @@ export const applicationOperation = defineStructuredRouteOperation({
 
   const requestedSelectedTrackId = body.selectedTrackId.trim()
   let selectedTrackId: string | null = null
-  let useBuildTrackSelection = false
 
-  if (event.eventType === 'hackathon' || event.eventType === 'build') {
-    const trackRows = await database.query.eventTracks.findMany({
-      columns: {
-        id: true
-      },
-      where: eq(eventTracks.eventId, eventId)
-    })
-    const eventTrackIds = new Set(trackRows.map((track: { id: string }) => track.id))
-    useBuildTrackSelection = event.eventType === 'build' && eventTrackIds.size > 0
+  // A Hackathon registration can name one of the event's tracks. No other event has tracks.
+  if (requestedSelectedTrackId) {
+    const trackRows = event.eventType === 'hackathon'
+      ? await database.query.eventTracks.findMany({
+          columns: { id: true },
+          where: eq(eventTracks.eventId, eventId)
+        })
+      : []
 
-    if (useBuildTrackSelection && !requestedSelectedTrackId) {
+    if (!trackRows.some(track => track.id === requestedSelectedTrackId)) {
       throw new ApiError({
-        statusCode: 409,
-        code: 'event_track_required',
-        message: 'Choose a track before submitting this application.',
+        statusCode: 400,
+        code: 'event_track_invalid',
+        message: 'The selected track is not valid for this event.',
         details: {
-          eventId
+          eventId,
+          trackId: requestedSelectedTrackId
         }
       })
     }
 
-    if (requestedSelectedTrackId) {
-      if (!eventTrackIds.has(requestedSelectedTrackId)) {
-        throw new ApiError({
-          statusCode: 400,
-          code: 'event_track_invalid',
-          message: 'The selected track is not valid for this event.',
-          details: {
-            eventId,
-            trackId: requestedSelectedTrackId
-          }
-        })
-      }
-
-      selectedTrackId = requestedSelectedTrackId
-    }
-  } else if (requestedSelectedTrackId) {
-    throw new ApiError({
-      statusCode: 400,
-      code: 'event_track_invalid',
-      message: 'The selected track is not valid for this event.',
-      details: {
-        eventId,
-        trackId: requestedSelectedTrackId
-      }
-    })
+    selectedTrackId = requestedSelectedTrackId
   }
 
-  const registrationDetailsEvent = useBuildTrackSelection
-    ? {
-        ...event,
-        applicationAiKnowledgeVisible: false,
-        requireAiKnowledge: false
-      }
-    : event
-
-  const registrationDetailsJson = serializeRegistrationDetailsJson(registrationDetailsEvent, {
+  const registrationDetailsJson = serializeRegistrationDetailsJson(event, {
     registrationTeamIntent: body.registrationTeamIntent,
     registrationTeamMembers: body.registrationTeamMembers,
     inPersonAttendanceCommitment: body.inPersonAttendanceCommitment,

@@ -30,15 +30,11 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  updateSelectedTrackId: [value: string]
   updateAiKnowledgeLevel: [value: ParticipantAiKnowledgeLevelInput]
   updateWhyThisEvent: [value: string]
   updateProofOfExecutionUrl: [value: string]
   updateRegistrationAnswer: [questionId: string, value: string | boolean]
 }>()
-
-const selectedTrack = computed(() => props.definition.application.trackOptions
-  .find(track => track.id === props.draft.selectedTrackId) ?? null)
 
 function required(fieldId: ParticipantRegistrationFieldId) {
   return props.definition.application.fields.find(field => field.id === fieldId)?.required ?? false
@@ -67,42 +63,6 @@ function questionLabel(question: CustomQuestionDefinition) {
     <h2 class="text-[14px] font-semibold text-highlighted">
       Your application
     </h2>
-
-    <ParticipantRegistrationField
-      v-if="props.definition.application.showTrackSelection"
-      field-id="selectedTrackId"
-      label="Track"
-      required
-      label-for="participant-registration-track"
-      :error="props.errors.selectedTrackId"
-    >
-      <AppSelect
-        id="participant-registration-track"
-        :model-value="props.draft.selectedTrackId"
-        :disabled="props.disabled"
-        @update:model-value="emit('updateSelectedTrackId', String($event ?? ''))"
-      >
-        <option value="">
-          Choose your track
-        </option>
-        <option
-          v-for="track in props.definition.application.trackOptions"
-          :key="track.id"
-          :value="track.id"
-        >
-          {{ track.name }}
-        </option>
-      </AppSelect>
-      <template
-        v-if="selectedTrack"
-        #helper
-      >
-        <AppMarkdownRenderer
-          :source="selectedTrack.shortDescription"
-          class="max-w-[68ch]"
-        />
-      </template>
-    </ParticipantRegistrationField>
 
     <ParticipantRegistrationField
       v-if="props.definition.application.showAiKnowledge"

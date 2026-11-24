@@ -30,8 +30,8 @@ Feature: Gamified event builder creation flow
 
   Scenario: Platform admin authors a track short description in Markdown
     When I open the event builder with the saved "platform_admin" session
-    And I name the event "BDD Builder Build"
-    And I choose the "build" event type in the builder
+    And I name the event "BDD Builder Hackathon"
+    And I choose the "hackathon" event type in the builder
     And I add Markdown to the first builder track short description
     Then the builder track short description should retain its Markdown
     When I add a second builder track and move it up

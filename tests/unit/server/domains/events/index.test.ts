@@ -468,8 +468,8 @@ describe('event management utilities', () => {
     })).toThrowError(ApiError)
   })
 
-  test('accepts track configuration patches on build events', () => {
-    const patch = buildEventUpdatePayload(buildEventRecord({
+  test('refuses track configuration patches on build events', () => {
+    expect(() => buildEventUpdatePayload(buildEventRecord({
       eventType: 'build'
     }), {
       tracks: [{
@@ -485,9 +485,7 @@ describe('event management utilities', () => {
         }],
         displayOrder: 1
       }]
-    })
-
-    expect(patch).not.toHaveProperty('tracks')
+    })).toThrow('Track configuration is available only for hackathon events.')
   })
 
   test('allows common application requirement patches on registration-only events', () => {
@@ -660,14 +658,14 @@ describe('event management utilities', () => {
     expect(accountEventTrack).not.toHaveProperty('eventId')
     expect(accountEventTrack).not.toHaveProperty('createdAt')
     expect(serializePublicEvent(buildEventRecord({
-      eventType: 'build'
+      eventType: 'hackathon'
     }), undefined, tracks).tracks).toEqual([{
       name: 'Agents',
       shortDescription: 'Build with agents.',
       displayOrder: 1
     }])
     expect(serializePublicEvent(buildEventRecord({
-      eventType: 'build'
+      eventType: 'hackathon'
     }), undefined, tracks)).not.toMatchObject({
       tracks: [{
         resources: expect.any(Array)
@@ -675,7 +673,7 @@ describe('event management utilities', () => {
     })
 
     const fullPublicTrack = serializePublicEvent(buildEventRecord({
-      eventType: 'build'
+      eventType: 'hackathon'
     }), undefined, tracks, {
       includeFullTrackDetails: true
     }).tracks?.[0]

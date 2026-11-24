@@ -22,5 +22,5 @@ Feature: Event challenges
   Scenario: Participant who has not checked in reads the challenges on the Agenda
     Given I open my event page of "challenges-fixture-event" as "judge"
     Then my next step should be to check in with the event team
-    When I open the activity "Agenda" from my next step
+    When I open the agenda from my next step
     Then I should see the challenge "Ship a Codex skill" with the instructions "Write one skill and share it with your table."

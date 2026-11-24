@@ -1,19 +1,17 @@
 <script setup lang="ts">
-// Shows a confirmed participant the one thing to do next at the event:
-// check in, then open the event's activities.
+// Shows a confirmed participant the one thing to do next at the event: before check-in, how to get
+// there; after check-in, the event's activities. The page shows the credit offers in its place
+// after check-in when the event has offers.
 const props = defineProps<{
   /** The result of `isApplicationEffectivelyCheckedIn` for the participant. */
   isCheckedIn: boolean
-  /**
-   * What the participant can open at the event, in the order shown. An activity that is open
-   * before check-in is also listed while the participant still has to check in.
-   */
-  activities: Array<{ label: string, to: string, openBeforeCheckIn: boolean }>
+  /** The Agenda tab with the first session that has a room selected, or null without an agenda. */
+  wayHref: string | null
+  /** What the participant can open at the event after check-in, in the order shown. */
+  activities: Array<{ label: string, to: string }>
   /** Reads the page data again. The page does not notice a check-in by itself. */
   refreshPage: () => Promise<unknown>
 }>()
-
-const activitiesBeforeCheckIn = computed(() => props.activities.filter(activity => activity.openBeforeCheckIn))
 
 const isReloading = ref(false)
 // True once the participant asked for a reload. If the card still shows the check-in step
@@ -35,7 +33,7 @@ async function reloadAfterCheckIn() {
       class="space-y-4"
     >
       <h2 class="text-lg font-semibold text-highlighted">
-        Check in with the event team
+        How to get there
       </h2>
       <p
         v-if="hasReloaded && !isReloading"
@@ -46,21 +44,20 @@ async function reloadAfterCheckIn() {
       </p>
       <div class="flex flex-wrap items-center gap-3">
         <AppButton
+          v-if="wayHref"
+          :to="wayHref"
+          trailing-icon="i-lucide-arrow-right"
+        >
+          Show the way
+        </AppButton>
+        <AppButton
+          color="neutral"
+          variant="outline"
           :loading="isReloading"
           :disabled="isReloading"
           @click="reloadAfterCheckIn"
         >
           I've checked in
-        </AppButton>
-        <AppButton
-          v-for="activity in activitiesBeforeCheckIn"
-          :key="activity.to"
-          :to="activity.to"
-          color="neutral"
-          variant="ghost"
-          trailing-icon="i-lucide-arrow-right"
-        >
-          {{ activity.label }}
         </AppButton>
       </div>
     </div>

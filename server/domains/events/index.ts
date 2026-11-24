@@ -987,8 +987,12 @@ function compareEventTrackResources(
     || left.id.localeCompare(right.id)
 }
 
+/**
+ * Only Hackathons have tracks: submissions and judging use them. A Build event offers open tracks
+ * in its challenge list instead, where participants choose one.
+ */
 export function eventTypeSupportsTracks(eventType: EventType) {
-  return eventType === 'hackathon' || eventType === 'build'
+  return eventType === 'hackathon'
 }
 
 export function listEventTracks(database: AppDatabase, eventId: string) {
@@ -1704,7 +1708,7 @@ export function buildEventUpdatePayload(
 
   assertGuard(unsupportedTrackFields.length === 0, {
     code: 'hackathon_event_required',
-    message: 'Track configuration is available only for hackathon and build events.',
+    message: 'Track configuration is available only for hackathon events.',
     details: {
       eventId: existingEvent.id,
       eventType: existingEvent.eventType,

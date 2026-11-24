@@ -23,6 +23,13 @@ export function normalizeTabQueryValue(value: LocationQueryValue | LocationQuery
   return normalized.length > 0 ? normalized : null
 }
 
+/** The session that a link to the Agenda tab names: a session id, or `first`. */
+export function normalizeSessionQueryValue(value: LocationQueryValue | LocationQueryValue[] | null | undefined) {
+  const firstValue = getFirstQueryValue(value)?.trim()
+
+  return firstValue ? firstValue : null
+}
+
 export function resolveTabQueryValue<TTab extends string>(
   value: LocationQueryValue | LocationQueryValue[] | null | undefined,
   allowedTabs: readonly TTab[],

@@ -43,6 +43,12 @@ const fixtureCheckInFlowBuilderEventId = 'event_e2e_check_in_flow_builder_fixtur
 const fixtureCheckInFlowApplicationId = 'application_check_in_flow_fixture_regular_user'
 const fixtureRegistrationQuestionsEventId = 'event_e2e_registration_questions_fixture'
 const fixtureRegistrationQuestionsBuilderEventId = 'event_e2e_registration_questions_builder_fixture'
+const fixtureChallengeChoiceEventId = 'event_e2e_challenge_choice_fixture'
+// The challenge list of the challenge choice fixture event: one challenge and one open track.
+const fixtureChallengeChoiceChallenges = [
+  { id: 'one-minute-game', title: 'Make a one-minute game', instructions: 'Ship a game that takes one minute to play.', resources: [], isPublished: true },
+  { id: 'own-idea', title: 'Build your own idea', instructions: 'Bring your own idea and build it.', resources: [], isPublished: true, isOpenTrack: true }
+]
 // The registration questions of the registration questions fixture event: one required text and one optional choice.
 const fixtureRegistrationQuestions = [
   { id: 'project', type: 'short_text', prompt: 'What do you want to build today?', required: true, options: [] },
@@ -1377,6 +1383,23 @@ function buildFixtureSql(personas: StablePersona[]) {
     ) values
       ('role_event_admin_registration_questions_fixture', ${sqlLiteral(fixtureRegistrationQuestionsEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)}),
       ('role_event_admin_registration_questions_builder_fixture', ${sqlLiteral(fixtureRegistrationQuestionsBuilderEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)})`,
+    // A Build event for choosing an open track or challenge. The event admin persona manages it,
+    // and the regular user is confirmed and has not chosen yet. The old created_at keeps it at the
+    // end of the public event list.
+    `insert into events (
+      id, event_type, name, slug, description, city, country, address,
+      registration_opens_at, registration_closes_at, state, max_team_members, challenges_json,
+      created_by_user_id, created_at, updated_at
+    ) values
+      (${sqlLiteral(fixtureChallengeChoiceEventId)}, 'build', 'Challenge Choice Fixture Build', 'challenge-choice-fixture-event', 'Build fixture for choosing an open track or challenge.', 'Vienna', 'Austria', 'Fixture Venue', '2020-01-01T00:00:00.000Z', '2030-01-01T00:00:00.000Z', 'registration_open', 1, ${sqlLiteral(JSON.stringify(fixtureChallengeChoiceChallenges))}, ${sqlLiteral(eventAdminId)}, '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z')`,
+    `insert into event_role_assignments (
+      id, event_id, user_id, role, is_in_judge_pool, created_at
+    ) values
+      ('role_event_admin_challenge_choice_fixture', ${sqlLiteral(fixtureChallengeChoiceEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)})`,
+    `insert into user_applications (
+      id, event_id, user_id, status, submitted_at, created_at, updated_at
+    ) values
+      ('application_challenge_choice_fixture_regular_user', ${sqlLiteral(fixtureChallengeChoiceEventId)}, ${sqlLiteral(regularUserId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
     // Two Build events for the credit claim scenarios. Both have the check-in flow on, no
     // questions, and one credit offer. The old created_at keeps them at the end of the public
     // event list.

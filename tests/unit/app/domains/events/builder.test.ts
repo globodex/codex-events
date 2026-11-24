@@ -284,7 +284,7 @@ describe('createBuilderStateFromEvent', () => {
     const description = '# Builder event\n\n**Bring a laptop.**'
     const shortDescription = 'For teams building **agent workflows**.'
     const event = buildAgendaEvent({
-      eventType: 'build',
+      eventType: 'hackathon',
       description,
       country: 'Czech Republic',
       tracks: [{
@@ -360,7 +360,7 @@ describe('toEventBuilderFormState + buildEventCreateBody parity', () => {
     const description = '# Build day\n\n- Ship a project\n- Share the result'
     const shortDescription = 'Build tools for **event teams**.'
 
-    state.form.eventType = 'build'
+    state.form.eventType = 'hackathon'
     state.form.description = description
     state.form.country = 'Austria'
     state.form.tracks = [{

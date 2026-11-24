@@ -105,7 +105,7 @@ This document defines the canonical permissions for the Codex event platform.
 | --- | --- | --- | --- | --- | --- |
 | Submit `UserApplication` | Yes, if no application exists for the event and the event is `registration_open`; when the event uses the Luma guest list, the user's saved Luma email must also match a guest on the private list who is not declined | No | No | No | No |
 | View own application | Yes | Yes | No | No | No |
-| Select own event track | Yes, if the application is `submitted`, the event is not `completed`, and the selected track belongs to the same Hackathon or Build event | Yes, if the event is not `completed` and the selected track belongs to the same Hackathon or Build event | No | No | No |
+| Select own event track | Yes, if the application is `submitted`, the event is not `completed`, and the selected track belongs to the same Hackathon | Yes, if the event is not `completed` and the selected track belongs to the same Hackathon | No | No | No |
 | Verify own Luma email | No | Yes, when Luma sync is enabled for the event and the event does not use the Luma guest list; a Luma email that another active application of a shared event holds is refused | No | No | No |
 | Import or refresh the Luma guest list | No | No | No | Yes, when the event uses the Luma guest list | Yes, when the event uses the Luma guest list |
 | Withdraw own application | Yes, if the application is still `submitted` and the user has no active team membership in the event | Yes, if the application is `approved` and the user has no active team membership in the event | No | No | No |
@@ -274,6 +274,9 @@ Event challenge permissions apply to every event type.
 | Write, order, publish, and remove challenges | No | No | Yes | Yes |
 | Read published challenges in the account event workspace | Yes | Yes | Yes | Yes |
 | Read draft challenges | No | No | Yes, in the event builder | Yes, in the event builder |
+| Read the staff instructions of challenges and open tracks | No | Yes | Yes | Yes |
+| Choose own open track or challenge | Yes, one published entry, until the event is completed | No | No | No |
+| See how many confirmed participants chose each entry | No | Yes, on the Participants tab | Yes, on the Participants tab | Yes, on the Participants tab |
 
 No other actor receives challenge content. This includes a user with a submitted, rejected, or withdrawn application and a judge without an approved application.
 

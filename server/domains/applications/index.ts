@@ -763,6 +763,7 @@ export function serializeUserApplication(
       ? { isEventStaff: options.isEventStaff }
       : {}),
     selectedTrackId: application.selectedTrackId,
+    selectedChallengeId: application.selectedChallengeId,
     reviewedAt: application.reviewedAt,
     reviewedByUserId: application.reviewedByUserId,
     applicationTermsDocumentId: application.applicationTermsDocumentId,

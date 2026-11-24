@@ -469,10 +469,10 @@ describe('event config form schema', () => {
     expect(patch).not.toHaveProperty('requireSubmissionDemoUrl')
   })
 
-  test('includes build event tracks with resources in configuration patches', () => {
+  test('includes hackathon tracks with resources in configuration patches', () => {
     const patch = buildEventConfigurationPatch({
       ...createValidEventFormState(),
-      eventType: 'build',
+      eventType: 'hackathon',
       tracks: [
         {
           id: 'track-1',
@@ -490,7 +490,7 @@ describe('event config form schema', () => {
           displayOrder: 1
         }
       ]
-    }, 'build')
+    }, 'hackathon')
 
     expect(patch).toMatchObject({
       tracks: [{
@@ -509,8 +509,6 @@ describe('event config form schema', () => {
         displayOrder: 1
       }]
     })
-    expect(patch).not.toHaveProperty('submissionOpensAt')
-    expect(patch).not.toHaveProperty('maxTeamMembers')
   })
 
   test('rejects invalid hackathon tracks', () => {

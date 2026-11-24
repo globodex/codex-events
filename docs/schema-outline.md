@@ -213,7 +213,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `talk_proposal_questions_json` is an ordered array with at most 20 definitions. Each definition has a stable `id`, `type`, `prompt`, `required`, and `options`; only `single_choice` uses options, and `acknowledgement` is always required.
 - Disabled Meetups and all non-Meetup events have `talk_proposals_enabled = false` with null talk-proposal timestamps.
 - `registration_questions_json` is an ordered array with at most 20 definitions. The definitions follow the same rules as the definitions in `talk_proposal_questions_json`.
-- `challenges_json` is an ordered array with at most 20 challenges. Each challenge has an `id` that is unique in the array, a `title` of 1 to 120 characters, `instructions` of 1 to 4,000 characters, a `resources` array with at most 10 entries, a boolean `isPublished`, and an optional boolean `isOpenTrack`. Each resource has a `label` of 1 to 80 characters and a `url` of at most 2,048 characters that is a valid `https` URL without embedded credentials.
+- `challenges_json` is an ordered array with at most 20 challenges. Each challenge has an `id` that is unique in the array, a `title` of 1 to 120 characters, `instructions` of 1 to 4,000 characters, a `resources` array with at most 10 entries, a boolean `isPublished`, an optional boolean `isOpenTrack`, and optional `staffInstructions` of at most 4,000 characters. Each resource has a `label` of 1 to 80 characters and a `url` of at most 2,048 characters that is a valid `https` URL without embedded credentials.
 
 ### Notes
 
@@ -240,7 +240,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `simplified_claiming_enabled` is available only for Meetups. It requires no application terms, required registration fields, or required registration questions. Optional paired `luma_event_api_id` and `luma_api_key` credentials connect check-ins without approval/rejection sync. It uses the event slug for redemption and the giveaway with `redirect_on_claim = true` as the redirect destination.
 - `talk_proposals_enabled` defaults to false. `talk_proposal_questions_json` defaults to `[]`, and `talk_proposal_questions_revision` defaults to `0`. After the first `TalkProposal` exists for the event, the feature cannot be disabled and the question definition cannot change. Its closing timestamp can change until the event is completed.
 - `check_in_flow_enabled` defaults to false and is available for every event type. While it is true, the account event overview shows approved participants their next step around check-in.
-- `challenges_json` defaults to `[]` and is available for every event type. `instructions` holds Markdown. `isPublished = false` marks a draft that only the event builder shows. The array order is the display order. No other table stores challenge data, and no participant record refers to a challenge. A floor plan room can name a challenge by its `id`.
+- `challenges_json` defaults to `[]` and is available for every event type. `instructions` and `staffInstructions` hold Markdown; `staffInstructions` reaches only staff, event admins, and platform admins. `isPublished = false` marks a draft that only the event builder shows. The array order is the display order. No other table stores challenge data. A floor plan room, a staff assignment (`staff_challenge_id`), and a participant's choice (`selected_challenge_id`) can name a challenge by its `id`.
 - `participant_photos_enabled` defaults to false and is available for every event type. While it is true, an approved participant who finished the check-in flow can add photos to the event gallery. It does not depend on `check_in_flow_enabled`: with the check-in flow off, a participant has finished the check-in flow as soon as they have effective attendance.
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
 - Application field visibility columns control whether each optional application field appears on the participant application form. First name and family name are always visible and required.
@@ -292,10 +292,10 @@ It describes the intended persistent model at the level of entities, key fields,
 - Tracks are ordered for admin editing and public display.
 - A track stores a participant-facing name, short markdown description, full participant guideline markdown, and staff-only instruction markdown.
 - `resources_json` stores a validated ordered JSON array of track resources (`id`, `title`, `url`, optional `description`, `displayOrder`).
-- Hackathon and Build events can define tracks. Meetup events do not use tracks.
+- Hackathon events can define tracks. Build and Meetup events do not use tracks; a Build event offers open tracks in its challenge list.
 - Public event payloads expose track name, short description, and display order by default. Public event detail payloads with `tracks=full` also expose participant-facing full descriptions and resource links without track IDs, resource IDs, or staff instructions.
 - Account event payloads expose full descriptions and resources. Staff instructions are included only for platform admins, event admins, whole-event staff, and staff assigned to that track.
-- Hackathon tracks are submission choices. Build tracks are participant-visible resource groups after selection.
+- Hackathon tracks are submission choices.
 - Tracks do not control judge assignment in this version.
 - Track deletion is blocked once submissions reference it.
 - Track deletion clears staff display scopes and participant selected-track references that reference the removed track.
@@ -383,7 +383,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `event_admin` assignments with `is_staff = true` can also set `staff_track_id` or `staff_challenge_id`.
 - Non-admin `staff` and `judge` assignments remain distinct.
 - `judge` assignments and `is_in_judge_pool = true` are valid only for Hackathon events.
-- `staff_track_id` is valid only for Hackathon and Build events with a matching track.
+- `staff_track_id` is valid only for Hackathon events with a matching track.
 
 ## EventFeedback
 
@@ -590,6 +590,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `application_terms_document_id`
 - `application_terms_accepted_at`
 - `registration_details_json`
+- `selected_challenge_id`
 - `registration_answers_json`
 - `active_luma_email`
 - `created_at`
@@ -637,7 +638,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - Applications created while `auto_approve_applications` is true are stored directly as `approved` with `reviewed_at` equal to `submitted_at` and no reviewing user.
 - In an event with `luma_guest_list_enabled = true`, an application whose Luma guest is approved is stored as `approved` in the same way, either at submission or later when Luma approves the guest. `reviewed_at` records that approval and there is no reviewing user.
 - `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for events that show and require a Luma email, have configured Luma sync, and do not use the Luma guest list. It stays null for events with `luma_guest_list_enabled = true`.
-- `selected_track_id` stores the participant's selected Hackathon or Build track for that event when the application is `submitted` or `approved`.
+- `selected_track_id` stores the participant's selected Hackathon track for that event when the application is `submitted` or `approved`.
+- `selected_challenge_id` stores the open track or challenge that a confirmed participant chose from `events.challenges_json`. It is null until they choose and can change or return to null until the event is completed. The challenges are stored as JSON, so no foreign key guards it; a choice of an entry that is no longer published counts as no choice.
 - `checked_in_at` is sticky and is not cleared or replaced by later Luma, simplified-claim, or staff check-in activity.
 - `check_in_override_status` stores an admin attendance decision of `joined` or `not_joined` for an approved application, with `check_in_override_at` and `check_in_override_by_user_id` recording when and by whom it was set. The override wins over `checked_in_at` in both directions and is cleared back to the recorded check-in by repeating the active decision.
 - A partial unique index on `(event_id, active_luma_email)` covers non-null values. Database triggers derive the trimmed lower-case email from active accounts with submitted or approved registrations in Luma-linked events. Registration, account, and event configuration writes update this key in the same transaction.

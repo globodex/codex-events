@@ -448,7 +448,7 @@ describe('TASK-450 event challenges', () => {
       expect(accountEventSettingsPageSchema.parse(body.data.page).event.challenges).toEqual(storedChallenges)
     })
 
-    test('the Agenda page exposes only published challenges to the event admin, and the entry page none', async () => {
+    test('the Agenda page and the entry page expose only published challenges to the event admin', async () => {
       const harness = await createContext()
 
       const entryResponse = await requestEventPage(harness, 'event_admin')
@@ -457,7 +457,9 @@ describe('TASK-450 event challenges', () => {
       const agendaBody = await agendaResponse.json() as { data: { page: unknown } }
 
       expect(entryResponse.status).toBe(200)
-      expect(entryBody.data.page).not.toHaveProperty('challenges')
+      // The entry page carries the challenges for the cards on the Overview tab, without staff names.
+      const overviewChallenges = accountEventEntryPageSchema.parse(entryBody.data.page).challenges
+      expect(overviewChallenges).toEqual([skillChallenge, reviewChallenge])
       expect(accountEventAgendaPageSchema.parse(agendaBody.data.page).challenges).toEqual(publishedChallenges)
     })
 
@@ -584,7 +586,12 @@ describe('TASK-450 event challenges', () => {
     })
 
     test('a staff member has a track or a challenge, never both', async () => {
-      const harness = await createContext()
+      // Only Hackathons have tracks.
+      const harness = await createContext({
+        eventType: 'hackathon',
+        submissionOpensAt: '2099-01-02T00:00:00.000Z',
+        submissionClosesAt: '2099-01-03T00:00:00.000Z'
+      })
       await harness.database.insert(eventTracks).values({
         id: 'track_1',
         eventId: 'event_1',

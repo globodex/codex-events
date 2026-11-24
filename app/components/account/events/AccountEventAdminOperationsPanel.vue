@@ -1792,6 +1792,7 @@ async function runLifecycleAction() {
           :status-counts="participantPageData?.statusCounts"
           :checked-in-count="participantPageData?.checkedInCount"
           :pagination="participantPageData?.pagination"
+          :challenge-choices="participantPageData?.challengeChoices"
           :is-searching="isSearchingParticipants"
           :is-loading-more="isLoadingMoreParticipants"
           :pending-action-key="pendingActionKey"

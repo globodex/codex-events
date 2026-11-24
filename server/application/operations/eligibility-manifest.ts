@@ -81,6 +81,7 @@ export const mcpEligibilityManifest = [
   { route: 'events/[eventId]/applications/index.get.ts', disposition: 'include' },
   { route: 'events/[eventId]/applications/index.post.ts', disposition: 'include' },
   { route: 'events/[eventId]/applications/me.get.ts', disposition: 'include' },
+  { route: 'events/[eventId]/applications/me/actions/select-challenge.post.ts', disposition: 'include' },
   { route: 'events/[eventId]/applications/me/actions/select-track.post.ts', disposition: 'include' },
   { route: 'events/[eventId]/applications/me/actions/set-certificate-visibility.post.ts', disposition: 'include' },
   { route: 'events/[eventId]/applications/me/actions/verify-luma-email.post.ts', disposition: 'include' },

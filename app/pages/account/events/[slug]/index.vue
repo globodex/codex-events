@@ -53,6 +53,7 @@ import {
   LazyAccountEventsAccountEventRoleRosterPanel as LazyAccountEventRoleRosterPanel,
   LazyAccountEventsAccountEventTalkProposalPanel as LazyAccountEventTalkProposalPanel,
   LazyAccountEventsAccountEventTalkProposalReviewPanel as LazyAccountEventTalkProposalReviewPanel,
+  LazyAccountEventsOrganismsAccountEventChallengeChoice as LazyAccountEventChallengeChoice,
   LazyAccountEventsOrganismsAccountEventChallengeList as LazyAccountEventChallengeList,
   LazyAccountEventsOrganismsAccountEventTracksPanel as LazyAccountEventTracksPanel,
   LazyPublicEventsEventAgendaPanel as LazyEventAgendaPanel,
@@ -101,7 +102,7 @@ import {
 } from '~/domains/submissions/team-submission'
 import { normalizeJudgeAssignmentIdQueryValue } from '~/domains/judging/query'
 import { buildAccountEventTeamsTabHref, normalizeTeamSlugQueryValue } from '~/domains/teams/query'
-import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
+import { normalizeSessionQueryValue, normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
 import { useApiClient } from '~/composables/useApiClient'
 import {
   useAccountEventPageRequest,
@@ -331,6 +332,35 @@ const participantCertificatePath = computed(() => {
 })
 const isCertificateVisibilityPending = ref(false)
 const pendingSelectedTrackId = ref<string | null>(null)
+
+// The open tracks and challenges on the Overview tab, and the participant's choice among them.
+const overviewChallenges = computed(() => entryPage.value?.challenges ?? [])
+const selectedChallengeId = computed(() => participationRecord.value?.application?.selectedChallengeId ?? null)
+const canChooseChallenge = computed(() => applicationStatus.value === 'approved' && event.value?.state !== 'completed')
+const pendingChallengeId = ref<string | null>(null)
+
+/** Saves the participant's choice. Null clears it. `cardId` names the card that shows the saving. */
+async function chooseChallenge(challengeId: string | null, cardId: string) {
+  pendingChallengeId.value = cardId
+
+  try {
+    const response = await apiFetch<ParticipantApiDataResponse<ParticipantApplicationRecord>>(
+      `/api/events/${workspaceEventId.value}/applications/me/actions/select-challenge`,
+      { method: 'POST', body: { challengeId } }
+    )
+
+    updateParticipationRecordApplication(response.data)
+    toast.add({ title: challengeId ? 'Choice saved' : 'Choice cleared', color: 'success' })
+  } catch (error) {
+    toast.add({
+      title: 'Your choice could not be saved',
+      description: normalizeParticipantApiError(error).message,
+      color: 'error'
+    })
+  } finally {
+    pendingChallengeId.value = null
+  }
+}
 
 async function setCertificateGenerationDisabled(disabled: boolean) {
   const application = participationRecord.value?.application
@@ -702,18 +732,28 @@ const teamsTabHref = computed(() => buildAccountEventTeamsTabHref(slug.value, te
 // entries that are open before check-in already while the participant still has to check in.
 // Add one entry here for every new activity.
 const participantActivities = computed(() => {
-  const activities: Array<{ label: string, to: string, openBeforeCheckIn: boolean }> = []
+  const activities: Array<{ label: string, to: string }> = []
 
   if (availableTabs.value.includes('program')) {
-    activities.push({ label: 'Agenda', to: `/account/events/${slug.value}?tab=program`, openBeforeCheckIn: true })
+    activities.push({ label: 'Agenda', to: `/account/events/${slug.value}?tab=program` })
   }
 
   if (availableTabs.value.includes('gallery')) {
-    activities.push({ label: 'Gallery', to: `/account/events/${slug.value}?tab=gallery`, openBeforeCheckIn: false })
+    activities.push({ label: 'Gallery', to: `/account/events/${slug.value}?tab=gallery` })
   }
 
   return activities
 })
+// "How to get there" opens the Agenda tab with the first session that has a room selected, so the
+// map shows where to go.
+const nextStepWayHref = computed(() => availableTabs.value.includes('program')
+  ? `/account/events/${slug.value}?tab=program&session=first`
+  : null)
+// The session that a link to the Agenda tab names (`normalizeSessionQueryValue`).
+const linkedAgendaSession = computed(() => normalizeSessionQueryValue(route.query.session))
+// After check-in the credit offers stand at the top of the Overview in place of the next step.
+const nextStepShowsCredits = computed(() =>
+  (participantApplication.value?.isCheckedIn ?? false) && participantCreditOffers.value.length > 0)
 const applicationSubmittedNoticeVisible = ref(isParticipantApplicationSubmittedNotice(route.query.notice))
 const applicationStatusLabel = computed(() =>
   applicationStatus.value ? formatParticipantApplicationStatus(applicationStatus.value) : ''
@@ -897,6 +937,7 @@ function updateParticipationRecordApplication(nextApplication: ParticipantApplic
         certificateHiddenAt: nextApplication.certificateHiddenAt,
         certificateRevokedAt: nextApplication.certificateRevokedAt,
         selectedTrackId: nextApplication.selectedTrackId,
+        selectedChallengeId: nextApplication.selectedChallengeId,
         updatedAt: nextApplication.updatedAt
       }
     }
@@ -1177,8 +1218,9 @@ useSeoMeta({
         class="space-y-7"
       >
         <AccountEventNextStepCard
-          v-if="showNextStepCard"
+          v-if="showNextStepCard && !nextStepShowsCredits"
           :is-checked-in="participantApplication?.isCheckedIn ?? false"
+          :way-href="nextStepWayHref"
           :activities="participantActivities"
           :refresh-page="refreshAfterCheckInStep"
         />
@@ -1189,6 +1231,15 @@ useSeoMeta({
           :event-id="event.id"
           :offers="participantCreditOffers"
           @updated="refreshAccountEvent"
+        />
+
+        <LazyAccountEventChallengeChoice
+          v-if="overviewChallenges.length > 0"
+          :challenges="overviewChallenges"
+          :selected-challenge-id="selectedChallengeId"
+          :can-choose="canChooseChallenge"
+          :pending-challenge-id="pendingChallengeId"
+          @choose="chooseChallenge"
         />
 
         <div
@@ -1428,7 +1479,6 @@ useSeoMeta({
         <LazyAccountEventTracksPanel
           :id="eventTracksPanelId"
           class="scroll-mt-6"
-          :event-type="event.eventType"
           :tracks="accountEventTracks"
           :selected-track-id="selectedTrackId"
           :can-select-track="canSelectParticipantTrack"
@@ -1668,6 +1718,7 @@ useSeoMeta({
             :program="programPage.program"
             :agenda-items="event.agendaItems"
             :challenges="programPage.challenges"
+            :linked-session="linkedAgendaSession"
           />
           <!--
             A person who does not read the program sees the public agenda blocks with the sessions

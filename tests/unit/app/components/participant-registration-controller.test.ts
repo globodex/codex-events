@@ -105,7 +105,6 @@ function mountController(draft: ParticipantRegistrationDraft) {
       requireAiKnowledge: false
     },
     profileFields: [],
-    trackOptions: [],
     maxTeamMembers: 1,
     currentApplicationTerms: null,
     registrationQuestions: [],

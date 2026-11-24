@@ -11,6 +11,7 @@ import { accountEventParticipantsPageSchema } from '#shared/domains/events/accou
 import type { AppDatabase } from '#server/database/client'
 import { eventRoleAssignments, userApplicationStatuses, userApplications, users } from '#server/database/schema'
 import { listEventTracks } from '#server/domains/events'
+import { listPublishedEventChallenges } from '#server/domains/events/challenges'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
 
 // A search answers with at most this many of the newest matches, whatever the list asked for.
@@ -78,6 +79,34 @@ async function getParticipantApplicationCounts(
   }
 }
 
+/**
+ * How many confirmed participants chose each published open track and challenge, and how many
+ * did not choose one of them. Registrations of event staff are left out, as in the list.
+ */
+async function getChallengeChoiceCounts(
+  database: AppDatabase,
+  event: { id: string, challengesJson: string }
+): Promise<AccountEventParticipantsPage['challengeChoices']> {
+  const rows = await database
+    .select({ challengeId: userApplications.selectedChallengeId, total: count() })
+    .from(userApplications)
+    .innerJoin(users, eq(users.id, userApplications.userId))
+    .leftJoin(eventRoleAssignments, eventStaffRoleOfApplicant(event.id))
+    .where(and(isParticipantRegistration(event.id), eq(userApplications.status, 'approved')))
+    .groupBy(userApplications.selectedChallengeId)
+  const totalByChallengeId = new Map(rows.map(row => [row.challengeId, row.total]))
+  const entries = listPublishedEventChallenges(event).map(challenge => ({
+    id: challenge.id,
+    title: challenge.title,
+    isOpenTrack: challenge.isOpenTrack ?? false,
+    count: totalByChallengeId.get(challenge.id) ?? 0
+  }))
+  const approvedTotal = rows.reduce((total, row) => total + row.total, 0)
+  const chosenTotal = entries.reduce((total, entry) => total + entry.count, 0)
+
+  return { entries, withoutChoice: approvedTotal - chosenTotal }
+}
+
 const participantApplicationProjection = {
   id: userApplications.id,
   eventId: userApplications.eventId,
@@ -97,6 +126,7 @@ const participantApplicationProjection = {
   certificateEmailQueuedByUserId: userApplications.certificateEmailQueuedByUserId,
   certificateEmailSentAt: userApplications.certificateEmailSentAt,
   selectedTrackId: userApplications.selectedTrackId,
+  selectedChallengeId: userApplications.selectedChallengeId,
   reviewedAt: userApplications.reviewedAt,
   reviewedByUserId: userApplications.reviewedByUserId,
   applicationTermsDocumentId: userApplications.applicationTermsDocumentId,
@@ -208,13 +238,14 @@ export const accountEventParticipantsPageRoute = defineAccountEventPageRoute({
   },
   load: async (context, query): Promise<AccountEventParticipantsPage> => {
     const rowLimit = query.participantRows ?? participantListStep
-    const [applications, tracks, { statusCounts, checkedInCount }] = await Promise.all([
+    const [applications, tracks, { statusCounts, checkedInCount }, challengeChoices] = await Promise.all([
       listParticipantApplications(context.database, context.event.id, {
         rowLimit,
         searchText: query.participantSearch
       }),
       listEventTracks(context.database, context.event.id),
-      getParticipantApplicationCounts(context.database, context.event.id)
+      getParticipantApplicationCounts(context.database, context.event.id),
+      getChallengeChoiceCounts(context.database, context.event)
     ])
 
     return {
@@ -239,7 +270,8 @@ export const accountEventParticipantsPageRoute = defineAccountEventPageRoute({
         total: Object.values(statusCounts).reduce((total, count) => total + count, 0)
       },
       statusCounts,
-      checkedInCount
+      checkedInCount,
+      challengeChoices
     }
   }
 })

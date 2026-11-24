@@ -7,8 +7,7 @@ import type {
   ParticipantAiKnowledgeLevelInput,
   ParticipantApplicationTermsDocument,
   ParticipantRegistrationTeamIntent,
-  ParticipantRegistrationTeamMemberHint,
-  ParticipantRegistrationTrackOption
+  ParticipantRegistrationTeamMemberHint
 } from '~/domains/applications/participant-application'
 import type { PublicEvent } from '~/domains/events/presentation'
 import type {
@@ -64,7 +63,6 @@ export interface ParticipantRegistrationDraft {
   whyThisEvent: string
   proofOfExecutionUrl: string
   aiKnowledgeLevel: ParticipantAiKnowledgeLevelInput
-  selectedTrackId: string
   teamIntent: ParticipantRegistrationTeamIntent
   teamMemberHints: ParticipantRegistrationTeamMemberHint[]
   profileForm: ParticipantRegistrationProfileForm
@@ -87,7 +85,6 @@ export type ParticipantRegistrationSectionId
 
 export type ParticipantRegistrationFieldId
   = | `profileForm.${ParticipantRegistrationProfileFieldKey}`
-    | 'selectedTrackId'
     | 'aiKnowledgeLevel'
     | 'whyThisEvent'
     | 'proofOfExecutionUrl'
@@ -177,7 +174,6 @@ export interface ParticipantRegistrationDefinitionInput {
   | 'requireAiKnowledge'
   >
   profileFields: EventProfileField[]
-  trackOptions: ParticipantRegistrationTrackOption[]
   maxTeamMembers: number
   currentApplicationTerms: ParticipantApplicationTermsDocument | null
   /** The organizer's own questions, asked in the "Your application" section. */
@@ -199,11 +195,9 @@ export interface ResolvedParticipantRegistrationDefinition {
   application: {
     visible: boolean
     fields: ParticipantRegistrationFieldDefinition[]
-    showTrackSelection: boolean
     showAiKnowledge: boolean
     showWhyThisEvent: boolean
     showProofOfExecution: boolean
-    trackOptions: ParticipantRegistrationTrackOption[]
     questions: CustomQuestionDefinition[]
   }
   participation: {
@@ -271,16 +265,13 @@ function section(
 function buildDraftSchema(options: {
   input: ParticipantRegistrationDefinitionInput
   visibleProfileFieldKeys: ReadonlySet<EventProfileField['key']>
-  showTrackSelection: boolean
   showAiKnowledge: boolean
-  trackIds: ReadonlySet<string>
   teammateHintsVisible: (draft: Pick<ParticipantRegistrationDraft, 'teamIntent'>) => boolean
 }): z.ZodType<ParticipantRegistrationDraft> {
   const { input } = options
   return z.object({
     termsAccepted: z.boolean(),
     inPersonAttendanceCommitment: z.boolean(),
-    selectedTrackId: options.showTrackSelection ? z.string().trim().min(1, 'Choose a track.') : z.string(),
     teamIntent: z.enum(['solo', 'team', 'unknown'] as [ParticipantRegistrationTeamIntent, ParticipantRegistrationTeamIntent, ParticipantRegistrationTeamIntent]),
     teamMemberHints: z.array(z.object({ fullName: z.string(), email: z.string() })),
     whyThisEvent: input.event.applicationWhyThisEventVisible
@@ -328,10 +319,6 @@ function buildDraftSchema(options: {
 
     if (input.event.inPersonEvent && !draft.inPersonAttendanceCommitment) {
       context.addIssue({ code: 'custom', path: ['inPersonAttendanceCommitment'], message: 'Confirm in-person attendance commitment to submit.' })
-    }
-
-    if (options.showTrackSelection && draft.selectedTrackId && !options.trackIds.has(draft.selectedTrackId)) {
-      context.addIssue({ code: 'custom', path: ['selectedTrackId'], message: 'Choose a track.' })
     }
 
     if (input.event.applicationTeamIntentVisible && input.event.requireTeamIntent && draft.teamIntent === 'unknown') {
@@ -401,7 +388,6 @@ export function createParticipantRegistrationDraft(
     whyThisEvent: '',
     proofOfExecutionUrl: '',
     aiKnowledgeLevel: '',
-    selectedTrackId: '',
     teamIntent: 'unknown',
     teamMemberHints: [],
     profileForm: Object.fromEntries(participantRegistrationProfileFieldKeys.map(key => [key, ''])) as ParticipantRegistrationProfileForm,
@@ -434,11 +420,7 @@ export function resolveParticipantRegistrationDefinition(
   const visibleProfileFieldKeys = new Set(visibleProfileFields.map(profileField => profileField.key))
   const links = visibleProfileFields.filter(profileField => profileField.key !== 'chatgptEmail' && profileField.key !== 'openaiOrgId')
   const openAi = visibleProfileFields.filter(profileField => profileField.key === 'chatgptEmail' || profileField.key === 'openaiOrgId')
-  const trackOptions = [...input.trackOptions].sort((left, right) =>
-    left.displayOrder - right.displayOrder || left.name.localeCompare(right.name) || left.id.localeCompare(right.id)
-  )
-  const showTrackSelection = input.event.eventType === 'build' && trackOptions.length > 0
-  const showAiKnowledge = input.event.applicationAiKnowledgeVisible && !showTrackSelection
+  const showAiKnowledge = input.event.applicationAiKnowledgeVisible
   const teammateHintsVisible = (draft: Pick<ParticipantRegistrationDraft, 'teamIntent'>) =>
     input.event.applicationTeamIntentVisible
     && draft.teamIntent === 'team'
@@ -468,9 +450,7 @@ export function resolveParticipantRegistrationDefinition(
   }
 
   const applicationFields: ParticipantRegistrationFieldDefinition[] = []
-  if (showTrackSelection) {
-    applicationFields.push(field('selectedTrackId', 'Track', true, draft => draft.selectedTrackId))
-  } else if (showAiKnowledge) {
+  if (showAiKnowledge) {
     applicationFields.push(field('aiKnowledgeLevel', 'AI Knowledge', input.event.requireAiKnowledge, draft => draft.aiKnowledgeLevel))
   }
   if (input.event.applicationWhyThisEventVisible) {
@@ -548,11 +528,9 @@ export function resolveParticipantRegistrationDefinition(
     application: {
       visible: applicationFields.length > 0,
       fields: applicationFields,
-      showTrackSelection,
       showAiKnowledge,
       showWhyThisEvent: input.event.applicationWhyThisEventVisible,
       showProofOfExecution: input.event.applicationProofOfExecutionVisible,
-      trackOptions,
       questions: input.registrationQuestions
     },
     participation: {
@@ -570,9 +548,7 @@ export function resolveParticipantRegistrationDefinition(
     schema: buildDraftSchema({
       input,
       visibleProfileFieldKeys,
-      showTrackSelection,
       showAiKnowledge,
-      trackIds: new Set(trackOptions.map(track => track.id)),
       teammateHintsVisible
     })
   }
@@ -681,8 +657,7 @@ export function projectParticipantRegistrationApplicationPayload(
   if (definition.commitments.inPerson) payload.inPersonAttendanceCommitment = draft.inPersonAttendanceCommitment
   if (definition.application.showWhyThisEvent) payload.whyThisEvent = draft.whyThisEvent
   if (definition.application.showProofOfExecution) payload.proofOfExecutionUrl = draft.proofOfExecutionUrl
-  if (definition.application.showTrackSelection) payload.selectedTrackId = draft.selectedTrackId
-  else if (definition.application.showAiKnowledge) payload.aiKnowledgeLevel = draft.aiKnowledgeLevel
+  if (definition.application.showAiKnowledge) payload.aiKnowledgeLevel = draft.aiKnowledgeLevel
 
   if (definition.participation.visible) {
     payload.registrationTeamIntent = draft.teamIntent

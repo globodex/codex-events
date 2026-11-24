@@ -86,7 +86,7 @@ describe('account event entry and prizes page reads', () => {
     harnesses.push(harness)
     for (const id of ['participant', 'staff', 'admin', 'platform']) await seedUser(harness, id)
     await harness.database.update(users).set({ isPlatformAdmin: true }).where(eq(users.id, 'platform'))
-    await seedEvent(harness, { eventId: 'tracks', slug: 'tracks', userId: 'admin', eventType: 'build' })
+    await seedEvent(harness, { eventId: 'tracks', slug: 'tracks', userId: 'admin', eventType: 'hackathon' })
     for (const [displayOrder, id] of ['a', 'b', 'c'].entries()) {
       await harness.database.insert(eventTracks).values({
         id, displayOrder, eventId: 'tracks', name: id, shortDescription: id, fullDescription: `guide-${id}`,

@@ -283,7 +283,8 @@ state.
   refusal for staff, judges, and participants; the event page content before
   check-in and with the flow off; and the same step after a Luma check-in and
   a staff check-in. Browser scenarios run on dedicated fixture events and cover
-  both next steps of a participant and the event builder setting.
+  both next steps of a participant, "Show the way" to the Agenda tab, and the
+  event builder setting.
 - Registration question coverage includes saving the questions for every
   event type, invalid question definitions, refusal for staff, judges, and
   participants, and a required question refused while simplified claiming is
@@ -306,7 +307,23 @@ state.
   offers on the Overview tab before and after the check-in flow, and an offer
   without uploaded values. Browser scenarios run on dedicated fixture events
   and cover a claim on the Overview tab, a participant who has not checked in
-  and sees no credits, and an offer with no credits left.
+  and sees no credits, and an offer with no credits left, which takes the place
+  of the next step while the Agenda tab stays open.
+- Open track and challenge choice coverage includes choosing, changing, and
+  clearing a choice with its audit records; refusal for a pending
+  registration, a completed event, a draft, an unknown entry, a user without a
+  registration, and a visitor; the entries on the Overview with staff
+  instructions for staff, event admins, and platform admins only; and the
+  numbers on the Participants tab, where a pending registration is left out and
+  a choice of an unpublished entry counts as no choice. A browser scenario runs
+  on a dedicated fixture event and covers a participant who reads and chooses an
+  open track and the number that the event admin sees.
+- The move of Build tracks into the challenge list is covered by migration
+  tests: every track becomes a published open track with its descriptions,
+  links and staff instructions in order, track choices and staff tracks move
+  with it, and a track that breaks a challenge rule stops the migration without
+  a change. Server and unit tests cover a Build registration or update that
+  sends a track, and Hackathon tracks keep their tests.
 - Challenge coverage includes saving a challenge list for every event type,
   a list with too many challenges, a link that is not `https`, a challenge
   without a title, and refusal for staff, judges, and participants; the

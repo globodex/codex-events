@@ -56,6 +56,7 @@ const checkInParticipant = useParticipantCheckIn(pendingActionKey, props.refresh
     :event-state="event?.state ?? 'draft'"
     :status-counts="props.page?.statusCounts"
     :checked-in-count="props.page?.checkedInCount"
+    :challenge-choices="props.page?.challengeChoices"
     :pagination="props.page?.pagination"
     @check-in="application => checkInParticipant(application, props.eventSlug)"
     @load-more="emit('loadMore')"

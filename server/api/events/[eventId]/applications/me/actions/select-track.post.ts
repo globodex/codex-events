@@ -38,7 +38,8 @@ export const applicationOperation = defineStructuredRouteOperation({
   const database = getDatabase(h3Event)
   const event = await getVisibleEventOrThrow(h3Event, eventId)
 
-  if (event.eventType !== 'hackathon' && event.eventType !== 'build') {
+  // Only Hackathons have tracks. A Build participant chooses an open track or challenge instead.
+  if (event.eventType !== 'hackathon') {
     throw new ApiError({
       statusCode: 409,
       code: 'event_tracks_unavailable',

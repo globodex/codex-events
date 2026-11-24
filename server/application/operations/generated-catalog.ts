@@ -51,6 +51,7 @@ export const applicationOperationLoaders = [
   () => import('../../api/events/[eventId]/applications/index.get'),
   () => import('../../api/events/[eventId]/applications/index.post'),
   () => import('../../api/events/[eventId]/applications/me.get'),
+  () => import('../../api/events/[eventId]/applications/me/actions/select-challenge.post'),
   () => import('../../api/events/[eventId]/applications/me/actions/select-track.post'),
   () => import('../../api/events/[eventId]/applications/me/actions/set-certificate-visibility.post'),
   () => import('../../api/events/[eventId]/applications/me/actions/verify-luma-email.post'),

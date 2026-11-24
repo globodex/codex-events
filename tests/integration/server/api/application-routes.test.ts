@@ -1088,7 +1088,7 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
-  test('POST /api/events/:eventId/applications stores selected tracks for Build registration instead of requiring AI Knowledge', async () => {
+  test('POST /api/events/:eventId/applications refuses a track in a Build registration', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
@@ -1099,9 +1099,7 @@ describe('TASK-3.6 application routes', () => {
       }
     })
     harnesses.push(harness)
-    await seedApplicationContext(harness, {
-      requireAiKnowledge: true
-    })
+    await seedApplicationContext(harness)
     await harness.database
       .update(events)
       .set({
@@ -1111,73 +1109,23 @@ describe('TASK-3.6 application routes', () => {
         submissionClosesAt: null
       })
       .where(eq(events.id, 'event_1'))
-    await harness.database.insert(eventTracks).values({
-      id: 'track_agents',
-      eventId: 'event_1',
-      name: 'Agents',
-      shortDescription: 'Build agent projects.',
-      fullDescription: '',
-      staffInstructions: '',
-      displayOrder: 1,
-      createdAt: '2026-03-22T12:08:00.000Z'
-    })
 
-    const missingTrackResponse = await harness.request('/api/events/event_1/applications', {
-      method: 'POST',
-      body: JSON.stringify({
-        applicationTermsDocumentId: 'terms_app_2'
-      })
-    })
-    expect(missingTrackResponse.status).toBe(409)
-    expect(await missingTrackResponse.json()).toMatchObject({
-      error: {
-        code: 'event_track_required'
-      }
-    })
-
-    const invalidTrackResponse = await harness.request('/api/events/event_1/applications', {
-      method: 'POST',
-      body: JSON.stringify({
-        applicationTermsDocumentId: 'terms_app_2',
-        selectedTrackId: 'track_other'
-      })
-    })
-    expect(invalidTrackResponse.status).toBe(400)
-    expect(await invalidTrackResponse.json()).toMatchObject({
-      error: {
-        code: 'event_track_invalid'
-      }
-    })
-
-    const successResponse = await harness.request('/api/events/event_1/applications', {
+    // Only Hackathons have tracks. A Build participant chooses an open track or challenge later.
+    const response = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2',
         selectedTrackId: 'track_agents'
       })
     })
-    expect(successResponse.status).toBe(200)
-    expect(await successResponse.json()).toMatchObject({
-      data: {
-        selectedTrackId: 'track_agents'
-      }
-    })
-
-    const storedApplication = await harness.database.query.userApplications.findFirst({
-      where: and(
-        eq(userApplications.eventId, 'event_1'),
-        eq(userApplications.userId, 'regular_user')
-      )
-    })
-    expect(storedApplication).toMatchObject({
-      selectedTrackId: 'track_agents'
-    })
-    expect(JSON.parse(storedApplication?.registrationDetailsJson ?? '{}')).toMatchObject({
-      aiKnowledgeLevel: ''
-    })
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({ error: { code: 'event_track_invalid' } })
+    expect(await harness.database.query.userApplications.findFirst({
+      where: and(eq(userApplications.eventId, 'event_1'), eq(userApplications.userId, 'regular_user'))
+    })).toBeUndefined()
   })
 
-  test('POST /api/events/:eventId/applications keeps AI Knowledge as Build registration fallback without tracks', async () => {
+  test('POST /api/events/:eventId/applications asks the AI Knowledge in a Build registration', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
@@ -1999,7 +1947,7 @@ describe('TASK-3.6 application routes', () => {
     }
   )
 
-  test('POST /api/events/:eventId/applications/me/actions/select-track rejects completed Build event changes', async () => {
+  test('POST /api/events/:eventId/applications/me/actions/select-track rejects changes in a completed Hackathon', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
@@ -2016,15 +1964,6 @@ describe('TASK-3.6 application routes', () => {
     harnesses.push(harness)
     await seedApplicationContext(harness)
 
-    await harness.database
-      .update(events)
-      .set({
-        eventType: 'build',
-        maxTeamMembers: 1,
-        submissionOpensAt: null,
-        submissionClosesAt: null
-      })
-      .where(eq(events.id, 'event_1'))
     await harness.database.insert(eventTracks).values([
       {
         id: 'track_agents',

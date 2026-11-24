@@ -205,7 +205,6 @@ watch(() => props.profileError || props.submissionError, async (error) => {
               :definition="props.definition"
               :errors="controller.displayedErrors.value"
               :disabled="props.isSubmitting"
-              @update-selected-track-id="draft.selectedTrackId = $event"
               @update-ai-knowledge-level="draft.aiKnowledgeLevel = $event"
               @update-why-this-event="draft.whyThisEvent = $event"
               @update-proof-of-execution-url="draft.proofOfExecutionUrl = $event"

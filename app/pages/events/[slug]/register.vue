@@ -11,7 +11,6 @@ import type {
   ParticipantApiDataResponse,
   ParticipantCurrentTermsResponse,
   ParticipantApplicationSubmittedTransition,
-  ParticipantRegistrationTrackOption,
   VisibleEventRecord
 } from '~/domains/applications/participant-application'
 import type {
@@ -108,19 +107,6 @@ const isSubmitting = ref(false)
 const submissionTransition = ref<ParticipantApplicationSubmittedTransition | null>(null)
 const accountId = computed(() => accountActor.value?.platformUser?.id)
 
-function listRegistrationTrackOptions(event: VisibleEventRecord): ParticipantRegistrationTrackOption[] {
-  return [...(event.tracks ?? [])]
-    .map(track => ({
-      id: track.id,
-      name: track.name,
-      shortDescription: track.shortDescription,
-      displayOrder: track.displayOrder
-    }))
-    .sort((left, right) =>
-      left.displayOrder - right.displayOrder || left.name.localeCompare(right.name) || left.id.localeCompare(right.id)
-    )
-}
-
 watch(accountId, (_id, previousId) => {
   if (previousId) {
     registrationDraft.value = createParticipantRegistrationDraft()
@@ -198,7 +184,6 @@ const registrationRouteState = await useApiData(
       form: {
         eventId: visibleEvent.id,
         terms: terms.application_terms,
-        tracks: listRegistrationTrackOptions(visibleEvent),
         registrationQuestions: visibleEvent.registrationQuestions,
         questions: visibleEvent.talkProposalQuestions ?? [],
         questionSetRevision: visibleEvent.talkProposalQuestionsRevision ?? 0
@@ -224,7 +209,6 @@ watch(redirectTo, (to) => {
 
 const form = computed(() => registrationRouteState.data.value?.form)
 const currentApplicationTerms = computed(() => form.value?.terms ?? null)
-const registrationTrackOptions = computed(() => form.value?.tracks ?? [])
 const registrationQuestions = computed(() => form.value?.registrationQuestions ?? [])
 const talkProposalQuestions = computed(() => form.value?.questions ?? [])
 const talkProposalQuestionsRevision = computed(() => form.value?.questionSetRevision ?? 0)
@@ -261,16 +245,9 @@ watch(
   { immediate: true }
 )
 
-watch(registrationTrackOptions, (trackOptions) => {
-  if (registrationDraft.value.selectedTrackId && !trackOptions.some(track => track.id === registrationDraft.value.selectedTrackId)) {
-    registrationDraft.value.selectedTrackId = ''
-  }
-})
-
 const registrationDefinition = computed(() => resolveParticipantRegistrationDefinition({
   event: event.value,
   profileFields: profileFields.value,
-  trackOptions: registrationTrackOptions.value,
   maxTeamMembers: event.value.maxTeamMembers,
   currentApplicationTerms: currentApplicationTerms.value,
   registrationQuestions: registrationQuestions.value,

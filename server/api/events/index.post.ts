@@ -48,7 +48,6 @@ export const applicationOperation = defineStructuredRouteOperation({
   const eventId = crypto.randomUUID()
   const createdAt = new Date().toISOString()
   const isHackathon = body.eventType === 'hackathon'
-  const supportsTracks = isHackathon || body.eventType === 'build'
 
   const eventValues = {
     id: eventId,
@@ -125,7 +124,7 @@ export const applicationOperation = defineStructuredRouteOperation({
   const statements: [Statement, ...Statement[]] = [
     database.insert(events).values({ ...eventValues, ...computeEventBalanceColumns(eventValues) }),
     ...await buildCreateEventAdminAssignmentQueries(database, { eventId, creatorUserId: actor.platformUser.id, createdAt }),
-    ...buildCreateEventTrackQueries(database, eventId, supportsTracks ? body.tracks : []),
+    ...buildCreateEventTrackQueries(database, eventId, isHackathon ? body.tracks : []),
     buildAuditLogInsert(database, {
       actorUserId: actor.platformUser.id, entityType: 'event', entityId: eventId,
       action: 'event.created', metadata: { slug: body.slug }, createdAt

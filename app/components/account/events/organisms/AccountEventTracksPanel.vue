@@ -1,13 +1,14 @@
 <script setup lang="ts">
+// The tracks of a Hackathon. Only Hackathons have tracks; a Build event offers open tracks in its
+// challenge list instead (`AccountEventChallengeChoice`).
 import type { AccountEventEntryTrack } from '#shared/domains/events/account-event-entry-page'
-import type { PublicEventType } from '~/domains/events/presentation'
 
+import EventStaffInstructions from '~/components/events/molecules/EventStaffInstructions.vue'
 import EventTrackDetails from '~/components/events/molecules/EventTrackDetails.vue'
 
 type ViewerMode = 'participant' | 'all-staff' | 'track-staff'
 
 const props = defineProps<{
-  eventType: PublicEventType
   tracks: AccountEventEntryTrack[]
   selectedTrackId?: string | null
   canSelectTrack?: boolean
@@ -66,9 +67,7 @@ const panelDescription = computed(() => {
     return 'Your selected track appears first with its guidelines and resources.'
   }
 
-  return props.eventType === 'hackathon'
-    ? 'Choose the track you want to participate in.'
-    : 'Choose the track you want to follow for this event.'
+  return 'Choose the track you want to participate in.'
 })
 
 function isSelected(track: AccountEventEntryTrack) {
@@ -164,15 +163,10 @@ function shouldShowFullDetails(track: AccountEventEntryTrack) {
           :description="track.fullDescription"
           :resources="track.resources"
         >
-          <div
+          <EventStaffInstructions
             v-if="isStaffView && track.staffInstructions?.trim()"
-            class="rounded-xl border border-amber-400/25 bg-amber-400/10 p-4 text-amber-950 dark:border-amber-300/25 dark:bg-amber-300/10 dark:text-amber-100"
-          >
-            <p class="mb-3 text-xs font-semibold uppercase tracking-[0.16em]">
-              Staff instructions
-            </p>
-            <AppMarkdownRenderer :source="track.staffInstructions" />
-          </div>
+            :source="track.staffInstructions"
+          />
         </EventTrackDetails>
       </article>
     </div>

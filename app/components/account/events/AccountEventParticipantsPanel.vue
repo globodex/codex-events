@@ -36,6 +36,8 @@ const props = withDefaults(defineProps<{
   // Confirmed participants of the whole event who are checked in.
   checkedInCount?: number
   pagination?: AccountEventParticipantsPage['pagination']
+  // How many approved participants chose each open track and challenge.
+  challengeChoices?: AccountEventParticipantsPage['challengeChoices']
 }>(), {
   isLoading: false,
   isSearching: false,
@@ -50,7 +52,8 @@ const props = withDefaults(defineProps<{
   eventState: 'draft',
   statusCounts: undefined,
   checkedInCount: 0,
-  pagination: undefined
+  pagination: undefined,
+  challengeChoices: undefined
 })
 
 const search = defineModel<string>('search', { default: '' })
@@ -84,6 +87,28 @@ function formatParticipantMetricValue(value: string | number) {
 const participantRosterApplications = computed(() =>
   listParticipantRosterApplications(props.applications)
 )
+
+// The choice that the approved list shows: every choice, no choice, or one open track or challenge.
+const noChallengeChoice = 'none'
+const challengeChoiceFilter = ref<string | null>(null)
+const challengeChoiceIds = computed(() => new Set(props.challengeChoices?.entries.map(entry => entry.id)))
+
+function selectChallengeChoiceFilter(filter: string) {
+  challengeChoiceFilter.value = challengeChoiceFilter.value === filter ? null : filter
+  // The numbers count approved participants, so the list shows them.
+  participantView.value = 'approved'
+}
+
+/** A choice of an entry that is no longer published counts as no choice, like on the server. */
+function challengeChoiceOf(application: AdminApplicationRecord) {
+  const choice = application.selectedChallengeId
+  return choice && challengeChoiceIds.value.has(choice) ? choice : noChallengeChoice
+}
+
+// The filter applies to the registrations that the list has loaded.
+const reviewApplications = computed(() => challengeChoiceFilter.value
+  ? participantRosterApplications.value.filter(application => challengeChoiceOf(application) === challengeChoiceFilter.value)
+  : participantRosterApplications.value)
 
 const participantStatusSummary = computed(() =>
   props.statusCounts
@@ -228,12 +253,42 @@ const participantSummaryGridClass = computed(() =>
           {{ filter.label }}
         </AppFilterButton>
       </div>
+
+      <div
+        v-if="challengeChoices && challengeChoices.entries.length > 0"
+        class="space-y-2 border-t border-black/8 px-1 pt-3 dark:border-white/[0.08]"
+        data-testid="participant-challenge-choices"
+      >
+        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+          Choices of approved participants
+        </p>
+        <div class="flex min-w-0 flex-wrap items-center gap-2">
+          <AppFilterButton
+            v-for="entry in challengeChoices.entries"
+            :key="entry.id"
+            :pressed="challengeChoiceFilter === entry.id"
+            :count="entry.count"
+            :data-testid="`participant-challenge-choice-${entry.id}`"
+            @click="selectChallengeChoiceFilter(entry.id)"
+          >
+            {{ entry.title }}
+          </AppFilterButton>
+          <AppFilterButton
+            :pressed="challengeChoiceFilter === noChallengeChoice"
+            :count="challengeChoices.withoutChoice"
+            data-testid="participant-challenge-choice-none"
+            @click="selectChallengeChoiceFilter(noChallengeChoice)"
+          >
+            No choice yet
+          </AppFilterButton>
+        </div>
+      </div>
     </div>
 
     <LazyAdminApplicationsReviewPanel
       v-model:search="search"
       :event-id="eventId"
-      :applications="participantRosterApplications"
+      :applications="reviewApplications"
       :view="participantView"
       :is-loading="isLoading"
       :is-searching="isSearching"

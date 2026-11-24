@@ -234,18 +234,6 @@ describe('public certificate routes', () => {
     })
   })
 
-  test('includes the single configured Build track name', async () => {
-    const harness = createHarness()
-    await seedCertificateContext(harness, { buildTrackCount: 1 })
-
-    const response = await harness.request(certificatePath)
-
-    expect(response.status).toBe(200)
-    const payload = await response.json() as { data: { eventType: string, trackName: string | null } }
-    expect(payload.data.eventType).toBe('build')
-    expect(payload.data.trackName).toBe('Advanced Builders')
-  })
-
   test('uses the display name when canonical name fields are empty', async () => {
     const harness = createHarness()
     await seedCertificateContext(harness)

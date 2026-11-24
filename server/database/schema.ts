@@ -707,6 +707,9 @@ export const userApplications = sqliteTable(
       .default(emptyRegistrationDetailsJson),
     // Maintained by D1 when a registration, account email, or Luma connection changes.
     activeLumaEmail: text('active_luma_email'),
+    // The open track or challenge that the participant chose from the challenge list of the event
+    // (`events.challenges_json`). Null until they choose; the choice is optional.
+    selectedChallengeId: text('selected_challenge_id'),
     // The answers to the registration questions of the event at the moment of registration, each
     // with the question text the participant answered (`registrationAnswerRecordsSchema`).
     registrationAnswersJson: text('registration_answers_json').notNull().default('[]'),

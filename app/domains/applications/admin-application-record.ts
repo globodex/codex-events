@@ -28,6 +28,8 @@ export interface AdminApplicationRecord {
   certificateEmailSentAt?: string | null
   isEventStaff?: boolean
   selectedTrackId: string | null
+  /** The open track or challenge that the participant chose. Only the participant list carries it. */
+  selectedChallengeId?: string | null
   submittedAt: string
   withdrawnAt: string | null
   reviewedAt: string | null

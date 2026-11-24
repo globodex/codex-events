@@ -334,11 +334,9 @@ function normalizeEventConfigFormInput(candidate: unknown) {
     return candidate
   }
 
-  const supportsTracks = input.eventType === 'build'
-
   return {
     ...input,
-    tracks: supportsTracks ? input.tracks : [],
+    tracks: [],
     submissionOpensAt: '',
     submissionClosesAt: '',
     maxTeamMembers: 1,
@@ -824,7 +822,6 @@ export function createEventFormState(event: EventRecord): EventFormState {
 
 export function buildEventConfigurationPatch(configForm: EventFormState, eventType: EventType) {
   const isHackathon = eventType === 'hackathon'
-  const supportsTracks = isHackathon || eventType === 'build'
 
   return {
     name: configForm.name,
@@ -880,13 +877,9 @@ export function buildEventConfigurationPatch(configForm: EventFormState, eventTy
     checkInFlowEnabled: configForm.checkInFlowEnabled,
     challenges: configForm.challenges,
     participantPhotosEnabled: configForm.participantPhotosEnabled,
-    ...(supportsTracks
-      ? {
-          tracks: toEventTracksPayload(configForm.tracks)
-        }
-      : {}),
     ...(isHackathon
       ? {
+          tracks: toEventTracksPayload(configForm.tracks),
           submissionOpensAt: fromDateTimeLocalValue(configForm.submissionOpensAt),
           submissionClosesAt: fromDateTimeLocalValue(configForm.submissionClosesAt),
           maxTeamMembers: configForm.maxTeamMembers,
@@ -905,7 +898,6 @@ export function buildEventConfigurationPatch(configForm: EventFormState, eventTy
 
 export function buildEventCreateBody(form: EventFormState) {
   const isHackathon = form.eventType === 'hackathon'
-  const supportsTracks = isHackathon || form.eventType === 'build'
 
   return {
     eventType: form.eventType,
@@ -918,7 +910,7 @@ export function buildEventCreateBody(form: EventFormState) {
     lumaApiKey: form.lumaApiKey.trim() || null,
     description: form.description,
     agendaItems: toEventAgendaPayload(form.agendaItems),
-    tracks: supportsTracks ? toEventTracksPayload(form.tracks) : [],
+    tracks: isHackathon ? toEventTracksPayload(form.tracks) : [],
     city: form.city,
     country: form.country,
     address: form.address,

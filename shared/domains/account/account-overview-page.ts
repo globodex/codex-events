@@ -62,6 +62,8 @@ export interface AccountOverviewApplicationSummary {
   certificateHiddenAt: string | null
   certificateRevokedAt: string | null
   selectedTrackId: string | null
+  /** The open track or challenge that the participant chose, or null. */
+  selectedChallengeId: string | null
   updatedAt: string
 }
 
@@ -190,6 +192,7 @@ export const accountOverviewApplicationSummarySchema = z.object({
   certificateHiddenAt: z.string().nullable(),
   certificateRevokedAt: z.string().nullable(),
   selectedTrackId: z.string().nullable(),
+  selectedChallengeId: z.string().nullable(),
   updatedAt: z.string()
 })
 

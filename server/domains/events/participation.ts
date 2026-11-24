@@ -106,6 +106,7 @@ function serializeApplicationSummary(application: ApplicationRecord) {
     certificateHiddenAt: application.certificateHiddenAt,
     certificateRevokedAt: application.certificateRevokedAt,
     selectedTrackId: application.selectedTrackId,
+    selectedChallengeId: application.selectedChallengeId,
     updatedAt: application.updatedAt
   }
 }

@@ -76,13 +76,6 @@ export interface ParticipantRegistrationDetails {
   aiKnowledgeLevel: ParticipantAiKnowledgeLevelInput
 }
 
-export interface ParticipantRegistrationTrackOption {
-  id: string
-  name: string
-  shortDescription: string
-  displayOrder: number
-}
-
 export type ParticipantApplicationLumaSyncStatus
   = 'not_synced'
     | 'approve_synced'
@@ -105,6 +98,8 @@ export interface ParticipantApplicationRecord {
   certificateHiddenAt: string | null
   certificateRevokedAt: string | null
   selectedTrackId: string | null
+  /** The open track or challenge that the participant chose, or null. */
+  selectedChallengeId: string | null
   reviewedAt: string | null
   reviewedByUserId: string | null
   applicationTermsDocumentId: string | null
@@ -117,7 +112,6 @@ export interface ParticipantApplicationRecord {
 
 export interface VisibleEventRecord extends Omit<PublicEvent, 'tracks'> {
   id: string
-  tracks?: ParticipantRegistrationTrackOption[]
   registrationQuestions: CustomQuestionDefinition[]
   talkProposalQuestions?: CustomQuestionDefinition[]
   talkProposalQuestionsRevision?: number

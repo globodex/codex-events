@@ -22,6 +22,7 @@ const application: AccountOverviewApplicationSummary = {
   certificateHiddenAt: null,
   certificateRevokedAt: null,
   selectedTrackId: null,
+  selectedChallengeId: null,
   updatedAt: submittedAt
 }
 

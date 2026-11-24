@@ -32,7 +32,6 @@ function createInput(overrides: Partial<ParticipantRegistrationDefinitionInput> 
       requireAiKnowledge: false
     },
     profileFields: [],
-    trackOptions: [],
     maxTeamMembers: 1,
     currentApplicationTerms: null,
     registrationQuestions: [],
@@ -66,32 +65,7 @@ describe('participant registration definition', () => {
     })
   })
 
-  test('uses Build tracks instead of AI Knowledge and validates the configured track', () => {
-    const definition = resolveParticipantRegistrationDefinition(createInput({
-      event: {
-        ...createInput().event,
-        eventType: 'build',
-        applicationAiKnowledgeVisible: true,
-        requireAiKnowledge: true
-      },
-      trackOptions: [
-        { id: 'second', name: 'Zebra', shortDescription: 'Second', displayOrder: 2 },
-        { id: 'agents', name: 'Agents', shortDescription: '**Build agents.**', displayOrder: 1 }
-      ]
-    }))
-    const draft = completeIdentity(createParticipantRegistrationDraft())
-    draft.aiKnowledgeLevel = 'advanced'
-    draft.selectedTrackId = 'missing'
-    const evaluation = evaluateParticipantRegistration(definition, draft, true)
-
-    expect(definition.application).toMatchObject({ showTrackSelection: true, showAiKnowledge: false })
-    expect(definition.application.trackOptions.map(track => track.id)).toEqual(['agents', 'second'])
-    expect(definition.application.fields.map(field => field.id)).toEqual(['selectedTrackId'])
-    expect(evaluation.errors.selectedTrackId).toBe('Choose a track.')
-    expect(evaluation.errors.aiKnowledgeLevel).toBeUndefined()
-  })
-
-  test('uses configured AI Knowledge for Build without tracks', () => {
+  test('asks the configured AI Knowledge in a Build event', () => {
     const definition = resolveParticipantRegistrationDefinition(createInput({
       event: {
         ...createInput().event,
@@ -205,7 +179,6 @@ describe('participant registration definition', () => {
         { key: 'githubProfileUrl', label: 'GitHub', visible: true, required: false },
         { key: 'xProfileUrl', label: 'X', visible: false, required: false }
       ],
-      trackOptions: [{ id: 'agents', name: 'Agents', shortDescription: 'Agents', displayOrder: 0 }],
       maxTeamMembers: 3
     }))
     const draft = completeIdentity(createParticipantRegistrationDraft())
@@ -214,7 +187,6 @@ describe('participant registration definition', () => {
     draft.whyThisEvent = 'Build useful tools'
     draft.proofOfExecutionUrl = 'not-a-url'
     draft.aiKnowledgeLevel = 'advanced'
-    draft.selectedTrackId = 'agents'
     draft.teamIntent = 'team'
     draft.teamMemberHints = [
       { fullName: 'Grace Hopper', email: 'grace@example.com' },
@@ -228,7 +200,7 @@ describe('participant registration definition', () => {
     })
     expect(projectParticipantRegistrationApplicationPayload(definition, draft)).toEqual({
       whyThisEvent: 'Build useful tools',
-      selectedTrackId: 'agents',
+      aiKnowledgeLevel: 'advanced',
       registrationTeamIntent: 'team',
       registrationTeamMembers: [
         { fullName: 'Grace Hopper', email: 'grace@example.com' },

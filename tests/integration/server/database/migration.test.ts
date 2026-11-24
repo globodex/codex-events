@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
 import { splitSqlStatements } from '../../../support/backend/migrations'
+import { eventChallengesSchema } from '../../../../shared/domains/events/challenges'
 import { createTestD1Database, type TestD1Database } from '../../../support/backend/fake-d1'
 
 const migrationSql = readdirSync(join(process.cwd(), 'drizzle'))
@@ -184,6 +185,93 @@ describe('shared database migration', () => {
     } finally {
       await db.close()
     }
+  })
+
+  describe('moving Build tracks into the challenge list', () => {
+    const migration = '0090_merge_build_tracks.sql'
+
+    /** A database migrated up to the merge, with a Build event `build` and a Hackathon `hack`. */
+    async function seedTracks(buildTrackName = 'Technical') {
+      const earlierMigrations = readdirSync(join(process.cwd(), 'drizzle'))
+        .filter(name => /^\d+.*\.sql$/.test(name) && name < migration)
+        .sort()
+        .map(name => readFileSync(join(process.cwd(), 'drizzle', name), 'utf8'))
+      const db = createTestD1Database({ applyMigrations: false })
+      await db.exec(earlierMigrations.join('\n'))
+      const now = isoTimestamp(0)
+      for (const id of ['organizer', 'participant', 'staffer']) await seedUser(db, id, now)
+      for (const id of ['build', 'hack']) await seedEvent(db, id, 'completed', now, 'organizer')
+      const existingChallenge = { id: 'existing', title: 'Existing challenge', instructions: 'Do it.', resources: [], isPublished: true }
+      const links = [
+        { id: 'docs', title: 'Docs', url: 'http://docs.example', description: 'Read first', displayOrder: 2 },
+        { id: 'starter', title: 'Starter', url: 'https://starter.example', description: null, displayOrder: 1 }
+      ]
+      await db.prepare(`update events set event_type = 'build', submission_opens_at = null, submission_closes_at = null,
+        challenges_json = ? where id = 'build'`).bind(JSON.stringify([existingChallenge])).run()
+      await db.prepare(`insert into event_tracks (id, event_id, name, short_description, full_description,
+        staff_instructions, resources_json, display_order) values (?, ?, ?, ?, ?, ?, ?, ?)`)
+        .bind('technical', 'build', buildTrackName, 'For builders.', 'Long text.', 'Check laptops.', JSON.stringify(links), 1)
+        .run()
+      await db.exec(`
+        insert into event_tracks (id, event_id, name, short_description, display_order) values ('everyone', 'build', 'Non-technical', 'For everyone.', 0);
+        insert into event_tracks (id, event_id, name, short_description, display_order) values ('hack-track', 'hack', 'Agents', 'Build agents.', 0);
+        insert into user_applications (id, event_id, user_id, status, selected_track_id) values ('choice', 'build', 'participant', 'approved', 'technical');
+        insert into event_role_assignments (id, event_id, user_id, role, is_staff, staff_track_id, created_at)
+          values ('staff', 'build', 'staffer', 'staff', 1, 'everyone', '${now}');
+      `)
+
+      return { db, existingChallenge }
+    }
+
+    function applyMerge(db: TestD1Database) {
+      const statements = splitSqlStatements(readFileSync(join(process.cwd(), 'drizzle', migration), 'utf8'))
+      return db.batch(statements.map(statement => db.prepare(statement)))
+    }
+
+    test('turns each Build track into an open track with all its text and moves choices and staff', async () => {
+      const { db, existingChallenge } = await seedTracks()
+      try {
+        await applyMerge(db)
+
+        const event = await db.prepare('select challenges_json, public_content_revision from events where id = ?').bind('build').first<{ challenges_json: string, public_content_revision: number }>()
+        const tracks = await db.prepare('select id from event_tracks order by id').all()
+        const choice = await db.prepare('select selected_track_id, selected_challenge_id from user_applications where id = ?').bind('choice').first()
+        const staff = await db.prepare('select staff_track_id, staff_challenge_id from event_role_assignments where id = ?').bind('staff').first()
+        expect(eventChallengesSchema.parse(JSON.parse(event!.challenges_json))).toEqual([
+          existingChallenge,
+          { id: 'everyone', title: 'Non-technical', instructions: 'For everyone.', resources: [], isPublished: true, isOpenTrack: true, staffInstructions: '' },
+          {
+            id: 'technical',
+            title: 'Technical',
+            instructions: 'For builders.\n\nLong text.\n\n**Links**\n- [Starter](https://starter.example)\n- [Docs](http://docs.example): Read first',
+            resources: [],
+            isPublished: true,
+            isOpenTrack: true,
+            staffInstructions: 'Check laptops.'
+          }
+        ])
+        expect(event!.public_content_revision).toBe(1)
+        expect(tracks.results).toEqual([{ id: 'hack-track' }])
+        expect(choice).toEqual({ selected_track_id: null, selected_challenge_id: 'technical' })
+        expect(staff).toEqual({ staff_track_id: null, staff_challenge_id: 'everyone' })
+      } finally {
+        await db.close()
+      }
+    })
+
+    test('stops without a change when a track does not fit the challenge rules', async () => {
+      const { db, existingChallenge } = await seedTracks('x'.repeat(121))
+      try {
+        await expect(applyMerge(db)).rejects.toThrow(/CHECK constraint failed/)
+
+        const event = await db.prepare('select challenges_json from events where id = ?').bind('build').first<{ challenges_json: string }>()
+        const tracks = await db.prepare('select id from event_tracks order by id').all()
+        expect(JSON.parse(event!.challenges_json)).toEqual([existingChallenge])
+        expect(tracks.results).toEqual([{ id: 'everyone' }, { id: 'hack-track' }, { id: 'technical' }])
+      } finally {
+        await db.close()
+      }
+    })
   })
 
   test('migrates the existing simplified giveaway without changing assigned credits', async () => {

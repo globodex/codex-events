@@ -7,6 +7,7 @@ import type {
   CustomQuestionAnswer,
   CustomQuestionDefinition
 } from '#shared/domains/events/custom-questions'
+import { eventChallengeSchema, type EventChallenge } from '#shared/domains/events/challenges'
 
 import {
   accountOverviewApplicationStatusSchema,
@@ -246,6 +247,12 @@ export interface AccountEventEntryPage {
    * the event builder, which reads them from the settings page.
    */
   participantCredits: AccountEventEntryParticipantCreditOffer[]
+  /**
+   * The published open tracks and challenges, for a person who may read them
+   * (`canReadEventChallenges`), and empty for everyone else. A confirmed participant chooses one
+   * of them on the Overview tab.
+   */
+  challenges: EventChallenge[]
   talkProposal: AccountEventEntryTalkProposal | null
   talkProposalReviews: AccountEventEntryTalkProposalReview[]
   talkProposalReviewTotal: number
@@ -463,6 +470,7 @@ export const accountEventEntryPageSchema = z.object({
   access: accountEventEntryAccessSchema.nullable(),
   participation: accountOverviewRecordSchema.nullable(),
   participantCredits: z.array(accountEventEntryParticipantCreditOfferSchema),
+  challenges: z.array(eventChallengeSchema),
   talkProposal: accountEventEntryTalkProposalSchema.nullable(),
   talkProposalReviews: z.array(accountEventEntryTalkProposalReviewSchema),
   talkProposalReviewTotal: z.number().int().nonnegative(),

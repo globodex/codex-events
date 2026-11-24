@@ -32,7 +32,6 @@ const definition = resolveParticipantRegistrationDefinition({
     requireAiKnowledge: false
   },
   profileFields: [],
-  trackOptions: [],
   maxTeamMembers: 4,
   currentApplicationTerms: null,
   registrationQuestions: [],

@@ -25,6 +25,7 @@ const emit = defineEmits<{
 // The builder checklist focuses this field when the challenge is unfinished.
 const titleFieldId = computed(() => `${eventBuilderChallengeTitleIdPrefix}${props.challenge.id}`)
 const instructionsFieldId = computed(() => `event-builder-challenge-instructions-${props.challenge.id}`)
+const staffInstructionsFieldId = computed(() => `event-builder-challenge-staff-instructions-${props.challenge.id}`)
 
 function updateResource(resourceIndex: number, patch: Partial<ChallengeResource>) {
   emit('update', {
@@ -147,6 +148,17 @@ function removeResource(resourceIndex: number) {
           Add resource
         </AppButton>
       </div>
+
+      <!-- Only the event team reads these: staff, event admins and platform admins. -->
+      <AdminMarkdownEditorField
+        :model-value="props.challenge.staffInstructions ?? ''"
+        :name="staffInstructionsFieldId"
+        label="Staff instructions"
+        :editor-id="staffInstructionsFieldId"
+        :data-testid="`event-builder-challenge-staff-instructions-${props.index}`"
+        height="140px"
+        @update:model-value="emit('update', { staffInstructions: $event })"
+      />
 
       <AppCheckbox
         :model-value="props.challenge.isPublished"

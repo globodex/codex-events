@@ -346,9 +346,9 @@ Behavior:
 An event with its check-in flow on gives every `approved` application one of two positions. A position is derived from effective attendance. It is not a stored state.
 
 - `check-in pending`
-  The participant has no effective attendance. The account event overview tells the participant to check in with the event team and links to the agenda, which also holds the event's challenges when the participant can read them.
+  The participant has no effective attendance. The account event overview shows how to get there: a link to the Agenda tab with the first session that has a room selected, so the map shows the way to check in.
 - `finished`
-  The participant has effective attendance. The account event overview lists the event's activities and the credit offers of the event. The participant can claim credits there and add photos to the gallery when the event allows participant photos.
+  The participant has effective attendance. The account event overview shows the credit offers of the event at the top, or lists the event's activities when the event has no offers. The participant can claim credits there and add photos to the gallery when the event allows participant photos.
 
 Position changes:
 

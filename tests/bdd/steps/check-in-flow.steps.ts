@@ -52,12 +52,25 @@ Then('I should see no next step', async ({ page }) => {
   await expect(nextStepCard(page)).toHaveCount(0)
 })
 
+// Before check-in the next step shows how to get there and lets the participant say they checked in.
 Then('my next step should be to check in with the event team', async ({ page }) => {
-  await expect(nextStepCard(page).getByRole('heading', { name: 'Check in with the event team' })).toBeVisible()
+  await expect(nextStepCard(page).getByRole('heading', { name: 'How to get there' })).toBeVisible()
+  await expect(nextStepCard(page).getByRole('button', { name: 'I\'ve checked in' })).toBeVisible()
 })
 
+// "Show the way" opens the Agenda tab with the first session that has a room selected.
 When('I open the agenda from my next step', async ({ page }) => {
-  await nextStepCard(page).getByRole('link', { name: 'Agenda' }).click()
+  await nextStepCard(page).getByRole('link', { name: 'Show the way' }).click()
+  await expect(page).toHaveURL(/tab=program&session=first/)
+})
+
+// After check-in with credit offers, the credits stand at the top of the Overview in place of the
+// next step. The activities stay on their tabs.
+Then('I should be able to open the Agenda tab', async ({ page }) => {
+  const agendaTab = page.getByRole('tab', { name: 'Agenda', exact: true })
+
+  await agendaTab.click()
+  await expect(agendaTab).toHaveAttribute('aria-selected', 'true')
 })
 
 Then('I should see the agenda session {string}', async ({ page }, sessionTitle: string) => {

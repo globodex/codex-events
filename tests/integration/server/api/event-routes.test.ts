@@ -2143,7 +2143,7 @@ describe('TASK-3.5 event CRUD routes', () => {
     ])
     await harness.database.insert(events).values({
       id: 'event_track_visibility',
-      eventType: 'build',
+      eventType: 'hackathon',
       name: 'Track Visibility Event',
       slug: 'track-visibility-event',
       description: 'Track visibility fixture',
@@ -2152,6 +2152,8 @@ describe('TASK-3.5 event CRUD routes', () => {
       address: 'Address',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
       state: 'registration_open',
       maxTeamMembers: 1,
       currentApplicationTermsDocumentId: null,
@@ -4051,21 +4053,6 @@ describe('TASK-3.5 event CRUD routes', () => {
         slug: 'organizer-event',
         description: 'Organizer-owned event',
         agendaItems: [],
-        tracks: [{
-          id: 'track_build_agents',
-          name: 'Agents',
-          shortDescription: 'Build with agents.',
-          fullDescription: 'Use the agent track guidelines.',
-          staffInstructions: 'Route agent questions to the mentor desk.',
-          resources: [{
-            id: 'resource_agent_guide',
-            title: 'Starter guide',
-            url: 'https://example.com/agents',
-            description: 'Read before the event.',
-            displayOrder: 1
-          }],
-          displayOrder: 1
-        }],
         city: 'Vienna',
         country: 'Austria',
         address: 'Address',
@@ -4079,16 +4066,6 @@ describe('TASK-3.5 event CRUD routes', () => {
       data: {
         eventType: 'build',
         slug: 'organizer-event',
-        tracks: [{
-          id: 'track_build_agents',
-          name: 'Agents',
-          resources: [{
-            id: 'resource_agent_guide',
-            title: 'Starter guide',
-            url: 'https://example.com/agents',
-            description: 'Read before the event.'
-          }]
-        }],
         createdByUserId: 'event_organizer'
       }
     })
@@ -4102,20 +4079,6 @@ describe('TASK-3.5 event CRUD routes', () => {
       submissionClosesAt: null,
       createdByUserId: 'event_organizer'
     })
-    const createdTrack = await harness.database.query.eventTracks.findFirst({
-      where: eq(eventTracks.eventId, createdEvent!.id)
-    })
-    expect(createdTrack).toMatchObject({
-      id: 'track_build_agents',
-      resourcesJson: JSON.stringify([{
-        id: 'resource_agent_guide',
-        title: 'Starter guide',
-        url: 'https://example.com/agents',
-        description: 'Read before the event.',
-        displayOrder: 1
-      }])
-    })
-
     const assignments = await harness.database.query.eventRoleAssignments.findMany({
       where: eq(eventRoleAssignments.eventId, createdEvent!.id),
       orderBy: [asc(eventRoleAssignments.userId)]

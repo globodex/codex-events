@@ -5,6 +5,11 @@ import { canReadEventChallenges, parseEventChallengesJson } from '#shared/domain
 type EventRecord = typeof events.$inferSelect
 type ApplicationRecord = typeof userApplications.$inferSelect
 
+/** The published challenges and open tracks of the event in display order, without drafts. */
+export function listPublishedEventChallenges(event: Pick<EventRecord, 'challengesJson'>) {
+  return parseEventChallengesJson(event.challengesJson).filter(challenge => challenge.isPublished)
+}
+
 /**
  * The challenges that a participant page gives one person: the published challenges of the
  * event in display order for a person who may read them, and no challenge for everyone else.
@@ -29,7 +34,13 @@ export function listReadableEventChallenges(reader: {
     isApprovedParticipant: application?.status === 'approved'
   })
 
-  return mayRead
-    ? parseEventChallengesJson(event.challengesJson).filter(challenge => challenge.isPublished)
-    : []
+  if (!mayRead) {
+    return []
+  }
+
+  const challenges = listPublishedEventChallenges(event)
+  // The staff instructions are for the event team only.
+  return authorization.isEventAdmin || authorization.isStaff
+    ? challenges
+    : challenges.map(({ staffInstructions: _staffInstructions, ...challenge }) => challenge)
 }

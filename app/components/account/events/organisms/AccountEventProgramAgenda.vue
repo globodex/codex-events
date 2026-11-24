@@ -14,6 +14,11 @@ const props = defineProps<{
   agendaItems: PublicEventAgendaItem[]
   /** The published challenges that this person may read. A room of a floor plan names its challenge. */
   challenges: AgendaChallenge[]
+  /**
+   * The session that the link to this tab names: its id, or `first` for the earliest session with
+   * a room. "How to get there" on the Overview tab links to `first`.
+   */
+  linkedSession?: string | null
 }>()
 
 // The public agenda blocks before and after the program's block. The sessions cover the block itself.
@@ -106,6 +111,18 @@ async function selectChallenge(challengeId: string) {
   // On a narrow screen the challenges stand below the map. Scroll just enough to show the whole map.
   floorPlan.value?.$el.scrollIntoView({ block: 'nearest' })
 }
+
+// The tab opens with the linked session selected, so the map shows its room and the way there.
+onMounted(() => {
+  const sessionsWithRoom = props.program.tracks.flatMap(track => track.sessions).filter(session => session.room)
+  const linked = props.linkedSession === 'first'
+    ? [...sessionsWithRoom].sort((left, right) => left.startsAfterMinutes - right.startsAfterMinutes)[0]
+    : sessionsWithRoom.find(session => session.id === props.linkedSession)
+
+  if (linked) {
+    selectSession(linked)
+  }
+})
 
 function returnToSession() {
   const session = selectedSession.value

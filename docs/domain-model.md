@@ -97,8 +97,8 @@ Key characteristics:
 - The public event page shows the event's date, start time, place and, for a Hackathon, team size in its header line. While registration is the current state of the event, the same line names the next registration deadline. A Luma link of the event stands in that line too. Below it the Overview shows the event description, the tracks, and the public agenda. Prizes, winners, and public gallery photos have their own tabs when the event has them. An event without them shows the Overview without tabs.
 - The event workspace shows the agenda on its Agenda tab, which everyone who can open the workspace sees when the event has an agenda. Confirmed participants and event admins see the program's sessions there, also before check-in, together with the public agenda blocks before and after the program's block. Everyone else sees the public agenda blocks with the public sessions, as the public event page shows them. A public agenda block can carry a short description, shown with its line breaks. While the program runs, the tab marks the session in progress with the time left and shows when the next session starts.
 - A session can have a second title and room for participants who are checked in. A participant with effective attendance sees them in place of the session's title and room, without the session's details. Every other person sees the session's own title and room, and never the second version. A public session shows its own title on the public event page. The Agenda tab shows the second version after the participant reloads the page or uses the reload of the next-step card. Example: "Doors open and check-in" leads to the check-in desk, and becomes "Breakfast" in the breakfast room once the participant is checked in.
-- The Overview tab of the event workspace shows the address, with a link to a map, for people who may see it, and the event's links. For an online event it says that no in-person attendance is required. The date, the city and the team size stand in the page header. A registered person can withdraw there with one button; the confirmation names the consequence. Participants choose their track and read track resources there. The workspace does not show the registration window. Event admins edit the schedule, the location and the images in the event builder. A session that has details offers them in a dialog; selecting a session does not change the size of its agenda item.
-- Each event can turn on a check-in flow. The account event overview then shows a confirmed participant one next step: check in with the event team, then open the event's activities. The activities are the agenda, which also holds the event challenges, and, when the participant can open them, the event credits and the photo gallery. While the participant still has to check in, the next step already links to the activity that is open before check-in: the agenda. The check-in flow is off by default, and a completed event shows no next step.
+- The Overview tab of the event workspace shows the address, with a link to a map, for people who may see it, and the event's links. For an online event it says that no in-person attendance is required. The date, the city and the team size stand in the page header. A registered person can withdraw there with one button; the confirmation names the consequence. Hackathon participants choose their track and read track resources there; Build participants choose an open track or challenge. The workspace does not show the registration window. Event admins edit the schedule, the location and the images in the event builder. A session that has details offers them in a dialog; selecting a session does not change the size of its agenda item.
+- Each event can turn on a check-in flow. The account event overview then shows a confirmed participant one next step at the top. Before check-in it shows how to get there: a link to the Agenda tab with the first session that has a room selected, so the map shows the way, and a button that reads the page again after the check-in. After check-in, the credit offers of the event take its place when the event has offers; otherwise it links to the event's activities: the agenda, which also holds the event challenges, and, when the participant can open it, the photo gallery. The check-in flow is off by default, and a completed event shows no next step.
 - Each event can offer challenges: practical tasks that participants work on during the event. See `EventChallenge`.
 - Each event can allow participant photos. Approved participants who finished the check-in flow can then add their own photos to the event photo gallery. Participant photos are off by default, and event admins and platform admins turn them on in the event builder. The setting does not depend on the check-in flow setting. See `EventPhoto`.
 - The event builder saves an event only while its registration questions and its challenges are complete. Otherwise the first incomplete entry of the list is an open step that names what it lacks, for example a question without its text on the Registration level or a challenge without a title on the Extras level.
@@ -132,7 +132,7 @@ Key characteristics:
 - A configured Discord server URL is visible only in the account-scoped event workspace for approved participants, judges, staff, event admins, and platform admins.
 - A configured slides URL is visible only in the account-scoped event workspace for approved participants, judges, staff, event admins, and platform admins.
 - Each event can define credit offers with uploaded redeemable values for approved participants and event staff.
-- Hackathon and Build events can define ordered tracks with a participant-facing name, short description, full participant guidelines, staff instructions, and resource links.
+- Hackathon events can define ordered tracks with a participant-facing name, short description, full participant guidelines, staff instructions, and resource links. Build events offer open tracks in their challenge list instead.
 
 Rules:
 
@@ -162,9 +162,6 @@ Meetup and Build rules:
 - Meetups and Builds use only `draft`, `registration_open`, and `completed`.
 - Meetups and Builds can approve, reject, and withdraw applications through the shared `UserApplication` model.
 - Approved applications represent participation directly.
-- Build tracks organize selected-track resource links and do not create submission, judging, or outcome workflows.
-- Build registration asks the applicant to choose a track when the Build event has configured tracks.
-- Build registration keeps the AI Knowledge question as the applicant-routing fallback when the Build event has no configured tracks and AI Knowledge is visible.
 - Meetups and Builds do not create teams, project submissions, judging assignments, prizes, winner records, or completed competition outcomes.
 - Competition-only APIs and UI surfaces are unavailable for Meetups and Builds.
 - Only Meetups can enable talk proposals. Enabling requires a Call for talks opening timestamp strictly before its closing timestamp; disabled Meetups and all non-Meetup events store both timestamps as null.
@@ -200,18 +197,18 @@ Rules:
 
 ### EventTrack
 
-An ordered participant-facing category belonging to one Hackathon or Build event.
+An ordered participant-facing category belonging to one Hackathon event. Build events offer open tracks in their challenge list instead (see `EventChallenge`).
 
 Rules:
 
-- Each track belongs to exactly one Hackathon or Build event.
+- Each track belongs to exactly one Hackathon event.
 - A track has a name, a short participant-facing markdown description, full participant-facing markdown guidelines, and staff-only markdown instructions.
 - A track can include zero or more resources.
 - Each track resource has a title, an `http` or `https` link, and an optional description.
 - Tracks are ordered for admin editing and public display.
 - Public event pages show track names and short descriptions by default. Public event detail links with `tracks=full` also show participant-facing full guidelines and resource links.
 - Account-scoped event detail pages show every track name and short description to eligible participants before track selection.
-- Build applicants select a track during registration when the Build event has configured tracks. Submitted and approved participants can choose or change their event track from the account-scoped event detail page until the event is completed.
+- Registration never asks for a track. Submitted and approved participants can choose or change their event track from the account-scoped event detail page until the event is completed.
 - A participant's selected track is stored on that participant's `UserApplication` for the event.
 - Event admins and platform admins can filter approved participant review by selected track. The all-track view includes approved participants without a selected track, and per-track counts include only approved participants who selected that track.
 - After a participant selects a track, the selected track appears first in the account-scoped event detail page and shows its full guidelines and resources.
@@ -219,7 +216,6 @@ Rules:
 - Default public event pages show track summaries.
 - Staff instructions are visible only to platform admins, event admins, whole-event staff, and staff members assigned to that track.
 - Hackathon tracks are available as submission choices.
-- Build tracks are resource groups for participants.
 - Tracks do not change judging assignment, scoring criteria, or blind-review behavior in this version.
 - Staff assignments can reference one track as participant-facing support context.
 - Staff track context does not restrict staff permissions or participant and team visibility.
@@ -242,7 +238,10 @@ Rules:
 - Published challenges appear on the Agenda tab of the account event workspace, as a list next to the map: beside it where the screen is wide enough, and below it otherwise. Each challenge shows its title, the staff members assigned to it under "Staff", and the rooms that name it, and a Details button opens its instructions and resource links. Staff, event admins, and platform admins read them in every event. An approved participant reads them from the moment the application is approved, also before the event and without effective attendance.
 - A person who can read the published challenges but not the program's sessions sees the challenges next to the public agenda blocks, without a map and without rooms.
 - The Agenda tab exists for a person who can read at least one published challenge, also when the event has no agenda. Nobody else receives challenge content. Drafts appear only in the event builder.
-- Challenges are a list to read. The platform records nothing when a participant opens, picks, or completes a challenge.
+- The Overview tab of the event workspace shows the published open tracks under "Here are the planned tracks" and the published challenges under "Don't know what to build? Participate in one of our challenges", below the credit offers. Each card shows the title, and "Show more" opens the instructions and resource links.
+- A confirmed participant can choose one published open track or challenge on the Overview tab, and can change or clear that choice until the event is completed. The choice is optional, registration never asks for it, and the registration stores it. It does not change what the participant can read or do. A choice of an entry that is no longer published counts as no choice.
+- Staff, event admins, and platform admins see on the Participants tab how many confirmed participants chose each published open track and challenge and how many have no choice, and they can filter the confirmed participants by choice.
+- A challenge or open track can carry Markdown staff instructions. Staff, event admins, and platform admins read them with the instructions; nobody else receives them.
 - Reading challenges does not depend on the check-in flow or on an event credit claim.
 
 ### EventPhoto
@@ -392,7 +391,7 @@ Rules:
 - Event-admin access is scoped to the event named by the assignment. Being an event admin for one event does not grant admin visibility or admin operations for other events.
 - Event organizers and event admins can still apply to and participate in other events where they do not hold event-admin access.
 - `EventRoleAssignment` includes `is_in_judge_pool` to control automatic blind-review distribution and pitch-panel membership and `is_staff` to record staff designation.
-- `EventRoleAssignment` can include one staff track when staff designation is enabled for a Hackathon or Build event with tracks.
+- `EventRoleAssignment` can include one staff track when staff designation is enabled for a Hackathon event with tracks.
 - Judge assignments and `is_in_judge_pool` are available only for Hackathon events.
 - A user with role `judge` must be in the automatic judge distribution pool and must not be marked as staff.
 - A user with role `staff` must be marked as staff and must not be in the automatic judge distribution pool.
@@ -451,8 +450,7 @@ Rules:
 - Platform admins can run an event-scoped operational backfill route to resolve stored legacy Luma usernames into canonical Luma emails for already-registered users.
 - In Hackathon events, a user must be approved before creating or joining a team in that event.
 - In Meetup and Build events, an approved application is the participant's event access record.
-- In Hackathon and Build events with tracks, submitted and approved applicants can store one selected track on their application until the event is completed.
-- In Build events with tracks, application submission stores the selected track and does not require an AI Knowledge response for that application.
+- In Hackathon events with tracks, submitted and approved applicants can store one selected track on their application until the event is completed.
 - A participant's selected track can prefill a new Hackathon submission draft when the selected track is valid for the event, but team admins can change the submission track.
 - Withdrawal ends participation eligibility for the event, including in-person attendance eligibility when applicable.
 - Withdrawal retains the application record for auditability, event-terms acceptance when present, and operational history. It does not hard-delete the application.
@@ -468,7 +466,7 @@ Rules:
 - When participation mode is visible and the registration team-intent hint is `team`, the user application can include free-form teammate hints captured during application (name/family-name and/or email per hinted member).
 - A user application can include a free-form `why this event` response only when that field is visible.
 - A user application can include one or more proof-of-execution links only when that field is visible.
-- A user application can include an AI Knowledge level only when that field is visible. For Build events with configured tracks, track selection replaces AI Knowledge during registration.
+- A user application can include an AI Knowledge level only when that field is visible.
 - If visible participation mode is required, the user must choose `solo` or `team`.
 - If visible motivation is required, the `why this event` response must be non-empty.
 - If visible proof of execution is required, at least one proof-of-execution link must be non-empty and every provided link must use `http` or `https`.
@@ -519,7 +517,7 @@ Key characteristics:
 - The certificate is derived state computed from the event, user, application, and Hackathon submission records. It is not stored as a separate entity.
 - The certificate names the participant using the canonical first and family name, with the display name used while canonical name fields are empty.
 - The certificate date is the earliest agenda item start when the event has agenda items, otherwise the submission window start, formatted in UTC.
-- A Hackathon certificate names the track of the participant team's `submitted` or `locked` submission when that submission has a track. A Build certificate names the event track only when the Build has exactly one configured track. Meetup certificates do not name a track.
+- A Hackathon certificate names the track of the participant team's `submitted` or `locked` submission when that submission has a track. Build and Meetup certificates do not name a track.
 - A completed Hackathon's certificate also names the participant team, the submitted project, the team's final placement, and the prize names the team won, resolved from the competition outcome model. These outcome details never appear before the event is `completed`, matching public winner visibility.
 - Certificates with a top-three placement present gold, silver, or bronze trophy treatments on the certificate card and the social-preview image.
 - The certificate ID is derived from the event type, city, certificate date, and participant name, with the user application identifier as the fallback for names without usable characters.

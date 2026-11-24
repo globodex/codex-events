@@ -42,7 +42,7 @@ const tracks = [
 const meta = {
   title: 'Participant/Events/Tracks',
   component: AccountEventTracksPanel,
-  args: { eventType: 'build', tracks, canSelectTrack: true, selectedTrackId: null },
+  args: { tracks, canSelectTrack: true, selectedTrackId: null },
   render: args => ({
     components: { AccountEventTracksPanel },
     setup: () => ({ args, selectedTrackId: shallowRef(args.selectedTrackId) }),

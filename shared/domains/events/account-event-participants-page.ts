@@ -62,6 +62,7 @@ const applicationSchema = z.object({
   certificateEmailSentAt: z.string().nullable().optional(),
   isEventStaff: z.boolean().optional(),
   selectedTrackId: z.string().nullable(),
+  selectedChallengeId: z.string().nullable(),
   reviewedAt: z.string().nullable(),
   reviewedByUserId: z.string().nullable(),
   applicationTermsDocumentId: z.string().nullable(),
@@ -102,7 +103,19 @@ export const accountEventParticipantsPageSchema = z.object({
     withdrawn: z.number().int().nonnegative()
   }),
   // Confirmed participants of the whole event who are checked in.
-  checkedInCount: z.number().int().nonnegative()
+  checkedInCount: z.number().int().nonnegative(),
+  // How many confirmed participants of the whole event chose each published open track and
+  // challenge, in display order, for planning the rooms. `withoutChoice` counts the others, also
+  // those whose choice is no longer published.
+  challengeChoices: z.object({
+    entries: z.array(z.object({
+      id: z.string(),
+      title: z.string(),
+      isOpenTrack: z.boolean(),
+      count: z.number().int().nonnegative()
+    })),
+    withoutChoice: z.number().int().nonnegative()
+  })
 })
 
 export type AccountEventParticipantApplication = z.infer<typeof applicationSchema>

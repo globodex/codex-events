@@ -96,6 +96,7 @@ function serializeApplicationSummary(application: ApplicationRecord) {
     certificateHiddenAt: application.certificateHiddenAt,
     certificateRevokedAt: application.certificateRevokedAt,
     selectedTrackId: application.selectedTrackId,
+    selectedChallengeId: application.selectedChallengeId,
     updatedAt: application.updatedAt
   }
 }
@@ -350,8 +351,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
         : null,
       roles as EventRoleAssignmentRecord[]
     )
-    // The challenges themselves travel with the Agenda page. This page only needs to know
-    // whether the caller reads any, for the tab list.
+    // The Overview tab shows these challenges and open tracks; the tab list asks whether there are any.
     const readableChallenges = listReadableEventChallenges({ event, authorization: context.authorization, application })
     const tabVisibility = buildAccountEventTabVisibility({
       event,
@@ -375,6 +375,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
       access,
       participation: participationRecord,
       participantCredits,
+      challenges: readableChallenges,
       talkProposal,
       talkProposalReviews,
       talkProposalReviewTotal: talkProposalResult[1].pagination.total,

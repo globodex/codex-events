@@ -941,7 +941,7 @@ const eventBuilderExtraDefinitions: readonly EventBuilderExtraDefinition[] = [
     id: 'tracks',
     icon: 'i-lucide-git-branch',
     title: 'Tracks',
-    appliesTo: ['hackathon', 'build'],
+    appliesTo: ['hackathon'],
     editOnly: false,
     summary: ({ form }) => describeCount(form.tracks.length)
   },

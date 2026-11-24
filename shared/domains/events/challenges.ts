@@ -3,8 +3,8 @@ import { z } from 'zod'
 import { isHttpsCouponUrl } from '#shared/domains/credits/simplified-giveaways'
 
 // Challenges are the practical tasks an organizer offers at an event: a title, instructions and
-// a few resource links. Participants read them. Nothing is stored about who reads or works on
-// a challenge.
+// a few resource links. Open tracks are entries of the same list where participants bring their
+// own idea. A confirmed participant can choose one entry (`user_applications.selected_challenge_id`).
 // This file owns the challenge model and the rule for who may read challenges, for the server
 // and the app.
 
@@ -13,6 +13,7 @@ export const eventChallengeLimits = {
   maxChallenges: 20,
   maxTitleLength: 120,
   maxInstructionsLength: 4000,
+  maxStaffInstructionsLength: 4000,
   maxResources: 10,
   maxResourceLabelLength: 80,
   maxResourceUrlLength: 2048
@@ -49,7 +50,14 @@ export const eventChallengeSchema = z.object({
    * True for an open track: an entry where participants bring their own idea and no task is
    * given. The Agenda tab lists the open tracks in their own group, below the challenges.
    */
-  isOpenTrack: z.boolean().optional()
+  isOpenTrack: z.boolean().optional(),
+  /**
+   * Markdown for the event team only: staff, event admins and platform admins. The server leaves it
+   * out for everyone else (`listReadableEventChallenges`).
+   */
+  staffInstructions: z.string().trim()
+    .max(eventChallengeLimits.maxStaffInstructionsLength, `Use staff instructions of ${eventChallengeLimits.maxStaffInstructionsLength} characters or fewer.`)
+    .optional()
 })
 
 /** The challenges of one event, drafts included, in display order. */

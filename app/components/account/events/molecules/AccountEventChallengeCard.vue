@@ -3,6 +3,7 @@ import type { AgendaChallenge, ProgramRoom } from '#shared/domains/events/progra
 
 import AppButton from '~/components/AppButton.vue'
 import AccountEventDetailsDialog from '~/components/account/events/molecules/AccountEventDetailsDialog.vue'
+import EventStaffInstructions from '~/components/events/molecules/EventStaffInstructions.vue'
 import EventTrackDetails from '~/components/events/molecules/EventTrackDetails.vue'
 import { roomLabel } from '~/domains/events/program-map'
 
@@ -90,7 +91,13 @@ const detailResources = computed(() => props.challenge.resources.map((resource, 
         :description="challenge.instructions"
         :resources="detailResources"
         :separated="false"
-      />
+      >
+        <!-- Only the event team receives staff instructions. -->
+        <EventStaffInstructions
+          v-if="challenge.staffInstructions?.trim()"
+          :source="challenge.staffInstructions"
+        />
+      </EventTrackDetails>
     </AccountEventDetailsDialog>
   </div>
 </template>
