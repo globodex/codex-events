@@ -7,6 +7,7 @@ import AccountEventProgramFloorPlan from '~/components/account/events/molecules/
 import AccountEventChallengeList from '~/components/account/events/organisms/AccountEventChallengeList.vue'
 import AccountEventProgramTimeline from '~/components/account/events/organisms/AccountEventProgramTimeline.vue'
 import type { PublicEventAgendaItem } from '~/domains/events/presentation'
+import { agendaItemsOutsideProgram } from '~/domains/events/program-timeline'
 
 const props = defineProps<{
   program: ParticipantEventProgram
@@ -15,25 +16,18 @@ const props = defineProps<{
   /** The published challenges that this person may read. A room of a floor plan names its challenge. */
   challenges: AgendaChallenge[]
   /**
-   * The session that the link to this tab names: its id, or `first` for the earliest session with
-   * a room. "How to get there" on the Overview tab links to `first`.
+   * The session that the link to this tab names: its id, or `first` for the earliest session or
+   * agenda block with a room. "How to get there" on the Overview tab links to `first`.
    */
   linkedSession?: string | null
 }>()
 
 // The public agenda blocks before and after the program's block. The sessions cover the block itself.
-const outsideItems = computed(() => {
-  const programStart = Date.parse(props.program.agendaItem.startsAt)
-  const programEnd = Date.parse(props.program.agendaItem.endsAt)
+const outsideItems = computed(() => agendaItemsOutsideProgram(props.agendaItems, props.program.agendaItem))
 
-  return props.agendaItems.filter((item) => {
-    const start = Date.parse(item.startsAt)
-    return item.id !== props.program.agendaItem.id && (start < programStart || start >= programEnd)
-  })
-})
-
-// One thing is selected at a time: a session, a challenge, or a place on the map itself.
+// One thing is selected at a time: a session, an agenda block, a challenge, or a place on the map itself.
 const selectedSessionId = shallowRef<string | null>(null)
+const selectedAgendaItemId = shallowRef<string | null>(null)
 const selectedChallengeId = shallowRef<string | null>(null)
 const mapSelection = shallowRef<{ floorPlanId: string, roomId: string | null } | null>(null)
 const mapPanel = useTemplateRef<HTMLElement>('mapPanel')
@@ -44,15 +38,20 @@ const now = useNow({ scheduler: callback => useIntervalFn(callback, 30_000) })
 const hasSessions = computed(() => props.program.tracks.some(track => track.sessions.length > 0))
 const selectedSession = computed(() => props.program.tracks.flatMap(track => track.sessions)
   .find(session => session.id === selectedSessionId.value))
+const selectedAgendaItemRoom = computed(() => props.program.agendaItemRooms
+  .find(entry => entry.agendaItemId === selectedAgendaItemId.value)?.room)
 // The rooms that name the selected challenge, each with its floor plan. A challenge can have several.
 const selectedChallengePlaces = computed(() => props.program.floorPlans.flatMap(plan => plan.rooms
   .filter(room => room.challengeId === selectedChallengeId.value)
   .map(room => ({ floorPlanId: plan.id, roomId: room.id }))))
-// The places that the selection shows on the map: the room of a session, the rooms of a
-// challenge, or the floor or room that the person chose on the map.
+// The places that the selection shows on the map: the room of a session or an agenda block, the
+// rooms of a challenge, or the floor or room that the person chose on the map.
 const selectedPlaces = computed(() => {
   if (selectedSession.value?.room) {
     return [selectedSession.value.room]
+  }
+  if (selectedAgendaItemRoom.value) {
+    return [selectedAgendaItemRoom.value]
   }
   if (selectedChallengeId.value) {
     return selectedChallengePlaces.value
@@ -78,6 +77,7 @@ const roomHint = computed(() => props.program.tracks.some(track => track.session
 
 function clearSelection() {
   selectedSessionId.value = null
+  selectedAgendaItemId.value = null
   selectedChallengeId.value = null
   mapSelection.value = null
 }
@@ -85,7 +85,17 @@ function clearSelection() {
 async function selectSession(session: ProgramSession) {
   clearSelection()
   selectedSessionId.value = session.id
+  await revealMap()
+}
 
+// An agenda block with a room shows that room on the map, like a session.
+async function selectAgendaItem(agendaItemId: string) {
+  clearSelection()
+  selectedAgendaItemId.value = agendaItemId
+  await revealMap()
+}
+
+async function revealMap() {
   await nextTick()
   if (window.matchMedia('(min-width: 64rem)').matches) {
     // The map is beside the sessions: scroll just enough to show the whole map.
@@ -113,22 +123,33 @@ async function selectChallenge(challengeId: string) {
 }
 
 // The tab opens with the linked session selected, so the map shows its room and the way there.
+// `first` selects the earliest session or agenda block with a room, which is usually the check-in.
 onMounted(() => {
   const sessionsWithRoom = props.program.tracks.flatMap(track => track.sessions).filter(session => session.room)
-  const linked = props.linkedSession === 'first'
-    ? [...sessionsWithRoom].sort((left, right) => left.startsAfterMinutes - right.startsAfterMinutes)[0]
-    : sessionsWithRoom.find(session => session.id === props.linkedSession)
+  if (props.linkedSession !== 'first') {
+    const linked = sessionsWithRoom.find(session => session.id === props.linkedSession)
+    if (linked) selectSession(linked)
+    return
+  }
 
-  if (linked) {
-    selectSession(linked)
+  const programStart = Date.parse(props.program.agendaItem.startsAt)
+  const firstSession = sessionsWithRoom.toSorted((left, right) => left.startsAfterMinutes - right.startsAfterMinutes)[0]
+  const firstItem = outsideItems.value
+    .filter(item => props.program.agendaItemRooms.some(entry => entry.agendaItemId === item.id))
+    .toSorted((left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt))[0]
+  if (firstItem && (!firstSession || Date.parse(firstItem.startsAt) < programStart + firstSession.startsAfterMinutes * 60_000)) {
+    selectAgendaItem(firstItem.id)
+  } else if (firstSession) {
+    selectSession(firstSession)
   }
 })
 
-function returnToSession() {
-  const session = selectedSession.value
-  if (session) {
-    document.getElementById(`program-session-${encodeURIComponent(session.id)}`)?.focus()
-  }
+// On a narrow screen the map stands below the agenda. This button leads back to the selection.
+function returnToAgenda() {
+  const elementId = selectedSessionId.value
+    ? `program-session-${encodeURIComponent(selectedSessionId.value)}`
+    : `program-agenda-item-${encodeURIComponent(selectedAgendaItemId.value ?? '')}`
+  document.getElementById(elementId)?.focus()
 }
 </script>
 
@@ -146,11 +167,14 @@ function returnToSession() {
         :tracks="program.tracks"
         :floor-plans="program.floorPlans"
         :outside-items="outsideItems"
+        :agenda-item-rooms="program.agendaItemRooms"
         :starts-at="program.agendaItem.startsAt"
         :ends-at="program.agendaItem.endsAt"
         :selected-session-id="selectedSessionId"
+        :selected-agenda-item-id="selectedAgendaItemId"
         :now="now.getTime()"
         @select="selectSession"
+        @select-agenda-item="selectAgendaItem"
       />
       <p
         v-else
@@ -168,13 +192,13 @@ function returnToSession() {
       :aria-label="selectedPlan ? 'Map and challenges' : 'Challenges'"
     >
       <AppButton
-        v-if="selectedSession"
+        v-if="selectedSession || selectedAgendaItemRoom"
         icon="i-lucide-arrow-up"
-        label="Back to session"
+        label="Back to agenda"
         color="neutral"
         variant="ghost"
         class="self-start lg:hidden"
-        @click="returnToSession"
+        @click="returnToAgenda"
       />
       <!--
         The challenges stand beside the map where this panel is wide enough, and below the map

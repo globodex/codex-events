@@ -1,8 +1,30 @@
-import type { ProgramRoom } from '#shared/domains/events/program'
+import type { EventFloorPlan, ProgramRoom, ProgramSession } from '#shared/domains/events/program'
 
 interface Point {
   x: number
   y: number
+}
+
+type Place = NonNullable<ProgramSession['room']>
+
+/** A room of the event's floor plans as an option of a room select in the event builder. */
+export interface ProgramRoomOption {
+  key: string
+  label: string
+  room: Place
+}
+
+/** The value of a room in a room select. It equals the `key` of the room's option. */
+export function roomOptionKey(room: Place) {
+  return JSON.stringify([room.floorPlanId, room.roomId])
+}
+
+/** Every room of the floor plans as a room select option, for example "Seminar Room · Ground floor". */
+export function programRoomOptions(floorPlans: EventFloorPlan[]): ProgramRoomOption[] {
+  return floorPlans.flatMap(floor => floor.rooms.map((room) => {
+    const place = { floorPlanId: floor.id, roomId: room.id }
+    return { key: roomOptionKey(place), label: `${room.name} · ${floor.name}`, room: place }
+  }))
 }
 
 export function roomAreaStyle(area: ProgramRoom['area']) {

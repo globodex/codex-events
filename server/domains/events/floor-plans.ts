@@ -155,17 +155,34 @@ export function sessionRoomJoins(tracksJson: string | typeof eventAgendaPrograms
     )) as place`
 }
 
+/**
+ * SQL joins that list the rooms of the public agenda blocks outside a program
+ * (`agendaItemRooms`), as rows called `place` like `sessionRoomJoins`. `place.value` is
+ * `{ floorPlanId, roomId }`. The rules about session rooms apply to these rooms too.
+ */
+export function agendaItemRoomJoins(agendaItemRoomsJson: string | typeof eventAgendaPrograms.agendaItemRoomsJson) {
+  return sql`json_each(${agendaItemRoomsJson}) as item
+    join json_each(json_array(json_extract(item.value, '$.room'))) as place`
+}
+
 function noRemovedRoomsInProgram(eventId: string, floorPlanId: string, roomsJson: string) {
+  // A place on this floor plan whose room is not among the rooms being saved.
+  const removedRoom = sql`json_extract(place.value, '$.floorPlanId') = ${floorPlanId}
+    and not exists (
+      select 1 from json_each(${roomsJson}) as room
+      where json_extract(room.value, '$.id') = json_extract(place.value, '$.roomId')
+    )`
+
   return sql`not exists (
     select 1
     from ${eventAgendaPrograms}
     join ${sessionRoomJoins(eventAgendaPrograms.tracksJson)}
-    where ${eventAgendaPrograms.eventId} = ${eventId}
-      and json_extract(place.value, '$.floorPlanId') = ${floorPlanId}
-      and not exists (
-        select 1 from json_each(${roomsJson}) as room
-        where json_extract(room.value, '$.id') = json_extract(place.value, '$.roomId')
-      )
+    where ${eventAgendaPrograms.eventId} = ${eventId} and ${removedRoom}
+  ) and not exists (
+    select 1
+    from ${eventAgendaPrograms}
+    join ${agendaItemRoomJoins(eventAgendaPrograms.agendaItemRoomsJson)}
+    where ${eventAgendaPrograms.eventId} = ${eventId} and ${removedRoom}
   )`
 }
 
@@ -184,7 +201,7 @@ export async function updateEventFloorPlan(
 
   if (!updated) {
     await getFloorPlan(database, eventId, floorPlanId)
-    throw new ApiError({ statusCode: 409, code: 'floor_plan_room_in_use', message: 'Remove the room from its sessions first.' })
+    throw new ApiError({ statusCode: 409, code: 'floor_plan_room_in_use', message: 'Remove the room from its sessions and agenda items first.' })
   }
 
   await writeAuditLog(database, floorPlanAudit(actorUserId, eventId, floorPlanId, 'event.floor_plan.updated'))

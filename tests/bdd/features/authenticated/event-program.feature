@@ -22,13 +22,14 @@ Feature: Parallel event agenda
     And I reopen the rooms and sessions from the event workspace
     Then the builder should show the saved track name
 
-  Scenario: A confirmed participant follows the route an organizer drew to a room
+  Scenario: A confirmed participant follows the routes an organizer drew to a room
     Given the event has two parallel sessions with rooms on "Route floor"
-    When I draw a route to "Makers Room" on "Route floor" and leave before the save finishes
+    When I draw two routes to "Makers Room" on "Route floor" and leave before the save finishes
     And I reopen the rooms and sessions from the event workspace
-    Then the builder should show the saved route to "Makers Room" on "Route floor"
+    Then the builder should show the two saved routes to "Makers Room" on "Route floor"
     When I open the Agenda tab 5 minutes into Build Time
     Then both sessions should start next in 10 minutes
     When I open the Agenda tab 20 minutes into Build Time
     Then the build session should be running with 25 minutes left
-    And the map should show the route to "Makers Room" only for the build session
+    And the map should show both routes to "Makers Room" only for the build session
+    And the check-in should show both routes to "Makers Room"

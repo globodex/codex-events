@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import type { ProgramSession } from '#shared/domains/events/program'
+import AdminBuilderRoomSelect from '~/components/admin/builder/molecules/AdminBuilderRoomSelect.vue'
 import { toDateTimeLocalValue } from '~/domains/events/admin-event'
 import { addMinutesToLocalValue } from '~/domains/events/builder'
+import type { ProgramRoomOption } from '~/domains/events/program-map'
 
 const props = defineProps<{
   session: ProgramSession
   startsAt: string
   endsAt: string
-  roomOptions: { key: string, label: string, room: NonNullable<ProgramSession['room']> }[]
+  roomOptions: ProgramRoomOption[]
   disabled?: boolean
 }>()
 
@@ -31,16 +33,6 @@ function timeInputValue(minutes: number) {
 const startValue = computed(() => timeInputValue(props.session.startsAfterMinutes))
 const endValue = computed(() => timeInputValue(props.session.startsAfterMinutes + props.session.durationMinutes))
 const latestTime = computed(() => toDateTimeLocalValue(props.endsAt))
-
-/** The value of a room in a room select. It equals the `key` of the matching room option. */
-function roomSelectValue(room: ProgramSession['room'] | undefined) {
-  return room ? JSON.stringify([room.floorPlanId, room.roomId]) : ''
-}
-
-/** The room behind a value of a room select, or null for "No room". */
-function selectedRoom(value: string | number | undefined) {
-  return props.roomOptions.find(option => option.key === value)?.room ?? null
-}
 
 function updateSession(changes: Partial<ProgramSession>) {
   emit('update', { ...props.session, ...changes })
@@ -129,23 +121,13 @@ function minutesAfterStart(value: string | number | undefined) {
       :name="roomId"
       label="Room"
     >
-      <AppSelect
+      <AdminBuilderRoomSelect
         :id="roomId"
-        :model-value="roomSelectValue(session.room)"
+        :room="session.room"
+        :room-options="roomOptions"
         :disabled="disabled"
-        @update:model-value="value => updateSession({ room: selectedRoom(value) })"
-      >
-        <option value="">
-          No room
-        </option>
-        <option
-          v-for="option in roomOptions"
-          :key="option.key"
-          :value="option.key"
-        >
-          {{ option.label }}
-        </option>
-      </AppSelect>
+        @update:room="room => updateSession({ room })"
+      />
     </AppFormField>
 
     <AppFormField
@@ -199,23 +181,13 @@ function minutesAfterStart(value: string | number | undefined) {
         :name="afterCheckInRoomId"
         label="Room after check-in"
       >
-        <AppSelect
+        <AdminBuilderRoomSelect
           :id="afterCheckInRoomId"
-          :model-value="roomSelectValue(session.afterCheckIn.room)"
+          :room="session.afterCheckIn.room"
+          :room-options="roomOptions"
           :disabled="disabled"
-          @update:model-value="value => updateAfterCheckIn({ room: selectedRoom(value) })"
-        >
-          <option value="">
-            No room
-          </option>
-          <option
-            v-for="option in roomOptions"
-            :key="option.key"
-            :value="option.key"
-          >
-            {{ option.label }}
-          </option>
-        </AppSelect>
+          @update:room="room => updateAfterCheckIn({ room })"
+        />
       </AppFormField>
     </div>
   </li>

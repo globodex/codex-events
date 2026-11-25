@@ -24,7 +24,8 @@ const agendaItems: EventAgendaItem[] = [
 
 const initialProgram: EventProgram = {
   agendaItemId: buildDayProgram.agendaItem.id,
-  tracks: buildDayProgram.tracks
+  tracks: buildDayProgram.tracks,
+  agendaItemRooms: buildDayProgram.agendaItemRooms
 }
 
 const meta = {

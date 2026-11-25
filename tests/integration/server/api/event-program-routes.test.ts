@@ -38,7 +38,11 @@ const room = {
   number: 'SR 1.03',
   challengeId: 'ship_a_skill',
   area: { x: 0.25, y: 0.1, width: 0.25, height: 0.2, rotation: 30 },
-  route: [{ x: 0.05, y: 0.9 }, { x: 0.05, y: 0.2 }, { x: 0.3, y: 0.2 }]
+  // The ways to the room from two entrances.
+  routes: [
+    [{ x: 0.05, y: 0.9 }, { x: 0.05, y: 0.2 }, { x: 0.3, y: 0.2 }],
+    [{ x: 0.95, y: 0.9 }, { x: 0.5, y: 0.25 }]
+  ]
 }
 const firstSession = {
   id: 'first_session',
@@ -188,7 +192,9 @@ describe('event program routes', () => {
         id: 'build',
         name: 'Build',
         sessions: [{ ...firstSession, id: 'parallel_session', title: 'Build Sprint', room: null }]
-      }]
+      }],
+      // The check-in before Build Time takes place in the same room.
+      agendaItemRooms: [{ agendaItemId: 'check_in', room: { floorPlanId: floor.id, roomId: room.id } }]
     }
     await publishProgram(program)
     return { floor: updated, floorPath, program }
@@ -209,7 +215,8 @@ describe('event program routes', () => {
     stubAuth0Session(null)
     const publicDetail = await readData<{ agendaItems: unknown[] }>(await harness.request(publicPath))
     expect(publicDetail.agendaItems).toEqual([publicBlock])
-    expect(JSON.stringify(publicDetail)).not.toMatch(/Workshop A|Seminar Room|Ground floor|tracksJson|floorPlans/)
+    expect(JSON.stringify(publicDetail))
+      .not.toMatch(/Workshop A|Seminar Room|Ground floor|tracksJson|floorPlans|agendaItemRooms/)
     expect((await harness.request(`${accountPath}/program`)).status).toBe(401)
     expect((await harness.request(replacement.imageUrl)).status).toBe(401)
 
@@ -236,6 +243,7 @@ describe('event program routes', () => {
       eventName: 'Build Day',
       agendaItem: { id, title, startsAt, endsAt },
       tracks: program.tracks,
+      agendaItemRooms: program.agendaItemRooms,
       floorPlans: [replacement]
     })
     const image = await harness.request(replacement.imageUrl)
@@ -342,9 +350,16 @@ describe('event program routes', () => {
     const missingRoomProgram = structuredClone(program)
     missingRoomProgram.tracks[0]!.sessions[0]!.room = { floorPlanId: floor.id, roomId: 'unknown_room' }
     expect((await harness.request(programPath, json('PUT', missingRoomProgram))).status).toBe(409)
+    const missingCheckInRoomProgram = {
+      ...program,
+      agendaItemRooms: [{ agendaItemId: 'check_in', room: { floorPlanId: floor.id, roomId: 'unknown_room' } }]
+    }
+    expect((await harness.request(programPath, json('PUT', missingCheckInRoomProgram))).status).toBe(409)
     expect((await harness.request(floorPath, json('PUT', { name: floor.name, rooms: [] }))).status).toBe(409)
-    const onePointRoute = { ...room, route: room.route.slice(0, 1) }
+    const onePointRoute = { ...room, routes: [...room.routes, [{ x: 0.5, y: 0.5 }]] }
     expect((await harness.request(floorPath, json('PUT', { name: floor.name, rooms: [onePointRoute] }))).status).toBe(400)
+    const fiveRoutes = { ...room, routes: Array.from({ length: 5 }, () => room.routes[0]) }
+    expect((await harness.request(floorPath, json('PUT', { name: floor.name, rooms: [fiveRoutes] }))).status).toBe(400)
 
     const shorterBlock = { ...publicBlock, endsAt: '2026-11-28T11:00:00.000Z' }
     expect((await harness.request(eventPath, json('PATCH', { agendaItems: [shorterBlock] }))).status).toBe(409)
@@ -364,6 +379,10 @@ describe('event program routes', () => {
     signIn('organizer')
     const newerProgram = structuredClone(program)
     newerProgram.tracks[0]!.sessions.shift()
+    await publishProgram(newerProgram)
+    // No session names the room now, but the check-in still does.
+    expect((await harness.request(floorPath, json('PUT', { name: floor.name, rooms: [] }))).status).toBe(409)
+    newerProgram.agendaItemRooms = []
     await publishProgram(newerProgram)
     await readData(await harness.request(floorPath, json('PUT', { name: floor.name, rooms: [] })))
 

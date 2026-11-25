@@ -19,6 +19,10 @@ export const floorPlanRoomAreaSchema = z.object({
 { message: 'Keep the room area inside the floor plan.' })
 
 const floorPlanPointSchema = z.object({ x: coordinate, y: coordinate })
+// The way to a room, as points on the floor plan image from a starting point, such as an
+// entrance, to the room.
+const floorPlanRouteSchema = z.array(floorPlanPointSchema).min(2).max(40)
+export const maxRoomRoutes = 4
 
 export const programRoomSchema = z.object({
   id,
@@ -32,8 +36,9 @@ export const programRoomSchema = z.object({
   // challenge. An id that names no published challenge shows nothing.
   challengeId: z.string().trim().min(1).max(64).optional(),
   area: floorPlanRoomAreaSchema,
-  // The way to the room, as points on the floor plan image from the starting point to the room.
-  route: z.array(floorPlanPointSchema).min(2).max(40).optional()
+  // The ways to the room, one from each starting point. A room that people reach from two
+  // entrances can have a route from each entrance.
+  routes: z.array(floorPlanRouteSchema).min(1).max(maxRoomRoutes).optional()
 })
 
 export const eventFloorPlanMetadataSchema = z.object({
@@ -79,10 +84,17 @@ const programTrackSchema = z.object({
   })
 }, { path: ['sessions'], message: 'Sessions in the same track cannot overlap.' })
 
+// The room of a public agenda block outside the program, for example the check-in before it.
+// Selecting the block on the Agenda tab shows the room and the routes to it. Like the rooms of
+// sessions, it is private to the people who read the program.
+const agendaItemRoomSchema = z.object({ agendaItemId: id, room: sessionRoomSchema })
+
 export const eventProgramSchema = z.object({
   agendaItemId: id,
-  tracks: z.array(programTrackSchema).min(1).max(16)
-}).superRefine(({ tracks }, context) => {
+  tracks: z.array(programTrackSchema).min(1).max(16),
+  // An entry whose agenda block is gone or holds the program shows nothing.
+  agendaItemRooms: z.array(agendaItemRoomSchema).max(50).default([])
+}).superRefine(({ tracks, agendaItemRooms }, context) => {
   const sessions = tracks.flatMap(track => track.sessions)
   if (new Set(tracks.map(track => track.id)).size !== tracks.length) {
     context.addIssue({ code: 'custom', path: ['tracks'], message: 'Track IDs must be unique.' })
@@ -92,6 +104,9 @@ export const eventProgramSchema = z.object({
   }
   if (!sessions.length || sessions.length > 320) {
     context.addIssue({ code: 'custom', path: ['tracks'], message: 'Add between 1 and 320 sessions.' })
+  }
+  if (new Set(agendaItemRooms.map(entry => entry.agendaItemId)).size !== agendaItemRooms.length) {
+    context.addIssue({ code: 'custom', path: ['agendaItemRooms'], message: 'An agenda item can have one room.' })
   }
 })
 
@@ -119,6 +134,7 @@ export const participantEventProgramSchema = z.object({
   eventName: z.string(),
   agendaItem: z.object({ id, title: z.string(), startsAt: z.string(), endsAt: z.string() }),
   tracks: z.array(programTrackSchema),
+  agendaItemRooms: z.array(agendaItemRoomSchema),
   floorPlans: z.array(eventFloorPlanSchema)
 })
 

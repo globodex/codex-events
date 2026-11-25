@@ -58,7 +58,7 @@ Then('my next step should be to check in with the event team', async ({ page }) 
   await expect(nextStepCard(page).getByRole('button', { name: 'I\'ve checked in' })).toBeVisible()
 })
 
-// "Show the way" opens the Agenda tab with the first session that has a room selected.
+// "Show the way" opens the Agenda tab with the first session or agenda item that has a room selected.
 When('I open the agenda from my next step', async ({ page }) => {
   await nextStepCard(page).getByRole('link', { name: 'Show the way' }).click()
   await expect(page).toHaveURL(/tab=program&session=first/)

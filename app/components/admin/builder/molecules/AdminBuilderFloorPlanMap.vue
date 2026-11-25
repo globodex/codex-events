@@ -11,9 +11,11 @@ const props = defineProps<{
   rooms: EventFloorPlan['rooms']
   activeRoomId: string | null
   marking: boolean
-  /** The route of the active room, drawn over the plan. */
-  route: Point[]
-  /** While true, each click on the plan adds a point to the route. */
+  /** The routes of the active room, drawn over the plan. */
+  routes: Point[][]
+  /** The route that the editor changes. The other routes of the room are drawn lighter. */
+  activeRouteIndex: number
+  /** While true, each click on the plan adds a point to the active route. */
   drawing: boolean
 }>()
 
@@ -31,11 +33,14 @@ interface RoomDrag {
 
 const drag = shallowRef<RoomDrag | null>(null)
 const preview = computed(() => drag.value && areaBetween(drag.value.start, drag.value.end))
-const routeLine = computed(() => props.route.map(point => `${point.x},${point.y}`).join(' '))
 
 watch([() => props.marking, () => props.activeRoomId], () => {
   drag.value = null
 })
+
+function routeLine(route: Point[]) {
+  return route.map(point => `${point.x},${point.y}`).join(' ')
+}
 
 function pointOnPlan(event: MouseEvent, bounds: DOMRect): Point {
   return {
@@ -131,29 +136,38 @@ function addRoutePoint(event: MouseEvent) {
         : 'border bg-primary/5'"
     />
     <svg
-      v-if="routeLine"
+      v-if="props.routes.length"
       viewBox="0 0 1 1"
       preserveAspectRatio="none"
       class="pointer-events-none absolute inset-0 z-20 size-full"
       aria-hidden="true"
     >
       <polyline
-        :points="routeLine"
+        v-for="(route, index) in props.routes"
+        :key="index"
+        :points="routeLine(route)"
         class="fill-none stroke-primary"
+        :class="{ 'opacity-40': index !== props.activeRouteIndex }"
         stroke-width="4"
         stroke-linecap="round"
         stroke-linejoin="round"
         vector-effect="non-scaling-stroke"
       />
     </svg>
-    <span
-      v-for="(point, index) in props.route"
-      :key="index"
-      :style="{ left: `${point.x * 100}%`, top: `${point.y * 100}%` }"
-      aria-hidden="true"
-      class="pointer-events-none absolute z-20 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bg"
-      :class="index === 0 ? 'bg-success' : 'bg-primary'"
-    />
+    <!-- The first point of each route, where people start, is green. -->
+    <template
+      v-for="(route, routeIndex) in props.routes"
+      :key="routeIndex"
+    >
+      <span
+        v-for="(point, index) in route"
+        :key="index"
+        :style="{ left: `${point.x * 100}%`, top: `${point.y * 100}%` }"
+        aria-hidden="true"
+        class="pointer-events-none absolute z-20 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bg"
+        :class="[index === 0 ? 'bg-success' : 'bg-primary', { 'opacity-40': routeIndex !== props.activeRouteIndex }]"
+      />
+    </template>
     <span
       v-if="preview"
       :style="roomAreaStyle(preview)"

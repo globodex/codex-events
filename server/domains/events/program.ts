@@ -14,7 +14,7 @@ import { resolveEventAuthorization } from '#server/auth/authorization'
 import { getDatabase, type AppDatabase } from '#server/database/client'
 import { eventAgendaPrograms, eventFloorPlans, events, userApplications } from '#server/database/schema'
 import { getEventOrThrow, parseEventAgendaItems, requireEventAdmin } from '#server/domains/events'
-import { listEventFloorPlans, sessionRoomJoins } from '#server/domains/events/floor-plans'
+import { agendaItemRoomJoins, listEventFloorPlans, sessionRoomJoins } from '#server/domains/events/floor-plans'
 import { ApiError } from '#server/http/api-error'
 import { measureRequestPhase } from '#server/http/request-timing'
 
@@ -66,6 +66,10 @@ function readProgramTracks(tracksJson: string): EventProgram['tracks'] {
   return JSON.parse(tracksJson) as EventProgram['tracks']
 }
 
+function readAgendaItemRooms(agendaItemRoomsJson: string): EventProgram['agendaItemRooms'] {
+  return JSON.parse(agendaItemRoomsJson) as EventProgram['agendaItemRooms']
+}
+
 /** The sessions in the rooms of an event. The event builder shows the number on a tile. */
 export async function countEventProgramSessions(database: AppDatabase, eventId: string) {
   const row = await findEventProgramRow(database, eventId)
@@ -89,7 +93,9 @@ export async function readAdminEventProgram(h3Event: H3Event, eventId: string): 
     listEventFloorPlans(database, eventId)
   ])
 
-  const program = row ? { agendaItemId: row.agendaItemId, tracks: readProgramTracks(row.tracksJson) } : null
+  const program = row
+    ? { agendaItemId: row.agendaItemId, tracks: readProgramTracks(row.tracksJson), agendaItemRooms: readAgendaItemRooms(row.agendaItemRoomsJson) }
+    : null
   return { program, floorPlans }
 }
 
@@ -109,20 +115,20 @@ function validateProgramWindow(event: EventRecord, program: EventProgram) {
   }
 }
 
-function availableProgramRooms(eventId: string, tracksJson: string) {
-  return sql`not exists (
-    select 1
-    from ${sessionRoomJoins(tracksJson)}
-    where json_type(place.value) = 'object'
-      and not exists (
-        select 1
-        from ${eventFloorPlans} as plan
-        join json_each(plan.rooms_json) as room
-        where plan.event_id = ${eventId}
-          and plan.id = json_extract(place.value, '$.floorPlanId')
-          and json_extract(room.value, '$.id') = json_extract(place.value, '$.roomId')
-      )
-  )`
+function availableProgramRooms(eventId: string, tracksJson: string, agendaItemRoomsJson: string) {
+  // A place whose room is on no floor plan of the event.
+  const missingRoom = sql`json_type(place.value) = 'object'
+    and not exists (
+      select 1
+      from ${eventFloorPlans} as plan
+      join json_each(plan.rooms_json) as room
+      where plan.event_id = ${eventId}
+        and plan.id = json_extract(place.value, '$.floorPlanId')
+        and json_extract(room.value, '$.id') = json_extract(place.value, '$.roomId')
+    )`
+
+  return sql`not exists (select 1 from ${sessionRoomJoins(tracksJson)} where ${missingRoom})
+    and not exists (select 1 from ${agendaItemRoomJoins(agendaItemRoomsJson)} where ${missingRoom})`
 }
 
 export async function saveAdminEventProgram(h3Event: H3Event, eventId: string, program: EventProgram): Promise<AdminEventProgram> {
@@ -132,17 +138,19 @@ export async function saveAdminEventProgram(h3Event: H3Event, eventId: string, p
 
   // Compare the agenda read above and the live rooms in the write itself.
   const tracksJson = JSON.stringify(program.tracks)
+  const agendaItemRoomsJson = JSON.stringify(program.agendaItemRooms)
   const saveProgram = database.insert(eventAgendaPrograms).select(database.select({
     eventId: events.id,
     agendaItemId: sql<string>`${program.agendaItemId}`.as('agendaItemId'),
-    tracksJson: sql<string>`${tracksJson}`.as('tracksJson')
+    tracksJson: sql<string>`${tracksJson}`.as('tracksJson'),
+    agendaItemRoomsJson: sql<string>`${agendaItemRoomsJson}`.as('agendaItemRoomsJson')
   }).from(events).where(and(
     eq(events.id, eventId),
     eq(events.agendaItemsJson, event.agendaItemsJson),
-    availableProgramRooms(eventId, tracksJson)
+    availableProgramRooms(eventId, tracksJson, agendaItemRoomsJson)
   )).getSQL()).onConflictDoUpdate({
     target: eventAgendaPrograms.eventId,
-    set: { agendaItemId: program.agendaItemId, tracksJson }
+    set: { agendaItemId: program.agendaItemId, tracksJson, agendaItemRoomsJson }
   })
   // One D1 mutation, so the program and the revision change together. When the agenda or a room
   // changed in the meantime, the program is not written and the revision still rotates. That
@@ -205,6 +213,7 @@ export async function loadParticipantEventProgram(
     eventName: event.name,
     agendaItem,
     tracks: showTracksTo(readProgramTracks(row.tracksJson), viewer),
+    agendaItemRooms: readAgendaItemRooms(row.agendaItemRoomsJson),
     floorPlans: await listEventFloorPlans(database, event.id)
   }
 }

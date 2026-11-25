@@ -277,6 +277,34 @@ describe('shared database migration', () => {
     })
   })
 
+  test('keeps the route of each room on a floor plan as its only route', async () => {
+    const migration = '0091_room_routes.sql'
+    const previous = readdirSync(join(process.cwd(), 'drizzle')).filter(name => /^\d+.*\.sql$/.test(name) && name < migration).sort()
+      .map(name => readFileSync(join(process.cwd(), 'drizzle', name), 'utf8')).join('\n').replaceAll('--> statement-breakpoint', '\n')
+    const db = createTestD1Database({ applyMigrations: false })
+    try {
+      await db.exec(previous)
+      const now = isoTimestamp(0)
+      await seedUser(db, 'organizer', now)
+      await seedEvent(db, 'event', 'registration_open', now, 'organizer')
+      const area = { x: 0.1, y: 0.1, width: 0.2, height: 0.2, rotation: 0 }
+      const route = [{ x: 0.05, y: 0.9 }, { x: 0.3, y: 0.2 }]
+      const rooms = [{ id: 'check_in', name: 'Check-in', area, route }, { id: 'lab', name: 'Lab', number: 'U1-3', area }]
+      await db.prepare(`insert into event_floor_plans (id, event_id, name, object_key, rooms_json)
+        values ('ground', 'event', 'Ground floor', 'plans/ground', ?), ('basement', 'event', 'Basement', 'plans/basement', '[]')`)
+        .bind(JSON.stringify(rooms)).run()
+      await db.exec(readFileSync(join(process.cwd(), 'drizzle', migration), 'utf8'))
+
+      const plans = await db.prepare('select id, rooms_json from event_floor_plans order by id').all<{ id: string, rooms_json: string }>()
+      expect(plans.results.map(plan => [plan.id, JSON.parse(plan.rooms_json)])).toEqual([
+        ['basement', []],
+        ['ground', [{ id: 'check_in', name: 'Check-in', area, routes: [route] }, { id: 'lab', name: 'Lab', number: 'U1-3', area }]]
+      ])
+    } finally {
+      await db.close()
+    }
+  })
+
   test('migrates the existing simplified giveaway without changing assigned credits', async () => {
     const migration = '0078_simplified_claiming_giveaways.sql'
     const previous = readdirSync(join(process.cwd(), 'drizzle')).filter(name => /^\d+.*\.sql$/.test(name) && name < migration).sort()

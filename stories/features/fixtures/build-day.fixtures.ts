@@ -11,7 +11,10 @@ export const buildDayGroundFloor: EventFloorPlan = {
     name: 'Main Hall',
     challengeId: 'own-idea',
     area: { x: 0.1, y: 0.1, width: 0.42, height: 0.4, rotation: 0 },
-    route: [{ x: 0.5, y: 0.82 }, { x: 0.5, y: 0.62 }, { x: 0.31, y: 0.62 }, { x: 0.31, y: 0.48 }]
+    routes: [
+      [{ x: 0.5, y: 0.82 }, { x: 0.5, y: 0.62 }, { x: 0.31, y: 0.62 }, { x: 0.31, y: 0.48 }],
+      [{ x: 0.05, y: 0.3 }, { x: 0.12, y: 0.3 }]
+    ]
   }, {
     id: 'studio',
     name: 'Studio',
@@ -124,5 +127,6 @@ export const buildDayProgram: ParticipantEventProgram = {
       room: null
     }]
   }],
+  agendaItemRooms: [{ agendaItemId: 'dinner', room: { floorPlanId: buildDayGroundFloor.id, roomId: 'studio' } }],
   floorPlans: [buildDayGroundFloor, buildDayUpperFloor]
 }

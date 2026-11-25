@@ -324,7 +324,8 @@ export const eventTracks = sqliteTable(
 export const eventAgendaPrograms = sqliteTable('event_agenda_programs', {
   eventId: text('event_id').primaryKey().notNull().references(() => events.id, { onDelete: 'cascade' }),
   agendaItemId: text('agenda_item_id').notNull(),
-  tracksJson: text('tracks_json').notNull()
+  tracksJson: text('tracks_json').notNull(),
+  agendaItemRoomsJson: text('agenda_item_rooms_json').notNull().default('[]')
 })
 
 export const eventFloorPlans = sqliteTable('event_floor_plans', {

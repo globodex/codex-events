@@ -21,6 +21,14 @@ const agendaItem = {
   endsAt: '2026-11-28T14:00:00.000Z',
   displayOrder: 0
 }
+// An agenda item before Build Time. The program names its room.
+const checkInItem = {
+  id: 'bdd-check-in',
+  title: 'Doors open and check-in',
+  startsAt: '2026-11-28T11:30:00.000Z',
+  endsAt: '2026-11-28T12:00:00.000Z',
+  displayOrder: 0
+}
 const rooms: ProgramRoom[] = [
   { id: 'bdd-makers-room', name: 'Makers Room', area: { x: 0.125, y: 0.125, width: 0.25, height: 0.25 } },
   { id: 'bdd-studio-room', name: 'Studio Room', area: { x: 0.5, y: 0.25, width: 0.375, height: 0.375 } }
@@ -76,9 +84,15 @@ Given('the event has two parallel sessions with rooms on {string}', async ({ req
     const eventResponse = await api.get(eventPath)
     await expect(eventResponse).toBeOK()
     const { data: event }: { data: EventRecord } = await eventResponse.json()
-    const agenda = event.agendaItems.filter(item => item.id !== agendaItem.id)
+    const agenda = event.agendaItems.filter(item => item.id !== agendaItem.id && item.id !== checkInItem.id)
     await expect(await api.patch(eventPath, {
-      data: { agendaItems: [...agenda, { ...agendaItem, displayOrder: agenda.length }] }
+      data: {
+        agendaItems: [
+          ...agenda,
+          { ...checkInItem, displayOrder: agenda.length },
+          { ...agendaItem, displayOrder: agenda.length + 1 }
+        ]
+      }
     })).toBeOK()
 
     const floorPlan = await uploadFloorPlan(api, floorName, rooms)
@@ -109,7 +123,8 @@ Given('the event has two parallel sessions with rooms on {string}', async ({ req
             room: { floorPlanId: floorPlan.id, roomId: rooms[1]!.id }
           }]
         }
-      ]
+      ],
+      agendaItemRooms: [{ agendaItemId: checkInItem.id, room: { floorPlanId: floorPlan.id, roomId: rooms[0]!.id } }]
     }
     await expect(await api.put(`${eventPath}/program`, { data: program })).toBeOK()
   } finally {
@@ -278,18 +293,27 @@ Then('the builder should show the saved track name', async ({ page }) => {
     .toHaveValue('Updated build track')
 })
 
-Then('the builder should show the saved route to {string} on {string}', async ({ page }, roomName: string, floorName: string) => {
+Then('the builder should show the two saved routes to {string} on {string}', async ({ page }, roomName: string, floorName: string) => {
   const floor = await selectBuilderRoom(page, roomName, floorName)
+  await expect(floor.getByRole('button', { name: 'Route 2', exact: true })).toBeVisible()
   await expect(floor.getByRole('button', { name: 'Remove route' })).toBeVisible()
+  // The check-in takes place in the same room.
+  await expect(page.getByLabel(checkInItem.title, { exact: true }).locator('option:checked'))
+    .toHaveText(`${roomName} · ${floorName}`)
 })
 
-When('I draw a route to {string} on {string} and leave before the save finishes', async ({ page }, roomName: string, floorName: string) => {
+When('I draw two routes to {string} on {string} and leave before the save finishes', async ({ page }, roomName: string, floorName: string) => {
   await openRoomsAndSessionsInBuilder(page)
   const floor = await selectBuilderRoom(page, roomName, floorName)
-  await floor.getByRole('button', { name: 'Draw route' }).click()
   const map = floor.getByTestId('admin-floor-plan-map')
   const { width, height } = (await map.boundingBox())!
+  // The second route starts at another entrance, like a way in from each side of a venue.
+  await floor.getByRole('button', { name: 'Draw route' }).click()
   for (const [x, y] of [[0.05, 0.9], [0.05, 0.2], [0.2, 0.2]] as const) {
+    await map.click({ position: { x: width * x, y: height * y } })
+  }
+  await floor.getByRole('button', { name: 'Add route' }).click()
+  for (const [x, y] of [[0.95, 0.9], [0.3, 0.3]] as const) {
     await map.click({ position: { x: width * x, y: height * y } })
   }
   const held = Promise.withResolvers<Route>()
@@ -300,7 +324,7 @@ When('I draw a route to {string} on {string} and leave before the save finishes'
   const saved = await route.fetch()
   await expect(saved).toBeOK()
   const { data }: { data: EventFloorPlan } = await saved.json()
-  expect(data.rooms.find(room => room.name === roomName)?.route).toHaveLength(3)
+  expect(data.rooms.find(room => room.name === roomName)?.routes?.map(route => route.length)).toEqual([3, 2])
   await page.getByRole('link', { name: 'Back to event', exact: true }).click()
   await expect(page.getByTestId('account-event-edit')).toBeVisible()
   await route.fulfill({ response: saved })
@@ -324,11 +348,19 @@ Then('the build session should be running with {int} minutes left', async ({ pag
   await expect(page.getByTestId('program-now-marker')).toBeVisible()
 })
 
-Then('the map should show the route to {string} only for the build session', async ({ page }, roomName: string) => {
+Then('the map should show both routes to {string} only for the build session', async ({ page }, roomName: string) => {
   const plan = page.getByTestId('program-floor-plan')
   await page.getByTestId(`program-session-${buildSessionId}`).click()
-  await expect(plan.getByRole('img', { name: `Route to ${roomName}`, exact: true })).toBeVisible()
+  await expect(plan.getByRole('img', { name: `Routes to ${roomName}`, exact: true })).toBeVisible()
+  await expect(plan.getByTestId('program-room-route')).toHaveCount(2)
 
   await page.getByTestId(`program-session-${designSessionId}`).click()
   await expect(plan.getByTestId('program-room-route')).toHaveCount(0)
+})
+
+Then('the check-in should show both routes to {string}', async ({ page }, roomName: string) => {
+  const plan = page.getByTestId('program-floor-plan')
+  await page.getByTestId(`program-agenda-item-${checkInItem.id}`).click()
+  await expect(plan.getByRole('img', { name: `Routes to ${roomName}`, exact: true })).toBeVisible()
+  await expect(plan.getByTestId('program-room-route')).toHaveCount(2)
 })

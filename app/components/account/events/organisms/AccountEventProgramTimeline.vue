@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useResizeObserver } from '@vueuse/core'
 
-import type { EventFloorPlan, ProgramSession, ProgramTrack } from '#shared/domains/events/program'
+import type { EventFloorPlan, ParticipantEventProgram, ProgramSession, ProgramTrack } from '#shared/domains/events/program'
 
+import AccountEventProgramAgendaItem from '~/components/account/events/molecules/AccountEventProgramAgendaItem.vue'
 import AccountEventProgramSession from '~/components/account/events/molecules/AccountEventProgramSession.vue'
 import { formatEventTime, getAgendaItemPresentation, type PublicEventAgendaItem } from '~/domains/events/presentation'
 import { formatMinutes, getSessionPhase, type SessionPhase } from '~/domains/events/program-timeline'
@@ -12,15 +13,19 @@ const props = defineProps<{
   floorPlans: EventFloorPlan[]
   /** Public agenda blocks before and after the program, for example "Networking starts". */
   outsideItems: PublicEventAgendaItem[]
+  /** The rooms of the blocks before and after the program, for example the check-in. */
+  agendaItemRooms: ParticipantEventProgram['agendaItemRooms']
   startsAt: string
   endsAt: string
   selectedSessionId: string | null
+  selectedAgendaItemId: string | null
   /** The current time in milliseconds. */
   now: number
 }>()
 
 defineEmits<{
   select: [session: ProgramSession]
+  selectAgendaItem: [agendaItemId: string]
 }>()
 
 const timeline = useTemplateRef<HTMLElement>('timeline')
@@ -131,6 +136,15 @@ function phaseLabel(phase: SessionPhase, session: ProgramSession) {
 // The grid row that starts at each boundary.
 const rows = computed(() => new Map(boundaries.value.map(({ offset }, index) => [offset, index + 2])))
 
+// The name of each room on the floor plans, by `floorPlanId/roomId`.
+const roomNames = computed(() => new Map(props.floorPlans.flatMap(plan =>
+  plan.rooms.map(room => [`${plan.id}/${room.id}`, room.name] as const)
+)))
+
+function roomName(room: ProgramSession['room']) {
+  return room ? roomNames.value.get(`${room.floorPlanId}/${room.roomId}`) : undefined
+}
+
 // Each group of outside blocks spans all tracks. Its blocks are stacked in one grid cell.
 const outsidePlacements = computed(() => [...outsideGroups.value].map(([offset, items]) => ({
   offset,
@@ -139,33 +153,28 @@ const outsidePlacements = computed(() => [...outsideGroups.value].map(([offset, 
     // The time column shows when a block starts, so a block shows its time range only when it ends later.
     timeRange: item.endsAt && Date.parse(item.endsAt) > Date.parse(item.startsAt)
       ? getAgendaItemPresentation(item, false).timeLabel
-      : null
+      : null,
+    roomName: roomName(props.agendaItemRooms.find(entry => entry.agendaItemId === item.id)?.room ?? null)
   })),
   style: { gridColumn: '3 / -1', gridRow: rows.value.get(offset) }
 })))
 
-const placements = computed(() => {
-  const rooms = new Map(props.floorPlans.flatMap(plan =>
-    plan.rooms.map(room => [`${plan.id}/${room.id}`, room.name] as const)
-  ))
+const placements = computed(() => trackSessions.value.map(({ session, column }) => {
+  const end = session.startsAfterMinutes + session.durationMinutes
+  const phase = isLive.value ? getSessionPhase(session, nowMinutes.value, nextStart.value) : 'later'
 
-  return trackSessions.value.map(({ session, column }) => {
-    const end = session.startsAfterMinutes + session.durationMinutes
-    const phase = isLive.value ? getSessionPhase(session, nowMinutes.value, nextStart.value) : 'later'
-
-    return {
-      session,
-      phase,
-      phaseLabel: phaseLabel(phase, session),
-      timeLabel: getAgendaItemPresentation({
-        startsAt: atOffset(session.startsAfterMinutes),
-        endsAt: atOffset(end)
-      }, false).timeLabel,
-      roomName: session.room ? rooms.get(`${session.room.floorPlanId}/${session.room.roomId}`) : undefined,
-      style: { gridColumn: column, gridRow: `${rows.value.get(session.startsAfterMinutes)} / ${rows.value.get(end)}` }
-    }
-  })
-})
+  return {
+    session,
+    phase,
+    phaseLabel: phaseLabel(phase, session),
+    timeLabel: getAgendaItemPresentation({
+      startsAt: atOffset(session.startsAfterMinutes),
+      endsAt: atOffset(end)
+    }, false).timeLabel,
+    roomName: roomName(session.room),
+    style: { gridColumn: column, gridRow: `${rows.value.get(session.startsAfterMinutes)} / ${rows.value.get(end)}` }
+  }
+}))
 </script>
 
 <template>
@@ -234,34 +243,21 @@ const placements = computed(() => {
         />
       </div>
 
-      <!-- A public block outside the program has no room, so it is shown but cannot be selected. -->
       <div
         v-for="group in outsidePlacements"
         :key="group.offset"
         class="m-1 flex flex-col gap-2"
         :style="group.style"
       >
-        <div
-          v-for="{ item, timeRange } in group.blocks"
-          :key="item.id"
-          class="rounded-xl border border-default bg-default px-3 py-2.5"
-        >
-          <p class="break-words text-sm font-semibold leading-snug text-highlighted">
-            {{ item.title }}
-          </p>
-          <p
-            v-if="timeRange"
-            class="mt-0.5 text-xs tabular-nums leading-tight text-muted"
-          >
-            {{ timeRange }}
-          </p>
-          <p
-            v-if="item.details"
-            class="mt-1 whitespace-pre-line break-words text-xs text-muted"
-          >
-            {{ item.details }}
-          </p>
-        </div>
+        <AccountEventProgramAgendaItem
+          v-for="block in group.blocks"
+          :key="block.item.id"
+          :item="block.item"
+          :time-range="block.timeRange"
+          :room-name="block.roomName"
+          :selected="block.item.id === selectedAgendaItemId"
+          @select="$emit('selectAgendaItem', $event)"
+        />
       </div>
 
       <AccountEventProgramSession

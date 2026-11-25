@@ -2,13 +2,14 @@
 import type { SaveBuilderFloorPlan } from '~/domains/events/admin-event'
 import type { EventChallenge } from '#shared/domains/events/challenges'
 import type { EventFloorPlan, ProgramRoom } from '#shared/domains/events/program'
-import { floorPlanRoomAreaSchema, programRoomSchema } from '#shared/domains/events/program'
+import { floorPlanRoomAreaSchema, maxRoomRoutes, programRoomSchema } from '#shared/domains/events/program'
 import { normalizeApiError } from '~/lib/api'
 import AdminBuilderFloorPlanMap from '~/components/admin/builder/molecules/AdminBuilderFloorPlanMap.vue'
 
 type RoomArea = ProgramRoom['area']
-type RoutePoint = NonNullable<ProgramRoom['route']>[number]
-type DraftRoom = Omit<ProgramRoom, 'area'> & { area: Partial<RoomArea> }
+type RoutePoint = NonNullable<ProgramRoom['routes']>[number][number]
+// A room while it is edited. A route can have fewer than two points while it is drawn.
+type DraftRoom = Omit<ProgramRoom, 'area' | 'routes'> & { area: Partial<RoomArea>, routes: RoutePoint[][] }
 
 const props = defineProps<{
   saveFloorPlan: SaveBuilderFloorPlan
@@ -35,14 +36,17 @@ const name = shallowRef(props.plan.name)
 const rooms = ref<DraftRoom[]>(props.plan.rooms.map(room => ({
   ...room,
   area: { ...room.area },
-  route: room.route?.map(point => ({ ...point }))
+  routes: room.routes?.map(route => route.map(point => ({ ...point }))) ?? []
 })))
 const activeRoomId = shallowRef<string | null>(rooms.value[0]?.id ?? null)
+// The route of the active room that the route buttons and the point fields change.
+const activeRouteIndex = shallowRef(0)
 const marking = shallowRef(false)
 const drawing = shallowRef(false)
 const pending = shallowRef<'metadata' | 'image' | null>(null)
 const error = shallowRef('')
 const activeRoom = computed(() => rooms.value.find(room => room.id === activeRoomId.value))
+const activeRoute = computed(() => activeRoom.value?.routes[activeRouteIndex.value])
 
 const markedRooms = computed(() => rooms.value.flatMap((room) => {
   const area = floorPlanRoomAreaSchema.safeParse(room.area)
@@ -51,11 +55,17 @@ const markedRooms = computed(() => rooms.value.flatMap((room) => {
 
 function selectRoom(id: string | null) {
   activeRoomId.value = id
+  activeRouteIndex.value = 0
   marking.value = false
   drawing.value = false
 }
 
-// Marking a room and drawing its route both use clicks on the plan, so only one can be on.
+function selectRoute(index: number) {
+  activeRouteIndex.value = index
+  drawing.value = false
+}
+
+// Marking a room and drawing a route both use clicks on the plan, so only one can be on.
 function toggleMarking() {
   marking.value = !marking.value
   drawing.value = false
@@ -68,7 +78,7 @@ function toggleDrawing() {
 
 function addRoom() {
   const id = crypto.randomUUID()
-  rooms.value.push({ id, name: '', area: {} })
+  rooms.value.push({ id, name: '', area: {}, routes: [] })
   selectRoom(id)
 }
 
@@ -105,33 +115,39 @@ function updateRotation(value: string | number | undefined) {
   }
 }
 
+// Another route to the same room, for example from a second entrance. It is drawn at once.
+function addRoute() {
+  const room = activeRoom.value
+  if (room) {
+    room.routes.push([])
+    activeRouteIndex.value = room.routes.length - 1
+    drawing.value = true
+    marking.value = false
+  }
+}
+
+// The first point of a room without routes starts its first route.
 function addRoutePoint(point: RoutePoint = { x: 0.5, y: 0.5 }) {
   const room = activeRoom.value
   if (room) {
-    room.route = [...(room.route ?? []), point]
+    room.routes[activeRouteIndex.value] = [...(activeRoute.value ?? []), point]
   }
 }
 
 function updateRoutePoint(index: number, axis: keyof RoutePoint, value: string | number | undefined) {
-  const point = activeRoom.value?.route?.[index]
+  const point = activeRoute.value?.[index]
   if (point) {
     point[axis] = value === undefined || value === '' ? Number.NaN : Number(value) / 100
   }
 }
 
 function undoRoutePoint() {
-  const room = activeRoom.value
-  if (room) {
-    room.route = room.route?.slice(0, -1)
-  }
+  activeRoute.value?.pop()
 }
 
 function removeRoute() {
-  const room = activeRoom.value
-  if (room) {
-    room.route = undefined
-    drawing.value = false
-  }
+  activeRoom.value?.routes.splice(activeRouteIndex.value, 1)
+  selectRoute(0)
 }
 
 function toPercent(value: number | undefined) {
@@ -176,16 +192,20 @@ async function savePlan() {
     return
   }
 
-  // A room without route points is saved without a route, and an empty room number as no room
-  // number. A room keeps its challenge only while the event still has that challenge.
-  const savedRooms = markedRooms.value.map(room => ({
-    ...room,
-    name: room.name.trim(),
-    number: room.number?.trim() || undefined,
-    challengeId: props.challenges.some(challenge => challenge.id === room.challengeId) ? room.challengeId : undefined,
-    route: room.route?.length ? room.route : undefined
-  }))
-  if (savedRooms.some(room => !programRoomSchema.shape.route.safeParse(room.route).success)) {
+  // A route without points is left out, and a room without routes is saved without them. An empty
+  // room number is saved as no room number. A room keeps its challenge only while the event still
+  // has that challenge.
+  const savedRooms = markedRooms.value.map((room) => {
+    const routes = room.routes.filter(route => route.length)
+    return {
+      ...room,
+      name: room.name.trim(),
+      number: room.number?.trim() || undefined,
+      challengeId: props.challenges.some(challenge => challenge.id === room.challengeId) ? room.challengeId : undefined,
+      routes: routes.length ? routes : undefined
+    }
+  })
+  if (savedRooms.some(room => !programRoomSchema.shape.routes.safeParse(room.routes).success)) {
     error.value = 'A route needs at least two points on the plan.'
     return
   }
@@ -358,6 +378,33 @@ async function replaceImage(event: Event) {
               />
             </div>
 
+            <!-- A room can have a route from each place where people start, such as each entrance.
+                 The buttons below change the chosen route. -->
+            <div
+              v-if="activeRoom.routes.length"
+              class="flex flex-wrap gap-1.5"
+            >
+              <AppButton
+                v-for="(route, index) in activeRoom.routes"
+                :key="index"
+                size="xs"
+                :color="index === activeRouteIndex ? 'primary' : 'neutral'"
+                :variant="index === activeRouteIndex ? 'soft' : 'outline'"
+                :aria-pressed="index === activeRouteIndex"
+                :label="`Route ${index + 1}`"
+                @click="selectRoute(index)"
+              />
+              <AppButton
+                v-if="activeRoom.routes.length < maxRoomRoutes"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                icon="i-lucide-plus"
+                label="Add route"
+                @click="addRoute"
+              />
+            </div>
+
             <div class="flex flex-wrap gap-2">
               <AppButton
                 color="neutral"
@@ -369,7 +416,7 @@ async function replaceImage(event: Event) {
                 @click="toggleDrawing"
               />
               <AppButton
-                v-if="drawing && activeRoom.route?.length"
+                v-if="drawing && activeRoute?.length"
                 color="neutral"
                 variant="ghost"
                 size="sm"
@@ -377,7 +424,7 @@ async function replaceImage(event: Event) {
                 @click="undoRoutePoint"
               />
               <AppButton
-                v-if="activeRoom.route?.length"
+                v-if="activeRoute"
                 color="error"
                 variant="ghost"
                 size="sm"
@@ -425,7 +472,7 @@ async function replaceImage(event: Event) {
                 </AppFormField>
               </div>
               <div
-                v-for="(point, index) in activeRoom.route"
+                v-for="(point, index) in activeRoute"
                 :key="index"
                 class="mt-2 grid grid-cols-2 gap-2"
               >
@@ -474,7 +521,8 @@ async function replaceImage(event: Event) {
             :rooms="markedRooms"
             :active-room-id="activeRoomId"
             :marking="marking"
-            :route="activeRoom?.route ?? []"
+            :routes="activeRoom?.routes ?? []"
+            :active-route-index="activeRouteIndex"
             :drawing="drawing"
             @marked="markRoom"
             @route-point="addRoutePoint"

@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import type { SaveBuilderFloorPlan } from '~/domains/events/admin-event'
 import type { EventChallenge } from '#shared/domains/events/challenges'
-import type { EventFloorPlan, EventProgram, ProgramTrack } from '#shared/domains/events/program'
+import type { EventFloorPlan, EventProgram, ProgramSession, ProgramTrack } from '#shared/domains/events/program'
 import type { EventAgendaItem } from '~/domains/events/records'
 
 import { eventProgramSchema } from '#shared/domains/events/program'
+import AdminBuilderRoomSelect from '~/components/admin/builder/molecules/AdminBuilderRoomSelect.vue'
 import AdminBuilderFloorPlans from '~/components/admin/builder/organisms/AdminBuilderFloorPlans.vue'
 import AdminBuilderProgramTrack from '~/components/admin/builder/organisms/AdminBuilderProgramTrack.vue'
 import { getAgendaItemPresentation } from '~/domains/events/presentation'
+import { programRoomOptions } from '~/domains/events/program-map'
+import { agendaItemsOutsideProgram } from '~/domains/events/program-timeline'
 
 const props = defineProps<{
   saveFloorPlan: SaveBuilderFloorPlan
@@ -27,7 +30,7 @@ const emit = defineEmits<{
 }>()
 
 const agendaFieldId = useId()
-const emptyProgram: EventProgram = { agendaItemId: '', tracks: [] }
+const emptyProgram: EventProgram = { agendaItemId: '', tracks: [], agendaItemRooms: [] }
 const draft = shallowRef<EventProgram>(props.program ?? emptyProgram)
 const validationError = shallowRef('')
 const savedProgram = computed(() => props.program ?? emptyProgram)
@@ -40,6 +43,10 @@ const timedAgenda = computed(() => props.agendaItems.flatMap((item) => {
   return [{ ...item, endsAt: item.endsAt, label: getAgendaItemPresentation(item, true).metaLabel }]
 }))
 const selectedItem = computed(() => timedAgenda.value.find(item => item.id === draft.value.agendaItemId))
+const roomOptions = computed(() => programRoomOptions(props.floorPlans))
+// The Agenda tab shows these items before and after the program. Each can take place in a room,
+// for example the check-in, and selecting it then shows that room on the map.
+const outsideAgenda = computed(() => selectedItem.value ? agendaItemsOutsideProgram(props.agendaItems, selectedItem.value) : [])
 
 watch(savedProgram, (program) => {
   draft.value = program
@@ -78,6 +85,16 @@ function save() {
 
   validationError.value = ''
   emit('save', result.data)
+}
+
+function agendaItemRoom(agendaItemId: string) {
+  return draft.value.agendaItemRooms.find(entry => entry.agendaItemId === agendaItemId)?.room ?? null
+}
+
+function setAgendaItemRoom(agendaItemId: string, room: ProgramSession['room']) {
+  const others = draft.value.agendaItemRooms.filter(entry => entry.agendaItemId !== agendaItemId)
+  draft.value = { ...draft.value, agendaItemRooms: room ? [...others, { agendaItemId, room }] : others }
+  validationError.value = ''
 }
 
 function remove() {
@@ -149,6 +166,33 @@ function remove() {
           :disabled="saving"
           @click="addTrack"
         />
+
+        <section
+          v-if="outsideAgenda.length && roomOptions.length"
+          class="space-y-3"
+          :aria-labelledby="`${agendaFieldId}-other-items`"
+        >
+          <h3
+            :id="`${agendaFieldId}-other-items`"
+            class="text-sm font-medium text-highlighted"
+          >
+            Rooms for other agenda items
+          </h3>
+          <AppFormField
+            v-for="item in outsideAgenda"
+            :key="item.id"
+            :name="`${agendaFieldId}-${item.id}`"
+            :label="item.title"
+          >
+            <AdminBuilderRoomSelect
+              :id="`${agendaFieldId}-${item.id}`"
+              :room="agendaItemRoom(item.id)"
+              :room-options="roomOptions"
+              :disabled="saving"
+              @update:room="room => setAgendaItemRoom(item.id, room)"
+            />
+          </AppFormField>
+        </section>
       </template>
 
       <AppAlert

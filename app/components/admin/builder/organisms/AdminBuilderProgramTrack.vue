@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { EventFloorPlan, ProgramSession, ProgramTrack } from '#shared/domains/events/program'
 import AdminBuilderProgramSession from '~/components/admin/builder/molecules/AdminBuilderProgramSession.vue'
+import { programRoomOptions } from '~/domains/events/program-map'
 
 const props = defineProps<{
   track: ProgramTrack
@@ -16,11 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const trackNameId = useId()
-const roomOptions = computed(() => props.floorPlans.flatMap(floor => floor.rooms.map(room => ({
-  key: JSON.stringify([floor.id, room.id]),
-  label: `${room.name} · ${floor.name}`,
-  room: { floorPlanId: floor.id, roomId: room.id }
-}))))
+const roomOptions = computed(() => programRoomOptions(props.floorPlans))
 
 const availableSlot = computed(() => {
   const totalMinutes = Math.floor((Date.parse(props.endsAt) - Date.parse(props.startsAt)) / 60_000)

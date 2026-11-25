@@ -8,10 +8,12 @@ const meta = {
   args: {
     tracks: buildDayProgram.tracks,
     outsideItems: buildDayAgendaItems.slice(1),
+    agendaItemRooms: buildDayProgram.agendaItemRooms,
     floorPlans: buildDayProgram.floorPlans,
     startsAt: buildDayProgram.agendaItem.startsAt,
     endsAt: buildDayProgram.agendaItem.endsAt,
     selectedSessionId: null,
+    selectedAgendaItemId: null,
     now: Date.parse('2026-10-16T10:00:00Z')
   },
   parameters: { controls: { disable: true } },

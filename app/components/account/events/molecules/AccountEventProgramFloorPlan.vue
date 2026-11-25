@@ -46,15 +46,17 @@ watch(() => props.plan.imageUrl, () => {
 
 const visibleRooms = computed(() => imageRatio.value ? props.plan.rooms : [])
 const selectedRoomIds = computed(() => new Set(props.selectedRooms.map(room => room.id)))
-// The way to a room is shown while that room alone is selected.
+// The ways to a room are shown while that room alone is selected.
 const routeRoom = computed(() => props.selectedRooms.length === 1 ? props.selectedRooms[0] : undefined)
-// The route in screen pixels, so the line and its arrows keep the same size at every map width.
-const route = computed(() => (routeRoom.value?.route ?? []).map(point => ({
-  x: point.x * width.value,
-  y: point.y * height.value
-})))
-const routeLine = computed(() => route.value.map(point => `${point.x},${point.y}`).join(' '))
-const arrows = computed(() => routeArrows(route.value, 28))
+// Each route in screen pixels, so the lines and their arrows keep the same size at every map width.
+const routes = computed(() => (routeRoom.value?.routes ?? []).map((route) => {
+  const points = route.map(point => ({ x: point.x * width.value, y: point.y * height.value }))
+  return {
+    start: points[0]!,
+    line: points.map(point => `${point.x},${point.y}`).join(' '),
+    arrows: routeArrows(points, 28)
+  }
+}))
 
 function selectFloor(value: string | number | undefined) {
   if (typeof value === 'string') {
@@ -116,47 +118,52 @@ function selectFloor(value: string | number | undefined) {
         class="block h-auto w-full dark:invert dark:hue-rotate-180"
         @load="readImageRatio"
       >
-      <!-- The route is drawn below the rooms, so their names stay readable. -->
+      <!-- The routes are drawn below the rooms, so their names stay readable. -->
       <svg
-        v-if="imageRatio && routeLine"
+        v-if="imageRatio && routes.length"
         class="pointer-events-none absolute inset-0 size-full"
         :viewBox="`0 0 ${width} ${height}`"
         role="img"
-        :aria-label="`Route to ${routeRoom?.name}`"
-        data-testid="program-room-route"
+        :aria-label="`${routes.length > 1 ? 'Routes' : 'Route'} to ${routeRoom?.name}`"
       >
-        <polyline
-          :points="routeLine"
-          class="fill-none stroke-bg"
-          stroke-width="10"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-        <polyline
-          :points="routeLine"
-          class="fill-none stroke-primary"
-          stroke-width="6"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-        <polyline
-          v-for="(arrow, index) in arrows"
-          :key="index"
-          points="-3,-4 1,0 -3,4"
-          :transform="`translate(${arrow.x} ${arrow.y}) rotate(${arrow.angle})`"
-          :style="{ animationDelay: `${index * 0.12}s` }"
-          class="route-arrow fill-none stroke-primary-foreground"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-        <circle
-          :cx="route[0]!.x"
-          :cy="route[0]!.y"
-          r="7"
-          class="fill-bg stroke-primary"
-          stroke-width="4"
-        />
+        <g
+          v-for="(route, routeIndex) in routes"
+          :key="routeIndex"
+          data-testid="program-room-route"
+        >
+          <polyline
+            :points="route.line"
+            class="fill-none stroke-bg"
+            stroke-width="10"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <polyline
+            :points="route.line"
+            class="fill-none stroke-primary"
+            stroke-width="6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <polyline
+            v-for="(arrow, index) in route.arrows"
+            :key="index"
+            points="-3,-4 1,0 -3,4"
+            :transform="`translate(${arrow.x} ${arrow.y}) rotate(${arrow.angle})`"
+            :style="{ animationDelay: `${index * 0.12}s` }"
+            class="route-arrow fill-none stroke-primary-foreground"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <circle
+            :cx="route.start.x"
+            :cy="route.start.y"
+            r="7"
+            class="fill-bg stroke-primary"
+            stroke-width="4"
+          />
+        </g>
       </svg>
 
       <AppButton
@@ -206,7 +213,7 @@ function selectFloor(value: string | number | undefined) {
   text-shadow: none;
 }
 
-/* The arrows light up one after another, from the start of the route to the room. */
+/* The arrows light up one after another, from the start of each route to the room. */
 .route-arrow {
   animation: route-arrow 1.6s ease-in-out infinite;
 }
