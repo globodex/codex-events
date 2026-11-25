@@ -21,14 +21,21 @@ const emit = defineEmits<{
 
 const map = useTemplateRef<HTMLElement>('map')
 const { width, height } = useElementSize(map)
-// Width divided by height of the plan image, known once the image has loaded.
+// Width divided by height of the plan image, known once the image has loaded. Until then the map
+// keeps a placeholder area and shows no rooms, because rooms are placed by fractions of the image.
 const imageRatio = shallowRef<number>()
+
+// Another floor shows another image, so its rooms wait for that image too.
+watch(() => props.plan.imageUrl, () => {
+  imageRatio.value = undefined
+})
 
 function setImageRatio(event: Event) {
   const image = event.target as HTMLImageElement
   imageRatio.value = image.naturalWidth / image.naturalHeight
 }
 
+const visibleRooms = computed(() => imageRatio.value ? props.plan.rooms : [])
 const selectedRoomIds = computed(() => new Set(props.selectedRooms.map(room => room.id)))
 // The way to a room is shown while that room alone is selected.
 const routeRoom = computed(() => props.selectedRooms.length === 1 ? props.selectedRooms[0] : undefined)
@@ -48,9 +55,11 @@ function selectFloor(value: string | number | undefined) {
 </script>
 
 <template>
-  <!-- On larger screens a tall plan gets a narrower card, so the whole plan fits on the screen below the page header. -->
+  <!-- On larger screens a tall plan gets a narrower card, so the whole plan fits on the screen below the page header.
+       The plan image has a transparent background and light floors, so light mode gives the card a solid surface instead
+       of the event picture behind it. Dark mode inverts the image and keeps the dark page behind it. -->
   <figure
-    class="flex min-w-0 flex-col overflow-hidden rounded-xl border border-default
+    class="flex min-w-0 flex-col overflow-hidden rounded-xl border border-default bg-accented dark:bg-transparent
       lg:max-w-[calc((100dvh_-_10rem)_*_var(--plan-ratio))]"
     :style="{ '--plan-ratio': imageRatio }"
     data-testid="program-floor-plan"
@@ -89,6 +98,7 @@ function selectFloor(value: string | number | undefined) {
     <div
       ref="map"
       class="@container relative"
+      :class="{ 'aspect-[4/3] animate-pulse bg-black/5 motion-reduce:animate-none dark:bg-white/5': !imageRatio }"
     >
       <!-- The dark theme swaps light and dark in the plan image and keeps its colors. -->
       <img
@@ -99,7 +109,7 @@ function selectFloor(value: string | number | undefined) {
       >
       <!-- The route is drawn below the rooms, so their names stay readable. -->
       <svg
-        v-if="routeLine"
+        v-if="imageRatio && routeLine"
         class="pointer-events-none absolute inset-0 size-full"
         :viewBox="`0 0 ${width} ${height}`"
         role="img"
@@ -141,7 +151,7 @@ function selectFloor(value: string | number | undefined) {
       </svg>
 
       <AppButton
-        v-for="room in props.plan.rooms"
+        v-for="room in visibleRooms"
         :key="room.id"
         color="neutral"
         variant="ghost"
