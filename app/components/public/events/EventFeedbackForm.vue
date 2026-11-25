@@ -124,7 +124,7 @@ async function submitFeedback() {
       class="space-y-6"
       @submit.prevent="submitFeedback"
     >
-      <div class="divide-y divide-black/8 overflow-hidden rounded-xl border border-black/8 bg-[#0F0F10]/70 dark:divide-white/[0.08] dark:border-white/[0.08] dark:bg-[#101112]">
+      <div class="divide-y divide-black/8 overflow-hidden rounded-xl border border-black/8 bg-white/70 dark:divide-white/[0.08] dark:border-white/[0.08] dark:bg-[#101112]">
         <div
           v-for="question in feedbackQuestions"
           :key="question.id"
