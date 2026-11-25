@@ -1,11 +1,11 @@
 ---
 id: TASK-494
 title: Let organizers ask multiple-choice questions
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-11-24T23:07:00Z'
-updated_date: '2026-11-24T23:16:00Z'
+updated_date: '2026-11-25T07:16:00Z'
 labels: []
 milestone: m-3
 dependencies: []
@@ -45,23 +45,23 @@ For the Vienna Build Day on 28 November 2026, TU Wien and the EULiST alliance ne
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 An organizer can add a multiple-choice question with 2 to 20 unique choices to the registration questions in the event builder and to the Call for talks questions.
-- [ ] #2 A participant can tick one or more choices; a required multiple-choice question needs at least one ticked choice.
-- [ ] #3 Organizers read the ticked choices in the registration review and in the talk proposal review.
-- [ ] #4 Docs and tests cover the question type.
-- [ ] #5 The server refuses a choice the question does not have and a choice sent twice, and stores the ticked choices as a list.
+- [x] #1 An organizer can add a multiple-choice question with 2 to 20 unique choices to the registration questions in the event builder and to the Call for talks questions.
+- [x] #2 A participant can tick one or more choices; a required multiple-choice question needs at least one ticked choice.
+- [x] #3 Organizers read the ticked choices in the registration review and in the talk proposal review.
+- [x] #4 Docs and tests cover the question type.
+- [x] #5 The server refuses a choice the question does not have and a choice sent twice, and stores the ticked choices as a list.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
+- [x] #3 Relevant validation commands pass
+- [x] #4 Tests were added or updated when behavior changed
+- [x] #5 Test gaps are documented when automation is not practical
+- [x] #6 Config and developer workflow docs were updated when setup changed
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -80,3 +80,15 @@ For the Vienna Build Day on 28 November 2026, TU Wien and the EULiST alliance ne
 <!-- SECTION:NOTES:BEGIN -->
 Built on 2026-11-25. The question type multiple_choice lives in shared/domains/events/custom-questions.ts with the other types: customQuestionHasChoices names the types with choices (both editors and the definition rule use it), customQuestionAnswerValueSchema and CustomQuestionAnswerValue are the one answer value (text, boolean, or the list of ticked choices), getEmptyCustomQuestionAnswerValue gives [] for it, and isCustomQuestionAnswered is the one answered check (server validation, talk proposal counts). The server refuses a choice that is not in the question or one sent twice ('Tick only the available options, each once.'). It keeps the order the form sends; CustomQuestionControl always sends the question order. No new component: CustomQuestionControl (closest analog, it already renders every question type) shows a group of AppCheckbox, named by the question for screen readers; the registration field gives it no label 'for', like an acknowledgment. CustomQuestionAnswerReview shows one ticked choice per line, because choices can contain commas; the participant list and the talk proposal review both use it. The choice rule messages now say 'Choice questions need at least two choices.' and 'Only choice questions can have choices.' Checks: lint, typecheck, unit tests (720), the registration, talk proposal and application integration tests (94), the registration question and talk proposal browser scenarios, and pictures of the registration form with Julius's questions at 1440 px light and 390 px dark (local demo event, questions restored afterwards).
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Organizers can ask multiple-choice questions on the registration form and in the Call for talks. Participants tick any number of the choices, and a required question needs at least one. The server refuses a choice that the question does not have or a choice sent twice, and stores the ticked choices as a list. The registration review and the talk proposal review show one ticked choice per line.
+
+Verification: lint, typecheck, 720 unit tests, the registration, talk proposal and application integration tests, and the registration question and talk proposal browser scenarios pass. GitHub CI and the test deployment pass. Released in v1.22.0 on 2026-11-25. In production, the Vienna Build Day draft saved a required multiple-choice question with six choices, and the builder shows the Multiple choice type.
+
+Test gap: the Call for talks editor and the talk proposal review use the same editor and review components as the registration flow; no browser scenario ticks choices in a talk proposal.
+
+Risks and follow-ups: none.
+<!-- SECTION:FINAL_SUMMARY:END -->
