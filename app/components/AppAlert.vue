@@ -78,15 +78,22 @@ const rootClass = computed(() => {
     >
       {{ props.description }}
     </UiAlertDescription>
+    <!-- The alert grid has a 0 px first column for the icon, so the retry button and the slot
+         content span the whole grid to stay under the title and description. -->
     <AppButton
       v-if="retry"
       label="Retry"
       variant="outline"
       color="neutral"
       size="sm"
-      class="mt-2 w-fit"
+      class="col-span-full col-start-1 mt-2 w-fit"
       @click="retry()"
     />
-    <slot />
+    <div
+      v-if="$slots.default"
+      class="col-span-full col-start-1"
+    >
+      <slot />
+    </div>
   </UiAlert>
 </template>
