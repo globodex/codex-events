@@ -35,10 +35,13 @@ defineProps<{
 
     <DialogPortal>
       <DialogOverlay class="fixed inset-0 z-50 bg-black/45 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=open]:fade-in-0" />
-      <!-- A popup without a summary has no describing line, and says so to screen readers. -->
+      <!-- A popup without a summary has no describing line, and says so to screen readers.
+           On a large screen the popup is wider and taller, so long details fit without scrolling.
+           Phones and tablets scroll inside the popup. -->
       <DialogContent
         :aria-describedby="summary ? undefined : ''"
         class="fixed top-1/2 left-1/2 z-50 max-h-[85dvh] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2
+          lg:max-h-[90dvh] lg:max-w-2xl
           overflow-y-auto rounded-xl border bg-popover p-5 text-popover-foreground shadow-lg outline-none
           data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
       >
