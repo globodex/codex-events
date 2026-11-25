@@ -252,7 +252,7 @@ describe('TASK-443 Luma guest list', () => {
 
       expect(importResponse.status).toBe(200)
       expect(await importResponse.json()).toEqual({
-        data: { approvedGuestCount: 1, waitingGuestCount: 2, approvedApplicationCount: 0, withdrawnApplicationCount: 0 }
+        data: { approvedGuestCount: 1, waitingGuestCount: 2, approvedApplicationCount: 0, withdrawnApplicationCount: 0, checkedInApplicationCount: 0 }
       })
       expect(fetchMock).toHaveBeenCalledTimes(2)
       const firstRequestUrl = new URL(String(fetchMock.mock.calls[0]![0]))
@@ -287,7 +287,7 @@ describe('TASK-443 Luma guest list', () => {
       expect(auditRows[0]).toMatchObject({
         actorUserId: 'event_admin',
         entityId: 'event_1',
-        metadata: { approvedGuestCount: 1, waitingGuestCount: 2, approvedApplicationCount: 0, withdrawnApplicationCount: 0 }
+        metadata: { approvedGuestCount: 1, waitingGuestCount: 2, approvedApplicationCount: 0, withdrawnApplicationCount: 0, checkedInApplicationCount: 0 }
       })
     })
 
@@ -396,9 +396,9 @@ describe('TASK-443 Luma guest list', () => {
       lumaWebhookStatus: 'not_configured' as const
     }
 
-    function uploadGuestList(harness: Harness, rows: string[]) {
+    function uploadGuestList(harness: Harness, rows: string[], header = 'guest_id,name,email,phone_number,approval_status') {
       const body = new FormData()
-      body.append('file', new Blob([['guest_id,name,email,phone_number,approval_status', ...rows].join('\n')], { type: 'text/csv' }), 'guests.csv')
+      body.append('file', new Blob([[header, ...rows].join('\n')], { type: 'text/csv' }), 'guests.csv')
 
       return harness.request('/api/events/event_1/luma/actions/upload-guest-list', { method: 'POST', body })
     }
@@ -420,7 +420,8 @@ describe('TASK-443 Luma guest list', () => {
         approvedGuestCount: 1,
         waitingGuestCount: 1,
         approvedApplicationCount: 1,
-        withdrawnApplicationCount: 0
+        withdrawnApplicationCount: 0,
+        checkedInApplicationCount: 0
       })
       expect(await readGuests(harness)).toEqual({
         'declined@luma.example': 'declined',
@@ -435,6 +436,30 @@ describe('TASK-443 Luma guest list', () => {
         expect(text).not.toContain('@luma.example')
         expect(text).not.toContain('+431234')
       }
+    })
+
+    test('records the Luma check-in of a guest once, with the time from the CSV, after confirming the registration', async () => {
+      const { harness } = await createContext(unconnectedEvent)
+      await addApplication(harness, 'participant', 'submitted')
+      const header = 'email,approval_status,checked_in_at'
+
+      const first = await uploadGuestList(harness, ['guest@luma.example,approved,2026-11-28T08:45:00.000Z'], header)
+      expect((await first.json()).data).toMatchObject({ approvedApplicationCount: 1, checkedInApplicationCount: 1 })
+      expect(await readApplication(harness, 'participant')).toMatchObject({
+        status: 'approved',
+        checkedInAt: '2026-11-28T08:45:00.000Z',
+        checkInSource: 'luma'
+      })
+
+      // A later export keeps the first check-in time, also when Luma no longer shows the check-in.
+      for (const checkedInAt of ['2026-11-28T09:30:00.000Z', '']) {
+        const later = await uploadGuestList(harness, [`guest@luma.example,approved,${checkedInAt}`], header)
+        expect((await later.json()).data).toMatchObject({ checkedInApplicationCount: 0 })
+        expect((await readApplication(harness, 'participant'))?.checkedInAt).toBe('2026-11-28T08:45:00.000Z')
+      }
+      const checkInAudits = (await harness.database.select().from(auditLogs))
+        .filter(row => row.action === 'user_application.luma_check_in_recorded')
+      expect(checkInAudits).toEqual([expect.objectContaining({ entityId: 'application_participant' })])
     })
 
     test('refuses a file without the needed columns or with an invalid email, and keeps the list', async () => {

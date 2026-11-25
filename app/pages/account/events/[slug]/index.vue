@@ -104,6 +104,7 @@ import { normalizeJudgeAssignmentIdQueryValue } from '~/domains/judging/query'
 import { buildAccountEventTeamsTabHref, normalizeTeamSlugQueryValue } from '~/domains/teams/query'
 import { normalizeSessionQueryValue, normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
 import { useApiClient } from '~/composables/useApiClient'
+import { usePolling } from '~/composables/usePolling'
 import {
   useAccountEventPageRequest,
   useAccountJudgeAssignmentPageRequest
@@ -802,6 +803,15 @@ const showNextStepCard = computed(() =>
   && applicationStatus.value === 'approved'
   && event.value?.state !== 'completed'
 )
+
+// Until a confirmed participant is checked in, the Overview with its next step and the Agenda tab
+// read their data again every few seconds. They change by themselves once the event team checks the
+// participant in, and the reading stops then.
+const waitsForCheckIn = computed(() =>
+  (activeSection.value === 'overview' && showNextStepCard.value && !participantApplication.value?.isCheckedIn)
+  || (activeSection.value === 'program' && programPage.value?.waitingForCheckIn === true))
+usePolling(refreshAfterCheckInStep, waitsForCheckIn)
+
 // Where the Gallery tab sends a participant who has to finish the check-in flow first: the
 // overview, while it shows the next-step card. A direct link to Gallery loads only
 // the gallery page, so galleryPage.mustFinishCheckInFlowToAddPhotos also proves Overview has it.
@@ -1223,7 +1233,6 @@ useSeoMeta({
           :is-checked-in="participantApplication?.isCheckedIn ?? false"
           :way-href="nextStepWayHref"
           :activities="participantActivities"
-          :refresh-page="refreshAfterCheckInStep"
         />
 
         <!-- The server sends the offers only once this person can claim them or has claimed them. -->

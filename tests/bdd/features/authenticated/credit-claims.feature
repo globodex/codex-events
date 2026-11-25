@@ -9,8 +9,9 @@ Feature: Credits after check-in
 
   Scenario: Participant who has not checked in sees no credits
     Given I open my event page of "credit-claim-fixture-event" as "judge"
-    Then my next step should be to check in with the event team
-    And I should see no credits on my event page
+    Then I should see no credits on my event page
+    # The event has no agenda, so the next step has no way to show before check-in.
+    And I should see no next step
 
   Scenario: Participant sees that no credits are left and keeps the other activities
     Given I open my event page of "credit-sold-out-fixture-event" as "regular_user"

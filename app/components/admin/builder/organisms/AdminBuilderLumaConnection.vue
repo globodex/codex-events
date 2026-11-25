@@ -115,12 +115,14 @@ async function replaceGuestList(action: 'sync-guest-list' | 'upload-guest-list',
   guestListPending.value = action
   guestListRequestError.value = ''
   try {
-    const response = await apiFetch<ApiDataResponse<{ approvedGuestCount: number, waitingGuestCount: number }>>(
+    const response = await apiFetch<ApiDataResponse<{ approvedGuestCount: number, waitingGuestCount: number, checkedInApplicationCount: number }>>(
       `/api/events/${props.event!.id}/luma/actions/${action}`, { method: 'POST', body }
     )
+    const { approvedGuestCount, waitingGuestCount, checkedInApplicationCount } = response.data
     toast.add({
       title: 'Guest list updated',
-      description: `${response.data.approvedGuestCount} approved, ${response.data.waitingGuestCount} waiting.`,
+      // Only an uploaded CSV brings check-ins, so the count shows when there are new ones.
+      description: `${approvedGuestCount} approved, ${waitingGuestCount} waiting.${checkedInApplicationCount ? ` New check-ins: ${checkedInApplicationCount}.` : ''}`,
       color: 'success'
     })
   } catch (error) {

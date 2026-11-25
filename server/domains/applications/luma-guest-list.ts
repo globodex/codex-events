@@ -18,6 +18,8 @@ export interface LumaGuestListEntry {
   email: string
   /** Normalized with `normalizeLumaGuestStatus`. */
   approvalStatus: string
+  /** When Luma checked the guest in, as an ISO time. Only an uploaded guest CSV carries it. */
+  checkedInAt?: string | null
 }
 
 /** What a Luma approval status means for a registration on the platform. */
@@ -63,10 +65,12 @@ function invalidGuestListCsv(code: string, message: string, statusCode = 400) {
 }
 
 /**
- * Reads the guest CSV that Luma exports. Only the email and approval status of each guest are
- * kept; names, phone numbers, answers and every other column are ignored. A file that cannot be
- * read, misses one of the two columns, has a guest without a valid email, or has more than
- * 10,000 guests is refused as a whole. One guest is kept per email; the last row wins.
+ * Reads the guest CSV that Luma exports. Only the email, approval status and check-in time
+ * (`checked_in_at`, empty until Luma checks the guest in) of each guest are kept; names, phone
+ * numbers, answers and every other column are ignored. A file that cannot be read, misses the
+ * email or approval_status column, has a guest without a valid email or with an invalid check-in
+ * time, or has more than 10,000 guests is refused as a whole. One guest is kept per email; the
+ * last row wins.
  */
 export function parseLumaGuestListCsv(content: string): LumaGuestListEntry[] {
   let headers: string[] = []
@@ -105,9 +109,18 @@ export function parseLumaGuestListCsv(content: string): LumaGuestListEntry[] {
       throw invalidGuestListCsv('luma_guest_list_csv_email_invalid', 'Every guest in the Luma CSV needs a valid email address.')
     }
 
+    const checkedInAt = record.checked_in_at ? new Date(record.checked_in_at) : null
+    if (checkedInAt && Number.isNaN(checkedInAt.getTime())) {
+      throw invalidGuestListCsv('luma_guest_list_csv_check_in_invalid', 'Every check-in time in the Luma CSV must be a valid date and time.')
+    }
+
     const normalizedEmail = normalizeLumaEmail(email.data)
-    // An empty status counts as waiting, as in an import from Luma.
-    guests.set(normalizedEmail, { email: normalizedEmail, approvalStatus: normalizeLumaGuestStatus(record.approval_status) ?? '' })
+    guests.set(normalizedEmail, {
+      email: normalizedEmail,
+      // An empty status counts as waiting, as in an import from Luma.
+      approvalStatus: normalizeLumaGuestStatus(record.approval_status) ?? '',
+      checkedInAt: checkedInAt?.toISOString() ?? null
+    })
   }
 
   return [...guests.values()]

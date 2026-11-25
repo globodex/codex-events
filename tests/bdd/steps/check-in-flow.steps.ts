@@ -52,10 +52,10 @@ Then('I should see no next step', async ({ page }) => {
   await expect(nextStepCard(page)).toHaveCount(0)
 })
 
-// Before check-in the next step shows how to get there and lets the participant say they checked in.
+// Before check-in the next step shows how to get there.
 Then('my next step should be to check in with the event team', async ({ page }) => {
   await expect(nextStepCard(page).getByRole('heading', { name: 'How to get there' })).toBeVisible()
-  await expect(nextStepCard(page).getByRole('button', { name: 'I\'ve checked in' })).toBeVisible()
+  await expect(nextStepCard(page).getByRole('link', { name: 'Show the way' })).toBeVisible()
 })
 
 // "Show the way" opens the Agenda tab with the first session or agenda item that has a room selected.
@@ -80,18 +80,6 @@ Then('I should see the agenda session {string}', async ({ page }, sessionTitle: 
   await expect(session).toBeVisible()
 })
 
-// The page does not notice a check-in by itself. The button reads the page data again.
-When('I confirm my check-in', async ({ page }) => {
-  await Promise.all([
-    page.waitForResponse(response => isEventPageDataUrl(response.url()) && response.ok()),
-    nextStepCard(page).getByRole('button', { name: 'I\'ve checked in' }).click()
-  ])
-})
-
-Then('I should be told that my check-in is not recorded yet', async ({ page }) => {
-  await expect(nextStepCard(page).getByText('Your check-in is not recorded yet.')).toBeVisible()
-})
-
 // The staff check-in of the regular user in the check-in flow fixture event, as its event admin.
 When('the event team checks me in', async () => {
   const api = await createAuthenticatedApiClient(eventAdminPersona)
@@ -109,6 +97,22 @@ When('the event team checks me in', async () => {
 
 Then('my next step should list the activity {string}', async ({ page }, activity: string) => {
   await expectActivity(page, activity)
+})
+
+// Until the check-in, the page reads its data again 6 to 8 seconds after each read.
+Then('my next step should list the activity {string} without a reload', async ({ page }, activity: string) => {
+  await expect(nextStepCard(page).getByRole('heading', { name: 'You\'re checked in' })).toBeVisible({ timeout: 15_000 })
+  await expectActivity(page, activity)
+})
+
+// After the check-in the page no longer reads its data by itself. A read would come within 8 seconds.
+Then('my event page should stop checking my check-in', async ({ page }) => {
+  const reads: string[] = []
+  page.on('request', (request) => {
+    if (isEventPageDataUrl(request.url())) reads.push(request.url())
+  })
+  await page.waitForTimeout(9_000)
+  expect(reads).toEqual([])
 })
 
 Then('my next step should still list the activity {string} after I reload the page', async ({ page }, activity: string) => {

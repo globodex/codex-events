@@ -6,22 +6,32 @@ import { lumaGuestListCsvLimits, parseLumaGuestListCsv } from '../../../../../se
 const header = '﻿guest_id,name,first_name,last_name,email,phone_number,created_at,approval_status,checked_in_at,What is your LinkedIn profile?'
 
 describe('TASK-499 uploaded Luma guest CSV', () => {
-  test('keeps only the normalized email and approval status of each guest, one guest per email', () => {
+  test('keeps only the normalized email, approval status and check-in time of each guest, one guest per email', () => {
     const guests = parseLumaGuestListCsv([
       header,
       'gst-1,"Lovelace, Ada",Ada,Lovelace, Ada@Example.com ,+431234,2026-11-20,approved,,"https://linkedin.com/in/ada, the first"',
       'gst-2,Grace Hopper,Grace,Hopper,grace@example.com,,2026-11-21,Pending Approval,,',
       'gst-3,Alan Turing,Alan,Turing,alan@example.com,,2026-11-22,declined,,',
       'gst-4,Ada Again,Ada,Again,ada@example.com,,2026-11-23,declined,,',
-      'gst-5,No Status,No,Status,nostatus@example.com,,2026-11-24,,,'
+      'gst-5,No Status,No,Status,nostatus@example.com,,2026-11-24,,,',
+      'gst-6,Checked In,Checked,In,checked@example.com,,2026-11-24,approved,2026-11-28T08:45:12.345Z,'
     ].join('\n'))
 
     expect(guests).toEqual([
-      { email: 'ada@example.com', approvalStatus: 'declined' },
-      { email: 'grace@example.com', approvalStatus: 'pending_approval' },
-      { email: 'alan@example.com', approvalStatus: 'declined' },
-      { email: 'nostatus@example.com', approvalStatus: '' }
+      { email: 'ada@example.com', approvalStatus: 'declined', checkedInAt: null },
+      { email: 'grace@example.com', approvalStatus: 'pending_approval', checkedInAt: null },
+      { email: 'alan@example.com', approvalStatus: 'declined', checkedInAt: null },
+      { email: 'nostatus@example.com', approvalStatus: '', checkedInAt: null },
+      { email: 'checked@example.com', approvalStatus: 'approved', checkedInAt: '2026-11-28T08:45:12.345Z' }
     ])
+  })
+
+  test('refuses the whole file when one check-in time is not a date', () => {
+    expect(() => parseLumaGuestListCsv([
+      'email,approval_status,checked_in_at',
+      'ada@example.com,approved,2026-11-28T08:45:12.345Z',
+      'grace@example.com,approved,soon'
+    ].join('\n'))).toThrow('Every check-in time in the Luma CSV must be a valid date and time.')
   })
 
   test('refuses a file without the email or approval_status column', () => {

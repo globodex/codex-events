@@ -178,7 +178,11 @@ export const accountEventAgendaPageSchema = z.object({
   publicSessions: publicProgramSessionsSchema.nullable(),
   // The published challenges that the caller may read, in display order. Empty for a caller who
   // may not read them (`canReadEventChallenges`). A room of a floor plan names its challenge.
-  challenges: z.array(agendaChallengeSchema)
+  challenges: z.array(agendaChallengeSchema),
+  // True for a confirmed participant of an event with the check-in flow who is not checked in yet,
+  // until the event is completed. Their Agenda tab reads this page again every few seconds, so it
+  // shows the sessions for checked-in participants as soon as the event team checks them in.
+  waitingForCheckIn: z.boolean()
 })
 
 export type AccountEventAgendaPage = z.infer<typeof accountEventAgendaPageSchema>

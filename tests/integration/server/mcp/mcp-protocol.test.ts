@@ -200,7 +200,7 @@ describe('stateless MCP protocol', () => {
       })) as { result: { structuredContent: { data: { page: unknown, shell?: unknown } } } }
       const { data } = payload.result.structuredContent
       // Event staff do not read the sessions. This event has no challenges.
-      expect(data.page).toEqual({ program: null, publicSessions: null, challenges: [] })
+      expect(data.page).toEqual({ program: null, publicSessions: null, challenges: [], waitingForCheckIn: false })
       expect(Boolean(data.shell)).toBe(includeEventShell)
     }
   })

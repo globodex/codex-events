@@ -8,14 +8,12 @@ Feature: Next step after check-in
     When I open the agenda from my next step
     Then I should see the agenda session "Kickoff"
 
-  Scenario: Participant sees the activities right after a staff check-in
+  Scenario: Participant sees the activities by themselves after a staff check-in
     Given I open my event page of "check-in-flow-fixture-event" as "regular_user"
     Then my next step should be to check in with the event team
-    When I confirm my check-in
-    Then I should be told that my check-in is not recorded yet
     When the event team checks me in
-    And I confirm my check-in
-    Then my next step should list the activity "Agenda"
+    Then my next step should list the activity "Agenda" without a reload
+    And my event page should stop checking my check-in
     And my next step should still list the activity "Agenda" after I reload the page
 
   Scenario: Event that does not use the next step keeps its page

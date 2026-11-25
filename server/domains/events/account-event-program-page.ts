@@ -19,6 +19,8 @@ export const accountEventProgramPageRoute = defineAccountEventPageRoute({
     // An event admin reads the program as an organizer, without a registration.
     const application = isEventAdmin ? null : (await getAccountEventPageAccess(context)).application
     const approved = application?.status === 'approved'
+    const isCheckedIn = application ? isApplicationEffectivelyCheckedIn(application) : false
+    const waitingForCheckIn = approved && context.event.checkInFlowEnabled && !isCheckedIn && context.event.state !== 'completed'
 
     const readableChallenges = listReadableEventChallenges({
       event: context.event,
@@ -41,16 +43,16 @@ export const accountEventProgramPageRoute = defineAccountEventPageRoute({
       return {
         program: null,
         publicSessions: await loadPublicProgramSessions(context.database, context.event),
-        challenges
+        challenges,
+        waitingForCheckIn
       }
     }
 
     return {
-      program: await loadParticipantEventProgram(context.database, context.event, {
-        isCheckedIn: application ? isApplicationEffectivelyCheckedIn(application) : false
-      }),
+      program: await loadParticipantEventProgram(context.database, context.event, { isCheckedIn }),
       publicSessions: null,
-      challenges
+      challenges,
+      waitingForCheckIn
     }
   }
 })

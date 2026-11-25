@@ -1,7 +1,8 @@
 import type { H3Event } from 'h3'
 
-import { and, eq, exists, lt, sql } from 'drizzle-orm'
+import { and, eq, exists, isNotNull, isNull, lt, sql } from 'drizzle-orm'
 
+import { buildAuditLogInsert } from '#server/database/audit-log'
 import type { AppDatabase, AppDatabaseBatch } from '#server/database/client'
 import { eventLumaGuests, events, userApplications } from '#server/database/schema'
 import { withdrawUserApplicationWithAdminPolicy } from '#server/domains/applications'
@@ -195,8 +196,52 @@ async function startGuestListRefresh(database: AppDatabase, event: EventRecord) 
 }
 
 /**
+ * Records the Luma check-in of each guest whose approved application has no check-in yet, like the
+ * Luma attendance webhook: with Luma's check-in time, the source `luma`, and an audit entry for each
+ * application. A recorded check-in is never replaced or removed (`recordFirstApplicationCheckIn`).
+ * Returns how many check-ins it recorded.
+ */
+async function recordGuestListCheckIns(database: AppDatabase, event: EventRecord, revision: number, guests: LumaGuestListEntry[]) {
+  const checkIns = guests.flatMap(({ email, checkedInAt }) => checkedInAt ? [{ email, checkedInAt }] : [])
+  let recordedCount = 0
+
+  for (let index = 0; index < checkIns.length; index += 100) {
+    // The check-in time of the guest with the application's Luma email, or null without one.
+    const guestCheckIn = sql<string | null>`(
+      select json_extract(guest.value, '$.checkedInAt')
+      from json_each(${JSON.stringify(checkIns.slice(index, index + 100))}) as guest
+      where json_extract(guest.value, '$.email') = ${userApplications.activeLumaEmail}
+    )`
+    const recordedAt = new Date().toISOString()
+    const recorded = await database.update(userApplications)
+      .set({ checkedInAt: guestCheckIn, checkInSource: 'luma', updatedAt: recordedAt })
+      .where(and(
+        eq(userApplications.eventId, event.id),
+        eq(userApplications.status, 'approved'),
+        isNull(userApplications.checkedInAt),
+        isNotNull(guestCheckIn),
+        exists(database.select({ id: events.id }).from(events).where(guestListSource(event, revision)))
+      ))
+      .returning({ id: userApplications.id, checkedInAt: userApplications.checkedInAt })
+
+    const [first, ...rest] = recorded.map(application => buildAuditLogInsert(database, {
+      entityType: 'user_application',
+      entityId: application.id,
+      action: 'user_application.luma_check_in_recorded',
+      metadata: { eventId: event.id, checkedInAt: application.checkedInAt, source: 'luma_guest_list' },
+      createdAt: recordedAt
+    }).query)
+    if (first) await database.batch([first, ...rest])
+    recordedCount += recorded.length
+  }
+
+  return recordedCount
+}
+
+/**
  * Replaces the stored guest list with `guests` (adds, updates, and removes guests) in one D1
- * transaction, then updates every application that no longer matches its guest.
+ * transaction, then updates every application that no longer matches its guest, and records the
+ * check-ins of the guests that Luma checked in.
  */
 async function publishGuestList(options: {
   h3Event: H3Event
@@ -232,10 +277,14 @@ async function publishGuestList(options: {
     applicationCounts[result] += 1
   }
 
+  // After the approvals, so a guest whose application was just approved is checked in too.
+  const checkedInApplicationCount = await recordGuestListCheckIns(database, event, revision, guests)
+
   return {
     ...await countEventLumaGuests(database, event.id, source),
     approvedApplicationCount: applicationCounts.approved,
-    withdrawnApplicationCount: applicationCounts.withdrawn
+    withdrawnApplicationCount: applicationCounts.withdrawn,
+    checkedInApplicationCount
   }
 }
 

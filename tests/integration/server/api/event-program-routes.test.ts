@@ -269,11 +269,18 @@ describe('event program routes', () => {
     expect((await readData<AdminEventProgram>(await harness.request(programPath))).program).toEqual(flippingProgram)
     expect((await readAgenda()).tracks).toEqual(program.tracks)
 
+    // With the check-in flow, the Agenda tab of a participant reads the page again until the
+    // participant is checked in.
+    await harness.database.update(events).set({ checkInFlowEnabled: true })
     signIn('participant')
-    expect((await readAgenda()).tracks).toEqual(program.tracks)
+    const beforeCheckIn = await readAgendaPage()
+    expect(beforeCheckIn.program!.tracks).toEqual(program.tracks)
+    expect(beforeCheckIn.waitingForCheckIn).toBe(true)
 
     await harness.database.update(userApplications).set({ checkedInAt: '2026-11-28T09:40:00.000Z' })
-    const [firstSessionAfterCheckIn, laterSession] = (await readAgenda()).tracks[0]!.sessions
+    const checkedInPage = await readAgendaPage()
+    expect(checkedInPage.waitingForCheckIn).toBe(false)
+    const [firstSessionAfterCheckIn, laterSession] = checkedInPage.program!.tracks[0]!.sessions
     expect(firstSessionAfterCheckIn).toEqual({
       ...program.tracks[0]!.sessions[0],
       title: 'Breakfast',
