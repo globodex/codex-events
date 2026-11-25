@@ -1107,7 +1107,8 @@ useSeoMeta({
         class="absolute inset-0 scale-110 bg-cover bg-center bg-no-repeat opacity-55 blur-md saturate-125 contrast-105"
         :style="detailBackgroundImageStyle"
       />
-      <div class="absolute inset-0 bg-gradient-to-b from-black/20 via-black/45 to-black/68 dark:from-black/35 dark:via-black/55 dark:to-black/76" />
+      <!-- Headings, times and highlighted cards of the workspace sit straight on the picture, so light mode washes it white for them. -->
+      <div class="absolute inset-0 bg-gradient-to-b from-white/40 via-white/50 to-white/60 dark:from-black/35 dark:via-black/55 dark:to-black/76" />
       <div class="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.22),transparent_46%)] dark:bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.10),transparent_48%)]" />
     </div>
 

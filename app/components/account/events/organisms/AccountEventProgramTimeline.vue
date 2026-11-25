@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useResizeObserver } from '@vueuse/core'
+
 import type { EventFloorPlan, ProgramSession, ProgramTrack } from '#shared/domains/events/program'
 
 import AccountEventProgramSession from '~/components/account/events/molecules/AccountEventProgramSession.vue'
@@ -20,6 +22,16 @@ const props = defineProps<{
 defineEmits<{
   select: [session: ProgramSession]
 }>()
+
+const timeline = useTemplateRef<HTMLElement>('timeline')
+const timelineGrid = useTemplateRef<HTMLElement>('timelineGrid')
+// The times stay in view while parallel tracks scroll sideways, and only then need a background
+// that hides the sessions passing under them. Otherwise they sit on the page like the rest.
+const scrollsSideways = shallowRef(false)
+
+useResizeObserver([timeline, timelineGrid], () => {
+  scrollsSideways.value = Boolean(timeline.value && timeline.value.scrollWidth > timeline.value.clientWidth)
+})
 
 const minuteMs = 60_000
 const baseTime = computed(() => Date.parse(props.startsAt))
@@ -158,6 +170,7 @@ const placements = computed(() => {
 
 <template>
   <div
+    ref="timeline"
     class="overflow-x-auto rounded-xl focus-visible:outline-2 focus-visible:outline-ring"
     data-testid="program-timeline"
     role="region"
@@ -165,6 +178,7 @@ const placements = computed(() => {
     tabindex="0"
   >
     <div
+      ref="timelineGrid"
       class="isolate grid"
       :style="gridStyle"
     >
@@ -192,8 +206,8 @@ const placements = computed(() => {
         <time
           v-if="boundary.label"
           :datetime="atOffset(boundary.offset)"
-          class="sticky left-0 z-10 bg-bg pr-1 pt-3.5 text-right text-xs font-medium tabular-nums leading-tight"
-          :class="boundary.hasSession ? 'text-highlighted' : 'text-muted'"
+          class="sticky left-0 z-10 pr-1 pt-3.5 text-right text-xs font-medium tabular-nums leading-tight"
+          :class="[boundary.hasSession ? 'text-highlighted' : 'text-muted', { 'bg-bg': scrollsSideways }]"
           :style="{ gridColumn: 1, gridRow: index + 2 }"
         >
           {{ boundary.label }}

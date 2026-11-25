@@ -21,19 +21,28 @@ const emit = defineEmits<{
 
 const map = useTemplateRef<HTMLElement>('map')
 const { width, height } = useElementSize(map)
-// Width divided by height of the plan image, known once the image has loaded. Until then the map
-// keeps a placeholder area and shows no rooms, because rooms are placed by fractions of the image.
+const image = useTemplateRef<HTMLImageElement>('image')
+const { height: imageHeight } = useElementSize(image)
+// Width divided by height of the plan image. Until it is known, the map keeps the size of a plan
+// with the placeholder shape and shows no rooms, because rooms are placed by fractions of the image.
 const imageRatio = shallowRef<number>()
+const placeholderRatio = 3 / 4
+
+// The browser knows the size of the image from its first bytes, long before the image has loaded,
+// and the image then gets its height. Reading the size at that moment gives the map its final size
+// early. The load event covers a new floor, whose image replaces the old one only once it has loaded.
+function readImageRatio() {
+  if (image.value?.naturalWidth) {
+    imageRatio.value = image.value.naturalWidth / image.value.naturalHeight
+  }
+}
+
+watch(imageHeight, readImageRatio)
 
 // Another floor shows another image, so its rooms wait for that image too.
 watch(() => props.plan.imageUrl, () => {
   imageRatio.value = undefined
 })
-
-function setImageRatio(event: Event) {
-  const image = event.target as HTMLImageElement
-  imageRatio.value = image.naturalWidth / image.naturalHeight
-}
 
 const visibleRooms = computed(() => imageRatio.value ? props.plan.rooms : [])
 const selectedRoomIds = computed(() => new Set(props.selectedRooms.map(room => room.id)))
@@ -56,12 +65,11 @@ function selectFloor(value: string | number | undefined) {
 
 <template>
   <!-- On larger screens a tall plan gets a narrower card, so the whole plan fits on the screen below the page header.
-       The plan image has a transparent background and light floors, so light mode gives the card a solid surface instead
-       of the event picture behind it. Dark mode inverts the image and keeps the dark page behind it. -->
+       The plan image has a transparent background, so the card has its own surface instead of the event picture behind it. -->
   <figure
-    class="flex min-w-0 flex-col overflow-hidden rounded-xl border border-default bg-accented dark:bg-transparent
+    class="flex min-w-0 flex-col overflow-hidden rounded-xl border border-default bg-accented
       lg:max-w-[calc((100dvh_-_10rem)_*_var(--plan-ratio))]"
-    :style="{ '--plan-ratio': imageRatio }"
+    :style="{ '--plan-ratio': imageRatio ?? placeholderRatio }"
     data-testid="program-floor-plan"
   >
     <figcaption class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-default px-3 py-2">
@@ -98,14 +106,15 @@ function selectFloor(value: string | number | undefined) {
     <div
       ref="map"
       class="@container relative"
-      :class="{ 'aspect-[4/3] animate-pulse bg-black/5 motion-reduce:animate-none dark:bg-white/5': !imageRatio }"
+      :class="{ 'aspect-(--plan-ratio) animate-pulse bg-black/5 motion-reduce:animate-none dark:bg-white/5': !imageRatio }"
     >
       <!-- The dark theme swaps light and dark in the plan image and keeps its colors. -->
       <img
+        ref="image"
         :src="props.plan.imageUrl"
         :alt="`Floor plan for ${props.plan.name}`"
         class="block h-auto w-full dark:invert dark:hue-rotate-180"
-        @load="setImageRatio"
+        @load="readImageRatio"
       >
       <!-- The route is drawn below the rooms, so their names stay readable. -->
       <svg
