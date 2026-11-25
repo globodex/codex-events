@@ -20,7 +20,10 @@ defineProps<{
       :action-href="talkProposalAction?.to"
       :action-label="talkProposalAction?.label"
     />
-    <EventOverviewPanel :description="event.description" />
+    <EventOverviewPanel
+      :description="event.description"
+      glass
+    />
     <EventTracksPanel
       :event-type="event.eventType"
       :tracks="event.tracks ?? []"

@@ -50,7 +50,6 @@ const rows = computed(() => {
   <AppCard
     v-if="rows.length > 0"
     data-testid="event-details"
-    class="!border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60 rounded-xl"
   >
     <div class="space-y-3">
       <div
