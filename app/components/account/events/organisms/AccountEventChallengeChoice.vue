@@ -42,7 +42,7 @@ const groups = computed(() => [
       <h2 class="text-lg font-semibold text-highlighted">
         {{ group.heading }}
       </h2>
-      <ul class="grid gap-3 sm:grid-cols-2">
+      <ul class="grid items-start gap-3 sm:grid-cols-2">
         <li
           v-for="challenge in group.challenges"
           :key="challenge.id"
