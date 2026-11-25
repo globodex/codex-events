@@ -7,7 +7,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-11-25T16:08:00Z'
-updated_date: '2026-11-25T18:02:00Z'
+updated_date: '2026-11-25T18:21:00Z'
 labels: []
 milestone: m-3
 dependencies: []
@@ -79,6 +79,8 @@ Workers Cache supports stale-while-revalidate: it sends the expired copy at once
 Built on 2026-11-25. Cloudflare's Workers Cache docs (developers.cloudflare.com/workers/cache/configuration/) say Workers Cache reads Cloudflare-CDN-Cache-Control first, honors stale-while-revalidate asynchronously (the request that finds an expired copy gets it at once with cf-cache-status UPDATING) and disables it for s-maxage, must-revalidate and proxy-revalidate. They do not say what happens to the stale copy when the refresh answers an uncacheable 404, so the docs now state a revocation bound of up to one day for hidden events and replaced or removed event images. Only the Cloudflare header gets the stale window: browsers keep public, max-age=30, stale-if-error=0, so an organizer who reloads after an edit never gets a day-old copy from their own browser. publicCdnCacheControlForPath in shared/http/public-cache-topology.ts picks the Cloudflare header by path (gallery photo pictures strict), and the API cache policy compares against it. Checks so far: lint, typecheck, unit tests (720), integration tests (777).
 
 Test site check on 2026-11-25 after deploy-test run 45668110197 (commit 5a9f511b, which includes this change): the home page, /events/astra-commons-vienna and /api/public/events/astra-commons-vienna answered MISS then HIT; 40 seconds later each answered UPDATING with age 41-42 and a first byte of about 0.10-0.14 s; 3 seconds later each answered HIT with age 3-4, so the background refresh had replaced the copy. The test site has no event pictures, so pictures were not measured there; they use the same header and cache entrypoint. The push of e58b49d9 happened during a GitHub outage and started no workflow; a manual workflow_dispatch ran the checks and the full BDD suite (both passed) but does not deploy, so the next push deployed it.
+
+Production check on 2026-11-25 after release v1.23.0 (deploy-production run 45673597561): the Vienna event page, its public JSON and its banner picture answered UPDATING after 40 seconds (age 40-44, first byte 0.07-0.10 s) and HIT with age 2-3 three seconds later. The first banner request was a MISS at 0.77 s, the next a HIT at 0.10 s.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
