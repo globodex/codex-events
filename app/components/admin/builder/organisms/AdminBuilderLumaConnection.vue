@@ -37,13 +37,15 @@ const notConnectedDescription = computed(() => {
     ? `New Luma registrations and approvals do not reach this event. ${reason}`
     : reason
 })
-// Turning the guest list on needs a working connection. While it is on (saved or not), the
-// controls always stay visible, so the organizer can refresh the list or turn it off again
-// even when the connection is broken.
+// The guest list does not need a working connection: without one, the organizer uploads the guest
+// CSV that Luma exports. While it is on (saved or not), the controls always stay visible, so the
+// organizer can refresh or upload the list, or turn it off again.
 const showGuestList = computed(() => guestListSaved.value
   || form.value.lumaGuestListEnabled
-  || (connected.value && !editing.value && !form.value.simplifiedClaimingEnabled))
-const guestListPending = shallowRef(false)
+  || (!editing.value && !form.value.simplifiedClaimingEnabled))
+const guestListFileInput = useTemplateRef<HTMLInputElement>('guestListFileInput')
+// The guest list action that is running, so only its button shows that it is busy.
+const guestListPending = shallowRef<'sync-guest-list' | 'upload-guest-list' | null>(null)
 const guestListRequestError = shallowRef('')
 const guestListFailure = computed(() => guestListRequestError.value || props.lumaGuestList?.syncError || '')
 watch([connected, hasSavedCredentials, () => props.event], ([isConnected, hasCredentials]) => {
@@ -108,12 +110,13 @@ function setGuestListEnabled(enabled: boolean) {
   }
 }
 
-async function refreshGuestList() {
-  guestListPending.value = true
+/** Imports the guest list from Luma or uploads it as a CSV, then shows the new totals. */
+async function replaceGuestList(action: 'sync-guest-list' | 'upload-guest-list', body?: FormData) {
+  guestListPending.value = action
   guestListRequestError.value = ''
   try {
     const response = await apiFetch<ApiDataResponse<{ approvedGuestCount: number, waitingGuestCount: number }>>(
-      `/api/events/${props.event!.id}/luma/actions/sync-guest-list`, { method: 'POST' }
+      `/api/events/${props.event!.id}/luma/actions/${action}`, { method: 'POST', body }
     )
     toast.add({
       title: 'Guest list updated',
@@ -123,10 +126,25 @@ async function refreshGuestList() {
   } catch (error) {
     guestListRequestError.value = normalizeApiError(error).message
   } finally {
-    guestListPending.value = false
+    guestListPending.value = null
     // Reload the saved totals and refresh state after a success and after a failure.
     emit('updated')
   }
+}
+
+function uploadGuestList(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  // Clear the choice, so the same file can be uploaded again after a change in Luma.
+  input.value = ''
+
+  if (!file) {
+    return
+  }
+
+  const body = new FormData()
+  body.append('file', file)
+  return replaceGuestList('upload-guest-list', body)
 }
 </script>
 
@@ -340,28 +358,51 @@ async function refreshGuestList() {
               Last refreshed {{ formatTimestamp(lumaGuestList.syncedAt) }}
             </p>
           </div>
-          <AppButton
-            type="button"
-            color="neutral"
-            variant="outline"
-            :loading="guestListPending"
-            :disabled="saving"
-            @click="refreshGuestList"
-          >
-            {{ lumaGuestList.syncedAt ? 'Refresh guest list' : 'Import guest list' }}
-          </AppButton>
+          <div class="flex flex-wrap gap-2">
+            <!-- Only a working connection imports the list from Luma. The CSV that Luma exports works without one. -->
+            <AppButton
+              v-if="connected"
+              type="button"
+              color="neutral"
+              variant="outline"
+              :loading="guestListPending === 'sync-guest-list'"
+              :disabled="saving || Boolean(guestListPending)"
+              @click="replaceGuestList('sync-guest-list')"
+            >
+              {{ lumaGuestList.syncedAt ? 'Refresh guest list' : 'Import guest list' }}
+            </AppButton>
+            <AppButton
+              type="button"
+              color="neutral"
+              variant="outline"
+              icon="i-lucide-upload"
+              :loading="guestListPending === 'upload-guest-list'"
+              :disabled="saving || Boolean(guestListPending)"
+              @click="guestListFileInput?.click()"
+            >
+              Upload Luma CSV
+            </AppButton>
+            <input
+              ref="guestListFileInput"
+              type="file"
+              accept=".csv,text/csv"
+              class="hidden"
+              data-testid="event-builder-luma-guest-list-file"
+              @change="uploadGuestList"
+            >
+          </div>
         </div>
         <AppAlert
           v-if="guestListFailure"
           color="error"
-          title="The guest list could not be refreshed"
+          title="The guest list could not be updated"
           :description="guestListFailure"
         />
         <AppAlert
           v-else-if="!lumaGuestList.syncedAt"
           color="warning"
           title="Import the guest list"
-          description="People who are already on your Luma guest list cannot register here until you import it."
+          description="People who are already on your Luma guest list cannot register here until you import or upload the list."
         />
       </template>
     </div>

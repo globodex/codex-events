@@ -10,6 +10,7 @@ import applicationsPostHandler from '../../../../server/api/events/[eventId]/app
 import withdrawOwnApplicationHandler from '../../../../server/api/events/[eventId]/applications/me/actions/withdraw.post'
 import eventPatchHandler from '../../../../server/api/events/[eventId]/index.patch'
 import syncGuestListHandler from '../../../../server/api/events/[eventId]/luma/actions/sync-guest-list.post'
+import uploadGuestListHandler from '../../../../server/api/events/[eventId]/luma/actions/upload-guest-list.post'
 import lumaWebhookHandler from '../../../../server/api/public/events/[slug]/luma/webhooks.post'
 import {
   auditLogs,
@@ -55,6 +56,7 @@ describe('TASK-443 Luma guest list', () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/events/:eventId/luma/actions/sync-guest-list', handler: syncGuestListHandler },
+        { method: 'post', path: '/api/events/:eventId/luma/actions/upload-guest-list', handler: uploadGuestListHandler },
         { method: 'post', path: '/api/public/events/:slug/luma/webhooks', handler: lumaWebhookHandler },
         { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler },
         { method: 'post', path: '/api/events/:eventId/applications/:applicationId/actions/undo-withdrawal', handler: undoWithdrawalHandler },
@@ -382,6 +384,87 @@ describe('TASK-443 Luma guest list', () => {
       stubAuth0Session(participantSession)
       expect((await syncGuestList(harness)).status).toBe(403)
       expect(fetchMock).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('TASK-499 upload of the guest CSV that Luma exports', () => {
+    /** An event that uses the guest list without any Luma connection. */
+    const unconnectedEvent = {
+      lumaEventApiId: null,
+      lumaApiKey: null,
+      lumaWebhookSecret: null,
+      lumaWebhookStatus: 'not_configured' as const
+    }
+
+    function uploadGuestList(harness: Harness, rows: string[]) {
+      const body = new FormData()
+      body.append('file', new Blob([['guest_id,name,email,phone_number,approval_status', ...rows].join('\n')], { type: 'text/csv' }), 'guests.csv')
+
+      return harness.request('/api/events/event_1/luma/actions/upload-guest-list', { method: 'POST', body })
+    }
+
+    test('replaces the list without a Luma connection and confirms the matching registration', async () => {
+      const { harness } = await createContext(unconnectedEvent)
+      await saveGuests(harness, { 'removed@luma.example': 'approved' })
+      await addApplication(harness, 'participant', 'submitted')
+
+      const response = await uploadGuestList(harness, [
+        'gst-1,"Guest, The",GUEST@luma.example,+431234,approved',
+        'gst-2,Waiting Person,waiting@luma.example,,pending_approval',
+        'gst-3,Declined Person,declined@luma.example,,declined'
+      ])
+
+      expect(response.status).toBe(200)
+      const responseText = await response.text()
+      expect(JSON.parse(responseText).data).toEqual({
+        approvedGuestCount: 1,
+        waitingGuestCount: 1,
+        approvedApplicationCount: 1,
+        withdrawnApplicationCount: 0
+      })
+      expect(await readGuests(harness)).toEqual({
+        'declined@luma.example': 'declined',
+        'guest@luma.example': 'approved',
+        'waiting@luma.example': 'pending_approval'
+      })
+      expect((await readApplication(harness, 'participant'))?.status).toBe('approved')
+      expect((await readEvent(harness)).lumaGuestListSyncedAt).not.toBeNull()
+      // Counts only: no guest email, phone number or name leaves the server or reaches the audit log.
+      const auditText = JSON.stringify(await harness.database.select().from(auditLogs))
+      for (const text of [responseText, auditText]) {
+        expect(text).not.toContain('@luma.example')
+        expect(text).not.toContain('+431234')
+      }
+    })
+
+    test('refuses a file without the needed columns or with an invalid email, and keeps the list', async () => {
+      const { harness } = await createContext(unconnectedEvent)
+      await saveGuests(harness, { 'kept@luma.example': 'approved' })
+
+      const invalidEmail = await uploadGuestList(harness, ['gst-1,Somebody,not-an-email,,approved'])
+      expect(invalidEmail.status).toBe(400)
+      expect(await invalidEmail.json()).toMatchObject({ error: { code: 'luma_guest_list_csv_email_invalid' } })
+
+      const body = new FormData()
+      body.append('file', new Blob(['guest_id,name,email\ngst-1,Somebody,somebody@luma.example']), 'guests.csv')
+      const missingColumn = await harness.request('/api/events/event_1/luma/actions/upload-guest-list', { method: 'POST', body })
+      expect(missingColumn.status).toBe(400)
+      expect(await missingColumn.json()).toMatchObject({ error: { code: 'luma_guest_list_csv_headers_invalid' } })
+
+      expect(await readGuests(harness)).toEqual({ 'kept@luma.example': 'approved' })
+    })
+
+    test('requires the guest list setting and event admin access', async () => {
+      const { harness } = await createContext({ ...unconnectedEvent, lumaGuestListEnabled: false })
+
+      const disabledResponse = await uploadGuestList(harness, ['gst-1,Guest,guest@luma.example,,approved'])
+      expect(disabledResponse.status).toBe(409)
+      expect(await disabledResponse.json()).toMatchObject({ error: { code: 'luma_guest_list_disabled' } })
+
+      await harness.database.update(events).set({ lumaGuestListEnabled: true }).where(eq(events.id, 'event_1'))
+      stubAuth0Session(participantSession)
+      expect((await uploadGuestList(harness, ['gst-1,Guest,guest@luma.example,,approved'])).status).toBe(403)
+      expect(await readGuests(harness)).toEqual({})
     })
   })
 
@@ -893,7 +976,7 @@ describe('TASK-443 Luma guest list', () => {
       return harness.request('/api/events/event_1', { method: 'PATCH', body: JSON.stringify(body) })
     }
 
-    test('turns on only for an event with a Luma connection and a required Luma email', async () => {
+    test('turns on only for an event with a required Luma email', async () => {
       const { harness } = await createContext({
         lumaGuestListEnabled: false,
         applicationLumaEmailVisible: false,
@@ -907,20 +990,6 @@ describe('TASK-443 Luma guest list', () => {
         error: {
           code: 'luma_guest_list_configuration_conflict',
           message: 'The Luma guest list needs the Luma email as a required registration field. Keep it required, or turn the Luma guest list off in the event builder first.'
-        }
-      })
-
-      const missingConnectionResponse = await patchEvent(harness, {
-        lumaGuestListEnabled: true,
-        applicationLumaEmailVisible: true,
-        requireLumaEmail: true,
-        lumaApiKey: null
-      })
-      expect(missingConnectionResponse.status).toBe(409)
-      expect(await missingConnectionResponse.json()).toMatchObject({
-        error: {
-          code: 'luma_guest_list_configuration_conflict',
-          message: 'The Luma guest list needs a Luma connection. Keep Luma connected, or turn the Luma guest list off in the event builder first.'
         }
       })
       expect((await readEvent(harness)).lumaGuestListEnabled).toBe(false)
@@ -940,24 +1009,37 @@ describe('TASK-443 Luma guest list', () => {
       })
     })
 
-    test('stays on only while the event keeps its Luma connection and required Luma email', async () => {
+    // TASK-499: without a Luma connection, the organizer uploads the guest CSV that Luma exports.
+    test('turns on without a Luma connection and registers no webhook', async () => {
+      const { harness } = await createContext({
+        lumaGuestListEnabled: false,
+        lumaEventApiId: null,
+        lumaApiKey: null,
+        lumaWebhookSecret: null,
+        lumaWebhookStatus: 'not_configured'
+      })
+      const webhookRequests = stubLumaWebhookRegistration()
+
+      const response = await patchEvent(harness, { lumaGuestListEnabled: true })
+
+      expect(response.status).toBe(200)
+      expect(await response.json()).toMatchObject({ data: { lumaGuestListEnabled: true, lumaWebhookStatus: 'not_configured' } })
+      expect(webhookRequests).toEqual([])
+    })
+
+    test('stays on only while the event keeps its required Luma email', async () => {
       const { harness } = await createContext()
 
-      for (const body of [{ requireLumaEmail: false }, { lumaEventApiId: null, lumaApiKey: null }]) {
-        const response = await patchEvent(harness, body)
+      const response = await patchEvent(harness, { requireLumaEmail: false })
 
-        expect(response.status).toBe(409)
-        expect(await response.json()).toMatchObject({ error: { code: 'luma_guest_list_configuration_conflict' } })
-      }
-      expect(await readEvent(harness)).toMatchObject({
-        lumaGuestListEnabled: true,
-        requireLumaEmail: true,
-        lumaEventApiId: 'evt-123'
-      })
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({ error: { code: 'luma_guest_list_configuration_conflict' } })
+      expect(await readEvent(harness)).toMatchObject({ lumaGuestListEnabled: true, requireLumaEmail: true })
     })
 
     test.each([
       { change: 'disabling the list', patch: { lumaGuestListEnabled: false }, enabled: false },
+      { change: 'removing the Luma connection', patch: { lumaEventApiId: null, lumaApiKey: null }, enabled: true },
       { change: 'relinking the external event', patch: { lumaEventApiId: 'evt-next' }, enabled: true }
     ])('$change clears the private guest list and its refresh history', async ({ patch, enabled }) => {
       const { harness } = await createContext({

@@ -932,7 +932,12 @@ function describeLumaConnection(event: EventRecord | null) {
     return 'Connected'
   }
 
-  return event?.lumaWebhookStatus === 'failed' ? 'Not connected' : null
+  if (event?.lumaWebhookStatus === 'failed') {
+    return 'Not connected'
+  }
+
+  // A guest list from an uploaded Luma CSV works without a connection.
+  return event?.lumaGuestListEnabled ? 'Guest list' : null
 }
 
 /** The extras in the order of their tiles. */

@@ -33,9 +33,10 @@ export function isEventLumaAttendanceSyncEnabled(
 
 /**
  * The private Luma guest list confirms registrations for this event (Luma decides).
- * Saving an event keeps this switch off unless the event has Luma credentials and requires the
- * Luma email. It stays on when the Luma connection breaks later, so registration never opens
- * silently to people who are not on the list.
+ * Saving an event keeps this switch off unless the event requires the Luma email. The list comes
+ * from Luma through saved credentials or from an uploaded Luma guest CSV. The switch stays on when
+ * the Luma connection breaks later, so registration never opens silently to people who are not on
+ * the list.
  */
 export function isEventLumaGuestListEnabled(event: Pick<EventRecord, 'lumaGuestListEnabled'>) {
   return event.lumaGuestListEnabled

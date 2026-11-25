@@ -1562,8 +1562,9 @@ export function assertSimplifiedClaimingConfiguration(
 }
 
 /**
- * The Luma guest list is refreshed with the event's Luma credentials and matches guests with
- * participants by their Luma email, so it can be on only while the event has both.
+ * The Luma guest list matches guests with participants by their Luma email, so it can be on only
+ * while the Luma email is a visible, required registration field. It does not need a Luma
+ * connection: without one, the organizer uploads the guest CSV that Luma exports.
  */
 export function assertLumaGuestListConfiguration(
   input: Record<string, unknown>,
@@ -1573,12 +1574,6 @@ export function assertLumaGuestListConfiguration(
     return
   }
 
-  assertGuard(Boolean(input.lumaEventApiId && input.lumaApiKey), {
-    statusCode: 409,
-    code: 'luma_guest_list_configuration_conflict',
-    message: 'The Luma guest list needs a Luma connection. Keep Luma connected, or turn the Luma guest list off in the event builder first.',
-    details: { eventId }
-  })
   assertGuard(input.applicationLumaEmailVisible === true && input.requireLumaEmail === true, {
     statusCode: 409,
     code: 'luma_guest_list_configuration_conflict',

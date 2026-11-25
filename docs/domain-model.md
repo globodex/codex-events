@@ -110,7 +110,8 @@ Key characteristics:
 - Each event can optionally store a Luma event API ID and event-specific Luma API key used for operational sync.
 - Each event stores its Luma webhook ID, signing secret, status, registration time, and concise registration error when webhook setup has been attempted.
 - A configured Luma event API ID maps to at most one event.
-- Each event can turn on the Luma guest list while it has saved Luma credentials and a visible, required Luma email. The event then keeps a private copy of its Luma guest list and confirms registrations from it: only Luma guests can register, approved Luma guests are approved on the platform, and no approval, rejection, or withdrawal is sent to Luma.
+- Each event can turn on the Luma guest list while it has a visible, required Luma email. The event then keeps a private copy of its Luma guest list and confirms registrations from it: only Luma guests can register, approved Luma guests are approved on the platform, and no approval, rejection, or withdrawal is sent to Luma.
+- The organizer fills the guest list in one of two ways. With saved Luma credentials, the platform imports it from Luma and webhooks keep it current. Without a working connection, the organizer uploads the guest CSV that Luma exports; only each guest's email and approval status are stored, and a new upload is needed to show later changes. An import and an upload both replace the whole list and bring registrations in line with it.
 - Each event has a city, country, and address.
 - An event street address is visible only in account-scoped event workspace views for approved participants, judges, staff, event admins, and platform admins.
 - Each event can be hidden by an event admin or platform admin with a required reason when public and participant access must be paused.

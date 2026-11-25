@@ -670,7 +670,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - Rows are the private copy of an event's Luma guest list and exist only while the event has `luma_guest_list_enabled = true`.
 - `email` is the trimmed, lower-case Luma guest email. It is the only stored contact detail and it matches a participant through the user's saved `luma_email`, ignoring case.
 - `approval_status` stores the Luma approval status in lower case with underscores, for example `approved`, `pending_approval`, `waitlist`, `invited`, or `declined`.
-- `synced_at` records when a guest-list refresh or a signed Luma webhook last wrote the row. Guest rows carry the current event refresh revision. A full refresh replaces older rows and preserves webhook changes bearing its own revision.
+- `synced_at` records when a guest-list refresh, an uploaded guest CSV, or a signed Luma webhook last wrote the row. Guest rows carry the current event refresh revision. A full refresh or upload replaces older rows and preserves webhook changes bearing its own revision.
 - No API response contains these rows. Event admins and platform admins read only aggregate counts.
 
 ## TalkProposal

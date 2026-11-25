@@ -18,3 +18,10 @@ Feature: Luma guest list
   Scenario: Participant who is not a Luma guest is asked to register on Luma first
     When the saved "regular_user" session registers for the Luma guest list event "luma-guest-list-empty-fixture-event"
     Then the Luma guest list registration should be refused until the participant registers on Luma
+
+  @task-499
+  Scenario: Organizer without a Luma connection uploads the guest CSV that Luma exports
+    When I open the Luma guest list event "luma-guest-list-upload-fixture-event" in the builder
+    And I upload a Luma guest CSV with 2 approved, 1 waiting and 1 declined guests
+    Then the uploaded Luma guest list should show 2 approved and 1 waiting guests
+    And I should not see any Luma guest email

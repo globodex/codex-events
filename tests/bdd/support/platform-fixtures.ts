@@ -34,6 +34,7 @@ export const fixtureSimplifiedClaimingEventId = 'event_e2e_simplified_claiming_f
 const fixtureClosedSimplifiedClaimingEventId = 'event_e2e_closed_simplified_claiming_fixture'
 const fixtureLumaGuestListEventId = 'event_e2e_luma_guest_list_fixture'
 const fixtureLumaGuestListEmptyEventId = 'event_e2e_luma_guest_list_empty_fixture'
+const fixtureLumaGuestListUploadEventId = 'event_e2e_luma_guest_list_upload_fixture'
 const fixtureStaffCheckInEventId = 'event_e2e_staff_check_in_fixture'
 const fixtureLargeParticipantListEventId = 'event_e2e_large_participant_list_fixture'
 // More registrations than the participant list loads at first (100).
@@ -172,6 +173,7 @@ export const platformFixtureIds = {
   simplifiedClaimingEventId: fixtureSimplifiedClaimingEventId,
   lumaGuestListEventId: fixtureLumaGuestListEventId,
   lumaGuestListEmptyEventId: fixtureLumaGuestListEmptyEventId,
+  lumaGuestListUploadEventId: fixtureLumaGuestListUploadEventId,
   checkInFlowEventId: fixtureCheckInFlowEventId,
   checkInFlowApplicationId: fixtureCheckInFlowApplicationId,
   draftEventId: fixtureDraftEventId,
@@ -1199,8 +1201,9 @@ function buildFixtureSql(personas: StablePersona[]) {
       0,
       ${sqlLiteral(fixtureTimestamp)}
     )`,
-    // Two Build events that use the Luma guest list. The first has an imported list with the
+    // Three Build events that use the Luma guest list. The first has an imported list with the
     // regular user as an approved guest. The second was never imported, so nobody can register.
+    // The third has no Luma connection: its organizer uploads the guest CSV that Luma exports.
     // The old created_at keeps both at the end of the public event list.
     `insert into events (
       id, event_type, name, slug, description, city, country, address,
@@ -1258,6 +1261,31 @@ function buildFixtureSql(personas: StablePersona[]) {
       ${sqlLiteral(eventAdminId)},
       '2020-01-01T00:00:00.000Z',
       '2020-01-01T00:00:00.000Z'
+    ),
+    (
+      ${sqlLiteral(fixtureLumaGuestListUploadEventId)},
+      'build',
+      'Luma Guest List Upload Fixture Build',
+      'luma-guest-list-upload-fixture-event',
+      'Build fixture for a Luma guest list that the organizer uploads as a CSV.',
+      'Vienna',
+      'Austria',
+      'Fixture Venue',
+      '2020-01-01T00:00:00.000Z',
+      '2030-01-01T00:00:00.000Z',
+      'registration_open',
+      1,
+      1,
+      1,
+      null,
+      null,
+      null,
+      'not_configured',
+      1,
+      null,
+      ${sqlLiteral(eventAdminId)},
+      '2020-01-01T00:00:00.000Z',
+      '2020-01-01T00:00:00.000Z'
     )`,
     `insert into event_luma_guests (event_id, email, approval_status, synced_at) values
       (${sqlLiteral(fixtureLumaGuestListEventId)}, ${sqlLiteral(regularUserEmail)}, 'approved', ${sqlLiteral(fixtureTimestamp)}),
@@ -1268,7 +1296,8 @@ function buildFixtureSql(personas: StablePersona[]) {
       id, event_id, user_id, role, is_in_judge_pool, created_at
     ) values
       ('role_event_admin_luma_guest_list_fixture', ${sqlLiteral(fixtureLumaGuestListEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)}),
-      ('role_event_admin_luma_guest_list_empty_fixture', ${sqlLiteral(fixtureLumaGuestListEmptyEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)})`,
+      ('role_event_admin_luma_guest_list_empty_fixture', ${sqlLiteral(fixtureLumaGuestListEmptyEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)}),
+      ('role_event_admin_luma_guest_list_upload_fixture', ${sqlLiteral(fixtureLumaGuestListUploadEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)})`,
     // A Build event for the staff check-in scenarios. The judge persona is event staff here.
     // Judging Participant Two is confirmed and can be checked in. Backup Judge is still pending.
     // The old created_at keeps the event at the end of the public event list.

@@ -53,6 +53,32 @@ Then('I should be asked to import the Luma guest list', async ({ page }) => {
   await expect(controls.getByRole('button', { name: 'Import guest list' })).toBeEnabled()
 })
 
+// TASK-499: the upload fixture event has no Luma connection, so the CSV is the only way to fill the list.
+When('I upload a Luma guest CSV with {int} approved, {int} waiting and {int} declined guests', async ({ page }, approved: number, waiting: number, declined: number) => {
+  const controls = await guestListControls(page)
+  const rows = [
+    ...Array.from({ length: approved }, (_, index) => `gst-a${index},"Guest, Approved ${index}",approved-${index}@example.com,approved`),
+    ...Array.from({ length: waiting }, (_, index) => `gst-w${index},Waiting ${index},waiting-${index}@example.com,pending_approval`),
+    ...Array.from({ length: declined }, (_, index) => `gst-d${index},Declined ${index},declined-${index}@example.com,declined`)
+  ]
+
+  await controls.getByTestId('event-builder-luma-guest-list-file').setInputFiles({
+    name: 'guests.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(['guest_id,name,email,approval_status', ...rows].join('\n'))
+  })
+})
+
+Then('the uploaded Luma guest list should show {int} approved and {int} waiting guests', async ({ page }, approved: number, waiting: number) => {
+  const controls = await guestListControls(page)
+
+  await expect(controls.getByText(`${approved} approved · ${waiting} waiting`)).toBeVisible()
+  await expect(controls.getByText('Last refreshed')).toBeVisible()
+  // Without a Luma connection, only an upload updates the list.
+  await expect(controls.getByRole('button', { name: 'Refresh guest list' })).toHaveCount(0)
+  await expect(controls.getByRole('button', { name: 'Upload Luma CSV' })).toBeEnabled()
+})
+
 When('the saved {string} session registers for the Luma guest list event {string}', async ({ page }, personaKey: string, slug: string) => {
   const eventId = guestListEventIds[slug]
 

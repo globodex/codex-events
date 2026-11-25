@@ -23,7 +23,8 @@ import { normalizeLumaEmail } from '#server/domains/credits/simplified-claiming'
 import { ApiError } from '#server/http/api-error'
 
 // Keeps applications in line with the private Luma guest list of a guest-list event.
-// Both entry points (one webhook update, one full refresh) are safe to repeat.
+// Every entry point (one webhook update, a full refresh from Luma, an uploaded guest CSV) is safe
+// to repeat.
 
 type EventRecord = typeof events.$inferSelect
 type ApplicationStatus = typeof userApplications.$inferSelect['status']
@@ -180,40 +181,32 @@ async function listLumaGuestEmailsToReconcile(database: AppDatabase, eventId: st
 }
 
 /**
- * Imports or refreshes the whole guest list of a guest-list event from Luma.
- *
- * A failed fetch changes nothing except the stored failure message. A successful one replaces the
- * list (adds, updates, and removes guests) and then updates every application that no longer
- * matches its guest.
+ * Starts a replacement of the whole guest list and returns its revision. A newer replacement, a
+ * different Luma event, or turning the list off supersedes it, so it then stores nothing.
  */
-export async function syncEventLumaGuestList(options: {
-  h3Event: H3Event
-  database: AppDatabase
-  event: EventRecord
-  apiBaseUrl: string | undefined
-}) {
-  const { database, event } = options
+async function startGuestListRefresh(database: AppDatabase, event: EventRecord) {
   const [started] = await database.update(events)
     .set({ lumaGuestListRevision: sql`${events.lumaGuestListRevision} + 1` })
     .where(guestListSource(event))
     .returning({ revision: events.lumaGuestListRevision })
   if (!started) throw guestListChangedError()
-  const source = guestListSource(event, started.revision)
-  let guests: LumaGuestListEntry[]
 
-  try {
-    guests = await fetchEventLumaGuestList(event, options.apiBaseUrl)
-  } catch (error) {
-    const failure = toLumaGuestListFetchFailure(error)
+  return started.revision
+}
 
-    const result = await database
-      .update(events)
-      .set({ lumaGuestListSyncError: failure.message, updatedAt: new Date().toISOString() })
-      .where(source)
-    if (!result.meta.changes) throw guestListChangedError()
-    throw failure
-  }
-
+/**
+ * Replaces the stored guest list with `guests` (adds, updates, and removes guests) in one D1
+ * transaction, then updates every application that no longer matches its guest.
+ */
+async function publishGuestList(options: {
+  h3Event: H3Event
+  database: AppDatabase
+  event: EventRecord
+  revision: number
+  guests: LumaGuestListEntry[]
+}) {
+  const { database, event, revision, guests } = options
+  const source = guestListSource(event, revision)
   // Chunk the JSON bindings, then publish the entire snapshot in one D1 transaction.
   const syncedAt = new Date().toISOString()
   const upserts: AppDatabaseBatch[number][] = []
@@ -226,7 +219,7 @@ export async function syncEventLumaGuestList(options: {
       .where(source),
     ...upserts,
     database.delete(eventLumaGuests).where(and(
-      eq(eventLumaGuests.eventId, event.id), lt(eventLumaGuests.refreshRevision, started.revision),
+      eq(eventLumaGuests.eventId, event.id), lt(eventLumaGuests.refreshRevision, revision),
       exists(database.select({ id: events.id }).from(events).where(source))
     ))
   ])
@@ -235,7 +228,7 @@ export async function syncEventLumaGuestList(options: {
   const applicationCounts = { approved: 0, withdrawn: 0, unchanged: 0 }
 
   for (const guestEmail of await listLumaGuestEmailsToReconcile(database, event.id)) {
-    const result = await reconcileLumaGuestApplication({ h3Event: options.h3Event, database, event, guestEmail, revision: started.revision })
+    const result = await reconcileLumaGuestApplication({ h3Event: options.h3Event, database, event, guestEmail, revision })
     applicationCounts[result] += 1
   }
 
@@ -244,4 +237,51 @@ export async function syncEventLumaGuestList(options: {
     approvedApplicationCount: applicationCounts.approved,
     withdrawnApplicationCount: applicationCounts.withdrawn
   }
+}
+
+/**
+ * Imports or refreshes the whole guest list of a guest-list event from Luma.
+ *
+ * A failed fetch changes nothing except the stored failure message. A successful one replaces the
+ * list and updates the applications (`publishGuestList`).
+ */
+export async function syncEventLumaGuestList(options: {
+  h3Event: H3Event
+  database: AppDatabase
+  event: EventRecord
+  apiBaseUrl: string | undefined
+}) {
+  const { database, event } = options
+  const revision = await startGuestListRefresh(database, event)
+  let guests: LumaGuestListEntry[]
+
+  try {
+    guests = await fetchEventLumaGuestList(event, options.apiBaseUrl)
+  } catch (error) {
+    const failure = toLumaGuestListFetchFailure(error)
+
+    const result = await database
+      .update(events)
+      .set({ lumaGuestListSyncError: failure.message, updatedAt: new Date().toISOString() })
+      .where(guestListSource(event, revision))
+    if (!result.meta.changes) throw guestListChangedError()
+    throw failure
+  }
+
+  return publishGuestList({ ...options, revision, guests })
+}
+
+/**
+ * Replaces the whole guest list with the guests of an uploaded Luma CSV (`parseLumaGuestListCsv`),
+ * exactly like an import from Luma. Organizers use it when the event has no working Luma connection.
+ */
+export async function uploadEventLumaGuestList(options: {
+  h3Event: H3Event
+  database: AppDatabase
+  event: EventRecord
+  guests: LumaGuestListEntry[]
+}) {
+  const revision = await startGuestListRefresh(options.database, options.event)
+
+  return publishGuestList({ ...options, revision })
 }

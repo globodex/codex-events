@@ -1,9 +1,11 @@
+import { parse } from 'csv-parse/sync'
 import { and, count, eq, sql, type SQL } from 'drizzle-orm'
+import { z } from 'zod'
 
 import { ApiError } from '#server/http/api-error'
 import type { AppDatabase } from '#server/database/client'
 import { eventLumaGuests, events, userApplications } from '#server/database/schema'
-import { isLumaGuestCancellationStatus } from '#server/domains/applications/luma-webhooks'
+import { isLumaGuestCancellationStatus, normalizeLumaGuestStatus } from '#server/domains/applications/luma-webhooks'
 import { normalizeLumaEmail } from '#server/domains/credits/simplified-claiming'
 
 // The private per-event copy of the Luma guest list (see EventLumaGuest in docs/domain-model.md).
@@ -47,13 +49,78 @@ export async function findEventLumaGuestStanding(
   return guest ? getLumaGuestStanding(guest.approvalStatus) : null
 }
 
+/** Bounds of an uploaded guest CSV. They match Luma's own guest list import of 10,000 guests. */
+export const lumaGuestListCsvLimits = {
+  maxBytes: 5 * 1024 * 1024,
+  maxGuests: 10_000,
+  maxRecordBytes: 64 * 1024
+}
+
+const guestEmailSchema = z.string().trim().email()
+
+function invalidGuestListCsv(code: string, message: string, statusCode = 400) {
+  return new ApiError({ statusCode, code, message })
+}
+
+/**
+ * Reads the guest CSV that Luma exports. Only the email and approval status of each guest are
+ * kept; names, phone numbers, answers and every other column are ignored. A file that cannot be
+ * read, misses one of the two columns, has a guest without a valid email, or has more than
+ * 10,000 guests is refused as a whole. One guest is kept per email; the last row wins.
+ */
+export function parseLumaGuestListCsv(content: string): LumaGuestListEntry[] {
+  let headers: string[] = []
+  let records: Array<Record<string, string>>
+
+  try {
+    records = parse(content, {
+      bom: true,
+      columns: (values: string[]) => {
+        headers = values.map(value => value.trim().toLowerCase())
+        return headers
+      },
+      max_record_size: lumaGuestListCsvLimits.maxRecordBytes,
+      skip_empty_lines: true,
+      trim: true,
+      // One record more than allowed is enough to know that the file is too long.
+      to: lumaGuestListCsvLimits.maxGuests + 1
+    })
+  } catch {
+    throw invalidGuestListCsv('luma_guest_list_csv_invalid', 'The uploaded file is not a valid Luma CSV.')
+  }
+
+  if (!headers.includes('email') || !headers.includes('approval_status')) {
+    throw invalidGuestListCsv('luma_guest_list_csv_headers_invalid', 'The Luma CSV must include the email and approval_status columns.')
+  }
+  if (records.length > lumaGuestListCsvLimits.maxGuests) {
+    throw invalidGuestListCsv('luma_guest_list_csv_too_large', 'The Luma CSV can contain at most 10,000 guests.', 413)
+  }
+
+  const guests = new Map<string, LumaGuestListEntry>()
+
+  for (const record of records) {
+    const email = guestEmailSchema.safeParse(record.email)
+
+    if (!email.success) {
+      throw invalidGuestListCsv('luma_guest_list_csv_email_invalid', 'Every guest in the Luma CSV needs a valid email address.')
+    }
+
+    const normalizedEmail = normalizeLumaEmail(email.data)
+    // An empty status counts as waiting, as in an import from Luma.
+    guests.set(normalizedEmail, { email: normalizedEmail, approvalStatus: normalizeLumaGuestStatus(record.approval_status) ?? '' })
+  }
+
+  return [...guests.values()]
+}
+
 type GuestListSource = Pick<typeof events.$inferSelect, 'id' | 'lumaEventApiId'>
 
 export function guestListSource(event: GuestListSource, revision?: number) {
   return and(
     eq(events.id, event.id),
     eq(events.lumaGuestListEnabled, true),
-    sql`${events.lumaEventApiId} = ${event.lumaEventApiId}`,
+    // IS also matches two missing Luma event IDs: a guest list that the organizer uploads as a CSV.
+    sql`${events.lumaEventApiId} is ${event.lumaEventApiId}`,
     revision === undefined ? undefined : eq(events.lumaGuestListRevision, revision)
   )!
 }
