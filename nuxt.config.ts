@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 import tailwindcss from '@tailwindcss/vite'
 import { certificateHarfBuzzPlugin } from './tools/build/certificate-harfbuzz.ts'
+import { releaseScriptNamesPlugin } from './tools/build/release-script-names.ts'
 import { shouldUseLocalCodexAuth } from './tools/local-auth/mode.ts'
 
 const nuxtTemporaryDirectory = process.platform === 'win32'
@@ -145,7 +146,7 @@ export default defineNuxtConfig({
   },
 
   vite: {
-    plugins: [tailwindcss()],
+    plugins: [tailwindcss(), releaseScriptNamesPlugin()],
     optimizeDeps: {
       include: [
         '@internationalized/date',
