@@ -1,5 +1,17 @@
+/** Browsers keep public pages, public JSON and public pictures for 30 seconds. */
 export const publicEventCacheControl = 'public, max-age=30, stale-if-error=0'
-export const publicEventCdnCacheControl = 'public, max-age=30, stale-if-error=0'
+
+/**
+ * Cloudflare keeps the same responses fresh for 30 seconds. For one day after that, it sends the
+ * expired copy at once and refreshes it in the background, so a visitor does not wait for the
+ * Worker to render a page or for Cloudflare Images to make a picture. Cloudflare does not say what
+ * happens to that copy when the refresh answers 404, so a hidden event can stay visible for up to
+ * that day to people who open its link.
+ */
+export const publicEventCdnCacheControl = 'public, max-age=30, stale-while-revalidate=86400, stale-if-error=0'
+
+/** Gallery photos get no stale day: a removed photo must be gone from Cloudflare within 30 seconds. */
+export const publicGalleryPhotoCdnCacheControl = 'public, max-age=30, stale-if-error=0'
 
 const publicGalleryImagePathPattern = /^\/api\/public\/events\/[^/]+\/photos\/[^/]+\/image$/u
 
@@ -31,6 +43,13 @@ function normalizedPath(path: string) {
 export function isPublicCacheableApiPath(path: string) {
   const normalized = normalizedPath(path)
   return publicCacheableApiPathPatterns.some(pattern => pattern.test(normalized))
+}
+
+/** The Cloudflare cache header that a public response on this path carries. */
+export function publicCdnCacheControlForPath(path: string) {
+  return publicGalleryImagePathPattern.test(normalizedPath(path))
+    ? publicGalleryPhotoCdnCacheControl
+    : publicEventCdnCacheControl
 }
 
 export function isStaticFrameworkApiPath(path: string) {

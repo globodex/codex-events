@@ -114,7 +114,7 @@ describe('event image utilities', () => {
     expect(transform).toHaveBeenCalledWith({ width: 1600, height: 900, fit: 'cover' })
     expect(output).toHaveBeenCalledWith({ format: 'image/avif', quality: 82 })
     expect(response.headers.get('cache-control')).toBe('public, max-age=30, stale-if-error=0')
-    expect(response.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-if-error=0')
+    expect(response.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-while-revalidate=86400, stale-if-error=0')
     expect(response.headers.get('vary')).toBe('Accept')
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([4, 5, 6]))
   })

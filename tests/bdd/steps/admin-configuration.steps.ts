@@ -188,7 +188,7 @@ Then('the remembered managed event background image endpoint should return the u
     expect(response.headers()['content-type']).toBe('image/webp')
     expect(response.headers()['x-content-type-options']).toBe('nosniff')
     expect(response.headers()['cache-control']).toBe('public, max-age=30, stale-if-error=0')
-    expect(response.headers()['cloudflare-cdn-cache-control']).toBe('public, max-age=30, stale-if-error=0')
+    expect(response.headers()['cloudflare-cdn-cache-control']).toBe('public, max-age=30, stale-while-revalidate=86400, stale-if-error=0')
     expect(response.headers()['vary']).toBe('Accept')
 
     const responseBody = await response.body()

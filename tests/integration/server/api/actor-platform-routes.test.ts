@@ -1480,7 +1480,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
 
     expect(versionedImageResponse.status).toBe(200)
     expect(versionedImageResponse.headers.get('cache-control')).toBe('public, max-age=30, stale-if-error=0')
-    expect(versionedImageResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-if-error=0')
+    expect(versionedImageResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-while-revalidate=86400, stale-if-error=0')
     expect(versionedImageResponse.headers.get('content-type')).toBe('image/webp')
     expect(versionedImageResponse.headers.get('vary')).toBe('Accept')
 

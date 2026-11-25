@@ -16,11 +16,11 @@ import { getDatabase, type AppDatabase } from '#server/database/client'
 import { eventPhotos, events, userApplications, users } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
 import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
-import { getEventImagesBucket } from './images'
 import {
   publicEventCacheControl,
-  publicEventCdnCacheControl
-} from './public-cache'
+  publicGalleryPhotoCdnCacheControl
+} from '#shared/http/public-cache-topology'
+import { getEventImagesBucket } from './images'
 import {
   getVisibleEventOrThrow,
   routeIdParamsSchema
@@ -1288,7 +1288,7 @@ export async function createPublicEventPhotoResponse(
     publicEventPhotoVariants[variant],
     {
       cacheControl: publicEventCacheControl,
-      cdnCacheControl: publicEventCdnCacheControl,
+      cdnCacheControl: publicGalleryPhotoCdnCacheControl,
       includeCookieVary: options?.includeCookieVary ?? false
     }
   )

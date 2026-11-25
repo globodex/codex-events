@@ -1875,7 +1875,7 @@ describe('TASK-3.5 event CRUD routes', () => {
 
     expect(response.status).toBe(200)
     expect(response.headers.get('cache-control')).toBe('public, max-age=30, stale-if-error=0')
-    expect(response.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-if-error=0')
+    expect(response.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-while-revalidate=86400, stale-if-error=0')
     expect(response.headers.get('etag')).toMatch(/^"[0-9a-f]+"$/)
     expect(response.headers.get('vary')).toBe('Accept-Encoding')
     const payload = await response.json()
@@ -2019,7 +2019,7 @@ describe('TASK-3.5 event CRUD routes', () => {
 
     expect(response.status).toBe(200)
     expect(response.headers.get('cache-control')).toBe('public, max-age=30, stale-if-error=0')
-    expect(response.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-if-error=0')
+    expect(response.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-while-revalidate=86400, stale-if-error=0')
     expect(response.headers.get('etag')).toMatch(/^"[0-9a-f]+"$/)
     expect(response.headers.get('vary')).toBe('Accept-Encoding')
     const payload = await response.json()
@@ -4821,7 +4821,7 @@ describe('TASK-3.5 event CRUD routes', () => {
 
     expect(versionedBackgroundResponse.status).toBe(200)
     expect(versionedBackgroundResponse.headers.get('cache-control')).toBe('public, max-age=30, stale-if-error=0')
-    expect(versionedBackgroundResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-if-error=0')
+    expect(versionedBackgroundResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-while-revalidate=86400, stale-if-error=0')
     expect(versionedBackgroundResponse.headers.get('content-type')).toBe('image/webp')
     expect(versionedBackgroundResponse.headers.get('vary')).toBe('Accept')
 
@@ -4925,7 +4925,7 @@ describe('TASK-3.5 event CRUD routes', () => {
 
     expect(versionedBannerResponse.status).toBe(200)
     expect(versionedBannerResponse.headers.get('cache-control')).toBe('public, max-age=30, stale-if-error=0')
-    expect(versionedBannerResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-if-error=0')
+    expect(versionedBannerResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-while-revalidate=86400, stale-if-error=0')
     expect(versionedBannerResponse.headers.get('content-type')).toBe('image/webp')
     expect(versionedBannerResponse.headers.get('vary')).toBe('Accept')
 

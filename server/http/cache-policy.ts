@@ -10,8 +10,8 @@ import {
 import {
   isPublicCacheableApiPath,
   isStaticFrameworkApiPath,
-  publicEventCacheControl,
-  publicEventCdnCacheControl
+  publicCdnCacheControlForPath,
+  publicEventCacheControl
 } from '#shared/http/public-cache-topology'
 
 export {
@@ -32,17 +32,16 @@ function hasHeaderValue(value: string | number | string[] | undefined, expected:
   return typeof value === 'string' && value === expected
 }
 
-function hasCanonicalPublicEventCacheHeaders(event: H3Event, body: unknown) {
+function hasCanonicalPublicEventCacheHeaders(event: H3Event, body: unknown, path: string) {
+  const cdnCacheControl = publicCdnCacheControlForPath(path)
+
   if (isWebResponse(body)) {
     return body.headers.get('cache-control') === publicEventCacheControl
-      && body.headers.get('cloudflare-cdn-cache-control') === publicEventCdnCacheControl
+      && body.headers.get('cloudflare-cdn-cache-control') === cdnCacheControl
   }
 
   return hasHeaderValue(getResponseHeader(event, 'cache-control'), publicEventCacheControl)
-    && hasHeaderValue(
-      getResponseHeader(event, 'cloudflare-cdn-cache-control'),
-      publicEventCdnCacheControl
-    )
+    && hasHeaderValue(getResponseHeader(event, 'cloudflare-cdn-cache-control'), cdnCacheControl)
 }
 
 function withProtectedResponseCacheHeaders(response: Response) {
@@ -79,7 +78,7 @@ export function applyApiResponseCachePolicy(
   }
 
   const body = response?.body
-  if (isPublicCacheableApiPath(path) && hasCanonicalPublicEventCacheHeaders(event, body)) {
+  if (isPublicCacheableApiPath(path) && hasCanonicalPublicEventCacheHeaders(event, body, path)) {
     return 'public' as const
   }
 

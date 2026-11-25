@@ -226,7 +226,10 @@ Publish a **GitHub Release** from the commit you want to deploy. That triggers t
 #### Managed public-media verification
 
 Managed event, platform-default, and public-gallery responses use a 30-second
-browser and Cloudflare edge freshness window. Production verification must
+browser and Cloudflare edge freshness window. After it, Cloudflare serves an
+expired public page, JSON, event image, or platform-default image for up to one
+day while it refreshes the copy in the background (`CF-Cache-Status: UPDATING`);
+public gallery photos have no stale window. Production verification must
 confirm the response carries the documented `Cache-Control` and
 `Cloudflare-CDN-Cache-Control` headers and that Cloudflare reports the expected
 `CF-Cache-Status` on repeated public requests. A cache hit can bypass the
@@ -273,7 +276,7 @@ authenticated body, `CF-Cache-Status: HIT`, or `Age`.
    ```
 
 4. Request one operator-supplied, immutable public event or media URL twice.
-Confirm both exact public 30-second directives and record `CF-Cache-Status`
+Confirm both exact documented public directives and record `CF-Cache-Status`
 for the edge behavior; the second request should provide the deployed edge
 HIT evidence for the selected public response. Do not treat a public HIT as
 evidence that protected APIs are safe to cache.

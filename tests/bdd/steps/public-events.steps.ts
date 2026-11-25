@@ -257,7 +257,7 @@ Then('the public event document should remain publicly cacheable', async ({ page
   expect(headers['cache-control']).toContain('public')
   expect(headers['cache-control']).not.toContain('private')
   expect(headers['cache-control']).toBe('public, max-age=30, stale-if-error=0')
-  expect(headers['cloudflare-cdn-cache-control']).toBe('public, max-age=30, stale-if-error=0')
+  expect(headers['cloudflare-cdn-cache-control']).toBe('public, max-age=30, stale-while-revalidate=86400, stale-if-error=0')
   expect(headers['cache-control']).not.toContain('s-maxage')
   expect(headers['cache-control']).not.toContain('stale-while-revalidate')
   expect(headers.vary?.toLowerCase() ?? '').not.toContain('cookie')

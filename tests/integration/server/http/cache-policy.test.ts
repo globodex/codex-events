@@ -164,7 +164,7 @@ describe('centralized API response cache policy', () => {
           handler: defineApiHandler(() => new Response('public image', {
             headers: {
               'cache-control': 'public, max-age=30, stale-if-error=0',
-              'cloudflare-cdn-cache-control': 'public, max-age=30, stale-if-error=0'
+              'cloudflare-cdn-cache-control': 'public, max-age=30, stale-while-revalidate=86400, stale-if-error=0'
             }
           }))
         }
@@ -176,13 +176,41 @@ describe('centralized API response cache policy', () => {
     const jsonResponse = await harness.request('/api/public/events/cacheable')
     expect(jsonResponse.status).toBe(200)
     expect(jsonResponse.headers.get('cache-control')).toBe('public, max-age=30, stale-if-error=0')
-    expect(jsonResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-if-error=0')
+    expect(jsonResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-while-revalidate=86400, stale-if-error=0')
 
     const imageResponse = await harness.request('/api/public/events/cacheable/images/background')
     expect(imageResponse.status).toBe(200)
     expect(await imageResponse.text()).toBe('public image')
     expect(imageResponse.headers.get('cache-control')).toBe('public, max-age=30, stale-if-error=0')
-    expect(imageResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-if-error=0')
+    expect(imageResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-while-revalidate=86400, stale-if-error=0')
+  })
+
+  // A removed gallery photo must be gone from Cloudflare within 30 seconds, so a gallery photo that
+  // asks Cloudflare for a stale day is answered as protected.
+  test('keeps a gallery photo public only with the strict Cloudflare header of its path', async () => {
+    const galleryPhotoRoute = (path: string, cdnCacheControl: string) => ({
+      method: 'get' as const,
+      path,
+      handler: defineApiHandler(() => new Response('gallery photo', {
+        headers: {
+          'cache-control': 'public, max-age=30, stale-if-error=0',
+          'cloudflare-cdn-cache-control': cdnCacheControl
+        }
+      }))
+    })
+    const harness = createApiRouteTestHarness({
+      routes: [
+        galleryPhotoRoute('/api/public/events/cacheable/photos/strict/image', 'public, max-age=30, stale-if-error=0'),
+        galleryPhotoRoute('/api/public/events/cacheable/photos/stale/image', 'public, max-age=30, stale-while-revalidate=86400, stale-if-error=0')
+      ],
+      nitroPlugins: [databaseBookmarkPlugin as never]
+    })
+    harnesses.push(harness)
+
+    const strictResponse = await harness.request('/api/public/events/cacheable/photos/strict/image')
+    expect(strictResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-if-error=0')
+
+    expectProtectedCacheHeaders(await harness.request('/api/public/events/cacheable/photos/stale/image'))
   })
 
   test('fails closed for public-looking but non-cacheable API paths', async () => {

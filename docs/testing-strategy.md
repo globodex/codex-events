@@ -58,8 +58,8 @@ remote smoke test in `OPERATOR.md` checks authenticated then unauthenticated
 `/api/session`, Cookie isolation, `CF-Cache-Status`, `Age`, public cache
 controls, the split entrypoint configuration, and the zone Cache Rules/origin
 no-store boundary; it does not deploy
-or purge remote objects. Newly issued managed responses have the documented
-`public, max-age=30, stale-if-error=0` browser and edge freshness window.
+or purge remote objects. Newly issued managed responses have the browser and
+edge cache directives documented in `docs/tech-stack.md`.
 
 ## Validation Surfaces
 

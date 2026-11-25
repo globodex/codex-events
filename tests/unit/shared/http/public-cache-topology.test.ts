@@ -12,7 +12,7 @@ import {
 describe('public Cloudflare cache topology', () => {
   test('classifies only canonical public HTML, product API, and static framework paths', () => {
     expect(publicEventCacheControl).toBe('public, max-age=30, stale-if-error=0')
-    expect(publicEventCdnCacheControl).toBe('public, max-age=30, stale-if-error=0')
+    expect(publicEventCdnCacheControl).toBe('public, max-age=30, stale-while-revalidate=86400, stale-if-error=0')
 
     expect(classifyPublicCachePath('/')).toBe('public_html')
     expect(classifyPublicCachePath('/events/codex-spring')).toBe('public_html')
