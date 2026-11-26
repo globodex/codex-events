@@ -292,6 +292,29 @@ describe('TASK-449 credit claims and the check-in flow', () => {
     expect(await readCodeHolders(harness)).toEqual({ 'CODE-1': 'staff', 'CODE-2': null })
   })
 
+  test('a platform admin can see and claim credits when designated as event staff', async () => {
+    const harness = await createContext()
+    await harness.database.update(users)
+      .set({ isPlatformAdmin: true })
+      .where(eq(users.id, 'event_admin'))
+
+    expect(await readOverviewCredits(harness, 'event_admin')).toEqual([])
+    expect((await claimCredit(harness, 'event_admin')).status).toBe(403)
+
+    await harness.database.update(eventRoleAssignments)
+      .set({ isStaff: true })
+      .where(eq(eventRoleAssignments.id, 'role_event_admin'))
+
+    expect(await readOverviewCredits(harness, 'event_admin')).toMatchObject([
+      { id: 'offer_1', availableCount: 2, claimedCode: null }
+    ])
+    expect((await claimCredit(harness, 'event_admin')).status).toBe(200)
+    expect(await readListedOffer(harness, 'event_admin')).toMatchObject({
+      availableCount: 1,
+      claimedCode: { value: 'CODE-1' }
+    })
+  })
+
   test('a completed event refuses unfinished check-in and preserves existing codes and staff access', async () => {
     const harness = await createContext({ state: 'completed' })
     await addApplication(harness, 'participant')

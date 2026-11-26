@@ -311,7 +311,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
         userId,
         claimAccess: getEventCreditClaimAccess({
           event,
-          isEventStaff: context.authorization.isStaff,
+          isEventStaff: roles.some(role => role.isStaff),
           application
         })
       })

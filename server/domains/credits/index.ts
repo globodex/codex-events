@@ -3,11 +3,11 @@ import type { H3Event } from 'h3'
 import { and, asc, eq, getTableColumns, isNotNull, isNull, notExists } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { resolveEventAuthorization } from '#server/auth/authorization'
+import { resolveEventAuthorization, type EventAuthorization } from '#server/auth/authorization'
 import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
 import type { events } from '#server/database/schema'
-import { eventCreditCodes, eventCreditOffers, userApplications, users } from '#server/database/schema'
+import { eventCreditCodes, eventCreditOffers, eventRoleAssignments, userApplications, users } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
 import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
 import { getVisibleEventOrThrow, routeIdParamsSchema } from '#server/domains/events'
@@ -276,17 +276,41 @@ export function getEventCreditClaimAccess(input: {
   })
 }
 
+async function loadEventCreditClaimAccess(
+  database: ReturnType<typeof getDatabase>,
+  event: EventRecord,
+  userId: string,
+  authorization: EventAuthorization
+) {
+  const [approvedApplication, assignment] = await Promise.all([
+    getApprovedUserApplication(database, event.id, userId),
+    // General event authorization skips the assignment lookup for platform admins.
+    authorization.isPlatformAdmin
+      ? database.query.eventRoleAssignments.findFirst({
+          columns: { isStaff: true },
+          where: and(
+            eq(eventRoleAssignments.eventId, event.id),
+            eq(eventRoleAssignments.userId, userId)
+          )
+        })
+      : undefined
+  ])
+
+  const claimAccess = getEventCreditClaimAccess({
+    event,
+    isEventStaff: assignment?.isStaff ?? authorization.isStaff,
+    application: approvedApplication
+  })
+
+  return { approvedApplication, claimAccess }
+}
+
 export async function requireEventCreditsViewAccess(h3Event: H3Event, eventId: string) {
   const actor = await requirePlatformActor(h3Event)
   const database = getDatabase(h3Event)
   const event = await getVisibleEventOrThrow(h3Event, eventId)
   const authorization = await resolveEventAuthorization(h3Event, eventId)
-  const approvedApplication = await getApprovedUserApplication(database, eventId, actor.platformUser.id)
-  const claimAccess = getEventCreditClaimAccess({
-    event,
-    isEventStaff: authorization.isStaff,
-    application: approvedApplication
-  })
+  const { approvedApplication, claimAccess } = await loadEventCreditClaimAccess(database, event, actor.platformUser.id, authorization)
 
   if (!authorization.isEventAdmin && claimAccess === 'cannot_claim') {
     throw new ApiError({
@@ -316,12 +340,7 @@ export async function requireEventCreditClaimAccess(h3Event: H3Event, eventId: s
   const event = await getVisibleEventOrThrow(h3Event, eventId)
   const offer = await getEventCreditOfferOrThrow(database, eventId, creditId)
   const authorization = await resolveEventAuthorization(h3Event, eventId)
-  const approvedApplication = await getApprovedUserApplication(database, eventId, actor.platformUser.id)
-  const claimAccess = getEventCreditClaimAccess({
-    event,
-    isEventStaff: authorization.isStaff,
-    application: approvedApplication
-  })
+  const { approvedApplication, claimAccess } = await loadEventCreditClaimAccess(database, event, actor.platformUser.id, authorization)
 
   if (claimAccess === 'cannot_claim') {
     throw new ApiError({
