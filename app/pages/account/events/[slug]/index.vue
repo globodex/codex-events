@@ -64,6 +64,7 @@ import {
 } from '#components'
 import AccountEventParticipationRankNotice from '~/components/account/events/AccountEventParticipationRankNotice.vue'
 import AccountEventNextStepCard from '~/components/account/events/organisms/AccountEventNextStepCard.vue'
+import AccountEventStaffInstructionsPanel from '~/components/account/events/organisms/AccountEventStaffInstructionsPanel.vue'
 import EventOverviewPanel from '~/components/public/events/EventOverviewPanel.vue'
 import EventStateBadge from '~/components/public/events/EventStateBadge.vue'
 import {
@@ -1808,6 +1809,15 @@ useSeoMeta({
         aria-labelledby="account-tab-staff"
         class="space-y-8"
       >
+        <!-- The server sends the general staff instructions only to staff and event admins. -->
+        <AccountEventStaffInstructionsPanel
+          v-if="rostersPage && rostersPage.staffInstructions !== null"
+          :event-id="workspaceEventId"
+          :source="rostersPage.staffInstructions"
+          :can-edit="canAdmin"
+          :refresh-page="rostersPageRequest.refresh"
+        />
+
         <LazyAccountEventPublishedRosterPanel
           :event-id="workspaceEventId"
           role="staff"

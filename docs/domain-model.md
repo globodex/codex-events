@@ -410,6 +410,7 @@ Rules:
 - The published staff roster includes explicit `staff` assignments plus `event_admin` assignments with `is_staff = true`.
 - The published staff roster includes each staff member's whole-event, track-specific, or challenge-specific display context. The Staff tab lists the whole-event staff first, then the staff of each track, then the staff of each challenge, and then the staff of each open track, each group in the saved order.
 - Published judge and staff rosters are visible to any platform user who can access that event in the account-scoped workspace.
+- An event has general staff instructions in Markdown, for the whole event team. The Staff tab shows them on top: staff read them, and event admins and platform admins write and save them there. Nobody else receives them. Staff see nothing while they are empty.
 - Published roster cards expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
 - Any actor performing a blind judge review sees the blind judging view rather than the admin view.
 - The blind judging view includes anonymized application information and excludes team identity.

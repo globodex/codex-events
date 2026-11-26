@@ -59,7 +59,15 @@ const roleAssignmentSchema = z.object({
   }).optional()
 })
 
+/** The general instructions for the event team, in Markdown. An event admin saves them. */
+export const eventStaffInstructionsSchema = z.object({
+  staffInstructions: z.string().trim().max(20_000, 'Keep the staff instructions under 20,000 characters.')
+})
+
 export const accountEventRostersPageSchema = z.object({
+  // The general instructions for the event team, in Markdown, shown on top of the Staff tab. Only
+  // staff, event admins and platform admins get them; everyone else gets null.
+  staffInstructions: z.string().nullable(),
   publishedJudges: z.array(publishedMemberSchema),
   publishedStaff: z.array(publishedMemberSchema),
   roleAssignments: z.array(roleAssignmentSchema),

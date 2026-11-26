@@ -7,6 +7,7 @@ import rostersPageGetHandler from '../../../../server/api/account/events/[slug]/
 import settingsPageGetHandler from '../../../../server/api/account/events/[slug]/settings.get'
 import eventPatchHandler from '../../../../server/api/events/[eventId]/index.patch'
 import rolePatchHandler from '../../../../server/api/events/[eventId]/roles/[userId].patch'
+import staffInstructionsPutHandler from '../../../../server/api/events/[eventId]/staff-instructions.put'
 import {
   eventCreditCodes,
   eventCreditOffers,
@@ -86,6 +87,7 @@ describe('TASK-450 event challenges', () => {
       routes: [
         { method: 'patch', path: '/api/events/:eventId', handler: eventPatchHandler },
         { method: 'patch', path: '/api/events/:eventId/roles/:userId', handler: rolePatchHandler },
+        { method: 'put', path: '/api/events/:eventId/staff-instructions', handler: staffInstructionsPutHandler },
         { method: 'get', path: '/api/account/events/:slug/entry', handler: entryPageGetHandler },
         { method: 'get', path: '/api/account/events/:slug/program', handler: agendaPageGetHandler },
         { method: 'get', path: '/api/account/events/:slug/rosters', handler: rostersPageGetHandler },
@@ -523,6 +525,30 @@ describe('TASK-450 event challenges', () => {
       expect(response.status).toBe(400)
       expect(await response.json()).toMatchObject({ error: { code } })
     }
+
+    test('an event admin saves the general staff instructions, and only staff and admins read them on the Staff tab', async () => {
+      const harness = await createContext()
+      await addApplication(harness)
+      const saveInstructions = (actorUserId: string, staffInstructions: string) => {
+        stubAuth0Session(sessionFor(actorUserId))
+        return harness.request('/api/events/event_1/staff-instructions', {
+          method: 'PUT',
+          body: JSON.stringify({ staffInstructions }),
+          headers: { 'content-type': 'application/json' }
+        })
+      }
+
+      expect((await saveInstructions('staff', 'Not mine to write')).status).toBe(403)
+      expect((await saveInstructions('event_admin', 'x'.repeat(20_001))).status).toBe(400)
+      const saved = await saveInstructions('event_admin', '  ## Check-in desk\n\nBe there at 08:30.  ')
+      expect(saved.status).toBe(200)
+      expect(await saved.json()).toEqual({ data: { staffInstructions: '## Check-in desk\n\nBe there at 08:30.' } })
+
+      for (const reader of ['staff', 'event_admin']) {
+        expect((await readStaffTab(harness, reader)).staffInstructions).toBe('## Check-in desk\n\nBe there at 08:30.')
+      }
+      expect((await readStaffTab(harness, 'participant')).staffInstructions).toBeNull()
+    })
 
     test('an event admin gives a staff member a challenge, and the Agenda and the Staff tab name it', async () => {
       const harness = await createContext()

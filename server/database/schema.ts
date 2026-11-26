@@ -184,6 +184,8 @@ export const events = sqliteTable(
     talkProposalQuestionsRevision: integer('talk_proposal_questions_revision').notNull().default(0),
     // Shows confirmed participants their next step around check-in on their event page.
     checkInFlowEnabled: integer('check_in_flow_enabled', { mode: 'boolean' }).notNull().default(false),
+    // General instructions for the event team, in Markdown. Only staff and event admins read them.
+    staffInstructions: text('staff_instructions').notNull().default(''),
     // The organizer's own questions on the registration form, in display order (`customQuestionsSchema`).
     registrationQuestionsJson: text('registration_questions_json').notNull().default('[]'),
     // The event's challenges, drafts included, in display order (`eventChallengesSchema`).

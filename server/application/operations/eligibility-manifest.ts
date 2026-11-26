@@ -157,6 +157,7 @@ export const mcpEligibilityManifest = [
   { route: 'events/[eventId]/simplified-claiming/index.get.ts', disposition: 'include' },
   { route: 'events/[eventId]/simplified-claiming/rewards/[creditId].patch.ts', disposition: 'include' },
   { route: 'events/[eventId]/simplified-claiming/rewards/import.post.ts', disposition: 'exclude', reason: 'bulk_file_import' },
+  { route: 'events/[eventId]/staff-instructions.put.ts', disposition: 'include' },
   { route: 'events/[eventId]/staff/index.get.ts', disposition: 'include' },
   { route: 'events/[eventId]/submissions/summary.get.ts', disposition: 'include' },
   { route: 'events/[eventId]/talk-proposals/[proposalId]/actions/accept.post.ts', disposition: 'include' },

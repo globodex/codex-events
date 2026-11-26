@@ -61,6 +61,7 @@ export const accountEventRostersPageRoute = defineAccountEventPageRoute({
     }
 
     return {
+      staffInstructions: isStaffOrAdmin ? context.event.staffInstructions : null,
       publishedJudges,
       publishedStaff,
       roleAssignments,

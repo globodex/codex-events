@@ -275,6 +275,8 @@ Event challenge permissions apply to every event type.
 | Read published challenges in the account event workspace | Yes | Yes | Yes | Yes |
 | Read draft challenges | No | No | Yes, in the event builder | Yes, in the event builder |
 | Read the staff instructions of challenges and open tracks | No | Yes | Yes | Yes |
+| Read the general staff instructions on the Staff tab | No | Yes | Yes | Yes |
+| Write the general staff instructions on the Staff tab | No | No | Yes | Yes |
 | Choose own open track or challenge | Yes, one published entry, until the event is completed | No | No | No |
 | See how many confirmed participants chose each entry | No | Yes, on the Participants tab | Yes, on the Participants tab | Yes, on the Participants tab |
 
