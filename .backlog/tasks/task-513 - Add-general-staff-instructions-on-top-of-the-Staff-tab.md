@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-11-26T19:13:00Z'
-updated_date: '2026-11-26T19:13:00Z'
+updated_date: '2026-11-26T19:30:00Z'
 labels: []
 milestone: m-3
 dependencies: []
@@ -62,6 +62,8 @@ On 2026-11-26 Alex asked for a rich text section of general staff instructions o
 
 <!-- SECTION:NOTES:BEGIN -->
 New component AccountEventStaffInstructionsPanel. Closest analogs: AccountEventPublishedRosterPanel (the card look of the Staff tab) and EventStaffInstructions (read-only Markdown for staff); neither has an editor and a save, so the panel combines the roster card look with AdminMarkdownEditorField. It sits in account/events/organisms and is imported explicitly, because Nuxt names components in that folder with the folder prefix.
+
+Follow-up in the same task: the CI topology suite (bun run test:bdd topology) refuses editor code on a direct Staff tab load by an event admin. The panel therefore shows the saved instructions to admins too, with an Edit button, and loads AdminMarkdownEditorField with defineAsyncComponent only after Edit. The topology suite passes locally with 26 scenarios.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

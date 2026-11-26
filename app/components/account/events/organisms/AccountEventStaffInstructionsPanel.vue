@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { eventStaffInstructionsSchema } from '#shared/domains/events/account-event-rosters-page'
-import AdminMarkdownEditorField from '~/components/admin/AdminMarkdownEditorField.vue'
 import { useApiClient } from '~/composables/useApiClient'
 import { normalizeApiError } from '~/lib/api'
 
+// The editor is heavy, so it loads only when an event admin starts editing.
+const AdminMarkdownEditorField = defineAsyncComponent(() => import('~/components/admin/AdminMarkdownEditorField.vue'))
+
 // The general instructions for the event team, on top of the Staff tab. The server sends them only
-// to staff and event admins. Staff read them; an event admin writes and saves them here.
+// to staff and event admins. Everyone reads them as staff see them; an event admin can edit them.
 const props = defineProps<{
   eventId: string
   /** Markdown, as saved. */
@@ -18,13 +20,16 @@ const props = defineProps<{
 const apiFetch = useApiClient()
 const toast = useToast()
 const editorId = useId()
-const draft = shallowRef(props.source)
+const editing = shallowRef(false)
+const draft = shallowRef('')
 const saving = shallowRef(false)
 const error = shallowRef('')
 
-watch(() => props.source, (source) => {
-  draft.value = source
-})
+function startEditing() {
+  draft.value = props.source
+  error.value = ''
+  editing.value = true
+}
 
 async function save() {
   const body = eventStaffInstructionsSchema.safeParse({ staffInstructions: draft.value })
@@ -38,6 +43,7 @@ async function save() {
   try {
     await apiFetch(`/api/events/${props.eventId}/staff-instructions`, { method: 'PUT', body: body.data })
     await props.refreshPage()
+    editing.value = false
     toast.add({ title: 'Staff instructions saved', color: 'success' })
   } catch (caught) {
     error.value = normalizeApiError(caught).message
@@ -55,13 +61,24 @@ async function save() {
     data-testid="account-event-staff-instructions"
   >
     <template #header>
-      <h2 class="text-lg font-semibold text-highlighted">
-        Staff instructions
-      </h2>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-lg font-semibold text-highlighted">
+          Staff instructions
+        </h2>
+        <AppButton
+          v-if="canEdit && !editing"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          icon="i-lucide-pencil"
+          :label="source.trim() ? 'Edit' : 'Write instructions'"
+          @click="startEditing"
+        />
+      </div>
     </template>
 
     <form
-      v-if="canEdit"
+      v-if="editing"
       class="space-y-3"
       @submit.prevent="save"
     >
@@ -77,16 +94,31 @@ async function save() {
         color="error"
         :description="error"
       />
-      <AppButton
-        type="submit"
-        label="Save staff instructions"
-        :loading="saving"
-        :disabled="saving || draft.trim() === source"
-      />
+      <div class="flex flex-wrap gap-2">
+        <AppButton
+          type="submit"
+          label="Save staff instructions"
+          :loading="saving"
+          :disabled="saving || draft.trim() === source"
+        />
+        <AppButton
+          color="neutral"
+          variant="ghost"
+          label="Cancel"
+          :disabled="saving"
+          @click="editing = false"
+        />
+      </div>
     </form>
     <AppMarkdownRenderer
-      v-else
+      v-else-if="source.trim()"
       :source="source"
     />
+    <p
+      v-else
+      class="text-sm text-muted"
+    >
+      No staff instructions yet.
+    </p>
   </AppCard>
 </template>
