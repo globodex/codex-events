@@ -6,6 +6,8 @@ export const buildDayGroundFloor: EventFloorPlan = {
   id: 'ground-floor',
   name: 'Ground floor',
   imageUrl: groundFloorImage,
+  imageWidth: 600,
+  imageHeight: 360,
   rooms: [{
     id: 'main-hall',
     name: 'Main Hall',
@@ -27,6 +29,8 @@ export const buildDayUpperFloor: EventFloorPlan = {
   id: 'upper-floor',
   name: 'First floor',
   imageUrl: upperFloorImage,
+  imageWidth: 600,
+  imageHeight: 360,
   rooms: [{
     id: 'workshop-room',
     name: 'Workshop Room',

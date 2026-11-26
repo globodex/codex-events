@@ -58,8 +58,9 @@ const firstSession = {
   startsAfterMinutes: 0,
   durationMinutes: 45
 }
-const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])
-const jpeg = new Uint8Array([255, 216, 255, 217])
+// The first bytes of a PNG of 1600 × 900 pixels and of a JPEG of 1200 × 800 pixels, which name their size.
+const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 6, 64, 0, 0, 3, 132])
+const jpeg = new Uint8Array([255, 216, 255, 192, 0, 17, 8, 3, 32, 4, 176, 3, 1, 34, 0, 2, 17, 1, 3, 17, 1, 255, 217])
 
 function imageForm(bytes: Uint8Array<ArrayBuffer>, type: 'image/png' | 'image/jpeg') {
   const form = new FormData()
@@ -223,13 +224,17 @@ describe('event program routes', () => {
     const { floor, floorPath, program } = await setup()
     const admin = await readData<AdminEventProgram>(await harness.request(programPath))
     expect(admin).toEqual({ program, floorPlans: [floor] })
+    // The map takes the shape of the plan image before the image loads, so the size travels with the plan.
+    expect(floor).toMatchObject({ imageWidth: 1600, imageHeight: 900 })
+    const sizeless = imageForm(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]), 'image/png')
+    expect((await harness.request(`${floorPath}/image`, { method: 'POST', body: sizeless })).status).toBe(400)
 
     const replacement = await readData<EventFloorPlan>(await harness.request(`${floorPath}/image`, {
       method: 'POST',
       body: imageForm(jpeg, 'image/jpeg')
     }))
     expect(replacement.imageUrl).not.toBe(floor.imageUrl)
-    expect(replacement.rooms).toEqual([room])
+    expect(replacement).toMatchObject({ imageWidth: 1200, imageHeight: 800, rooms: [room] })
 
     stubAuth0Session(null)
     const publicDetail = await readData<{ agendaItems: unknown[] }>(await harness.request(publicPath))

@@ -127,7 +127,14 @@ export type ProgramTrack = z.infer<typeof programTrackSchema>
 export type ProgramSession = z.infer<typeof programSessionSchema>
 export type ProgramRoom = z.infer<typeof programRoomSchema>
 
-const eventFloorPlanSchema = eventFloorPlanMetadataSchema.safeExtend({ id, imageUrl: z.string() })
+// The size of the plan image in pixels gives the map its shape before the image has loaded. It is null
+// for an image stored before sizes were recorded.
+const eventFloorPlanSchema = eventFloorPlanMetadataSchema.safeExtend({
+  id,
+  imageUrl: z.string(),
+  imageWidth: z.number().int().positive().nullable(),
+  imageHeight: z.number().int().positive().nullable()
+})
 
 export type EventFloorPlan = z.infer<typeof eventFloorPlanSchema>
 

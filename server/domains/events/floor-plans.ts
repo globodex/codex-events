@@ -19,6 +19,7 @@ import {
 } from '#server/domains/events/images'
 import { ApiError } from '#server/http/api-error'
 import { validateWithSchema } from '#server/http/validation'
+import { readImageSize } from '#server/utils/image-signatures'
 import { assertAuthenticatedUploadRateLimit } from '#server/utils/rate-limit'
 
 export const eventFloorPlanParamsSchema = routeIdParamsSchema.extend({
@@ -39,7 +40,13 @@ function serializeFloorPlan(plan: FloorPlanRecord): EventFloorPlan {
     rooms: JSON.parse(plan.roomsJson)
   })
 
-  return { id: plan.id, imageUrl: `${path}?v=${plan.imageRevision}`, ...metadata }
+  return {
+    id: plan.id,
+    imageUrl: `${path}?v=${plan.imageRevision}`,
+    imageWidth: plan.imageWidth,
+    imageHeight: plan.imageHeight,
+    ...metadata
+  }
 }
 
 export async function listEventFloorPlans(database: AppDatabase, eventId: string): Promise<EventFloorPlan[]> {
@@ -98,8 +105,14 @@ async function readFloorPlanUpload(h3Event: H3Event, actorUserId: string) {
   })
   const image = form.get('file')
   const data = image && typeof image !== 'string' ? new Uint8Array(await image.arrayBuffer()) : undefined
+  const validImage = assertValidEventImagePart({ data })
+  // The map needs the size of the plan image, so an image whose size cannot be read is refused.
+  const size = readImageSize(validImage.data)
+  if (!size) {
+    throw floorPlanUploadError(false)
+  }
 
-  return { name: form.get('name'), image: assertValidEventImagePart({ data }) }
+  return { name: form.get('name'), image: validImage, size }
 }
 
 function newFloorPlanObjectKey(eventId: string, floorPlanId: string) {
@@ -124,7 +137,16 @@ export async function createEventFloorPlan(h3Event: H3Event, eventId: string) {
   const { name } = validateWithSchema(eventFloorPlanMetadataSchema, { name: upload.name, rooms: [] }, 'body')
   const id = crypto.randomUUID()
   const objectKey = newFloorPlanObjectKey(eventId, id)
-  const plan = { id, eventId, name, objectKey, imageRevision: 1, roomsJson: '[]' }
+  const plan = {
+    id,
+    eventId,
+    name,
+    objectKey,
+    imageRevision: 1,
+    imageWidth: upload.size.width,
+    imageHeight: upload.size.height,
+    roomsJson: '[]'
+  }
 
   await putEventImageObject(h3Event, objectKey, upload.image)
   const audit = floorPlanAudit(actorUserId, eventId, id, 'event.floor_plan.created')
@@ -211,13 +233,13 @@ export async function updateEventFloorPlan(
 export async function replaceEventFloorPlanImage(h3Event: H3Event, eventId: string, floorPlanId: string) {
   const { database, actorUserId } = await requireFloorPlanEditor(h3Event, eventId)
   const current = await getFloorPlan(database, eventId, floorPlanId)
-  const { image } = await readFloorPlanUpload(h3Event, actorUserId)
+  const { image, size } = await readFloorPlanUpload(h3Event, actorUserId)
   const objectKey = newFloorPlanObjectKey(eventId, floorPlanId)
 
   await putEventImageObject(h3Event, objectKey, image)
 
   const [updated] = await database.update(eventFloorPlans)
-    .set({ objectKey, imageRevision: current.imageRevision + 1 })
+    .set({ objectKey, imageRevision: current.imageRevision + 1, imageWidth: size.width, imageHeight: size.height })
     .where(and(floorPlanScope(eventId, floorPlanId), eq(eventFloorPlans.imageRevision, current.imageRevision)))
     .returning()
 

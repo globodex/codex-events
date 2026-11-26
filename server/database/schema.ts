@@ -353,6 +353,10 @@ export const eventFloorPlans = sqliteTable('event_floor_plans', {
   name: text('name').notNull(),
   objectKey: text('object_key').notNull(),
   imageRevision: integer('image_revision').notNull().default(1),
+  // The size of the image in pixels, read from the uploaded file. Null for an image stored before
+  // sizes were recorded, until it is replaced.
+  imageWidth: integer('image_width'),
+  imageHeight: integer('image_height'),
   roomsJson: text('rooms_json').notNull().default('[]')
 }, table => [
   index('event_floor_plans_event_idx').on(table.eventId)

@@ -23,9 +23,13 @@ const map = useTemplateRef<HTMLElement>('map')
 const { width, height } = useElementSize(map)
 const image = useTemplateRef<HTMLImageElement>('image')
 const { height: imageHeight } = useElementSize(image)
-// Width divided by height of the plan image. Until it is known, the map keeps the size of a plan
-// with the placeholder shape and shows no rooms, because rooms are placed by fractions of the image.
+// Width divided by height of the plan image. Until it is known, the map takes the shape that the server
+// recorded for the image, and shows no rooms, because rooms are placed by fractions of the image. An
+// image without a recorded size gets the placeholder shape.
 const imageRatio = shallowRef<number>()
+const recordedRatio = computed(() => props.plan.imageWidth && props.plan.imageHeight
+  ? props.plan.imageWidth / props.plan.imageHeight
+  : undefined)
 const placeholderRatio = 3 / 4
 
 // The browser knows the size of the image from its first bytes, long before the image has loaded,
@@ -71,7 +75,7 @@ function selectFloor(value: string | number | undefined) {
   <figure
     class="flex min-w-0 flex-col overflow-hidden rounded-xl border border-default bg-accented
       lg:max-w-[calc((100dvh_-_10rem)_*_var(--plan-ratio))]"
-    :style="{ '--plan-ratio': imageRatio ?? placeholderRatio }"
+    :style="{ '--plan-ratio': imageRatio ?? recordedRatio ?? placeholderRatio }"
     data-testid="program-floor-plan"
   >
     <figcaption class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-default px-3 py-2">
