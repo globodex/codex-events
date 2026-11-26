@@ -770,9 +770,6 @@ function linkAgendaSelection(id: string | null) {
   void navigateTo({ query: { ...route.query, workshop: undefined, session: id ?? undefined } }, { replace: true })
 }
 
-// After check-in the credit offers stand at the top of the Overview in place of the next step.
-const nextStepShowsCredits = computed(() =>
-  (participantApplication.value?.isCheckedIn ?? false) && participantCreditOffers.value.length > 0)
 const applicationSubmittedNoticeVisible = ref(isParticipantApplicationSubmittedNotice(route.query.notice))
 const applicationStatusLabel = computed(() =>
   applicationStatus.value ? formatParticipantApplicationStatus(applicationStatus.value) : ''
@@ -1249,8 +1246,9 @@ useSeoMeta({
         aria-labelledby="account-tab-overview"
         class="space-y-7"
       >
+        <!-- After check-in the event's credit offers stand below the next step with its activities. -->
         <AccountEventNextStepCard
-          v-if="showNextStepCard && !nextStepShowsCredits"
+          v-if="showNextStepCard"
           :is-checked-in="participantApplication?.isCheckedIn ?? false"
           :way-href="nextStepWayHref"
           :activities="participantActivities"

@@ -17,5 +17,4 @@ Feature: Credits after check-in
     Given I open my event page of "credit-sold-out-fixture-event" as "regular_user"
     Then the credit "Codex event credit" should have no credits left
     And the credit "Codex event credit" should have no claim button
-    And I should see no next step
-    And I should be able to open the Agenda tab
+    And my next step should list the activity "Agenda"

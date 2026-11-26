@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // Shows a confirmed participant the one thing to do next at the event: before check-in, how to get
 // there; after check-in, the event's activities. The page reads its data again every few seconds
-// until the participant is checked in, so the card changes by itself. The page shows the credit
-// offers in its place after check-in when the event has offers.
+// until the participant is checked in, so the card changes by itself. After check-in the page shows
+// the event's credit offers below it.
 defineProps<{
   /** The result of `isApplicationEffectivelyCheckedIn` for the participant. */
   isCheckedIn: boolean

@@ -65,15 +65,6 @@ When('I open the agenda from my next step', async ({ page }) => {
   await expect(page).toHaveURL(/tab=program&session=/)
 })
 
-// After check-in with credit offers, the credits stand at the top of the Overview in place of the
-// next step. The activities stay on their tabs.
-Then('I should be able to open the Agenda tab', async ({ page }) => {
-  const agendaTab = page.getByRole('tab', { name: 'Agenda', exact: true })
-
-  await agendaTab.click()
-  await expect(agendaTab).toHaveAttribute('aria-selected', 'true')
-})
-
 Then('I should see the agenda session {string}', async ({ page }, sessionTitle: string) => {
   const session = page.getByTestId('program-timeline').getByText(sessionTitle).first()
 
