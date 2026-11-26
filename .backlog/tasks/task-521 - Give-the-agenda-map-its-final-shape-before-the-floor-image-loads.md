@@ -5,10 +5,24 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-11-26T23:03:00Z'
-updated_date: '2026-11-26T23:07:00Z'
+updated_date: '2026-11-26T23:08:00Z'
 labels: []
 milestone: m-3
 dependencies: []
+modified_files:
+  - drizzle/0096_floor_plan_image_size.sql
+  - server/database/schema.ts
+  - shared/domains/events/program.ts
+  - server/domains/events/floor-plans.ts
+  - server/utils/image-signatures.ts
+  - app/components/account/events/molecules/AccountEventProgramFloorPlan.vue
+  - stories/features/fixtures/build-day.fixtures.ts
+  - server/application/operations/generated-output-schemas.ts
+  - tests/unit/server/utils/image-signatures.test.ts
+  - tests/integration/server/api/event-program-routes.test.ts
+  - docs/schema-outline.md
+  - docs/api-surface.md
+  - docs/domain-model.md
 type: bug
 ordinal: 238000
 ---
