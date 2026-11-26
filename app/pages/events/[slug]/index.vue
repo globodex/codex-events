@@ -150,9 +150,7 @@ const talkProposalWindow = computed(() => {
     isOpen: isTalkProposalWindowOpen(talkProposalOpensAt, talkProposalClosesAt, now.value.getTime())
   }
 })
-const workspaceAccess = usePublicEventWorkspaceAccess(slug, () =>
-  !registrationOpen.value || (activeTab.value.id === 'overview' && !!talkProposalWindow.value)
-)
+const workspaceAccess = usePublicEventWorkspaceAccess(slug)
 const detailBackgroundImageUrl = computed(() => resolveEventDetailBackgroundImageUrl(event.value))
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }

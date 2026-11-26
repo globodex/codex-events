@@ -209,15 +209,19 @@ When('the held session check {string}', async ({ page }, outcome: string) => {
   }
 })
 
-Then('the event header shows {string} after one session check and the registration link stays the same', async ({ page }, control: string) => {
+// The returning member registered for the fixture event, so after the account check the main button
+// leads to their event space. Only a signed-in person's browser asks which events they have.
+Then('the event header shows {string} after one session check and the main button says {string}', async ({ page }, control: string, action: string) => {
   const header = page.getByRole('banner')
   await expect(header.getByRole(control === 'Sign in' ? 'link' : 'button', { name: control, exact: true })).toBeVisible()
   if (control !== 'Sign in') await expect(header.getByRole('link', { name: 'Sign in' })).toHaveCount(0)
-  await expect(page.getByRole('link', { name: 'Register', exact: true })).toHaveAttribute('href', fixtureRegistrationHref)
+  const goesToEventSpace = action === 'Go to event space'
+  await expect(page.getByRole('link', { name: action, exact: true }))
+    .toHaveAttribute('href', goesToEventSpace ? '/account/events/e2e-fixture-event' : fixtureRegistrationHref)
   const { capture } = eventSessionChecks.get(page)!
   await capture.settle()
   assertExactPathCount(capture, '/api/session', 1)
-  assertExactPathCount(capture, '/api/account/events', 0)
+  assertExactPathCount(capture, '/api/account/events', goesToEventSpace ? 1 : 0)
 })
 
 When('I open the public event detail page for the fixture event with the saved {string} session', async ({ page }, personaKey: string) => {

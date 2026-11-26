@@ -392,12 +392,14 @@ export function resolvePublicEventPrimaryAction(options: {
   registrationOpen: boolean
   hasEventWorkspaceAccess: boolean
 }) {
-  if (options.registrationOpen) {
-    return { label: 'Register', to: `/events/${options.eventSlug}/register` }
+  // A person who already has the event among their events goes to its event space, also while
+  // registration is open.
+  if (options.hasEventWorkspaceAccess) {
+    return { label: 'Go to event space', to: `/account/events/${options.eventSlug}` }
   }
 
-  return options.hasEventWorkspaceAccess
-    ? { label: 'Open workspace', to: `/account/events/${options.eventSlug}` }
+  return options.registrationOpen
+    ? { label: 'Register', to: `/events/${options.eventSlug}/register` }
     : null
 }
 

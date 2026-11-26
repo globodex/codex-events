@@ -22,8 +22,7 @@ describe('usePublicEventWorkspaceAccess', () => {
     vi.stubGlobal('useApiData', useApiData)
 
     const { usePublicEventWorkspaceAccess } = await import('../../../../app/composables/usePublicEventWorkspaceAccess')
-    const needed = ref(false)
-    const access = usePublicEventWorkspaceAccess('e2e-fixture-event', needed)
+    const access = usePublicEventWorkspaceAccess('e2e-fixture-event')
     const [, handler, options] = useApiData.mock.calls[0] as [
       string,
       (context: { apiFetch: typeof vi.fn, signal: AbortSignal }) => Promise<string[]>,
@@ -31,7 +30,6 @@ describe('usePublicEventWorkspaceAccess', () => {
     ]
 
     expect(options.server).toBe(false)
-    needed.value = true
     expect(options.enabled()).toBe(false)
     expect(access.value).toBe('unknown')
     sessionStatus.value = 'error'
@@ -54,7 +52,5 @@ describe('usePublicEventWorkspaceAccess', () => {
     accessStatus.value = 'success'
     expect(access.value).toBe('granted')
     expect(apiFetch).toHaveBeenCalledWith('/api/account/events', { signal })
-    needed.value = false
-    expect(options.enabled()).toBe(false)
   })
 })

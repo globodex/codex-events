@@ -56,10 +56,10 @@ Feature: Public event discovery
     Then the public event document should remain publicly cacheable
     And the event offers registration without showing account controls before the session is known
     When the held session check "<outcome>"
-    Then the event header shows "<control>" after one session check and the registration link stays the same
+    Then the event header shows "<control>" after one session check and the main button says "<action>"
 
     Examples:
-      | visitor          | outcome  | control                    |
-      | returning member | succeeds | Open profile menu          |
-      | guest            | succeeds | Sign in                    |
-      | returning member | fails    | Retry loading account menu |
+      | visitor          | outcome  | control                    | action            |
+      | returning member | succeeds | Open profile menu          | Go to event space |
+      | guest            | succeeds | Sign in                    | Register          |
+      | returning member | fails    | Retry loading account menu | Register          |

@@ -13,7 +13,10 @@ interface AccountEventsResponse {
   }
 }
 
-export function usePublicEventWorkspaceAccess(slug: MaybeRefOrGetter<string>, needed: MaybeRefOrGetter<boolean>) {
+// Whether the signed-in person has this event among their events, so the public event page can
+// lead them to its event space. The public page HTML is the same for everyone, so the browser asks
+// after the account check, and only for a signed-in person.
+export function usePublicEventWorkspaceAccess(slug: MaybeRefOrGetter<string>) {
   const { actor, status } = useAccountBootstrap()
   const canCheckAccess = computed(() =>
     actor.value?.kind === 'platform_user' && actor.value.hasAcceptedCurrentPlatformDocuments
@@ -25,13 +28,12 @@ export function usePublicEventWorkspaceAccess(slug: MaybeRefOrGetter<string>, ne
       return [...data.current, ...data.past].map(event => event.slug)
     },
     {
-      enabled: () => toValue(needed) && status.value === 'success' && canCheckAccess.value,
+      enabled: () => status.value === 'success' && canCheckAccess.value,
       server: false
     }
   )
 
   return computed(() => {
-    if (!toValue(needed)) return 'unknown'
     if (status.value === 'error') return 'error'
     if (status.value !== 'success') return 'unknown'
     if (!canCheckAccess.value) return 'denied'

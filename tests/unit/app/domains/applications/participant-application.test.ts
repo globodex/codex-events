@@ -153,13 +153,17 @@ describe('participant application helpers', () => {
     })).toBe('/events/codex-spring')
   })
 
-  test('keeps the public Register destination stable while registration is open', () => {
-    for (const hasEventWorkspaceAccess of [false, true]) {
-      expect(resolvePublicEventPrimaryAction({ eventSlug: 'codex-spring', registrationOpen: true, hasEventWorkspaceAccess })).toEqual({
-        label: 'Register',
-        to: '/events/codex-spring/register'
-      })
-    }
+  test('offers Register while registration is open, and the event space to a person who has the event', () => {
+    const openRegistration = { eventSlug: 'codex-spring', registrationOpen: true }
+
+    expect(resolvePublicEventPrimaryAction({ ...openRegistration, hasEventWorkspaceAccess: false })).toEqual({
+      label: 'Register',
+      to: '/events/codex-spring/register'
+    })
+    expect(resolvePublicEventPrimaryAction({ ...openRegistration, hasEventWorkspaceAccess: true })).toEqual({
+      label: 'Go to event space',
+      to: '/account/events/codex-spring'
+    })
   })
 
   test('preserves the Talk proposal destination for an existing applicant', () => {
@@ -168,11 +172,11 @@ describe('participant application helpers', () => {
     })).toBe('/account/events/codex-spring?tab=call-for-talks')
   })
 
-  test('shows Open workspace after registration closes only with confirmed event access', () => {
+  test('shows the event space after registration closes only with confirmed event access', () => {
     const closedRegistration = { eventSlug: 'codex-spring', registrationOpen: false }
 
     expect(resolvePublicEventPrimaryAction({ ...closedRegistration, hasEventWorkspaceAccess: true })).toEqual({
-      label: 'Open workspace',
+      label: 'Go to event space',
       to: '/account/events/codex-spring'
     })
     expect(resolvePublicEventPrimaryAction({ ...closedRegistration, hasEventWorkspaceAccess: false })).toBeNull()
