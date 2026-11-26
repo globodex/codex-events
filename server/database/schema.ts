@@ -330,6 +330,17 @@ export const eventAgendaPrograms = sqliteTable('event_agenda_programs', {
   agendaItemRoomsJson: text('agenda_item_rooms_json').notNull().default('[]')
 })
 
+// The page of a workshop: a program session with staff (`shared/domains/events/workshops.ts`).
+export const eventWorkshops = sqliteTable('event_workshops', {
+  eventId: text('event_id').notNull().references(() => events.id, { onDelete: 'cascade' }),
+  sessionId: text('session_id').notNull(),
+  description: text('description').notNull().default(''),
+  resourcesJson: text('resources_json').notNull().default('[]'),
+  updatedAt: text('updated_at').notNull()
+}, table => [
+  primaryKey({ columns: [table.eventId, table.sessionId] })
+])
+
 export const eventFloorPlans = sqliteTable('event_floor_plans', {
   id: idColumn(),
   eventId: text('event_id').notNull().references(() => events.id, { onDelete: 'cascade' }),

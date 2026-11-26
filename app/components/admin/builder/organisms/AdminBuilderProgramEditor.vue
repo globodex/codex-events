@@ -19,6 +19,8 @@ const props = defineProps<{
   floorPlans: EventFloorPlan[]
   /** The saved challenges of the event, drafts included. A room of a floor plan can name one of them. */
   challenges: Pick<EventChallenge, 'id' | 'title' | 'isPublished'>[]
+  /** The staff of the event, who can run a session as a workshop. */
+  staffOptions: Array<{ id: string, name: string }>
   saving: boolean
   saveError: string
 }>()
@@ -153,6 +155,7 @@ function remove() {
           :starts-at="selectedItem.startsAt"
           :ends-at="selectedItem.endsAt"
           :floor-plans="floorPlans"
+          :staff-options="staffOptions"
           :disabled="saving"
           @update:track="replaceTrack"
           @remove="removeTrack(track.id)"

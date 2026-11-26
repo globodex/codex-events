@@ -476,9 +476,11 @@ const programPageRequest = useAccountEventPageRequest<AccountEventAgendaPage>(sl
 const programPage = computed(() => programPageRequest.data.value?.page)
 // The sessions and the map are shown only while this person may still read them, so a program
 // that was loaded before a withdrawal is not shown.
-const canViewProgram = computed(() =>
-  canViewEventProgram(canAdmin.value, applicationStatus.value === 'approved')
-)
+const canViewProgram = computed(() => canViewEventProgram({
+  isEventAdmin: canAdmin.value,
+  isStaff: currentEventRole.value?.isStaff ?? false,
+  approved: applicationStatus.value === 'approved'
+}))
 const galleryPageRequest = useAccountEventPageRequest<AccountEventGalleryPage>(slug, 'gallery', {
   enabled: () => activeSection.value === 'gallery',
   query: pageState.queryForPage('gallery')
@@ -753,6 +755,15 @@ const nextStepWayHref = computed(() => availableTabs.value.includes('program')
   : null)
 // The session that a link to the Agenda tab names (`normalizeSessionQueryValue`).
 const linkedAgendaSession = computed(() => normalizeSessionQueryValue(route.query.session))
+// The workshop whose page the Agenda tab opens beside the agenda, by its session id.
+const linkedWorkshop = computed(() => normalizeSessionQueryValue(route.query.workshop))
+// Fullscreen of a workshop page also hides the header of this page.
+const presentationMode = usePresentationMode()
+
+function closeWorkshop() {
+  void navigateTo({ query: { ...route.query, workshop: undefined } }, { replace: true })
+}
+
 // After check-in the credit offers stand at the top of the Overview in place of the next step.
 const nextStepShowsCredits = computed(() =>
   (participantApplication.value?.isCheckedIn ?? false) && participantCreditOffers.value.length > 0)
@@ -1123,7 +1134,10 @@ useSeoMeta({
       <div class="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.22),transparent_46%)] dark:bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.10),transparent_48%)]" />
     </div>
 
-    <section class="relative z-10 border-b border-black/8 bg-white/42 backdrop-blur-lg dark:border-white/[0.08] dark:bg-black/48">
+    <section
+      v-show="!presentationMode.active.value"
+      class="relative z-10 border-b border-black/8 bg-white/42 backdrop-blur-lg dark:border-white/[0.08] dark:bg-black/48"
+    >
       <AppContainer class="max-w-none pb-0 pt-2 sm:pt-3">
         <NuxtLink
           :to="workspaceBackLink.to"
@@ -1730,6 +1744,9 @@ useSeoMeta({
             :agenda-items="event.agendaItems"
             :challenges="programPage.challenges"
             :linked-session="linkedAgendaSession"
+            :linked-workshop="linkedWorkshop"
+            :refresh-page="programPageRequest.refresh"
+            @close-workshop="closeWorkshop"
           />
           <!--
             A person who does not read the program sees the public agenda blocks with the sessions

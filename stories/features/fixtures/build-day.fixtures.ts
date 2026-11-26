@@ -128,5 +128,16 @@ export const buildDayProgram: ParticipantEventProgram = {
     }]
   }],
   agendaItemRooms: [{ agendaItemId: 'dinner', room: { floorPlanId: buildDayGroundFloor.id, roomId: 'studio' } }],
-  floorPlans: [buildDayGroundFloor, buildDayUpperFloor]
+  floorPlans: [buildDayGroundFloor, buildDayUpperFloor],
+  workshops: [{
+    sessionId: 'prototype',
+    staff: [{ id: 'storybook-staff', fullName: 'Ada Lovelace', profileIconRevision: null }],
+    description: 'Build a first prototype step by step. Bring a laptop.',
+    resources: [
+      { id: 'slides', kind: 'slides', title: 'Prototype slides', url: 'https://example.com/slides' },
+      { id: 'starter', kind: 'material', title: 'Starter repository', url: 'https://example.com/starter' },
+      { id: 'docs', kind: 'link', title: 'Codex docs', url: 'https://example.com/docs' }
+    ],
+    canEdit: false
+  }]
 }

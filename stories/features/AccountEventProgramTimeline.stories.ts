@@ -6,7 +6,9 @@ const meta = {
   title: 'Participant/Build Time/Timeline',
   component: AccountEventProgramTimeline,
   args: {
+    eventId: buildDayProgram.eventId,
     tracks: buildDayProgram.tracks,
+    workshops: buildDayProgram.workshops,
     outsideItems: buildDayAgendaItems.slice(1),
     agendaItemRooms: buildDayProgram.agendaItemRooms,
     floorPlans: buildDayProgram.floorPlans,

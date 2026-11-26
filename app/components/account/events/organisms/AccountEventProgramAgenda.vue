@@ -6,7 +6,8 @@ import type { AgendaChallenge, ParticipantEventProgram, ProgramSession } from '#
 import AccountEventProgramFloorPlan from '~/components/account/events/molecules/AccountEventProgramFloorPlan.vue'
 import AccountEventChallengeList from '~/components/account/events/organisms/AccountEventChallengeList.vue'
 import AccountEventProgramTimeline from '~/components/account/events/organisms/AccountEventProgramTimeline.vue'
-import type { PublicEventAgendaItem } from '~/domains/events/presentation'
+import AccountEventWorkshopPanel from '~/components/account/events/organisms/AccountEventWorkshopPanel.vue'
+import { getAgendaItemPresentation, type PublicEventAgendaItem } from '~/domains/events/presentation'
 import { agendaItemsOutsideProgram } from '~/domains/events/program-timeline'
 
 const props = defineProps<{
@@ -20,6 +21,15 @@ const props = defineProps<{
    * agenda block with a room. "How to get there" on the Overview tab links to `first`.
    */
   linkedSession?: string | null
+  /** The session of the workshop page that the link to this tab opens, by its id. */
+  linkedWorkshop?: string | null
+  /** Reads the Agenda tab again, for example after the staff of a workshop saved it. */
+  refreshPage: () => Promise<unknown>
+}>()
+
+const emit = defineEmits<{
+  /** The workshop page closes, and the Agenda tab shows the map again. */
+  closeWorkshop: []
 }>()
 
 // The public agenda blocks before and after the program's block. The sessions cover the block itself.
@@ -36,6 +46,27 @@ const floorPlan = useTemplateRef<InstanceType<typeof AccountEventProgramFloorPla
 const now = useNow({ scheduler: callback => useIntervalFn(callback, 30_000) })
 
 const hasSessions = computed(() => props.program.tracks.some(track => track.sessions.length > 0))
+// The workshop page that the link opens, with its session. It takes the place of the map and the
+// challenges beside the agenda.
+const openWorkshop = computed(() => props.program.workshops.find(workshop => workshop.sessionId === props.linkedWorkshop))
+const openWorkshopSession = computed(() => props.program.tracks.flatMap(track => track.sessions)
+  .find(session => session.id === openWorkshop.value?.sessionId))
+const openWorkshopTimeLabel = computed(() => {
+  const session = openWorkshopSession.value
+  const programStart = Date.parse(props.program.agendaItem.startsAt)
+  return session
+    ? getAgendaItemPresentation({
+      startsAt: new Date(programStart + session.startsAfterMinutes * 60_000).toISOString(),
+      endsAt: new Date(programStart + (session.startsAfterMinutes + session.durationMinutes) * 60_000).toISOString()
+    }, false).timeLabel
+    : ''
+})
+// The room is named as on the agenda, without its number.
+const openWorkshopRoomName = computed(() => {
+  const place = openWorkshopSession.value?.room
+  return props.program.floorPlans.find(plan => plan.id === place?.floorPlanId)?.rooms
+    .find(room => room.id === place?.roomId)?.name
+})
 const selectedSession = computed(() => props.program.tracks.flatMap(track => track.sessions)
   .find(session => session.id === selectedSessionId.value))
 const selectedAgendaItemRoom = computed(() => props.program.agendaItemRooms
@@ -83,6 +114,10 @@ function clearSelection() {
 }
 
 async function selectSession(session: ProgramSession) {
+  // A session chosen on the agenda shows its room on the map, so an open workshop page closes.
+  if (openWorkshop.value) {
+    emit('closeWorkshop')
+  }
   clearSelection()
   selectedSessionId.value = session.id
   await revealMap()
@@ -156,7 +191,7 @@ function returnToAgenda() {
 <template>
   <div
     class="grid items-start gap-4 lg:gap-6"
-    :class="selectedPlan || challenges.length ? 'lg:grid-cols-[clamp(17rem,36%,26rem)_minmax(0,1fr)]' : ''"
+    :class="openWorkshop || selectedPlan || challenges.length ? 'lg:grid-cols-[clamp(17rem,36%,26rem)_minmax(0,1fr)]' : ''"
   >
     <section
       class="min-w-0"
@@ -164,13 +199,15 @@ function returnToAgenda() {
     >
       <AccountEventProgramTimeline
         v-if="hasSessions"
+        :event-id="program.eventId"
         :tracks="program.tracks"
+        :workshops="program.workshops"
         :floor-plans="program.floorPlans"
         :outside-items="outsideItems"
         :agenda-item-rooms="program.agendaItemRooms"
         :starts-at="program.agendaItem.startsAt"
         :ends-at="program.agendaItem.endsAt"
-        :selected-session-id="selectedSessionId"
+        :selected-session-id="openWorkshop?.sessionId ?? selectedSessionId"
         :selected-agenda-item-id="selectedAgendaItemId"
         :now="now.getTime()"
         @select="selectSession"
@@ -184,8 +221,20 @@ function returnToAgenda() {
       </p>
     </section>
 
+    <!-- On a phone the workshop page comes first, above the agenda. -->
+    <AccountEventWorkshopPanel
+      v-if="openWorkshop && openWorkshopSession"
+      class="order-first min-w-0 lg:order-none"
+      :event-id="program.eventId"
+      :session="openWorkshopSession"
+      :workshop="openWorkshop"
+      :time-label="openWorkshopTimeLabel"
+      :room-name="openWorkshopRoomName"
+      :refresh-page="refreshPage"
+      @close="emit('closeWorkshop')"
+    />
     <aside
-      v-if="selectedPlan || challenges.length"
+      v-else-if="selectedPlan || challenges.length"
       ref="mapPanel"
       class="flex min-w-0 scroll-my-4 flex-col gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-ring lg:sticky lg:top-4"
       tabindex="-1"

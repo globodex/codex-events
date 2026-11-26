@@ -8,6 +8,8 @@ const props = defineProps<{
   startsAt: string
   endsAt: string
   floorPlans: EventFloorPlan[]
+  /** The staff of the event, who can run a session as a workshop. */
+  staffOptions: Array<{ id: string, name: string }>
   disabled?: boolean
 }>()
 
@@ -113,6 +115,7 @@ function removeSession(id: string) {
         :starts-at="startsAt"
         :ends-at="endsAt"
         :room-options="roomOptions"
+        :staff-options="staffOptions"
         :disabled="disabled"
         @update="updateSession"
         @remove="removeSession(session.id)"

@@ -5,7 +5,7 @@ import { buildDayAgendaItems, buildDayChallenges, buildDayProgram } from './fixt
 const meta = {
   title: 'Participant/Build Time/Agenda',
   component: AccountEventProgramAgenda,
-  args: { program: buildDayProgram, agendaItems: buildDayAgendaItems, challenges: buildDayChallenges },
+  args: { program: buildDayProgram, agendaItems: buildDayAgendaItems, challenges: buildDayChallenges, refreshPage: async () => undefined },
   parameters: { controls: { disable: true } }
 } satisfies Meta<typeof AccountEventProgramAgenda>
 
@@ -14,6 +14,10 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const SessionsAndFloorPlans: Story = {}
+
+export const WorkshopPage: Story = {
+  args: { linkedWorkshop: 'prototype' }
+}
 
 export const NoSessionsScheduled: Story = {
   args: { program: { ...buildDayProgram, tracks: [], floorPlans: [] }, challenges: [] }

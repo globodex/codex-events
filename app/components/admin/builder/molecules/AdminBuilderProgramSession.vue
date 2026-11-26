@@ -10,6 +10,8 @@ const props = defineProps<{
   startsAt: string
   endsAt: string
   roomOptions: ProgramRoomOption[]
+  /** The staff of the event. A session with staff is a workshop with its own page. */
+  staffOptions: Array<{ id: string, name: string }>
   disabled?: boolean
 }>()
 
@@ -33,6 +35,14 @@ function timeInputValue(minutes: number) {
 const startValue = computed(() => timeInputValue(props.session.startsAfterMinutes))
 const endValue = computed(() => timeInputValue(props.session.startsAfterMinutes + props.session.durationMinutes))
 const latestTime = computed(() => toDateTimeLocalValue(props.endsAt))
+
+function toggleStaff(staffId: string, checked: boolean) {
+  const staffIds = (props.session.staffIds ?? []).filter(id => id !== staffId)
+  if (checked) {
+    staffIds.push(staffId)
+  }
+  updateSession({ staffIds: staffIds.length ? staffIds : undefined })
+}
 
 function updateSession(changes: Partial<ProgramSession>) {
   emit('update', { ...props.session, ...changes })
@@ -129,6 +139,24 @@ function minutesAfterStart(value: string | number | undefined) {
         @update:room="room => updateSession({ room })"
       />
     </AppFormField>
+
+    <!-- Picking staff makes the session a workshop with its own page on the Agenda tab. -->
+    <fieldset
+      v-if="staffOptions.length"
+      class="space-y-1.5"
+    >
+      <legend class="text-sm font-medium text-highlighted">
+        Workshop staff
+      </legend>
+      <AppCheckbox
+        v-for="option in staffOptions"
+        :key="option.id"
+        :label="option.name"
+        :model-value="session.staffIds?.includes(option.id) ?? false"
+        :disabled="disabled"
+        @update:model-value="checked => toggleStaff(option.id, checked === true)"
+      />
+    </fieldset>
 
     <AppFormField
       :name="detailsId"

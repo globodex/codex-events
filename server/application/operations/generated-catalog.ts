@@ -150,6 +150,7 @@ export const applicationOperationLoaders = [
   () => import('../../api/events/[eventId]/terms/[documentType]/versions.post'),
   () => import('../../api/events/[eventId]/terms/current.get'),
   () => import('../../api/events/[eventId]/winners/index.get'),
+  () => import('../../api/events/[eventId]/workshops/[sessionId]/index.put'),
   () => import('../../api/events/builder/analyze.post'),
   () => import('../../api/events/builder/catalog.get'),
   () => import('../../api/events/index.get'),

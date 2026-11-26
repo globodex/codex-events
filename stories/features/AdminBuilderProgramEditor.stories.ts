@@ -42,6 +42,7 @@ const meta = {
         agendaItems: hasAgenda ? agendaItems : [],
         floorPlans: hasProgram ? buildDayProgram.floorPlans : [],
         challenges: buildDayChallenges,
+        staffOptions: [{ id: 'storybook-staff', name: 'Ada Lovelace' }],
         eventId: buildDayProgram.eventId,
         program
       }
@@ -54,6 +55,7 @@ const meta = {
           :program="program"
           :floor-plans="floorPlans"
           :challenges="challenges"
+          :staff-options="staffOptions"
           :saving="false"
           save-error=""
           @save="program = $event"

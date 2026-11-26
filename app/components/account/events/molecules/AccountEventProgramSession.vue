@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import type { ProgramSession } from '#shared/domains/events/program'
+import type { AgendaWorkshop, ProgramSession } from '#shared/domains/events/program'
 
 import AppButton from '~/components/AppButton.vue'
 import AccountEventDetailsDialog from '~/components/account/events/molecules/AccountEventDetailsDialog.vue'
+import AccountEventStaffList from '~/components/account/events/molecules/AccountEventStaffList.vue'
 import { formatMinutes, type SessionPhase } from '~/domains/events/program-timeline'
 
 const props = defineProps<{
+  /** The event in which the staff icons are read. */
+  eventId: string
   session: ProgramSession
+  /** The workshop of a session with staff: its staff and its own page. */
+  workshop?: AgendaWorkshop
   timeLabel: string
   roomName?: string
   selected: boolean
@@ -14,6 +19,10 @@ const props = defineProps<{
   /** Shown above the title while the session is running or next, for example "Now · 12m left". */
   phaseLabel?: string
 }>()
+
+const route = useRoute()
+// The workshop page opens on the Agenda tab of this event, beside the agenda.
+const workshopHref = computed(() => `${route.path}?tab=program&workshop=${encodeURIComponent(props.session.id)}`)
 
 const emit = defineEmits<{
   /** Only a session with a room can be selected. */
@@ -71,10 +80,10 @@ const cardClass = computed(() => {
         {{ phaseLabel }}
       </span>
       <span class="break-words text-sm font-semibold leading-snug text-highlighted">{{ session.title }}</span>
-      <!-- A session with details keeps the right end of this line free for its Details button. -->
+      <!-- A session with a Details button, one with details or a workshop, keeps the right end of this line free for it. -->
       <span
         class="flex max-w-full flex-wrap items-center gap-x-2 gap-y-0.5 text-xs leading-tight text-muted"
-        :class="{ 'pr-16': session.details }"
+        :class="{ 'pr-16': session.details || workshop }"
       >
         <span class="tabular-nums">{{ formatMinutes(session.durationMinutes) }}</span>
         <span
@@ -90,14 +99,35 @@ const cardClass = computed(() => {
       </span>
     </component>
 
+    <!-- A workshop always has a popup: it names its staff and leads to its own page. -->
     <AccountEventDetailsDialog
-      v-if="session.details"
+      v-if="session.details || workshop"
       :title="session.title"
       :summary="[timeLabel, roomName].filter(Boolean).join(' · ')"
     >
-      <p class="whitespace-pre-wrap break-words text-sm text-toned">
+      <AccountEventStaffList
+        v-if="workshop?.staff.length"
+        :event-id="eventId"
+        :staff="workshop.staff"
+        class="mb-4"
+        data-testid="program-session-details-staff"
+      />
+      <p
+        v-if="session.details"
+        class="whitespace-pre-wrap break-words text-sm text-toned"
+      >
         {{ session.details }}
       </p>
+      <template
+        v-if="workshop"
+        #action
+      >
+        <AppButton
+          :to="workshopHref"
+          label="Open workshop page"
+          trailing-icon="i-lucide-arrow-right"
+        />
+      </template>
     </AccountEventDetailsDialog>
   </div>
 </template>

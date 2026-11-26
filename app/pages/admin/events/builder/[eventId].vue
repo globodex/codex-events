@@ -29,6 +29,11 @@ const currentApplicationTerms = computed(() => settingsPage.value?.terms.applica
 const currentWinnerTerms = computed(() => settingsPage.value?.terms.winner.current ?? null)
 const initialSimplifiedClaimingStatus = computed(() => settingsPage.value?.simplifiedClaiming ?? null)
 const lumaGuestList = computed(() => settingsPage.value?.lumaGuestList ?? null)
+// The staff of the event as on the Staff tab: staff, and event admins who also work as staff.
+// They can run a program session as a workshop.
+const programStaffOptions = computed(() => (settingsPage.value?.roles.assignments ?? [])
+  .filter(assignment => assignment.user && (assignment.role === 'staff' || (assignment.role === 'event_admin' && assignment.isStaff)))
+  .map(assignment => ({ id: assignment.userId, name: assignment.user!.displayName })))
 const creditOffers = computed(() => settingsPage.value?.credits ?? [])
 const hasExistingTalkProposal = computed(() => settingsPage.value?.talkProposals.hasExistingProposal ?? false)
 
@@ -401,6 +406,7 @@ useSeoMeta({
             :program="programRequest.data.value.program"
             :floor-plans="programRequest.data.value.floorPlans"
             :challenges="currentEvent.challenges ?? []"
+            :staff-options="programStaffOptions"
             :saving="isProgramSaving"
             :save-error="programSaveError"
             @save="writeProgram"

@@ -9,8 +9,8 @@ import { loadParticipantEventProgram, loadPublicProgramSessions } from './progra
 export const accountEventProgramPageRoute = defineAccountEventPageRoute({
   page: 'program',
   schema: accountEventAgendaPageSchema,
-  // Everyone who can open the event workspace can open the Agenda tab. Only event admins and
-  // confirmed participants get the program; the others see the public agenda blocks with the
+  // Everyone who can open the event workspace can open the Agenda tab. Only event admins, event
+  // staff and confirmed participants get the program; the others see the public agenda blocks with the
   // sessions that the organizer made public. The challenges have their own rule for who reads
   // them (`listReadableEventChallenges`).
   authorize: async () => undefined,
@@ -19,6 +19,7 @@ export const accountEventProgramPageRoute = defineAccountEventPageRoute({
     // An event admin reads the program as an organizer, without a registration.
     const application = isEventAdmin ? null : (await getAccountEventPageAccess(context)).application
     const approved = application?.status === 'approved'
+    const isStaff = context.authorization.isStaff
     const isCheckedIn = application ? isApplicationEffectivelyCheckedIn(application) : false
     const waitingForCheckIn = approved && context.event.checkInFlowEnabled && !isCheckedIn && context.event.state !== 'completed'
 
@@ -39,7 +40,7 @@ export const accountEventProgramPageRoute = defineAccountEventPageRoute({
         .map(member => ({ id: member.id, fullName: member.fullName, profileIconRevision: member.profileIconRevision }))
     }))
 
-    if (!canViewEventProgram(isEventAdmin, approved)) {
+    if (!canViewEventProgram({ isEventAdmin, isStaff, approved })) {
       return {
         program: null,
         publicSessions: await loadPublicProgramSessions(context.database, context.event),
@@ -49,7 +50,11 @@ export const accountEventProgramPageRoute = defineAccountEventPageRoute({
     }
 
     return {
-      program: await loadParticipantEventProgram(context.database, context.event, { isCheckedIn }),
+      program: await loadParticipantEventProgram(context.database, context.event, {
+        isCheckedIn,
+        userId: context.actor.platformUser.id,
+        isEventAdmin
+      }),
       publicSessions: null,
       challenges,
       waitingForCheckIn

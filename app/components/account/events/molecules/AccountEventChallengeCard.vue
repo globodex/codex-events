@@ -3,6 +3,7 @@ import type { AgendaChallenge, ProgramRoom } from '#shared/domains/events/progra
 
 import AppButton from '~/components/AppButton.vue'
 import AccountEventDetailsDialog from '~/components/account/events/molecules/AccountEventDetailsDialog.vue'
+import AccountEventStaffList from '~/components/account/events/molecules/AccountEventStaffList.vue'
 import EventStaffInstructions from '~/components/events/molecules/EventStaffInstructions.vue'
 import EventTrackDetails from '~/components/events/molecules/EventTrackDetails.vue'
 import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
@@ -108,31 +109,14 @@ const detailResources = computed(() => props.challenge.resources.map((resource, 
       :title="challenge.title"
       :summary="rooms.map(roomLabel).join(', ')"
     >
-      <!-- The staff of the challenge with their profile icons and full names, before its instructions. -->
-      <section
+      <!-- The staff of the challenge, before its instructions. -->
+      <AccountEventStaffList
         v-if="challenge.staff.length > 0"
-        class="mb-4 space-y-2"
+        :event-id="eventId"
+        :staff="challenge.staff"
+        class="mb-4"
         data-testid="program-challenge-details-staff"
-      >
-        <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">
-          Staff
-        </h3>
-        <ul class="space-y-2">
-          <li
-            v-for="member in challenge.staff"
-            :key="member.id"
-            class="flex min-w-0 items-center gap-2.5"
-          >
-            <AppAvatar
-              size="sm"
-              :src="buildProfileIconHref(member.id, member.profileIconRevision, eventId)"
-              :alt="member.fullName"
-              class="shrink-0 border-border"
-            />
-            <span class="min-w-0 truncate text-sm font-medium text-highlighted">{{ member.fullName }}</span>
-          </li>
-        </ul>
-      </section>
+      />
       <EventTrackDetails
         :description="challenge.instructions"
         :resources="detailResources"

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useResizeObserver } from '@vueuse/core'
 
-import type { EventFloorPlan, ParticipantEventProgram, ProgramSession, ProgramTrack } from '#shared/domains/events/program'
+import type { AgendaWorkshop, EventFloorPlan, ParticipantEventProgram, ProgramSession, ProgramTrack } from '#shared/domains/events/program'
 
 import AccountEventProgramAgendaItem from '~/components/account/events/molecules/AccountEventProgramAgendaItem.vue'
 import AccountEventProgramSession from '~/components/account/events/molecules/AccountEventProgramSession.vue'
@@ -9,7 +9,11 @@ import { formatEventTime, getAgendaItemPresentation, type PublicEventAgendaItem 
 import { formatMinutes, getSessionPhase, type SessionPhase } from '~/domains/events/program-timeline'
 
 const props = defineProps<{
+  /** The event in which the staff icons are read. */
+  eventId: string
   tracks: ProgramTrack[]
+  /** The workshops of the program: the sessions with staff. */
+  workshops: AgendaWorkshop[]
   floorPlans: EventFloorPlan[]
   /** Public agenda blocks before and after the program, for example "Networking starts". */
   outsideItems: PublicEventAgendaItem[]
@@ -135,6 +139,8 @@ function phaseLabel(phase: SessionPhase, session: ProgramSession) {
 
 // The grid row that starts at each boundary.
 const rows = computed(() => new Map(boundaries.value.map(({ offset }, index) => [offset, index + 2])))
+
+const workshopsBySession = computed(() => new Map(props.workshops.map(workshop => [workshop.sessionId, workshop])))
 
 // The name of each room on the floor plans, by `floorPlanId/roomId`.
 const roomNames = computed(() => new Map(props.floorPlans.flatMap(plan =>
@@ -263,7 +269,9 @@ const placements = computed(() => trackSessions.value.map(({ session, column }) 
       <AccountEventProgramSession
         v-for="entry in placements"
         :key="entry.session.id"
+        :event-id="eventId"
         :session="entry.session"
+        :workshop="workshopsBySession.get(entry.session.id)"
         :time-label="entry.timeLabel"
         :room-name="entry.roomName"
         :selected="entry.session.id === selectedSessionId"

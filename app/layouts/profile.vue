@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useEventListener } from '@vueuse/core'
+
 import AppShellFooter from '~/components/shell/AppShellFooter.vue'
 import AppShellHeader from '~/components/shell/AppShellHeader.vue'
 import AppShellSidebar from '~/components/shell/AppShellSidebar.vue'
@@ -15,11 +17,20 @@ const shouldLetPageBackgroundReachScrollbar = computed(() =>
   route.path.startsWith('/account/events/')
 )
 const showIdentityAlert = computed(() => actor.value?.kind === 'authenticated_identity')
+
+// Presentation mode, for example a workshop page on a projector, hides the header, sidebar and footer.
+// Leaving the browser fullscreen, for example with Escape, also ends it.
+const presentationMode = usePresentationMode()
+useEventListener(() => import.meta.client ? document : undefined, 'fullscreenchange', () => {
+  if (!document.fullscreenElement && presentationMode.active.value) {
+    void presentationMode.exit()
+  }
+})
 </script>
 
 <template>
   <div class="flex h-screen flex-col overflow-hidden text-foreground">
-    <AppShellHeader />
+    <AppShellHeader v-if="!presentationMode.active.value" />
 
     <div
       class="app-shell-scroll-region min-h-0 flex flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-none"
@@ -27,7 +38,7 @@ const showIdentityAlert = computed(() => actor.value?.kind === 'authenticated_id
     >
       <div class="relative flex items-start">
         <AppShellSidebar
-          v-if="showWorkspaceSidebar"
+          v-if="showWorkspaceSidebar && !presentationMode.active.value"
           class="hidden lg:block"
           :groups="sidebarGroups"
           :account-event-navigation-mode="accountEventNavigationMode"
@@ -53,6 +64,7 @@ const showIdentityAlert = computed(() => actor.value?.kind === 'authenticated_id
       </div>
 
       <AppShellFooter
+        v-if="!presentationMode.active.value"
         class="mt-auto"
         :with-sidebar="showWorkspaceSidebar"
       />

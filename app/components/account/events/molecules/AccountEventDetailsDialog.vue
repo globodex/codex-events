@@ -71,6 +71,15 @@ defineProps<{
         <div class="mt-4">
           <slot />
         </div>
+        <!-- An action that leaves the popup, for example a link to another page. It also closes the popup. -->
+        <div
+          v-if="$slots.action"
+          class="mt-5"
+        >
+          <DialogClose as-child>
+            <slot name="action" />
+          </DialogClose>
+        </div>
       </DialogContent>
     </DialogPortal>
   </DialogRoot>

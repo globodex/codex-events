@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { eventChallengeSchema } from '#shared/domains/events/challenges'
+import { workshopResourceSchema } from '#shared/domains/events/workshops'
 
 const id = z.string().trim().min(1).max(100)
 const name = z.string().trim().min(1).max(120)
@@ -69,7 +70,13 @@ const programSessionSchema = z.object({
   // True when the public event page lists this session under its agenda block, with its start
   // time and its title. A session without this mark is for people who read the program only.
   // The room, the details and the version after check-in are never public.
-  isPublic: z.boolean().optional()
+  isPublic: z.boolean().optional(),
+  // The members of the event staff who run this session, by user id. A session with staff is a
+  // workshop: it has its own page on the Agenda tab, where its staff and the event admins add a
+  // description, slides, materials and links (`workshops.ts`).
+  staffIds: z.array(id).max(10)
+    .refine(ids => new Set(ids).size === ids.length, 'Pick each staff member once.')
+    .optional()
 })
 
 const programTrackSchema = z.object({
@@ -129,13 +136,30 @@ export interface AdminEventProgram {
   floorPlans: EventFloorPlan[]
 }
 
+// A workshop as the Agenda tab shows it: its staff, its description and its slides, materials
+// and links. `canEdit` is true for an event admin and for the staff of the workshop.
+export const agendaWorkshopSchema = z.object({
+  sessionId: id,
+  staff: z.array(z.object({
+    id: z.string(),
+    fullName: z.string(),
+    profileIconRevision: z.number().int().nullable()
+  })),
+  description: z.string(),
+  resources: z.array(workshopResourceSchema),
+  canEdit: z.boolean()
+})
+
+export type AgendaWorkshop = z.infer<typeof agendaWorkshopSchema>
+
 export const participantEventProgramSchema = z.object({
   eventId: id,
   eventName: z.string(),
   agendaItem: z.object({ id, title: z.string(), startsAt: z.string(), endsAt: z.string() }),
   tracks: z.array(programTrackSchema),
   agendaItemRooms: z.array(agendaItemRoomSchema),
-  floorPlans: z.array(eventFloorPlanSchema)
+  floorPlans: z.array(eventFloorPlanSchema),
+  workshops: z.array(agendaWorkshopSchema)
 })
 
 export type ParticipantEventProgram = z.infer<typeof participantEventProgramSchema>
@@ -150,9 +174,9 @@ export const publicProgramSessionsSchema = z.object({
 
 export type PublicProgramSessions = z.infer<typeof publicProgramSessionsSchema>
 
-/** Event admins and confirmed participants read the program. */
-export function canViewEventProgram(isEventAdmin: boolean, approved: boolean) {
-  return isEventAdmin || approved
+/** Event admins, event staff and confirmed participants read the program. */
+export function canViewEventProgram(reader: { isEventAdmin: boolean, isStaff: boolean, approved: boolean }) {
+  return reader.isEventAdmin || reader.isStaff || reader.approved
 }
 
 /**

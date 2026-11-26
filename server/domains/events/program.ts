@@ -13,15 +13,16 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { resolveEventAuthorization } from '#server/auth/authorization'
 import { getDatabase, type AppDatabase } from '#server/database/client'
 import { eventAgendaPrograms, eventFloorPlans, events, userApplications } from '#server/database/schema'
-import { getEventOrThrow, parseEventAgendaItems, requireEventAdmin } from '#server/domains/events'
+import { getEventOrThrow, listPublishedEventRosterMembers, parseEventAgendaItems, requireEventAdmin } from '#server/domains/events'
 import { agendaItemRoomJoins, listEventFloorPlans, sessionRoomJoins } from '#server/domains/events/floor-plans'
+import { loadAgendaWorkshops } from '#server/domains/events/workshops'
 import { ApiError } from '#server/http/api-error'
 import { measureRequestPhase } from '#server/http/request-timing'
 
 type EventRecord = typeof events.$inferSelect
 
-export function assertProgramViewAccess(isEventAdmin: boolean, approved: boolean) {
-  if (!canViewEventProgram(isEventAdmin, approved)) {
+export function assertProgramViewAccess(reader: Parameters<typeof canViewEventProgram>[0]) {
+  if (!canViewEventProgram(reader)) {
     throw new ApiError({ statusCode: 403, code: 'event_program_access_required', message: 'Only confirmed participants can open this agenda.' })
   }
 }
@@ -44,7 +45,7 @@ export async function requireEventProgramAccess(h3Event: H3Event, eventId: strin
       eq(userApplications.status, 'approved')
     )
   }))
-  assertProgramViewAccess(authorization.isEventAdmin, Boolean(approval))
+  assertProgramViewAccess({ isEventAdmin: authorization.isEventAdmin, isStaff: authorization.isStaff, approved: Boolean(approval) })
   return database
 }
 
@@ -115,6 +116,19 @@ function validateProgramWindow(event: EventRecord, program: EventProgram) {
   }
 }
 
+// The staff of a session must be on the staff roster of the event.
+async function validateProgramStaff(database: AppDatabase, eventId: string, program: EventProgram) {
+  const sessionStaffIds = program.tracks.flatMap(track => track.sessions.flatMap(session => session.staffIds ?? []))
+  if (!sessionStaffIds.length) {
+    return
+  }
+
+  const rosterIds = new Set((await listPublishedEventRosterMembers(database, eventId, 'staff')).map(member => member.id))
+  if (sessionStaffIds.some(staffId => !rosterIds.has(staffId))) {
+    throw new ApiError({ statusCode: 400, code: 'event_program_staff_unknown', message: 'Pick the staff of a session from the staff of the event.' })
+  }
+}
+
 function availableProgramRooms(eventId: string, tracksJson: string, agendaItemRoomsJson: string) {
   // A place whose room is on no floor plan of the event.
   const missingRoom = sql`json_type(place.value) = 'object'
@@ -135,6 +149,7 @@ export async function saveAdminEventProgram(h3Event: H3Event, eventId: string, p
   const { event } = await requireEventAdmin(h3Event, eventId)
   const database = getDatabase(h3Event)
   validateProgramWindow(event, program)
+  await validateProgramStaff(database, eventId, program)
 
   // Compare the agenda read above and the live rooms in the write itself.
   const tracksJson = JSON.stringify(program.tracks)
@@ -195,12 +210,13 @@ function showTracksTo(tracks: EventProgram['tracks'], viewer: { isCheckedIn: boo
 
 /**
  * The event's program for a person who may read it, or null when the event has none.
- * `viewer.isCheckedIn` is true only for a participant who is checked in.
+ * `viewer.isCheckedIn` is true only for a participant who is checked in. `viewer.userId` and
+ * `viewer.isEventAdmin` decide which workshops the viewer may edit.
  */
 export async function loadParticipantEventProgram(
   database: AppDatabase,
   event: EventRecord,
-  viewer: { isCheckedIn: boolean }
+  viewer: { isCheckedIn: boolean, userId: string, isEventAdmin: boolean }
 ): Promise<ParticipantEventProgram | null> {
   const row = await findEventProgramRow(database, event.id)
   const agendaItem = row && getProgramAgendaItem(event, row.agendaItemId)
@@ -208,13 +224,20 @@ export async function loadParticipantEventProgram(
     return null
   }
 
+  const tracks = readProgramTracks(row.tracksJson)
+  const [floorPlans, workshops] = await Promise.all([
+    listEventFloorPlans(database, event.id),
+    loadAgendaWorkshops(database, event.id, tracks, viewer)
+  ])
+
   return {
     eventId: event.id,
     eventName: event.name,
     agendaItem,
-    tracks: showTracksTo(readProgramTracks(row.tracksJson), viewer),
+    tracks: showTracksTo(tracks, viewer),
     agendaItemRooms: readAgendaItemRooms(row.agendaItemRoomsJson),
-    floorPlans: await listEventFloorPlans(database, event.id)
+    floorPlans,
+    workshops
   }
 }
 

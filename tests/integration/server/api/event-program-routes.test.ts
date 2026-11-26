@@ -11,6 +11,9 @@ import deleteProgram from '../../../../server/api/events/[eventId]/program/index
 import adminProgram from '../../../../server/api/events/[eventId]/program/index.get'
 import updateProgram from '../../../../server/api/events/[eventId]/program/index.put'
 import publicEvent from '../../../../server/api/public/events/[slug]/index.get'
+import readWorkshopFile from '../../../../server/api/events/[eventId]/workshops/[sessionId]/files/[fileId].get'
+import uploadWorkshopFile from '../../../../server/api/events/[eventId]/workshops/[sessionId]/files/index.post'
+import saveWorkshop from '../../../../server/api/events/[eventId]/workshops/[sessionId]/index.put'
 import { eventRoleAssignments, events, userApplications, users } from '../../../../server/database/schema'
 import type { AccountEventPageShell } from '../../../../shared/domains/events/account-event-page-shell'
 import type { AdminEventProgram, EventFloorPlan, EventProgram, AccountEventAgendaPage } from '../../../../shared/domains/events/program'
@@ -86,6 +89,12 @@ async function readData<T>(response: Response) {
   return payload.data
 }
 
+function fileForm(text: string, name: string, type: string) {
+  const form = new FormData()
+  form.set('file', new Blob([text], { type }), name)
+  return form
+}
+
 function json(method: 'PATCH' | 'PUT', data: unknown) {
   return { method, body: JSON.stringify(data) }
 }
@@ -130,7 +139,10 @@ describe('event program routes', () => {
         { method: 'post', path: '/api/events/:eventId/floor-plans', handler: createFloorPlan },
         { method: 'put', path: '/api/events/:eventId/floor-plans/:floorPlanId', handler: updateFloorPlan },
         { method: 'get', path: '/api/events/:eventId/floor-plans/:floorPlanId/image', handler: readFloorPlanImage },
-        { method: 'post', path: '/api/events/:eventId/floor-plans/:floorPlanId/image', handler: replaceFloorPlanImage }
+        { method: 'post', path: '/api/events/:eventId/floor-plans/:floorPlanId/image', handler: replaceFloorPlanImage },
+        { method: 'put', path: '/api/events/:eventId/workshops/:sessionId', handler: saveWorkshop },
+        { method: 'post', path: '/api/events/:eventId/workshops/:sessionId/files', handler: uploadWorkshopFile },
+        { method: 'get', path: '/api/events/:eventId/workshops/:sessionId/files/:fileId', handler: readWorkshopFile }
       ],
       cloudflareEnv: {
         EVENT_IMAGES: createImageBucket(),
@@ -220,11 +232,13 @@ describe('event program routes', () => {
     expect((await harness.request(`${accountPath}/program`)).status).toBe(401)
     expect((await harness.request(replacement.imageUrl)).status).toBe(401)
 
-    for (const viewer of ['pending', 'staff']) {
-      signIn(viewer)
-      expect((await readAgendaPage()).program).toBeNull()
-      expect((await harness.request(replacement.imageUrl)).status).toBe(403)
-    }
+    // A pending registration does not read the program. Event staff do.
+    signIn('pending')
+    expect((await readAgendaPage()).program).toBeNull()
+    expect((await harness.request(replacement.imageUrl)).status).toBe(403)
+    signIn('staff')
+    expect((await readAgendaPage()).program?.tracks).toEqual(program.tracks)
+    expect((await harness.request(replacement.imageUrl)).status).toBe(200)
     signIn('pending')
     const pendingRosters = await readData<{ shell: AccountEventPageShell }>(
       await harness.request(`${accountPath}/rosters?includeEventShell=true`)
@@ -244,7 +258,8 @@ describe('event program routes', () => {
       agendaItem: { id, title, startsAt, endsAt },
       tracks: program.tracks,
       agendaItemRooms: program.agendaItemRooms,
-      floorPlans: [replacement]
+      floorPlans: [replacement],
+      workshops: []
     })
     const image = await harness.request(replacement.imageUrl)
     expect(image.status).toBe(200)
@@ -298,6 +313,72 @@ describe('event program routes', () => {
     expect((await harness.request(programPath, json('PUT', unknownRoomProgram))).status).toBe(409)
   })
 
+  test('runs a session with staff as a workshop that its staff and the admins edit, with private PDFs', async () => {
+    const { program } = await setup()
+    // Only someone on the event staff can run a session.
+    const workshopProgram = structuredClone(program)
+    workshopProgram.tracks[0]!.sessions[0]!.staffIds = ['participant']
+    expect((await harness.request(programPath, json('PUT', workshopProgram))).status).toBe(400)
+    workshopProgram.tracks[0]!.sessions[0]!.staffIds = ['staff']
+    await publishProgram(workshopProgram)
+    const workshopPath = `${eventPath}/workshops/first_session`
+
+    // Everyone who reads the program sees the workshop. Its staff and the event admins may edit it.
+    for (const [viewer, canEdit] of [['participant', false], ['staff', true], ['organizer', true]] as const) {
+      signIn(viewer)
+      expect((await readAgenda()).workshops).toEqual([{
+        sessionId: 'first_session',
+        staff: [{ id: 'staff', fullName: expect.any(String), profileIconRevision: null }],
+        description: '',
+        resources: [],
+        canEdit
+      }])
+    }
+
+    // The staff upload a PDF. A participant cannot, and a file that is not a PDF is refused.
+    const pdf = () => fileForm('%PDF-1.4\nslides', 'slides.pdf', 'application/pdf')
+    signIn('participant')
+    expect((await harness.request(`${workshopPath}/files`, { method: 'POST', body: pdf() })).status).toBe(403)
+    signIn('staff')
+    expect((await harness.request(`${workshopPath}/files`, { method: 'POST', body: fileForm('notes', 'notes.txt', 'text/plain') })).status).toBe(400)
+    const file = await readData<{ id: string, name: string }>(await harness.request(`${workshopPath}/files`, { method: 'POST', body: pdf() }))
+    expect(file.name).toBe('slides.pdf')
+
+    // A PDF opens only while an item names it.
+    const filePath = `${workshopPath}/files/${file.id}`
+    expect((await harness.request(filePath)).status).toBe(404)
+    const content = {
+      description: 'Bring a laptop.',
+      resources: [
+        { id: 'deck', kind: 'slides', title: 'Slides', file },
+        { id: 'repo', kind: 'material', title: 'Starter', url: 'https://example.com/starter' }
+      ]
+    }
+    signIn('participant')
+    expect((await harness.request(workshopPath, json('PUT', content))).status).toBe(403)
+    signIn('staff')
+    const plainLink = { id: 'plain', kind: 'link', title: 'Plain', url: 'http://example.com' }
+    expect((await harness.request(workshopPath, json('PUT', { ...content, resources: [plainLink] }))).status).toBe(400)
+    expect(await readData(await harness.request(workshopPath, json('PUT', content)))).toEqual(content)
+    // A session without staff has no workshop page.
+    expect((await harness.request(`${eventPath}/workshops/later_session`, json('PUT', content))).status).toBe(404)
+
+    signIn('participant')
+    expect((await readAgenda()).workshops[0]).toMatchObject({ description: 'Bring a laptop.', resources: content.resources })
+    const opened = await harness.request(filePath)
+    expect(opened.status).toBe(200)
+    expect(opened.headers.get('content-type')).toBe('application/pdf')
+    expect(opened.headers.get('cache-control')).toBe('private, no-store')
+    signIn('pending')
+    expect((await harness.request(filePath)).status).toBe(403)
+
+    // Without the item, the PDF does not open any more.
+    signIn('organizer')
+    await readData(await harness.request(workshopPath, json('PUT', { ...content, resources: content.resources.slice(1) })))
+    signIn('participant')
+    expect((await harness.request(filePath)).status).toBe(404)
+  })
+
   test('lists the public sessions on the public event page and for people who do not read the program', async () => {
     const { program } = await setup()
     // "Workshop A" has a room and details, gets a version after check-in, and stays private.
@@ -325,16 +406,17 @@ describe('event program routes', () => {
     const privateTexts = /Workshop A|A confirmed participant workshop|Breakfast|Seminar Room|Ground floor/
     expect(JSON.stringify(publicDetail)).not.toMatch(privateTexts)
 
-    for (const viewer of ['pending', 'staff']) {
-      signIn(viewer)
-      expect(await readAgendaPage()).toMatchObject({ program: null, publicSessions })
-    }
+    signIn('pending')
+    expect(await readAgendaPage()).toMatchObject({ program: null, publicSessions })
 
-    // A person who reads the program gets every session, and no separate public list.
-    signIn('participant')
-    const participantPage = await readAgendaPage()
-    expect(participantPage.publicSessions).toBeNull()
-    expect(participantPage.program!.tracks.flatMap(track => track.sessions)).toHaveLength(3)
+    // A person who reads the program, a confirmed participant or event staff, gets every session
+    // and no separate public list.
+    for (const viewer of ['participant', 'staff']) {
+      signIn(viewer)
+      const readerPage = await readAgendaPage()
+      expect(readerPage.publicSessions).toBeNull()
+      expect(readerPage.program!.tracks.flatMap(track => track.sessions)).toHaveLength(3)
+    }
 
     // Without the program the public page has no sessions, and the revision rotates again.
     signIn('organizer')
