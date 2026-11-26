@@ -2,15 +2,10 @@
 import type { AgendaChallenge, ProgramRoom } from '#shared/domains/events/program'
 
 import AppButton from '~/components/AppButton.vue'
-import AccountEventDetailsDialog from '~/components/account/events/molecules/AccountEventDetailsDialog.vue'
-import AccountEventStaffList from '~/components/account/events/molecules/AccountEventStaffList.vue'
-import EventStaffInstructions from '~/components/events/molecules/EventStaffInstructions.vue'
-import EventTrackDetails from '~/components/events/molecules/EventTrackDetails.vue'
 import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
-import { roomLabel } from '~/domains/events/program-map'
 
 // One challenge on the Agenda tab. The card looks like an agenda session: the title, the staff
-// members and the rooms of the challenge, and a Details button for its instructions and links.
+// members and the rooms of the challenge, and a Details button that opens the challenge page.
 const props = defineProps<{
   /** The event in which the staff icons are read. */
   eventId: string
@@ -42,13 +37,9 @@ const summaryAttributes = computed(() => props.rooms.length
 // The staff row is one image for screen readers, named by the staff members.
 const staffLabel = computed(() => `Staff: ${props.challenge.staff.map(member => member.fullName).join(', ')}`)
 
-// The resources of the challenge in the shape of the shared details block, in the saved order.
-const detailResources = computed(() => props.challenge.resources.map((resource, index) => ({
-  title: resource.label,
-  url: resource.url,
-  description: null,
-  displayOrder: index
-})))
+const route = useRoute()
+// The challenge page opens on the Agenda tab of this event, beside the agenda.
+const challengeHref = computed(() => `${route.path}?tab=program&challenge=${encodeURIComponent(props.challenge.id)}`)
 </script>
 
 <template>
@@ -105,29 +96,12 @@ const detailResources = computed(() => props.challenge.resources.map((resource, 
       </span>
     </component>
 
-    <AccountEventDetailsDialog
-      :title="challenge.title"
-      :summary="rooms.map(roomLabel).join(', ')"
-    >
-      <!-- The staff of the challenge, before its instructions. -->
-      <AccountEventStaffList
-        v-if="challenge.staff.length > 0"
-        :event-id="eventId"
-        :staff="challenge.staff"
-        class="mb-4"
-        data-testid="program-challenge-details-staff"
-      />
-      <EventTrackDetails
-        :description="challenge.instructions"
-        :resources="detailResources"
-        :separated="false"
-      >
-        <!-- Only the event team receives staff instructions. -->
-        <EventStaffInstructions
-          v-if="challenge.staffInstructions?.trim()"
-          :source="challenge.staffInstructions"
-        />
-      </EventTrackDetails>
-    </AccountEventDetailsDialog>
+    <AppButton
+      :to="challengeHref"
+      label="Details"
+      variant="soft"
+      size="xs"
+      class="absolute right-2 bottom-2 h-6"
+    />
   </div>
 </template>

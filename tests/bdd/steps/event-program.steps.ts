@@ -374,6 +374,7 @@ Then('the check-in should show both routes to {string}', async ({ page }, roomNa
 // The workshop scenario makes the judge persona staff of the event and of the build session.
 const workshopStaffUserId = 'user_judge'
 const workshopPath = `${agendaTabPath}&workshop=${buildSessionId}`
+const workshopSlides = ['Welcome to the workflow workshop.', 'Step one: open Codex.']
 const workshopLink = { title: 'Workflow guide', url: 'https://example.com/workflow-guide' }
 const workshopPdf = { name: 'Workflow slides.pdf', title: 'Workflow slides' }
 
@@ -417,32 +418,38 @@ When('the staff member opens the workshop page from the session popup', async ({
   await expect(popup.getByTestId('program-session-details-staff')).toContainText('Judge Persona')
   await popup.getByRole('link', { name: 'Open workshop page' }).click()
   await expect(page).toHaveURL(url => url.pathname + url.search === workshopPath)
-  await expect(page.getByTestId('program-workshop').getByRole('heading', { name: 'Build a workflow' })).toBeVisible()
+  await expect(page.getByTestId('deck-page').getByRole('heading', { name: 'Build a workflow' })).toBeVisible()
 })
 
-When('the staff member adds a link and a PDF to the workshop', async ({ page }) => {
-  const workshop = page.getByTestId('program-workshop')
+When('the staff member adds two slides, a link and a PDF to the workshop', async ({ page }) => {
+  const workshop = page.getByTestId('deck-page')
   await workshop.getByRole('button', { name: 'Edit', exact: true }).click()
-  const editor = workshop.getByTestId('program-workshop-editor')
+  const editor = workshop.getByTestId('deck-editor')
+  // A new slide opens in the Markdown editor.
+  for (const slide of workshopSlides) {
+    await editor.getByRole('button', { name: 'Add slide' }).click()
+    await editor.getByTestId('deck-slide-editor').getByRole('textbox').fill(slide)
+  }
   await editor.getByRole('button', { name: 'Add link' }).click()
   await editor.getByLabel('Title', { exact: true }).fill(workshopLink.title)
   await editor.getByLabel('Link', { exact: true }).fill(workshopLink.url)
-  // An uploaded PDF becomes a slides item named after the file.
-  await editor.getByTestId('program-workshop-file').setInputFiles({
+  // An uploaded PDF becomes a material named after the file.
+  await editor.getByTestId('deck-file').setInputFiles({
     name: workshopPdf.name,
     mimeType: 'application/pdf',
     buffer: Buffer.from('%PDF-1.4\n%%EOF\n')
   })
   await expect(editor.getByText(workshopPdf.name)).toBeVisible()
-  await editor.getByRole('button', { name: 'Save workshop' }).click()
+  await editor.getByRole('button', { name: 'Save page' }).click()
   await expect(editor).toHaveCount(0)
 })
 
-Then('the workshop page should show the link and the PDF', async ({ page }) => {
-  const workshop = page.getByTestId('program-workshop')
-  await expect(workshop.getByTestId('program-workshop-link').getByRole('link', { name: workshopLink.title }))
+Then('the workshop page should show the slides, the link and the PDF', async ({ page }) => {
+  const workshop = page.getByTestId('deck-page')
+  await expect(workshop.getByTestId('deck-slide')).toHaveText(workshopSlides)
+  await expect(workshop.getByTestId('deck-link').getByRole('link', { name: workshopLink.title }))
     .toHaveAttribute('href', workshopLink.url)
-  await expect(workshop.getByTestId('program-workshop-slides').getByRole('link', { name: workshopPdf.title }))
+  await expect(workshop.getByTestId('deck-material').getByRole('link', { name: workshopPdf.title }))
     .toHaveAttribute('href', /\/workshops\/bdd-build-session\/files\//u)
 })
 
@@ -450,12 +457,19 @@ When('the staff member shows the workshop page in fullscreen', async ({ page }) 
   await page.getByRole('button', { name: 'Fullscreen', exact: true }).click()
 })
 
-// Fullscreen hides the app header, sidebar and footer and the event header with its tabs.
-Then('only the agenda and the workshop page should be shown until fullscreen ends', async ({ page }) => {
+// Fullscreen hides the app header, sidebar and footer and the event header with its tabs. The page
+// shows one slide at a time, and the arrows and the arrow keys move between the slides.
+Then('only the agenda and one slide at a time should be shown until fullscreen ends', async ({ page }) => {
   const agendaTab = page.getByRole('tab', { name: 'Agenda', exact: true })
+  const currentSlide = page.getByTestId('deck-page').getByTestId('deck-current-slide')
   await expect(page.getByRole('banner')).toHaveCount(0)
   await expect(agendaTab).toBeHidden()
   await expect(page.getByRole('region', { name: 'Agenda timeline' })).toBeVisible()
+  await expect(currentSlide).toHaveText(workshopSlides[0]!)
+  await page.getByRole('button', { name: 'Next slide' }).click()
+  await expect(currentSlide).toHaveText(workshopSlides[1]!)
+  await page.keyboard.press('ArrowLeft')
+  await expect(currentSlide).toHaveText(workshopSlides[0]!)
 
   await page.getByRole('button', { name: 'Leave fullscreen', exact: true }).click()
   await expect(page.getByRole('banner')).toBeVisible()
@@ -465,11 +479,11 @@ Then('only the agenda and the workshop page should be shown until fullscreen end
 When('I open the workshop page as a confirmed participant', async ({ page }) => {
   await signInAs('regular_user', page)
   await page.goto(workshopPath)
-  await expect(page.getByTestId('program-workshop').getByRole('heading', { name: 'Build a workflow' })).toBeVisible()
+  await expect(page.getByTestId('deck-page').getByRole('heading', { name: 'Build a workflow' })).toBeVisible()
 })
 
 Then('I should see the link and the PDF without an Edit button', async ({ page }) => {
-  const workshop = page.getByTestId('program-workshop')
+  const workshop = page.getByTestId('deck-page')
   await expect(workshop.getByRole('link', { name: workshopLink.title })).toBeVisible()
   await expect(workshop.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0)
 

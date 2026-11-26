@@ -13,6 +13,7 @@ import {
   getEventFeedbackQuestions,
   eventFeedbackRatingValues
 } from '#shared/domains/events/feedback'
+import { useApiClient } from '~/composables/useApiClient'
 import { normalizeApiError } from '~/lib/api'
 
 const props = defineProps<{
@@ -26,6 +27,7 @@ function createEmptyRatings() {
   ) as Record<EventFeedbackQuestionId, EventFeedbackSelectionValue | null>
 }
 
+const apiFetch = useApiClient()
 const ratings = ref(createEmptyRatings())
 const comment = ref('')
 const isSubmitting = ref(false)
@@ -80,7 +82,7 @@ async function submitFeedback() {
       ])
     ) as Record<EventFeedbackQuestionId, EventFeedbackRatingValue | null>
 
-    await $fetch(`/api/public/events/${props.eventSlug}/feedback`, {
+    await apiFetch(`/api/public/events/${props.eventSlug}/feedback`, {
       method: 'POST',
       body: {
         ...payload,

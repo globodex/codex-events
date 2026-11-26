@@ -1,8 +1,9 @@
 import { z } from 'zod'
 
 import { routeIdParamsSchema } from '#server/domains/events'
+import { readDeckFile } from '#server/domains/events/decks'
 import { requireEventProgramAccess } from '#server/domains/events/program'
-import { readWorkshopFile } from '#server/domains/events/workshops'
+import { findWorkshopSession } from '#server/domains/events/workshops'
 import { defineApiHandler } from '#server/http/api-handler'
 import { parseValidatedParams } from '#server/http/validation'
 
@@ -15,5 +16,6 @@ const workshopFileParamsSchema = routeIdParamsSchema.extend({
 export default defineApiHandler(async (event) => {
   const { eventId, sessionId, fileId } = parseValidatedParams(event, workshopFileParamsSchema)
   const database = await requireEventProgramAccess(event, eventId)
-  return await readWorkshopFile(event, database, eventId, sessionId, fileId)
+  await findWorkshopSession(database, eventId, sessionId)
+  return await readDeckFile(event, database, { eventId, kind: 'workshop', subjectId: sessionId }, fileId)
 })

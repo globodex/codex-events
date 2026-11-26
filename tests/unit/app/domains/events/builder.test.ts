@@ -540,7 +540,7 @@ describe('getBuilderChecklist', () => {
 
   test('names the first unfinished challenge and what it lacks', () => {
     const state = createEmptyEventBuilderState()
-    const finishedChallenge = { id: 'c1', title: 'Ship a skill', instructions: 'Build one skill.', resources: [], isPublished: true }
+    const finishedChallenge = { id: 'c1', title: 'Ship a skill', isPublished: true }
     const findChallengeLine = () => getBuilderChecklist(state).find(item => item.id === 'challenges')
 
     state.form.challenges = [finishedChallenge, { ...finishedChallenge, id: 'c2', title: ' ', isPublished: false }]
@@ -553,10 +553,6 @@ describe('getBuilderChecklist', () => {
       extra: 'challenges',
       fieldRef: 'event-builder-challenge-title-c2'
     })
-
-    state.form.challenges = [{ ...finishedChallenge, resources: [{ label: 'Docs', url: 'http://example.com/docs' }] }]
-
-    expect(findChallengeLine()?.label).toBe('Challenge 1: Every resource needs a full link that starts with https://.')
 
     state.form.challenges = [finishedChallenge]
 

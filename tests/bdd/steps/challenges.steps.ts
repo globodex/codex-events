@@ -17,9 +17,9 @@ function challengesOnEventPage(page: Page) {
   return page.getByTestId('program-challenges')
 }
 
-/** The popup with the instructions and links of one challenge. Its Details button opens it. */
-function challengeDetails(page: Page, title: string) {
-  return page.getByRole('dialog', { name: title })
+/** The page of a challenge beside the agenda. The Details button of its card opens it. */
+function challengePage(page: Page) {
+  return page.getByTestId('deck-page')
 }
 
 When('I add a challenge in the builder', async ({ page }) => {
@@ -47,26 +47,16 @@ Then('the builder should name the open step {string}', async ({ page }, line: st
 })
 
 // The builder scenario writes one challenge, so every field below belongs to the first challenge.
-When('I write the challenge {string} with the instructions {string}', async ({ page }, title: string, instructions: string) => {
-  const settings = await challengeSettings(page)
-
-  await settings.getByLabel('Title', { exact: true }).fill(title)
-  await settings.getByTestId('event-builder-challenge-instructions-0').getByRole('textbox').fill(instructions)
-})
-
-When('I add the challenge resource {string} with the link {string}', async ({ page }, name: string, link: string) => {
-  const settings = await challengeSettings(page)
-
-  await settings.getByRole('button', { name: 'Add resource' }).click()
-  await settings.getByLabel('Name of resource 1').fill(name)
-  await settings.getByLabel('Link of resource 1').fill(link)
+When('I name the challenge {string}', async ({ page }, title: string) => {
+  await (await challengeSettings(page)).getByLabel('Title', { exact: true }).fill(title)
 })
 
 When('I publish the challenge', async ({ page }) => {
   await (await challengeSettings(page)).getByLabel('Published').check()
 })
 
-Then('the builder should keep the published challenge {string} with the link {string} after a reload', async ({ page }, title: string, link: string) => {
+// The slides and links of a published challenge are written on its page, which the builder links to.
+Then('the builder should keep the published challenge {string} with a link to its page after a reload', async ({ page }, title: string) => {
   await page.reload()
 
   const settings = await challengeSettings(page)
@@ -77,26 +67,29 @@ Then('the builder should keep the published challenge {string} with the link {st
   await page.getByTestId('event-builder-extra-challenges').click()
   await expect(settings.getByLabel('Title', { exact: true })).toHaveValue(title)
   await expect(settings.getByLabel('Published')).toBeChecked()
-  await expect(settings.getByLabel('Link of resource 1')).toHaveValue(link)
+  await expect(settings.getByRole('link', { name: 'Edit slides and links' }))
+    .toHaveAttribute('href', /\?tab=program&challenge=/u)
 })
 
-Then('I should see the challenge {string} with the instructions {string}', async ({ page }, title: string, instructions: string) => {
+Then('I should see the challenge {string} with the slide {string}', async ({ page }, title: string, slide: string) => {
   await expect(page).toHaveURL(/tab=program/)
   const challenge = challengesOnEventPage(page).getByRole('listitem').filter({ hasText: title })
 
-  // The card shows the title. The instructions are in the details of the challenge.
-  await challenge.getByRole('button', { name: 'Details' }).click()
-  await expect(challengeDetails(page, title).getByText(instructions)).toBeVisible()
+  // The card shows the title. Its Details button opens the challenge page with the slides.
+  await challenge.getByRole('link', { name: 'Details' }).click()
+  await expect(challengePage(page).getByRole('heading', { name: title })).toBeVisible()
+  await expect(challengePage(page).getByText(slide)).toBeVisible()
 })
 
-// The details of the challenge are open from the step before. This step closes them.
-Then('the challenge {string} should link to {string} at {string}', async ({ page }, title: string, name: string, link: string) => {
-  const resource = challengeDetails(page, title).getByRole('link', { name })
+// The challenge page is open from the step before. This step closes it.
+Then('the challenge page should link to {string} at {string}', async ({ page }, name: string, link: string) => {
+  const resource = challengePage(page).getByRole('link', { name })
 
   await expect(resource).toHaveAttribute('href', link)
-  // A resource opens in a new tab, so the participant keeps the event page.
+  // A link opens in a new tab, so the participant keeps the event page.
   await expect(resource).toHaveAttribute('target', '_blank')
-  await challengeDetails(page, title).getByRole('button', { name: 'Close' }).click()
+  await challengePage(page).getByRole('button', { name: 'Close page' }).click()
+  await expect(challengesOnEventPage(page)).toBeVisible()
 })
 
 Then('I should not see the challenge {string}', async ({ page }, title: string) => {

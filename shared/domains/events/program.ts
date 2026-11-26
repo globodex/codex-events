@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { eventChallengeSchema } from '#shared/domains/events/challenges'
-import { workshopResourceSchema } from '#shared/domains/events/workshops'
+import { deckSchema } from '#shared/domains/events/decks'
 
 const id = z.string().trim().min(1).max(100)
 const name = z.string().trim().min(1).max(120)
@@ -136,18 +136,25 @@ export interface AdminEventProgram {
   floorPlans: EventFloorPlan[]
 }
 
-// A workshop as the Agenda tab shows it: its staff, its description and its slides, materials
-// and links. `canEdit` is true for an event admin and for the staff of the workshop.
+// A staff member as the Agenda tab names them: with the profile icon, or the initials of the name
+// when there is no icon.
+const agendaStaffMemberSchema = z.object({
+  id: z.string(),
+  fullName: z.string(),
+  profileIconRevision: z.number().int().nullable()
+})
+
+// The deck of a workshop or a challenge as its page shows it. `canEdit` is true for the event admins
+// and for the staff of that workshop or challenge.
+export const agendaDeckSchema = deckSchema.extend({ canEdit: z.boolean() })
+
+export type AgendaDeck = z.infer<typeof agendaDeckSchema>
+
+// A workshop as the Agenda tab shows it: its staff and its deck.
 export const agendaWorkshopSchema = z.object({
   sessionId: id,
-  staff: z.array(z.object({
-    id: z.string(),
-    fullName: z.string(),
-    profileIconRevision: z.number().int().nullable()
-  })),
-  description: z.string(),
-  resources: z.array(workshopResourceSchema),
-  canEdit: z.boolean()
+  staff: z.array(agendaStaffMemberSchema),
+  deck: agendaDeckSchema
 })
 
 export type AgendaWorkshop = z.infer<typeof agendaWorkshopSchema>
@@ -179,16 +186,10 @@ export function canViewEventProgram(reader: { isEventAdmin: boolean, isStaff: bo
   return reader.isEventAdmin || reader.isStaff || reader.approved
 }
 
-/**
- * A challenge as the Agenda tab shows it: with the staff members who support it. The card shows
- * each one's profile icon, or the initials of the name when there is no icon.
- */
+/** A challenge as the Agenda tab shows it: with the staff members who support it, and its deck. */
 export const agendaChallengeSchema = eventChallengeSchema.extend({
-  staff: z.array(z.object({
-    id: z.string(),
-    fullName: z.string(),
-    profileIconRevision: z.number().int().nullable()
-  }))
+  staff: z.array(agendaStaffMemberSchema),
+  deck: agendaDeckSchema
 })
 export type AgendaChallenge = z.infer<typeof agendaChallengeSchema>
 

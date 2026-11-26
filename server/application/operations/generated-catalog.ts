@@ -57,6 +57,7 @@ export const applicationOperationLoaders = [
   () => import('../../api/events/[eventId]/applications/me/actions/verify-luma-email.post'),
   () => import('../../api/events/[eventId]/applications/me/actions/withdraw.post'),
   () => import('../../api/events/[eventId]/audit/index.get'),
+  () => import('../../api/events/[eventId]/challenges/[challengeId]/index.put'),
   () => import('../../api/events/[eventId]/credits/[creditId].delete'),
   () => import('../../api/events/[eventId]/credits/[creditId].patch'),
   () => import('../../api/events/[eventId]/credits/[creditId]/actions/claim.post'),

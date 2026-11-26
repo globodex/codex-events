@@ -1,24 +1,25 @@
 <script setup lang="ts">
-import type { AgendaWorkshop } from '#shared/domains/events/program'
 import {
-  workshopContentSchema,
-  workshopPdfMaxBytes,
-  workshopResourceKinds,
-  type WorkshopResource,
-  type WorkshopResourceKind
-} from '#shared/domains/events/workshops'
+  deckContentSchema,
+  deckPdfMaxBytes,
+  deckResourceKinds,
+  type DeckResource,
+  type DeckResourceKind,
+  type DeckSlide
+} from '#shared/domains/events/decks'
+import type { AgendaDeck } from '#shared/domains/events/program'
 import { useApiClient } from '~/composables/useApiClient'
 import { normalizeApiError, type ApiDataResponse } from '~/lib/api'
 
 // The Markdown editor is heavy, so it loads with this form only.
 const AdminMarkdownEditorField = defineAsyncComponent(() => import('~/components/admin/AdminMarkdownEditorField.vue'))
 
-// Edits the description and the slides, materials and links of a workshop. Each item is a link or
-// an uploaded PDF. The staff of the workshop and the event admins use it on the workshop page.
+// Edits a deck: its slides, and its materials and links. A material or link is a link or an
+// uploaded PDF. The staff of a workshop or challenge and the event admins use it on its page.
 const props = defineProps<{
-  eventId: string
-  sessionId: string
-  workshop: AgendaWorkshop
+  /** The API of the deck (`deckApiPath`). */
+  apiPath: string
+  deck: AgendaDeck
 }>()
 
 const emit = defineEmits<{
@@ -26,18 +27,38 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
-const kindLabels: Record<WorkshopResourceKind, string> = { slides: 'Slides', material: 'Material', link: 'Link' }
+const kindLabels: Record<DeckResourceKind, string> = { material: 'Material', link: 'Link' }
 const apiFetch = useApiClient()
 const toast = useToast()
 const formId = useId()
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
-const description = shallowRef(props.workshop.description)
-const resources = ref<WorkshopResource[]>(props.workshop.resources.map(resource => ({ ...resource })))
+const slides = ref<DeckSlide[]>(props.deck.slides.map(slide => ({ ...slide })))
+const resources = ref<DeckResource[]>(props.deck.resources.map(resource => ({ ...resource })))
+// The slide in the Markdown editor, by its position.
+const slideIndex = shallowRef(0)
+const currentSlide = computed(() => slides.value[slideIndex.value])
 const saving = shallowRef(false)
 const uploading = shallowRef(false)
 const error = shallowRef('')
-const workshopPath = computed(() =>
-  `/api/events/${encodeURIComponent(props.eventId)}/workshops/${encodeURIComponent(props.sessionId)}`)
+
+// A new slide comes after the open slide, and opens.
+function addSlide() {
+  const position = slides.value.length ? slideIndex.value + 1 : 0
+  slides.value.splice(position, 0, { id: crypto.randomUUID(), markdown: '' })
+  slideIndex.value = position
+}
+
+// Moves the open slide one place earlier (-1) or later (1).
+function moveSlide(direction: -1 | 1) {
+  const [slide] = slides.value.splice(slideIndex.value, 1)
+  slides.value.splice(slideIndex.value + direction, 0, slide!)
+  slideIndex.value += direction
+}
+
+function removeSlide() {
+  slides.value.splice(slideIndex.value, 1)
+  slideIndex.value = Math.max(0, Math.min(slideIndex.value, slides.value.length - 1))
+}
 
 function addLink() {
   resources.value.push({ id: crypto.randomUUID(), kind: 'link', title: '', url: '' })
@@ -47,7 +68,7 @@ function removeResource(id: string) {
   resources.value = resources.value.filter(resource => resource.id !== id)
 }
 
-// An uploaded PDF becomes a slides item named after the file. It is saved with the workshop.
+// An uploaded PDF becomes a material named after the file. It is saved with the page.
 async function uploadPdf(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -55,7 +76,7 @@ async function uploadPdf(event: Event) {
   if (!file) {
     return
   }
-  if (file.size > workshopPdfMaxBytes) {
+  if (file.size > deckPdfMaxBytes) {
     error.value = 'Choose a PDF that is 20 MB or smaller.'
     return
   }
@@ -65,8 +86,8 @@ async function uploadPdf(event: Event) {
   try {
     const body = new FormData()
     body.set('file', file)
-    const { data } = await apiFetch<ApiDataResponse<{ id: string, name: string }>>(`${workshopPath.value}/files`, { method: 'POST', body })
-    resources.value.push({ id: crypto.randomUUID(), kind: 'slides', title: data.name.replace(/\.pdf$/i, ''), file: data })
+    const { data } = await apiFetch<ApiDataResponse<{ id: string, name: string }>>(`${props.apiPath}/files`, { method: 'POST', body })
+    resources.value.push({ id: crypto.randomUUID(), kind: 'material', title: data.name.replace(/\.pdf$/i, ''), file: data })
   } catch (caught) {
     error.value = normalizeApiError(caught).message
   } finally {
@@ -76,8 +97,8 @@ async function uploadPdf(event: Event) {
 
 async function save() {
   // An item with a PDF has no link, so its empty link field is left out.
-  const content = workshopContentSchema.safeParse({
-    description: description.value,
+  const content = deckContentSchema.safeParse({
+    slides: slides.value,
     resources: resources.value.map(resource => ({ ...resource, url: resource.file ? undefined : resource.url }))
   })
   if (!content.success) {
@@ -88,8 +109,8 @@ async function save() {
   saving.value = true
   error.value = ''
   try {
-    await apiFetch(workshopPath.value, { method: 'PUT', body: content.data })
-    toast.add({ title: 'Workshop saved', color: 'success' })
+    await apiFetch(props.apiPath, { method: 'PUT', body: content.data })
+    toast.add({ title: 'Page saved', color: 'success' })
     emit('saved')
   } catch (caught) {
     error.value = normalizeApiError(caught).message
@@ -101,21 +122,79 @@ async function save() {
 
 <template>
   <form
-    class="space-y-5"
-    data-testid="program-workshop-editor"
+    class="space-y-6"
+    data-testid="deck-editor"
     @submit.prevent="save"
   >
-    <AdminMarkdownEditorField
-      v-model="description"
-      :name="`${formId}-description`"
-      label="Description"
-      :editor-id="`${formId}-description`"
-      height="260px"
-    />
-
-    <fieldset class="space-y-3">
+    <fieldset class="min-w-0 space-y-3">
       <legend class="text-sm font-medium text-highlighted">
-        Slides, materials and links
+        Slides
+      </legend>
+      <div class="flex flex-wrap items-center gap-1">
+        <AppButton
+          v-for="(slide, index) in slides"
+          :key="slide.id"
+          :color="index === slideIndex ? 'primary' : 'neutral'"
+          :variant="index === slideIndex ? 'solid' : 'outline'"
+          size="sm"
+          :label="String(index + 1)"
+          :aria-label="`Slide ${index + 1}`"
+          :aria-pressed="index === slideIndex"
+          @click="slideIndex = index"
+        />
+        <AppButton
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          icon="i-lucide-plus"
+          label="Add slide"
+          @click="addSlide"
+        />
+      </div>
+      <template v-if="currentSlide">
+        <AdminMarkdownEditorField
+          :key="currentSlide.id"
+          v-model="currentSlide.markdown"
+          :name="`${formId}-slide`"
+          :label="`Slide ${slideIndex + 1}`"
+          :editor-id="`${formId}-slide-${currentSlide.id}`"
+          height="320px"
+          data-testid="deck-slide-editor"
+        />
+        <div class="flex flex-wrap gap-2">
+          <AppButton
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            icon="i-lucide-arrow-left"
+            label="Move earlier"
+            :disabled="slideIndex === 0"
+            @click="moveSlide(-1)"
+          />
+          <AppButton
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            icon="i-lucide-arrow-right"
+            label="Move later"
+            :disabled="slideIndex === slides.length - 1"
+            @click="moveSlide(1)"
+          />
+          <AppButton
+            color="error"
+            variant="ghost"
+            size="sm"
+            icon="i-lucide-trash-2"
+            label="Remove slide"
+            @click="removeSlide"
+          />
+        </div>
+      </template>
+    </fieldset>
+
+    <fieldset class="min-w-0 space-y-3">
+      <legend class="text-sm font-medium text-highlighted">
+        Materials and links
       </legend>
       <div
         v-for="(resource, index) in resources"
@@ -130,10 +209,10 @@ async function save() {
             :id="`${formId}-kind-${index}`"
             :model-value="resource.kind"
             size="sm"
-            @update:model-value="value => resource.kind = value as WorkshopResourceKind"
+            @update:model-value="value => resource.kind = value as DeckResourceKind"
           >
             <option
-              v-for="kind in workshopResourceKinds"
+              v-for="kind in deckResourceKinds"
               :key="kind"
               :value="kind"
             >
@@ -208,7 +287,7 @@ async function save() {
           type="file"
           accept="application/pdf,.pdf"
           class="hidden"
-          data-testid="program-workshop-file"
+          data-testid="deck-file"
           @change="uploadPdf"
         >
       </div>
@@ -222,7 +301,7 @@ async function save() {
     <div class="flex flex-wrap gap-2">
       <AppButton
         type="submit"
-        label="Save workshop"
+        label="Save page"
         :loading="saving"
         :disabled="saving || uploading"
       />

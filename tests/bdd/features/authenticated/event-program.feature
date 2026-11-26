@@ -41,9 +41,9 @@ Feature: Parallel event agenda
     Given the event has two parallel sessions with rooms on "Workshop floor"
     And the build session is a workshop run by a staff member
     When the staff member opens the workshop page from the session popup
-    And the staff member adds a link and a PDF to the workshop
-    Then the workshop page should show the link and the PDF
+    And the staff member adds two slides, a link and a PDF to the workshop
+    Then the workshop page should show the slides, the link and the PDF
     When the staff member shows the workshop page in fullscreen
-    Then only the agenda and the workshop page should be shown until fullscreen ends
+    Then only the agenda and one slide at a time should be shown until fullscreen ends
     When I open the workshop page as a confirmed participant
     Then I should see the link and the PDF without an Edit button

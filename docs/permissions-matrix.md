@@ -169,7 +169,7 @@ Team permissions apply only to Hackathon events.
 
 - Public visitors see the public agenda blocks on the public event page, with the sessions that the organizer made public. Pending participants see the same blocks and sessions on the Agenda tab of the event workspace. Confirmed participants and event staff see the sessions, the rooms of agenda blocks, floor plans and workshop pages on the Agenda tab, also before check-in. No public or pending view contains rooms or workshops.
 - Event admins and platform admins manage programs, floor plans, room areas and room routes, and choose the staff of a session from the event staff. They can open the participant view while preparing the event.
-- The staff of a workshop, and event admins and platform admins, edit its description, slides, materials and links and upload its PDFs. Other staff, judges and participants only read the workshop page.
+- The staff of a workshop, and event admins and platform admins, edit its slides, materials and links and upload its PDFs. Other staff, judges and participants only read the workshop page.
 
 ## Event Image Permissions
 
@@ -273,6 +273,7 @@ Event challenge permissions apply to every event type.
 | Action | Approved User | Staff | Event Admin | Platform Admin |
 | --- | --- | --- | --- | --- |
 | Write, order, publish, and remove challenges | No | No | Yes | Yes |
+| Edit the slides, materials and links of a challenge page | No | Yes, for the challenge they support | Yes | Yes |
 | Read published challenges in the account event workspace | Yes | Yes | Yes | Yes |
 | Read draft challenges | No | No | Yes, in the event builder | Yes, in the event builder |
 | Read the staff instructions of challenges and open tracks | No | Yes | Yes | Yes |

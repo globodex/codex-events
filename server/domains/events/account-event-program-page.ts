@@ -3,7 +3,9 @@ import { accountEventAgendaPageSchema, canViewEventProgram } from '#shared/domai
 import { defineAccountEventPageRoute } from './account-event-page-contract'
 import { getAccountEventPageAccess } from './account-event-page-context'
 import { listPublishedEventRosterMembers } from '#server/domains/events'
-import { listReadableEventChallenges } from './challenges'
+import { emptyDeck, type Deck } from '#shared/domains/events/decks'
+import { canEditChallengeDeck, listReadableEventChallenges } from './challenges'
+import { loadEventDecks } from './decks'
 import { loadParticipantEventProgram, loadPublicProgramSessions } from './program'
 
 export const accountEventProgramPageRoute = defineAccountEventPageRoute({
@@ -28,16 +30,19 @@ export const accountEventProgramPageRoute = defineAccountEventPageRoute({
       authorization: context.authorization,
       application
     })
-    // Each challenge names the staff members who support it. An event without a readable
-    // challenge has nobody to name, so it does not read the staff.
-    const staff = readableChallenges.length > 0
-      ? await listPublishedEventRosterMembers(context.database, context.event.id, 'staff', readableChallenges)
-      : []
+    // Each challenge names the staff members who support it, and has its deck. An event without a
+    // readable challenge reads neither.
+    const hasChallenges = readableChallenges.length > 0
+    const [staff, decks] = await Promise.all([
+      hasChallenges ? listPublishedEventRosterMembers(context.database, context.event.id, 'staff', readableChallenges) : [],
+      hasChallenges ? loadEventDecks(context.database, context.event.id, 'challenge') : new Map<string, Deck>()
+    ])
     const challenges = readableChallenges.map(challenge => ({
       ...challenge,
       staff: staff
         .filter(member => member.staffChallenge?.id === challenge.id)
-        .map(member => ({ id: member.id, fullName: member.fullName, profileIconRevision: member.profileIconRevision }))
+        .map(member => ({ id: member.id, fullName: member.fullName, profileIconRevision: member.profileIconRevision })),
+      deck: { ...(decks.get(challenge.id) ?? emptyDeck), canEdit: canEditChallengeDeck(context.authorization, challenge.id) }
     }))
 
     if (!canViewEventProgram({ isEventAdmin, isStaff, approved })) {

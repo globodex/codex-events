@@ -1,16 +1,17 @@
 <script setup lang="ts">
-// One challenge in the builder's challenge list: its title, instructions and resources, and
-// whether participants can read it.
+// One challenge in the builder's challenge list: its title, its staff instructions, and whether
+// participants can read it. Its slides, materials and links are on its page on the Agenda tab, where
+// its staff and the event admins edit them.
 import type { EventChallenge } from '#shared/domains/events/challenges'
 import { eventChallengeLimits } from '#shared/domains/events/challenges'
 import AdminMarkdownEditorField from '~/components/admin/AdminMarkdownEditorField.vue'
 import AdminBuilderTrackRow from '~/components/admin/builder/molecules/AdminBuilderTrackRow.vue'
 import { eventBuilderChallengeTitleIdPrefix } from '~/domains/events/builder'
 
-type ChallengeResource = EventChallenge['resources'][number]
-
 const props = defineProps<{
   challenge: EventChallenge
+  /** The address of the event, for the link to the challenge page. */
+  eventSlug: string
   index: number
   /** True while the organizer drags this challenge to another position. */
   active?: boolean
@@ -24,26 +25,10 @@ const emit = defineEmits<{
 
 // The builder checklist focuses this field when the challenge is unfinished.
 const titleFieldId = computed(() => `${eventBuilderChallengeTitleIdPrefix}${props.challenge.id}`)
-const instructionsFieldId = computed(() => `event-builder-challenge-instructions-${props.challenge.id}`)
 const staffInstructionsFieldId = computed(() => `event-builder-challenge-staff-instructions-${props.challenge.id}`)
-
-function updateResource(resourceIndex: number, patch: Partial<ChallengeResource>) {
-  emit('update', {
-    resources: props.challenge.resources.map((resource, index) => index === resourceIndex
-      ? { ...resource, ...patch }
-      : resource)
-  })
-}
-
-function addResource() {
-  emit('update', { resources: [...props.challenge.resources, { label: '', url: '' }] })
-}
-
-function removeResource(resourceIndex: number) {
-  emit('update', {
-    resources: props.challenge.resources.filter((_, index) => index !== resourceIndex)
-  })
-}
+// The challenge page on the Agenda tab. It opens in a new tab, so the builder keeps unsaved changes.
+const challengePageHref = computed(() =>
+  `/account/events/${encodeURIComponent(props.eventSlug)}?tab=program&challenge=${encodeURIComponent(props.challenge.id)}`)
 </script>
 
 <template>
@@ -94,60 +79,18 @@ function removeResource(resourceIndex: number) {
         />
       </AppFormField>
 
-      <AdminMarkdownEditorField
-        :model-value="props.challenge.instructions"
-        :name="instructionsFieldId"
-        label="Instructions"
-        :editor-id="instructionsFieldId"
-        :data-testid="`event-builder-challenge-instructions-${props.index}`"
-        height="220px"
-        @update:model-value="emit('update', { instructions: $event })"
+      <!-- A published challenge has its page on the Agenda tab once the event is saved. -->
+      <AppButton
+        v-if="props.challenge.isPublished"
+        :to="challengePageHref"
+        target="_blank"
+        external
+        size="xs"
+        color="neutral"
+        variant="ghost"
+        trailing-icon="i-lucide-external-link"
+        label="Edit slides and links"
       />
-
-      <div class="space-y-2">
-        <p class="text-xs font-medium text-toned">
-          Resources
-        </p>
-        <div
-          v-for="(resource, resourceIndex) in props.challenge.resources"
-          :key="resourceIndex"
-          class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_auto]"
-        >
-          <AppInput
-            :model-value="resource.label"
-            :aria-label="`Name of resource ${resourceIndex + 1}`"
-            :maxlength="eventChallengeLimits.maxResourceLabelLength"
-            size="sm"
-            placeholder="Name"
-            @update:model-value="updateResource(resourceIndex, { label: String($event ?? '') })"
-          />
-          <AppInput
-            :model-value="resource.url"
-            :aria-label="`Link of resource ${resourceIndex + 1}`"
-            size="sm"
-            placeholder="https://…"
-            @update:model-value="updateResource(resourceIndex, { url: String($event ?? '') })"
-          />
-          <AppButton
-            color="error"
-            variant="ghost"
-            size="sm"
-            icon="i-lucide-x"
-            :aria-label="`Remove resource ${resourceIndex + 1}`"
-            class="w-8 px-0 text-muted hover:text-error"
-            @click="removeResource(resourceIndex)"
-          />
-        </div>
-        <AppButton
-          size="xs"
-          color="neutral"
-          variant="ghost"
-          :disabled="props.challenge.resources.length >= eventChallengeLimits.maxResources"
-          @click="addResource"
-        >
-          Add resource
-        </AppButton>
-      </div>
 
       <!-- Only the event team reads these: staff, event admins and platform admins. -->
       <AdminMarkdownEditorField

@@ -45,10 +45,15 @@ const fixtureCheckInFlowApplicationId = 'application_check_in_flow_fixture_regul
 const fixtureRegistrationQuestionsEventId = 'event_e2e_registration_questions_fixture'
 const fixtureRegistrationQuestionsBuilderEventId = 'event_e2e_registration_questions_builder_fixture'
 const fixtureChallengeChoiceEventId = 'event_e2e_challenge_choice_fixture'
-// The challenge list of the challenge choice fixture event: one challenge and one open track.
+// The challenge list of the challenge choice fixture event: one challenge and one open track,
+// each with one slide on its page.
 const fixtureChallengeChoiceChallenges = [
-  { id: 'one-minute-game', title: 'Make a one-minute game', instructions: 'Ship a game that takes one minute to play.', resources: [], isPublished: true },
-  { id: 'own-idea', title: 'Build your own idea', instructions: 'Bring your own idea and build it.', resources: [], isPublished: true, isOpenTrack: true }
+  { id: 'one-minute-game', title: 'Make a one-minute game', isPublished: true },
+  { id: 'own-idea', title: 'Build your own idea', isPublished: true, isOpenTrack: true }
+]
+const fixtureChallengeChoiceDecks = [
+  { challengeId: 'one-minute-game', slides: [{ id: 'goal', markdown: 'Ship a game that takes one minute to play.' }], resources: [] },
+  { challengeId: 'own-idea', slides: [{ id: 'goal', markdown: 'Bring your own idea and build it.' }], resources: [] }
 ]
 // The registration questions of the registration questions fixture event: one required text, one
 // optional choice, and one required question that takes several ticked choices.
@@ -76,17 +81,17 @@ const fixtureCreditClaimEventId = 'event_e2e_credit_claim_fixture'
 const fixtureCreditSoldOutEventId = 'event_e2e_credit_sold_out_fixture'
 const fixtureChallengesEventId = 'event_e2e_challenges_fixture'
 const fixtureChallengesBuilderEventId = 'event_e2e_challenges_builder_fixture'
-// The challenges of the challenges fixture event: one published with a resource, and one draft.
+// The challenges of the challenges fixture event: one published, and one draft. The page of the
+// published one has a slide and a link.
 const fixtureChallenges = [
-  {
-    id: 'ship-a-skill',
-    title: 'Ship a Codex skill',
-    instructions: 'Write **one** skill and share it with your table.',
-    resources: [{ label: 'Skill guide', url: 'https://example.com/skills' }],
-    isPublished: true
-  },
-  { id: 'unfinished-idea', title: 'Unfinished idea', instructions: 'Still being written.', resources: [], isPublished: false }
+  { id: 'ship-a-skill', title: 'Ship a Codex skill', isPublished: true },
+  { id: 'unfinished-idea', title: 'Unfinished idea', isPublished: false }
 ]
+const fixtureChallengesDecks = [{
+  challengeId: 'ship-a-skill',
+  slides: [{ id: 'goal', markdown: 'Write **one** skill and share it with your table.' }],
+  resources: [{ id: 'guide', kind: 'link', title: 'Skill guide', url: 'https://example.com/skills' }]
+}]
 const fixtureStaffChallengeEventId = 'event_e2e_staff_challenge_fixture'
 const fixtureParticipantPhotosEventId = 'event_e2e_participant_photos_fixture'
 const fixtureParticipantPhotosBuilderEventId = 'event_e2e_participant_photos_builder_fixture'
@@ -245,6 +250,12 @@ function sqlLiteral(value: string | null) {
   }
 
   return `'${value.replaceAll('\'', '\'\'')}'`
+}
+
+/** The statement that stores the slides, materials and links of challenge pages in one fixture event. */
+function challengeDecksInsert(eventId: string, decks: Array<{ challengeId: string, slides: unknown[], resources: unknown[] }>) {
+  const rows = decks.map(deck => `(${sqlLiteral(eventId)}, 'challenge', ${sqlLiteral(deck.challengeId)}, ${sqlLiteral(JSON.stringify(deck.slides))}, ${sqlLiteral(JSON.stringify(deck.resources))}, '2020-01-01T00:00:00.000Z')`)
+  return `insert into event_decks (event_id, subject_kind, subject_id, slides_json, resources_json, updated_at) values ${rows.join(', ')}`
 }
 
 const fixtureResetStatements = [
@@ -1427,6 +1438,7 @@ function buildFixtureSql(personas: StablePersona[]) {
       id, event_id, user_id, role, is_in_judge_pool, created_at
     ) values
       ('role_event_admin_challenge_choice_fixture', ${sqlLiteral(fixtureChallengeChoiceEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)})`,
+    challengeDecksInsert(fixtureChallengeChoiceEventId, fixtureChallengeChoiceDecks),
     `insert into user_applications (
       id, event_id, user_id, status, submitted_at, created_at, updated_at
     ) values
@@ -1482,6 +1494,7 @@ function buildFixtureSql(personas: StablePersona[]) {
       id, event_id, user_id, role, is_in_judge_pool, created_at
     ) values
       ('role_event_admin_challenges_builder_fixture', ${sqlLiteral(fixtureChallengesBuilderEventId)}, ${sqlLiteral(eventAdminId)}, 'event_admin', 0, ${sqlLiteral(fixtureTimestamp)})`,
+    challengeDecksInsert(fixtureChallengesEventId, fixtureChallengesDecks),
     `insert into user_applications (
       id, event_id, user_id, status, submitted_at, checked_in_at, check_in_source, created_at, updated_at
     ) values

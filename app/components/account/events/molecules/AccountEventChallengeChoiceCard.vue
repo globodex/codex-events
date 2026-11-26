@@ -1,13 +1,16 @@
 <script setup lang="ts">
-// One open track or challenge on the Overview tab: the title, "Show more" for the instructions
-// and links, and the button that makes it the participant's choice.
-import type { EventChallenge } from '#shared/domains/events/challenges'
+// One open track or challenge on the Overview tab: the title, "Show more" for its slides,
+// materials and links, and the button that makes it the participant's choice.
+import type { AccountEventEntryChallenge } from '#shared/domains/events/account-event-entry-page'
+import { deckApiPath } from '#shared/domains/events/decks'
 
+import AccountEventDeckContent from '~/components/account/events/molecules/AccountEventDeckContent.vue'
 import EventStaffInstructions from '~/components/events/molecules/EventStaffInstructions.vue'
-import EventTrackDetails from '~/components/events/molecules/EventTrackDetails.vue'
 
-const props = defineProps<{
-  challenge: EventChallenge
+defineProps<{
+  /** The event of the challenge, where its PDFs open. */
+  eventId: string
+  challenge: AccountEventEntryChallenge
   /** True when this is the participant's choice. */
   chosen: boolean
   /** False for a person who does not choose, for example event staff. */
@@ -24,14 +27,6 @@ const emit = defineEmits<{
 }>()
 
 const expanded = ref(false)
-
-// The links of the challenge in the shape of the shared details block, in the saved order.
-const detailResources = computed(() => props.challenge.resources.map((resource, index) => ({
-  title: resource.label,
-  url: resource.url,
-  description: null,
-  displayOrder: index
-})))
 </script>
 
 <template>
@@ -54,17 +49,20 @@ const detailResources = computed(() => props.challenge.resources.map((resource, 
       </AppBadge>
     </div>
 
-    <EventTrackDetails
+    <div
       v-if="expanded"
-      :description="challenge.instructions"
-      :resources="detailResources"
+      class="mt-5 space-y-5 border-t border-black/8 pt-5 dark:border-white/[0.08]"
     >
+      <AccountEventDeckContent
+        :deck="challenge.deck"
+        :api-path="deckApiPath(eventId, 'challenge', challenge.id)"
+      />
       <!-- Only the event team receives staff instructions. -->
       <EventStaffInstructions
         v-if="challenge.staffInstructions?.trim()"
         :source="challenge.staffInstructions"
       />
-    </EventTrackDetails>
+    </div>
 
     <div class="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3">
       <AppButton

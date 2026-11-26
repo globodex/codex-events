@@ -6,6 +6,7 @@ import participantsPageGetHandler from '../../../../server/api/account/events/[s
 import selectChallengeHandler from '../../../../server/api/events/[eventId]/applications/me/actions/select-challenge.post'
 import {
   auditLogs,
+  eventDecks,
   eventRoleAssignments,
   events,
   userApplications,
@@ -21,13 +22,11 @@ type EventInsert = typeof events.$inferInsert
 type ApplicationInsert = typeof userApplications.$inferInsert
 
 // The stored challenge list: a challenge, a draft, and an open track with staff instructions.
-const task = { id: 'task', title: 'Make a one-minute game', instructions: 'Ship a game.', resources: [], isPublished: true }
-const draft = { id: 'draft', title: 'Unfinished', instructions: 'Not yet.', resources: [], isPublished: false }
+const task = { id: 'task', title: 'Make a one-minute game', isPublished: true }
+const draft = { id: 'draft', title: 'Unfinished', isPublished: false }
 const openTrack = {
   id: 'open',
   title: 'Build your own idea',
-  instructions: 'Bring your idea.',
-  resources: [],
   isPublished: true,
   isOpenTrack: true,
   staffInstructions: 'Bring extension cords.'
@@ -186,11 +185,22 @@ describe('TASK-491 choosing an open track or challenge', () => {
     const harness = await createContext()
     await addApplication(harness, 'participant')
     await addApplication(harness, 'pending', { status: 'submitted' })
-    const { staffInstructions: _staffInstructions, ...openTrackForParticipants } = openTrack
+    // "Show more" on a card shows the deck of the entry.
+    const slides = [{ id: 'idea', markdown: 'Bring your idea.' }]
+    await harness.database.insert(eventDecks).values({
+      eventId: 'event_1',
+      subjectKind: 'challenge',
+      subjectId: 'open',
+      slidesJson: JSON.stringify(slides),
+      updatedAt: '2026-11-26T00:00:00.000Z'
+    })
+    const taskCard = { ...task, deck: { slides: [], resources: [] } }
+    const openTrackCard = { ...openTrack, deck: { slides, resources: [] } }
+    const { staffInstructions: _staffInstructions, ...openTrackCardForParticipants } = openTrackCard
 
-    expect(await readOverviewChallenges(harness, 'participant')).toEqual([task, openTrackForParticipants])
-    expect(await readOverviewChallenges(harness, 'staff')).toEqual([task, openTrack])
-    expect(await readOverviewChallenges(harness, 'event_admin')).toEqual([task, openTrack])
+    expect(await readOverviewChallenges(harness, 'participant')).toEqual([taskCard, openTrackCardForParticipants])
+    expect(await readOverviewChallenges(harness, 'staff')).toEqual([taskCard, openTrackCard])
+    expect(await readOverviewChallenges(harness, 'event_admin')).toEqual([taskCard, openTrackCard])
     expect(await readOverviewChallenges(harness, 'pending')).toEqual([])
   })
 

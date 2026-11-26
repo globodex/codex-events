@@ -7,6 +7,11 @@ import { moveListItemByIndex } from '~/utils/reorder-list'
 
 const challenges = defineModel<EventChallenge[]>({ required: true })
 
+defineProps<{
+  /** The address of the event, for the links to the challenge pages. */
+  eventSlug: string
+}>()
+
 const listElement = useTemplateRef<HTMLElement>('list')
 // The id of the challenge the organizer is dragging. Its card is highlighted.
 const activeDragId = shallowRef<string | null>(null)
@@ -46,7 +51,7 @@ function addChallenge() {
   challenges.value = [
     ...challenges.value,
     // A new challenge is a draft until the organizer publishes it.
-    { id: crypto.randomUUID(), title: '', instructions: '', resources: [], isPublished: false }
+    { id: crypto.randomUUID(), title: '', isPublished: false }
   ]
 }
 
@@ -76,6 +81,7 @@ function moveChallenge(oldIndex: number, newIndex: number) {
         v-for="(challenge, index) in challenges"
         :key="challenge.id"
         :challenge="challenge"
+        :event-slug="eventSlug"
         :index="index"
         :active="activeDragId === challenge.id"
         @update="patch => updateChallenge(index, patch)"

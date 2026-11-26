@@ -1,49 +1,27 @@
 import { z } from 'zod'
 
-import { isHttpsCouponUrl } from '#shared/domains/credits/simplified-giveaways'
-
-// Challenges are the practical tasks an organizer offers at an event: a title, instructions and
-// a few resource links. Open tracks are entries of the same list where participants bring their
-// own idea. A confirmed participant can choose one entry (`user_applications.selected_challenge_id`).
-// This file owns the challenge model and the rule for who may read challenges, for the server
-// and the app.
+// Challenges are the practical tasks an organizer offers at an event. The event builder keeps the
+// list: titles, drafts, open tracks and staff instructions. The page of each challenge on the
+// Agenda tab holds its slides, materials and links (`decks.ts`). Open tracks are entries of the
+// same list where participants bring their own idea. A confirmed participant can choose one entry
+// (`user_applications.selected_challenge_id`). This file owns the challenge model and the rule for
+// who may read challenges, for the server and the app.
 
 /** The size limits of a challenge list. The event builder stops adding entries at these limits. */
 export const eventChallengeLimits = {
   maxChallenges: 20,
   maxTitleLength: 120,
-  maxInstructionsLength: 4000,
-  maxStaffInstructionsLength: 4000,
-  maxResources: 10,
-  maxResourceLabelLength: 80,
-  maxResourceUrlLength: 2048
+  maxStaffInstructionsLength: 4000
 } as const
 
 // Every message below tells the organizer what to fix. The event builder shows it next to the
 // position of the challenge, for example "Challenge 2: Add a title."
-
-const eventChallengeResourceSchema = z.object({
-  label: z.string().trim()
-    .min(1, 'Give every resource a name.')
-    .max(eventChallengeLimits.maxResourceLabelLength, `Use resource names of ${eventChallengeLimits.maxResourceLabelLength} characters or fewer.`),
-  // The platform's rule for a link that an organizer gives to participants: HTTPS, and no user
-  // name or password inside the link. Credit claim links follow the same rule.
-  url: z.string().trim()
-    .max(eventChallengeLimits.maxResourceUrlLength, `Use resource links of ${eventChallengeLimits.maxResourceUrlLength} characters or fewer.`)
-    .refine(isHttpsCouponUrl, 'Every resource needs a full link that starts with https://.')
-})
 
 export const eventChallengeSchema = z.object({
   id: z.string().trim().min(1).max(64),
   title: z.string().trim()
     .min(1, 'Add a title.')
     .max(eventChallengeLimits.maxTitleLength, `Use a title of ${eventChallengeLimits.maxTitleLength} characters or fewer.`),
-  /** Markdown. The participant page renders it with `AppMarkdownRenderer`. */
-  instructions: z.string().trim()
-    .min(1, 'Add instructions.')
-    .max(eventChallengeLimits.maxInstructionsLength, `Use instructions of ${eventChallengeLimits.maxInstructionsLength} characters or fewer.`),
-  resources: z.array(eventChallengeResourceSchema)
-    .max(eventChallengeLimits.maxResources, `Use ${eventChallengeLimits.maxResources} resources or fewer.`),
   /** False for a draft. Only the event builder shows a draft. */
   isPublished: z.boolean(),
   /**

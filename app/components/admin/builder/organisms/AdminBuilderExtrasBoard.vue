@@ -422,6 +422,7 @@ function removeTrackResource(track: EventFormTrack, resourceId: string) {
         <AdminBuilderChallengesEditor
           v-if="extra.id === 'challenges'"
           v-model="form.challenges"
+          :event-slug="form.slug"
         />
 
         <slot

@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { useIntervalFn, useNow } from '@vueuse/core'
 
+import { deckApiPath } from '#shared/domains/events/decks'
 import type { AgendaChallenge, ParticipantEventProgram, ProgramSession } from '#shared/domains/events/program'
 
 import AccountEventProgramFloorPlan from '~/components/account/events/molecules/AccountEventProgramFloorPlan.vue'
 import AccountEventChallengeList from '~/components/account/events/organisms/AccountEventChallengeList.vue'
 import AccountEventProgramTimeline from '~/components/account/events/organisms/AccountEventProgramTimeline.vue'
-import AccountEventWorkshopPanel from '~/components/account/events/organisms/AccountEventWorkshopPanel.vue'
+import AccountEventChallengePage from '~/components/account/events/organisms/AccountEventChallengePage.vue'
+import AccountEventDeckPanel from '~/components/account/events/organisms/AccountEventDeckPanel.vue'
 import { getAgendaItemPresentation, type PublicEventAgendaItem } from '~/domains/events/presentation'
 import { agendaItemsOutsideProgram } from '~/domains/events/program-timeline'
 
@@ -23,16 +25,19 @@ const props = defineProps<{
   linkedSession?: string | null
   /** The session of the workshop page that the link to this tab opens, by its id. */
   linkedWorkshop?: string | null
-  /** Reads the Agenda tab again, for example after the staff of a workshop saved it. */
+  /** The challenge whose page the link to this tab opens, by its id. */
+  linkedChallenge?: string | null
+  /** Reads the Agenda tab again, for example after the staff of a workshop saved its page. */
   refreshPage: () => Promise<unknown>
 }>()
 
 const emit = defineEmits<{
-  /** The workshop page closes, and the Agenda tab shows the map again. */
-  closeWorkshop: []
+  /** The workshop or challenge page closes, and the Agenda tab shows the map again. */
+  closePage: []
   /**
    * The id of the selected session or agenda block, or `null` while something else is selected. The page
-   * puts it in its address, so a shared link opens the same selection. It also closes an open workshop page.
+   * puts it in its address, so a shared link opens the same selection. It also closes an open workshop or
+   * challenge page.
    */
   linkSelection: [id: string | null]
 }>()
@@ -56,22 +61,29 @@ const hasSessions = computed(() => props.program.tracks.some(track => track.sess
 const openWorkshop = computed(() => props.program.workshops.find(workshop => workshop.sessionId === props.linkedWorkshop))
 const openWorkshopSession = computed(() => props.program.tracks.flatMap(track => track.sessions)
   .find(session => session.id === openWorkshop.value?.sessionId))
-const openWorkshopTimeLabel = computed(() => {
+// The time and the room of the workshop, for example "11:10 AM - 11:40 AM · Main room". The room is
+// named as on the agenda, without its number.
+const openWorkshopSummary = computed(() => {
   const session = openWorkshopSession.value
+  if (!session) {
+    return ''
+  }
   const programStart = Date.parse(props.program.agendaItem.startsAt)
-  return session
-    ? getAgendaItemPresentation({
-      startsAt: new Date(programStart + session.startsAfterMinutes * 60_000).toISOString(),
-      endsAt: new Date(programStart + (session.startsAfterMinutes + session.durationMinutes) * 60_000).toISOString()
-    }, false).timeLabel
-    : ''
+  const { timeLabel } = getAgendaItemPresentation({
+    startsAt: new Date(programStart + session.startsAfterMinutes * 60_000).toISOString(),
+    endsAt: new Date(programStart + (session.startsAfterMinutes + session.durationMinutes) * 60_000).toISOString()
+  }, false)
+  const roomName = props.program.floorPlans.find(plan => plan.id === session.room?.floorPlanId)?.rooms
+    .find(room => room.id === session.room?.roomId)?.name
+  return [timeLabel, roomName].filter(Boolean).join(' · ')
 })
-// The room is named as on the agenda, without its number.
-const openWorkshopRoomName = computed(() => {
-  const place = openWorkshopSession.value?.room
-  return props.program.floorPlans.find(plan => plan.id === place?.floorPlanId)?.rooms
-    .find(room => room.id === place?.roomId)?.name
-})
+// The challenge page that the link opens, with the rooms that name the challenge. Like a workshop
+// page, it takes the place of the map and the challenges.
+const openChallenge = computed(() => openWorkshop.value
+  ? undefined
+  : props.challenges.find(challenge => challenge.id === props.linkedChallenge))
+const openChallengeRooms = computed(() => props.program.floorPlans
+  .flatMap(plan => plan.rooms.filter(room => room.challengeId === openChallenge.value?.id)))
 const selectedSession = computed(() => props.program.tracks.flatMap(track => track.sessions)
   .find(session => session.id === selectedSessionId.value))
 const selectedAgendaItemRoom = computed(() => props.program.agendaItemRooms
@@ -201,7 +213,7 @@ function returnToAgenda() {
 <template>
   <div
     class="grid items-start gap-4 lg:gap-6"
-    :class="openWorkshop || selectedPlan || challenges.length ? 'lg:grid-cols-[clamp(17rem,36%,26rem)_minmax(0,1fr)]' : ''"
+    :class="openWorkshop || openChallenge || selectedPlan || challenges.length ? 'lg:grid-cols-[clamp(17rem,36%,26rem)_minmax(0,1fr)]' : ''"
   >
     <section
       class="min-w-0"
@@ -231,17 +243,27 @@ function returnToAgenda() {
       </p>
     </section>
 
-    <!-- On a phone the workshop page comes first, above the agenda. -->
-    <AccountEventWorkshopPanel
+    <!-- On a phone a workshop or challenge page comes first, above the agenda. -->
+    <AccountEventDeckPanel
       v-if="openWorkshop && openWorkshopSession"
       class="order-first min-w-0 lg:order-none"
       :event-id="program.eventId"
-      :session="openWorkshopSession"
-      :workshop="openWorkshop"
-      :time-label="openWorkshopTimeLabel"
-      :room-name="openWorkshopRoomName"
+      :title="openWorkshopSession.title"
+      :summary="openWorkshopSummary"
+      :staff="openWorkshop.staff"
+      :deck="openWorkshop.deck"
+      :api-path="deckApiPath(program.eventId, 'workshop', openWorkshop.sessionId)"
       :refresh-page="refreshPage"
-      @close="emit('closeWorkshop')"
+      @close="emit('closePage')"
+    />
+    <AccountEventChallengePage
+      v-else-if="openChallenge"
+      class="order-first min-w-0 lg:order-none"
+      :event-id="program.eventId"
+      :challenge="openChallenge"
+      :rooms="openChallengeRooms"
+      :refresh-page="refreshPage"
+      @close="emit('closePage')"
     />
     <aside
       v-else-if="selectedPlan || challenges.length"

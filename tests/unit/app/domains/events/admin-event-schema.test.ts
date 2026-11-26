@@ -226,7 +226,7 @@ describe('event config form schema', () => {
       ...createValidEventFormState(),
       registrationQuestions: [{ id: 'q1', type: 'short_text' as const, prompt: 'What do you build?', required: true, options: [] }],
       checkInFlowEnabled: true,
-      challenges: [{ id: 'c1', title: 'Ship a skill', instructions: 'Build one skill.', resources: [], isPublished: true }],
+      challenges: [{ id: 'c1', title: 'Ship a skill', isPublished: true }],
       participantPhotosEnabled: true
     }
 

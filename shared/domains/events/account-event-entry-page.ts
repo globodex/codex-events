@@ -7,7 +7,8 @@ import type {
   CustomQuestionAnswer,
   CustomQuestionDefinition
 } from '#shared/domains/events/custom-questions'
-import { eventChallengeSchema, type EventChallenge } from '#shared/domains/events/challenges'
+import { eventChallengeSchema } from '#shared/domains/events/challenges'
+import { deckSchema } from '#shared/domains/events/decks'
 
 import {
   accountOverviewApplicationStatusSchema,
@@ -237,6 +238,11 @@ export interface AccountEventEntryTabVisibility {
   hasGallery: boolean
 }
 
+/** An open track or challenge on the Overview tab, with its deck. */
+export const accountEventEntryChallengeSchema = eventChallengeSchema.extend({ deck: deckSchema })
+
+export type AccountEventEntryChallenge = z.infer<typeof accountEventEntryChallengeSchema>
+
 export interface AccountEventEntryPage {
   event: AccountEventEntryEvent
   access: AccountEventEntryAccess | null
@@ -250,9 +256,9 @@ export interface AccountEventEntryPage {
   /**
    * The published open tracks and challenges, for a person who may read them
    * (`canReadEventChallenges`), and empty for everyone else. A confirmed participant chooses one
-   * of them on the Overview tab.
+   * of them on the Overview tab, where "Show more" shows the deck of each.
    */
-  challenges: EventChallenge[]
+  challenges: AccountEventEntryChallenge[]
   talkProposal: AccountEventEntryTalkProposal | null
   talkProposalReviews: AccountEventEntryTalkProposalReview[]
   talkProposalReviewTotal: number
@@ -470,7 +476,7 @@ export const accountEventEntryPageSchema = z.object({
   access: accountEventEntryAccessSchema.nullable(),
   participation: accountOverviewRecordSchema.nullable(),
   participantCredits: z.array(accountEventEntryParticipantCreditOfferSchema),
-  challenges: z.array(eventChallengeSchema),
+  challenges: z.array(accountEventEntryChallengeSchema),
   talkProposal: accountEventEntryTalkProposalSchema.nullable(),
   talkProposalReviews: z.array(accountEventEntryTalkProposalReviewSchema),
   talkProposalReviewTotal: z.number().int().nonnegative(),

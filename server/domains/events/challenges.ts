@@ -1,6 +1,15 @@
-import type { EventAuthorization } from '#server/auth/authorization'
-import type { events, userApplications } from '#server/database/schema'
+import type { H3Event } from 'h3'
+
+import { and, eq } from 'drizzle-orm'
+
 import { canReadEventChallenges, parseEventChallengesJson } from '#shared/domains/events/challenges'
+import { requirePlatformActor } from '#server/auth/actor'
+import { resolveEventAuthorization, type EventAuthorization } from '#server/auth/authorization'
+import { getDatabase } from '#server/database/client'
+import { userApplications, type events } from '#server/database/schema'
+import { getEventOrThrow, getVisibleEventOrThrow } from '#server/domains/events'
+import type { DeckEditor } from '#server/domains/events/decks'
+import { ApiError } from '#server/http/api-error'
 
 type EventRecord = typeof events.$inferSelect
 type ApplicationRecord = typeof userApplications.$inferSelect
@@ -43,4 +52,56 @@ export function listReadableEventChallenges(reader: {
   return authorization.isEventAdmin || authorization.isStaff
     ? challenges
     : challenges.map(({ staffInstructions: _staffInstructions, ...challenge }) => challenge)
+}
+
+/** Event admins and the staff members who support a challenge edit its page (`decks.ts`). */
+export function canEditChallengeDeck(
+  authorization: Pick<EventAuthorization, 'isEventAdmin' | 'isStaff' | 'staffChallengeId'>,
+  challengeId: string
+) {
+  return authorization.isEventAdmin || (authorization.isStaff && authorization.staffChallengeId === challengeId)
+}
+
+function challengeNotFound() {
+  return new ApiError({ statusCode: 404, code: 'challenge_not_found', message: 'Challenge not found.' })
+}
+
+/** An event admin, or a staff member who supports this challenge. The challenge may still be a draft. */
+export async function requireChallengeEditor(h3Event: H3Event, eventId: string, challengeId: string): Promise<DeckEditor> {
+  const actor = await requirePlatformActor(h3Event)
+  const database = getDatabase(h3Event)
+  const [authorization, event] = await Promise.all([
+    resolveEventAuthorization(h3Event, eventId),
+    getEventOrThrow(database, eventId)
+  ])
+
+  if (!parseEventChallengesJson(event.challengesJson).some(challenge => challenge.id === challengeId)) {
+    throw challengeNotFound()
+  }
+  if (!canEditChallengeDeck(authorization, challengeId)) {
+    throw new ApiError({
+      statusCode: 403,
+      code: 'challenge_edit_forbidden',
+      message: 'Only the staff of this challenge and the event admins can change its page.'
+    })
+  }
+  return { database, actorUserId: actor.platformUser.id }
+}
+
+/** A person who may read this published challenge (`listReadableEventChallenges`). */
+export async function requireChallengeReader(h3Event: H3Event, eventId: string, challengeId: string) {
+  const actor = await requirePlatformActor(h3Event)
+  const database = getDatabase(h3Event)
+  const [authorization, event, application] = await Promise.all([
+    resolveEventAuthorization(h3Event, eventId),
+    getVisibleEventOrThrow(h3Event, eventId),
+    database.query.userApplications.findFirst({
+      where: and(eq(userApplications.eventId, eventId), eq(userApplications.userId, actor.platformUser.id))
+    })
+  ])
+
+  if (!listReadableEventChallenges({ event, authorization, application }).some(challenge => challenge.id === challengeId)) {
+    throw challengeNotFound()
+  }
+  return database
 }

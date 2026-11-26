@@ -27,6 +27,7 @@ import {
   serializeAccountEvent
 } from '#server/domains/events'
 import { listReadableEventChallenges } from '#server/domains/events/challenges'
+import { loadEventDecks } from '#server/domains/events/decks'
 import {
   getEventPhotoViewer,
   hasEventPhotos,
@@ -45,6 +46,7 @@ import { buildAccountEventTabVisibility } from './account-event-tab-visibility'
 import { resolveEventCertificateDateIso } from '#shared/domains/events/certificates'
 import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
 import { parseCustomQuestionsJson } from '#shared/domains/events/custom-questions'
+import { emptyDeck, type Deck } from '#shared/domains/events/decks'
 
 type EventRecord = typeof events.$inferSelect
 type ApplicationRecord = typeof userApplications.$inferSelect
@@ -304,7 +306,10 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
     const memberships = participantAccess.memberships
     const activeMembership = memberships.find(({ membership }) => membership.leftAt === null) ?? null
     const primaryMembership = activeMembership ?? memberships[0] ?? null
-    const [participation, participantCredits] = await Promise.all([
+    // The Overview tab shows these challenges and open tracks with their decks; the tab list asks
+    // whether there are any.
+    const readableChallenges = listReadableEventChallenges({ event, authorization: context.authorization, application })
+    const [participation, participantCredits, challengeDecks] = await Promise.all([
       loadParticipation(context, application, memberships),
       listEventCreditOffersForOverview(context.database, {
         eventId: event.id,
@@ -314,7 +319,10 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
           isEventStaff: roles.some(role => role.isStaff),
           application
         })
-      })
+      }),
+      readableChallenges.length > 0
+        ? loadEventDecks(context.database, event.id, 'challenge')
+        : new Map<string, Deck>()
     ])
     const talkProposalResult = event.eventType === 'meetup' && event.talkProposalsEnabled
       ? await Promise.all([
@@ -351,8 +359,6 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
         : null,
       roles as EventRoleAssignmentRecord[]
     )
-    // The Overview tab shows these challenges and open tracks; the tab list asks whether there are any.
-    const readableChallenges = listReadableEventChallenges({ event, authorization: context.authorization, application })
     const tabVisibility = buildAccountEventTabVisibility({
       event,
       authorization: context.authorization,
@@ -375,7 +381,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
       access,
       participation: participationRecord,
       participantCredits,
-      challenges: readableChallenges,
+      challenges: readableChallenges.map(challenge => ({ ...challenge, deck: challengeDecks.get(challenge.id) ?? emptyDeck })),
       talkProposal,
       talkProposalReviews,
       talkProposalReviewTotal: talkProposalResult[1].pagination.total,

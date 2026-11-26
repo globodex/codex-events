@@ -4,6 +4,7 @@ import { useForm } from 'vee-validate'
 
 import { cloneFormValues } from '~/utils/form-values'
 import { imprintContactFormSchema } from '~/domains/platform/legal-contact'
+import { useApiClient } from '~/composables/useApiClient'
 
 const initialContactForm = {
   name: '',
@@ -11,6 +12,7 @@ const initialContactForm = {
   message: '',
   website: ''
 }
+const apiFetch = useApiClient()
 const contactForm = reactive(cloneFormValues(initialContactForm))
 const syncingFromForm = ref(false)
 
@@ -80,7 +82,7 @@ const submitContactForm = handleSubmit(async (contactForm) => {
   contactState.error = ''
 
   try {
-    await $fetch('/api/public/imprint-contact', {
+    await apiFetch('/api/public/imprint-contact', {
       method: 'POST',
       body: {
         name: contactForm.name,

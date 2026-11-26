@@ -20,6 +20,8 @@ export interface EventAuthorization {
   isInJudgePool: boolean
   isStaff: boolean
   staffTrackId: string | null
+  /** The challenge that this staff member supports, when they support one. */
+  staffChallengeId: string | null
   canViewParticipantsAndTeams: boolean
 }
 
@@ -80,6 +82,7 @@ export async function resolveEventAuthorization(
           isInJudgePool: false,
           isStaff: false,
           staffTrackId: null,
+          staffChallengeId: null,
           canViewParticipantsAndTeams: true
         } satisfies EventAuthorization
       }
@@ -97,6 +100,7 @@ export async function resolveEventAuthorization(
       const isInJudgePool = assignment?.isInJudgePool ?? false
       const isStaff = assignment?.isStaff ?? false
       const staffTrackId = assignment?.staffTrackId ?? null
+      const staffChallengeId = assignment?.staffChallengeId ?? null
 
       return {
         eventId,
@@ -107,6 +111,7 @@ export async function resolveEventAuthorization(
         isInJudgePool,
         isStaff,
         staffTrackId,
+        staffChallengeId,
         canViewParticipantsAndTeams: isEventAdmin || isStaff
       } satisfies EventAuthorization
     })())

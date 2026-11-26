@@ -4,7 +4,6 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
 import { splitSqlStatements } from '../../../support/backend/migrations'
-import { eventChallengesSchema } from '../../../../shared/domains/events/challenges'
 import { createTestD1Database, type TestD1Database } from '../../../support/backend/fake-d1'
 
 const migrationSql = readdirSync(join(process.cwd(), 'drizzle'))
@@ -240,7 +239,7 @@ describe('shared database migration', () => {
         const tracks = await db.prepare('select id from event_tracks order by id').all()
         const choice = await db.prepare('select selected_track_id, selected_challenge_id from user_applications where id = ?').bind('choice').first()
         const staff = await db.prepare('select staff_track_id, staff_challenge_id from event_role_assignments where id = ?').bind('staff').first()
-        expect(eventChallengesSchema.parse(JSON.parse(event!.challenges_json))).toEqual([
+        expect(JSON.parse(event!.challenges_json)).toEqual([
           existingChallenge,
           { id: 'everyone', title: 'Non-technical', instructions: 'For everyone.', resources: [], isPublished: true, isOpenTrack: true, staffInstructions: '' },
           {
@@ -300,6 +299,61 @@ describe('shared database migration', () => {
         ['basement', []],
         ['ground', [{ id: 'check_in', name: 'Check-in', area, routes: [route] }, { id: 'lab', name: 'Lab', number: 'U1-3', area }]]
       ])
+    } finally {
+      await db.close()
+    }
+  })
+
+  test('moves workshop descriptions and challenge instructions and links into decks', async () => {
+    const migration = '0095_event_decks.sql'
+    const previous = readdirSync(join(process.cwd(), 'drizzle')).filter(name => /^\d+.*\.sql$/.test(name) && name < migration).sort()
+      .map(name => readFileSync(join(process.cwd(), 'drizzle', name), 'utf8')).join('\n').replaceAll('--> statement-breakpoint', '\n')
+    const db = createTestD1Database({ applyMigrations: false })
+    try {
+      await db.exec(previous)
+      const now = isoTimestamp(0)
+      await seedUser(db, 'organizer', now)
+      await seedEvent(db, 'event', 'registration_open', now, 'organizer')
+      const challenges = [
+        {
+          id: 'sites',
+          title: 'Build a site',
+          instructions: ' Ship one page. ',
+          resources: [{ label: 'Guide', url: 'https://guide.example' }, { label: 'Docs', url: 'https://docs.example' }],
+          isPublished: true,
+          staffInstructions: 'Check laptops.'
+        },
+        { id: 'own', title: 'Own idea', instructions: 'Bring an idea.', resources: [], isPublished: false, isOpenTrack: true }
+      ]
+      const resources = [
+        { id: 'deck', kind: 'slides', title: 'Deck', file: { id: 'file-1', name: 'deck.pdf' } },
+        { id: 'docs', kind: 'link', title: 'Docs', url: 'https://docs.example' }
+      ]
+      await db.prepare('update events set challenges_json = ? where id = ?').bind(JSON.stringify(challenges), 'event').run()
+      await db.prepare(`insert into event_workshops (event_id, session_id, description, resources_json, updated_at)
+        values ('event', 'intro', ' Bring a laptop. ', ?, ?), ('event', 'empty', '', '[]', ?)`)
+        .bind(JSON.stringify(resources), now, now).run()
+      await db.exec(readFileSync(join(process.cwd(), 'drizzle', migration), 'utf8').replaceAll('--> statement-breakpoint', '\n'))
+
+      const decks = await db.prepare(`select subject_kind, subject_id, slides_json, resources_json, updated_at
+        from event_decks order by subject_kind, subject_id`).all<Record<string, string>>()
+      const event = await db.prepare('select challenges_json from events where id = ?').bind('event').first<{ challenges_json: string }>()
+      const workshopTable = await db.prepare(`select name from sqlite_master where name = 'event_workshops'`).first()
+      expect(decks.results.map(deck => [deck.subject_kind, deck.subject_id, JSON.parse(deck.slides_json), JSON.parse(deck.resources_json)])).toEqual([
+        ['challenge', 'own', [{ id: 'slide-1', markdown: 'Bring an idea.' }], []],
+        ['challenge', 'sites', [{ id: 'slide-1', markdown: 'Ship one page.' }], [
+          { id: 'link-1', kind: 'link', title: 'Guide', url: 'https://guide.example' },
+          { id: 'link-2', kind: 'link', title: 'Docs', url: 'https://docs.example' }
+        ]],
+        ['workshop', 'empty', [], []],
+        ['workshop', 'intro', [{ id: 'slide-1', markdown: 'Bring a laptop.' }], [{ ...resources[0], kind: 'material' }, resources[1]]]
+      ])
+      expect(decks.results.find(deck => deck.subject_id === 'intro')?.updated_at).toBe(now)
+      expect(JSON.parse(event!.challenges_json)).toEqual([
+        { id: 'sites', title: 'Build a site', isPublished: true, staffInstructions: 'Check laptops.' },
+        { id: 'own', title: 'Own idea', isPublished: false, isOpenTrack: true }
+      ])
+      expect(workshopTable).toBeNull()
     } finally {
       await db.close()
     }

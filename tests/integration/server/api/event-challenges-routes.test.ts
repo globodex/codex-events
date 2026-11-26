@@ -34,22 +34,16 @@ const checkedInAt = '2026-11-28T08:45:00.000Z'
 const skillChallenge = {
   id: 'skill',
   title: 'Ship a Codex skill',
-  instructions: 'Write **one** skill and share it with your table.',
-  resources: [{ label: 'Skill guide', url: 'https://example.com/skills' }],
   isPublished: true
 }
 const draftChallenge = {
   id: 'draft',
   title: 'Unfinished idea',
-  instructions: 'The organizer is still writing this one.',
-  resources: [],
   isPublished: false
 }
 const reviewChallenge = {
   id: 'review',
   title: 'Review a pull request',
-  instructions: 'Let Codex review one of your pull requests.',
-  resources: [],
   isPublished: true,
   // An open track. The Agenda tab lists it in its own group, so the mark is stored and sent
   // like every other field.
@@ -57,9 +51,13 @@ const reviewChallenge = {
 }
 // The stored order: a draft sits between the two published challenges.
 const storedChallenges = [skillChallenge, draftChallenge, reviewChallenge]
-// The published challenges as the Agenda page sends them: each with its staff members.
-// Nobody is assigned to a challenge unless a test does it.
-const publishedChallenges = [skillChallenge, reviewChallenge].map(challenge => ({ ...challenge, staff: [] }))
+// The published challenges as the Agenda page sends them: each with its staff members and its deck.
+// Nobody is assigned to a challenge and no deck is written unless a test does it, so only an event
+// admin may edit a deck here.
+function publishedChallenges(canEdit: boolean) {
+  return [skillChallenge, reviewChallenge]
+    .map(challenge => ({ ...challenge, staff: [], deck: { slides: [], resources: [], canEdit } }))
+}
 
 /** Every test user signs in with `auth0|<user id>`. */
 function sessionFor(userId: string) {
@@ -216,7 +214,7 @@ describe('TASK-450 event challenges', () => {
   }
 
   const noChallenges = { hasAgendaTab: false, challenges: [] }
-  const allPublishedChallenges = { hasAgendaTab: true, challenges: publishedChallenges }
+  const allPublishedChallenges = (canEdit: boolean) => ({ hasAgendaTab: true, challenges: publishedChallenges(canEdit) })
 
   describe('saving challenges', () => {
     test.each(['event_admin', 'platform_admin'])('%s saves the challenge list in the given order', async (actorUserId) => {
@@ -242,16 +240,11 @@ describe('TASK-450 event challenges', () => {
       expect(await readStoredChallenges(harness)).toEqual(storedChallenges)
     })
 
-    test('stores the title, the instructions and the resources without surrounding spaces', async () => {
+    test('stores the title without surrounding spaces', async () => {
       const harness = await createContext({ challengesJson: '[]' })
 
       const response = await patchEvent(harness, 'event_admin', {
-        challenges: [{
-          ...skillChallenge,
-          title: '  Ship a Codex skill ',
-          instructions: ' Write **one** skill and share it with your table.\n',
-          resources: [{ label: ' Skill guide ', url: ' https://example.com/skills ' }]
-        }]
+        challenges: [{ ...skillChallenge, title: '  Ship a Codex skill ' }]
       })
 
       expect(response.status).toBe(200)
@@ -274,29 +267,9 @@ describe('TASK-450 event challenges', () => {
         issue: { path: ['challenges'], message: 'An event can have up to 20 challenges.' }
       },
       {
-        problem: 'a resource link that is not https',
-        invalidChallenges: [{ ...skillChallenge, resources: [{ label: 'Skill guide', url: 'http://example.com/skills' }] }],
-        issue: { path: ['challenges', 0, 'resources', 0, 'url'], message: 'Every resource needs a full link that starts with https://.' }
-      },
-      {
-        problem: 'a resource link with a user name and password',
-        invalidChallenges: [{ ...skillChallenge, resources: [{ label: 'Skill guide', url: 'https://user:secret@example.com/skills' }] }],
-        issue: { path: ['challenges', 0, 'resources', 0, 'url'], message: 'Every resource needs a full link that starts with https://.' }
-      },
-      {
-        problem: 'more than 10 resources',
-        invalidChallenges: [{ ...skillChallenge, resources: Array.from({ length: 11 }, () => skillChallenge.resources[0]) }],
-        issue: { path: ['challenges', 0, 'resources'], message: 'Use 10 resources or fewer.' }
-      },
-      {
         problem: 'a challenge without a title',
         invalidChallenges: [skillChallenge, { ...draftChallenge, title: ' ' }],
         issue: { path: ['challenges', 1, 'title'], message: 'Add a title.' }
-      },
-      {
-        problem: 'a challenge without instructions',
-        invalidChallenges: [{ ...skillChallenge, instructions: '' }],
-        issue: { path: ['challenges', 0, 'instructions'], message: 'Add instructions.' }
       },
       {
         problem: 'two challenges with the same id',
@@ -335,7 +308,7 @@ describe('TASK-450 event challenges', () => {
       const harness = await createContext()
       await addApplication(harness)
 
-      expect(await readChallengesOnEventPage(harness, 'participant')).toEqual(allPublishedChallenges)
+      expect(await readChallengesOnEventPage(harness, 'participant')).toEqual(allPublishedChallenges(false))
       // The participant never claimed the credit of the event.
       const [code] = await harness.database.select().from(eventCreditCodes)
       expect(code!.claimedByUserId).toBeNull()
@@ -345,7 +318,7 @@ describe('TASK-450 event challenges', () => {
       const harness = await createContext()
       await addCheckedInApplication(harness)
 
-      expect(await readChallengesOnEventPage(harness, 'participant')).toEqual(allPublishedChallenges)
+      expect(await readChallengesOnEventPage(harness, 'participant')).toEqual(allPublishedChallenges(false))
     })
 
     test('an event with draft challenges only: no Agenda tab and no challenge', async () => {
@@ -357,10 +330,14 @@ describe('TASK-450 event challenges', () => {
   })
 
   describe('what the event page gives everyone else', () => {
-    test.each(['staff', 'event_admin', 'platform_admin'])('%s reads the published challenges without a registration', async (userId) => {
+    test.each([
+      { userId: 'staff', canEdit: false },
+      { userId: 'event_admin', canEdit: true },
+      { userId: 'platform_admin', canEdit: true }
+    ])('$userId reads the published challenges without a registration', async ({ userId, canEdit }) => {
       const harness = await createContext()
 
-      expect(await readChallengesOnEventPage(harness, userId)).toEqual(allPublishedChallenges)
+      expect(await readChallengesOnEventPage(harness, userId)).toEqual(allPublishedChallenges(canEdit))
     })
 
     test('an event admin has no Agenda tab while every challenge is a draft', async () => {
@@ -461,8 +438,9 @@ describe('TASK-450 event challenges', () => {
       expect(entryResponse.status).toBe(200)
       // The entry page carries the challenges for the cards on the Overview tab, without staff names.
       const overviewChallenges = accountEventEntryPageSchema.parse(entryBody.data.page).challenges
-      expect(overviewChallenges).toEqual([skillChallenge, reviewChallenge])
-      expect(accountEventAgendaPageSchema.parse(agendaBody.data.page).challenges).toEqual(publishedChallenges)
+      expect(overviewChallenges).toEqual([skillChallenge, reviewChallenge]
+        .map(challenge => ({ ...challenge, deck: { slides: [], resources: [] } })))
+      expect(accountEventAgendaPageSchema.parse(agendaBody.data.page).challenges).toEqual(publishedChallenges(true))
     })
 
     test('a save that sends the loaded challenges back keeps them unchanged', async () => {

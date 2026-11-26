@@ -41,21 +41,30 @@ export const buildDayUpperFloor: EventFloorPlan = {
 export const buildDayChallenges: AgendaChallenge[] = [{
   id: 'sites',
   title: 'Build a site someone can use',
-  instructions: 'Publish a small site that one real person can open and use today.',
-  resources: [{ label: 'Site guide', url: 'https://example.com/sites' }],
   isPublished: true,
   staff: [
     { id: 'staff-mira', fullName: 'Mira Example', profileIconRevision: null },
     { id: 'staff-tom', fullName: 'Tom Sample', profileIconRevision: null }
-  ]
+  ],
+  deck: {
+    slides: [
+      { id: 'goal', markdown: 'Publish a small site that one real person can open and use today.' },
+      { id: 'steps', markdown: '1. Pick one person.\n2. Build one page.\n3. Ask them to try it.' }
+    ],
+    resources: [{ id: 'guide', kind: 'link', title: 'Site guide', url: 'https://example.com/sites' }],
+    canEdit: false
+  }
 }, {
   id: 'own-idea',
   title: 'Build your own idea',
-  instructions: 'Bring your own idea and build it.',
-  resources: [],
   isPublished: true,
   isOpenTrack: true,
-  staff: []
+  staff: [],
+  deck: {
+    slides: [{ id: 'idea', markdown: 'Bring your own idea and build it.' }],
+    resources: [],
+    canEdit: false
+  }
 }]
 
 export const buildDayAgendaItems = [{
@@ -132,12 +141,16 @@ export const buildDayProgram: ParticipantEventProgram = {
   workshops: [{
     sessionId: 'prototype',
     staff: [{ id: 'storybook-staff', fullName: 'Ada Lovelace', profileIconRevision: null }],
-    description: 'Build a first prototype step by step. Bring a laptop.',
-    resources: [
-      { id: 'slides', kind: 'slides', title: 'Prototype slides', url: 'https://example.com/slides' },
-      { id: 'starter', kind: 'material', title: 'Starter repository', url: 'https://example.com/starter' },
-      { id: 'docs', kind: 'link', title: 'Codex docs', url: 'https://example.com/docs' }
-    ],
-    canEdit: false
+    deck: {
+      slides: [
+        { id: 'welcome', markdown: '## Welcome\n\nBuild a first prototype step by step. Bring a laptop.' },
+        { id: 'plan', markdown: '1. Open Codex.\n2. Describe the prototype.\n3. Try it with a neighbor.' }
+      ],
+      resources: [
+        { id: 'slides', kind: 'material', title: 'Prototype slides', url: 'https://example.com/slides' },
+        { id: 'docs', kind: 'link', title: 'Codex docs', url: 'https://example.com/docs' }
+      ],
+      canEdit: false
+    }
   }]
 }

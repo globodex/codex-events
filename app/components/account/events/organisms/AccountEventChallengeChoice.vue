@@ -2,12 +2,14 @@
 // The open tracks and challenges on the Overview tab. A confirmed participant chooses the one
 // they want to work on, whenever they like before or during the event; staff and admins see the
 // numbers on the Participants tab. The server sends the list only to a person who may read it.
-import type { EventChallenge } from '#shared/domains/events/challenges'
+import type { AccountEventEntryChallenge } from '#shared/domains/events/account-event-entry-page'
 
 import AccountEventChallengeChoiceCard from '~/components/account/events/molecules/AccountEventChallengeChoiceCard.vue'
 
 const props = defineProps<{
-  challenges: EventChallenge[]
+  /** The event of the challenges. */
+  eventId: string
+  challenges: AccountEventEntryChallenge[]
   /** The participant's choice, or null. */
   selectedChallengeId: string | null
   /** True for a confirmed participant while the event is not over. */
@@ -49,6 +51,7 @@ const groups = computed(() => [
           class="min-w-0"
         >
           <AccountEventChallengeChoiceCard
+            :event-id="eventId"
             :challenge="challenge"
             :chosen="challenge.id === selectedChallengeId"
             :can-choose="canChoose"

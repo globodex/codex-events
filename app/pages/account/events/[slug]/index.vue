@@ -55,6 +55,7 @@ import {
   LazyAccountEventsAccountEventTalkProposalReviewPanel as LazyAccountEventTalkProposalReviewPanel,
   LazyAccountEventsOrganismsAccountEventChallengeChoice as LazyAccountEventChallengeChoice,
   LazyAccountEventsOrganismsAccountEventChallengeList as LazyAccountEventChallengeList,
+  LazyAccountEventsOrganismsAccountEventChallengePage as LazyAccountEventChallengePage,
   LazyAccountEventsOrganismsAccountEventTracksPanel as LazyAccountEventTracksPanel,
   LazyPublicEventsEventAgendaPanel as LazyEventAgendaPanel,
   LazyPublicEventsEventPrizeList as LazyEventPrizeList,
@@ -755,19 +756,26 @@ const nextStepWayHref = computed(() => availableTabs.value.includes('program')
   : null)
 // The session or agenda block that a link to the Agenda tab names (`normalizeSessionQueryValue`).
 const linkedAgendaSession = computed(() => normalizeSessionQueryValue(route.query.session))
-// The workshop whose page the Agenda tab opens beside the agenda, by its session id.
+// The workshop or the challenge whose page the Agenda tab opens beside the agenda, by its session id
+// or challenge id.
 const linkedWorkshop = computed(() => normalizeSessionQueryValue(route.query.workshop))
-// Fullscreen of a workshop page also hides the header of this page.
+const linkedChallenge = computed(() => normalizeSessionQueryValue(route.query.challenge))
+// Without a program, the Agenda tab shows the challenge page beside the public agenda.
+const linkedChallengeWithoutProgram = computed(() =>
+  programPage.value?.challenges.find(challenge => challenge.id === linkedChallenge.value))
+// Fullscreen of a workshop or challenge page also hides the header of this page.
 const presentationMode = usePresentationMode()
 
-function closeWorkshop() {
-  void navigateTo({ query: { ...route.query, workshop: undefined } }, { replace: true })
+function closePage() {
+  void navigateTo({ query: { ...route.query, workshop: undefined, challenge: undefined } }, { replace: true })
 }
 
 // The address names the session or agenda block selected on the Agenda tab, so a shared link opens the
-// same selection. A selection on the agenda also closes an open workshop page.
+// same selection. A selection on the agenda also closes an open workshop or challenge page.
 function linkAgendaSelection(id: string | null) {
-  void navigateTo({ query: { ...route.query, workshop: undefined, session: id ?? undefined } }, { replace: true })
+  void navigateTo({
+    query: { ...route.query, workshop: undefined, challenge: undefined, session: id ?? undefined }
+  }, { replace: true })
 }
 
 const applicationSubmittedNoticeVisible = ref(isParticipantApplicationSubmittedNotice(route.query.notice))
@@ -1264,6 +1272,7 @@ useSeoMeta({
 
         <LazyAccountEventChallengeChoice
           v-if="overviewChallenges.length > 0"
+          :event-id="event.id"
           :challenges="overviewChallenges"
           :selected-challenge-id="selectedChallengeId"
           :can-choose="canChooseChallenge"
@@ -1749,14 +1758,15 @@ useSeoMeta({
             :challenges="programPage.challenges"
             :linked-session="linkedAgendaSession"
             :linked-workshop="linkedWorkshop"
+            :linked-challenge="linkedChallenge"
             :refresh-page="programPageRequest.refresh"
-            @close-workshop="closeWorkshop"
+            @close-page="closePage"
             @link-selection="linkAgendaSelection"
           />
           <!--
             A person who does not read the program sees the public agenda blocks with the sessions
             that the organizer made public. The challenges that this person may read stand next
-            to them, without a map.
+            to them, without a map, and a challenge page takes their place while it is open.
           -->
           <div
             v-else
@@ -1768,8 +1778,17 @@ useSeoMeta({
               :agenda-items="event.agendaItems"
               :public-sessions="programPage.publicSessions"
             />
+            <LazyAccountEventChallengePage
+              v-if="linkedChallengeWithoutProgram"
+              :class="event.agendaItems.length ? 'min-w-0 lg:flex-1' : 'w-full'"
+              :event-id="event.id"
+              :challenge="linkedChallengeWithoutProgram"
+              :rooms="[]"
+              :refresh-page="programPageRequest.refresh"
+              @close="closePage"
+            />
             <LazyAccountEventChallengeList
-              v-if="programPage.challenges.length"
+              v-else-if="programPage.challenges.length"
               :class="event.agendaItems.length ? 'lg:w-80 lg:shrink-0' : 'w-full'"
               :event-id="event.id"
               :challenges="programPage.challenges"

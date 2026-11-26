@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, test } from 'vitest'
+import { eq } from 'drizzle-orm'
 
 import participantProgram from '../../../../server/api/account/events/[slug]/program.get'
 import accountEventRosters from '../../../../server/api/account/events/[slug]/rosters.get'
+import readChallengeFile from '../../../../server/api/events/[eventId]/challenges/[challengeId]/files/[fileId].get'
+import uploadChallengeFile from '../../../../server/api/events/[eventId]/challenges/[challengeId]/files/index.post'
+import saveChallenge from '../../../../server/api/events/[eventId]/challenges/[challengeId]/index.put'
 import createFloorPlan from '../../../../server/api/events/[eventId]/floor-plans/index.post'
 import readFloorPlanImage from '../../../../server/api/events/[eventId]/floor-plans/[floorPlanId]/image.get'
 import replaceFloorPlanImage from '../../../../server/api/events/[eventId]/floor-plans/[floorPlanId]/image.post'
@@ -142,7 +146,10 @@ describe('event program routes', () => {
         { method: 'post', path: '/api/events/:eventId/floor-plans/:floorPlanId/image', handler: replaceFloorPlanImage },
         { method: 'put', path: '/api/events/:eventId/workshops/:sessionId', handler: saveWorkshop },
         { method: 'post', path: '/api/events/:eventId/workshops/:sessionId/files', handler: uploadWorkshopFile },
-        { method: 'get', path: '/api/events/:eventId/workshops/:sessionId/files/:fileId', handler: readWorkshopFile }
+        { method: 'get', path: '/api/events/:eventId/workshops/:sessionId/files/:fileId', handler: readWorkshopFile },
+        { method: 'put', path: '/api/events/:eventId/challenges/:challengeId', handler: saveChallenge },
+        { method: 'post', path: '/api/events/:eventId/challenges/:challengeId/files', handler: uploadChallengeFile },
+        { method: 'get', path: '/api/events/:eventId/challenges/:challengeId/files/:fileId', handler: readChallengeFile }
       ],
       cloudflareEnv: {
         EVENT_IMAGES: createImageBucket(),
@@ -329,9 +336,7 @@ describe('event program routes', () => {
       expect((await readAgenda()).workshops).toEqual([{
         sessionId: 'first_session',
         staff: [{ id: 'staff', fullName: expect.any(String), profileIconRevision: null }],
-        description: '',
-        resources: [],
-        canEdit
+        deck: { slides: [], resources: [], canEdit }
       }])
     }
 
@@ -348,10 +353,10 @@ describe('event program routes', () => {
     const filePath = `${workshopPath}/files/${file.id}`
     expect((await harness.request(filePath)).status).toBe(404)
     const content = {
-      description: 'Bring a laptop.',
+      slides: [{ id: 'intro', markdown: 'Bring a laptop.' }, { id: 'plan', markdown: '1. Open Codex.' }],
       resources: [
-        { id: 'deck', kind: 'slides', title: 'Slides', file },
-        { id: 'repo', kind: 'material', title: 'Starter', url: 'https://example.com/starter' }
+        { id: 'deck', kind: 'material', title: 'Slides', file },
+        { id: 'repo', kind: 'link', title: 'Starter', url: 'https://example.com/starter' }
       ]
     }
     signIn('participant')
@@ -359,12 +364,13 @@ describe('event program routes', () => {
     signIn('staff')
     const plainLink = { id: 'plain', kind: 'link', title: 'Plain', url: 'http://example.com' }
     expect((await harness.request(workshopPath, json('PUT', { ...content, resources: [plainLink] }))).status).toBe(400)
+    expect((await harness.request(workshopPath, json('PUT', { ...content, slides: [{ id: 'blank', markdown: ' ' }] }))).status).toBe(400)
     expect(await readData(await harness.request(workshopPath, json('PUT', content)))).toEqual(content)
     // A session without staff has no workshop page.
     expect((await harness.request(`${eventPath}/workshops/later_session`, json('PUT', content))).status).toBe(404)
 
     signIn('participant')
-    expect((await readAgenda()).workshops[0]).toMatchObject({ description: 'Bring a laptop.', resources: content.resources })
+    expect((await readAgenda()).workshops[0]?.deck).toEqual({ ...content, canEdit: false })
     const opened = await harness.request(filePath)
     expect(opened.status).toBe(200)
     expect(opened.headers.get('content-type')).toBe('application/pdf')
@@ -376,6 +382,48 @@ describe('event program routes', () => {
     signIn('organizer')
     await readData(await harness.request(workshopPath, json('PUT', { ...content, resources: content.resources.slice(1) })))
     signIn('participant')
+    expect((await harness.request(filePath)).status).toBe(404)
+  })
+
+  test('runs the page of a challenge that its staff and the admins edit, with private PDFs', async () => {
+    await setup()
+    await harness.database.update(events).set({ challengesJson: JSON.stringify([
+      { id: 'sites', title: 'Build a site', isPublished: true },
+      { id: 'draft', title: 'Draft idea', isPublished: false }
+    ]) })
+    await harness.database.update(eventRoleAssignments).set({ staffChallengeId: 'sites' })
+      .where(eq(eventRoleAssignments.userId, 'staff'))
+    const challengePath = `${eventPath}/challenges/sites`
+
+    // Everyone who reads the challenge gets its deck with the Agenda tab. Its staff and the event admins may edit it.
+    for (const [viewer, canEdit] of [['participant', false], ['staff', true], ['organizer', true]] as const) {
+      signIn(viewer)
+      expect((await readAgendaPage()).challenges.map(challenge => challenge.deck)).toEqual([{ slides: [], resources: [], canEdit }])
+    }
+
+    // Only the staff of the challenge and the event admins save it.
+    const deck = {
+      slides: [{ id: 'goal', markdown: 'Ship one page.' }],
+      resources: [{ id: 'guide', kind: 'link', title: 'Guide', url: 'https://example.com/guide' }]
+    }
+    signIn('participant')
+    expect((await harness.request(challengePath, json('PUT', deck))).status).toBe(403)
+    signIn('staff')
+    expect((await harness.request(`${eventPath}/challenges/draft`, json('PUT', deck))).status).toBe(403)
+    expect((await harness.request(`${eventPath}/challenges/unknown`, json('PUT', deck))).status).toBe(404)
+    const pdf = fileForm('%PDF-1.4\nbrief', 'brief.pdf', 'application/pdf')
+    const file = await readData<{ id: string, name: string }>(await harness.request(`${challengePath}/files`, { method: 'POST', body: pdf }))
+    const content = { ...deck, resources: [...deck.resources, { id: 'brief', kind: 'material', title: 'Brief', file }] }
+    expect(await readData(await harness.request(challengePath, json('PUT', content)))).toEqual(content)
+
+    // A reader of the challenge opens its PDF. A person who may not read the challenge does not.
+    signIn('participant')
+    expect((await readAgendaPage()).challenges[0]?.deck).toEqual({ ...content, canEdit: false })
+    const filePath = `${challengePath}/files/${file.id}`
+    const opened = await harness.request(filePath)
+    expect(opened.status).toBe(200)
+    expect(opened.headers.get('content-type')).toBe('application/pdf')
+    signIn('pending')
     expect((await harness.request(filePath)).status).toBe(404)
   })
 
