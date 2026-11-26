@@ -326,7 +326,7 @@ required-document changes take effect on the next MCP request.
 - Hidden events are not visible to public users, workspace users, approved participants, staff, or judges through public pages, participant account lists, or non-admin direct event reads.
 - Hidden events remain visible to event admins for that event and platform admins. The same rule covers Gallery lists, protected images, uploads, and moderation.
 - Staff can view event-wide participant and team data.
-- The private Luma guest list is visible to no actor: no page or API response shows guest emails or individual guest statuses. Event admins and platform admins see only the approved and waiting guest counts, the last refresh time, and whether the list needs attention.
+- The private Luma guest list is visible to no actor: no page or API response shows guest emails or individual guest statuses. Event admins and platform admins see only counts and times: the approved, waiting and declined guests, the approved guests who registered, the registrations that wait for a Luma approval, the Luma check-ins, the last update from Luma, the last refresh time, and whether the list needs attention.
 - Workspace users can view the published judge and staff rosters for events they can access in `/account/events/:slug`.
 - Published judge and staff rosters expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
 - Published staff rosters also show whether each staff member supports the whole event or a specific event track. Track-specific staff roster entries include the track ID, name, short description, and display order so participant account pages can highlight staff connected to the participant's selected track.

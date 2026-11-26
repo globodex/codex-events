@@ -348,18 +348,42 @@ function uploadGuestList(event: Event) {
         Save the event to apply this change.
       </p>
       <template v-else-if="guestListSaved && lumaGuestList">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div class="min-w-0">
-            <p class="text-sm text-highlighted">
-              {{ lumaGuestList.approvedGuestCount }} approved · {{ lumaGuestList.waitingGuestCount }} waiting
-            </p>
-            <p
-              v-if="lumaGuestList.syncedAt"
-              class="text-xs text-muted"
-            >
-              Last refreshed {{ formatTimestamp(lumaGuestList.syncedAt) }}
-            </p>
-          </div>
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <!-- What the event team checks about the sync: the guests on Luma, who of them registered
+               here, the check-ins from Luma, and when data from Luma last arrived by any way. -->
+          <dl
+            class="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm"
+            data-testid="event-builder-luma-guest-list-summary"
+          >
+            <dt class="text-muted">
+              Luma guests
+            </dt>
+            <dd class="text-highlighted">
+              {{ lumaGuestList.approvedGuestCount }} approved · {{ lumaGuestList.waitingGuestCount }} waiting · {{ lumaGuestList.declinedGuestCount }} declined
+            </dd>
+            <dt class="text-muted">
+              Registered here
+            </dt>
+            <dd class="text-highlighted">
+              {{ lumaGuestList.registeredGuestCount }} of {{ lumaGuestList.approvedGuestCount }} approved guests<template v-if="lumaGuestList.waitingRegistrationCount">
+                · {{ lumaGuestList.waitingRegistrationCount }} waiting for approval on Luma
+              </template>
+            </dd>
+            <dt class="text-muted">
+              Luma check-ins
+            </dt>
+            <dd class="text-highlighted">
+              {{ lumaGuestList.lumaCheckInCount }}
+            </dd>
+            <template v-if="lumaGuestList.lastUpdateAt">
+              <dt class="text-muted">
+                Last update
+              </dt>
+              <dd class="text-highlighted">
+                {{ formatTimestamp(lumaGuestList.lastUpdateAt) }}
+              </dd>
+            </template>
+          </dl>
           <div class="flex flex-wrap gap-2">
             <!-- Only a working connection imports the list from Luma. The CSV that Luma exports works without one. -->
             <AppButton

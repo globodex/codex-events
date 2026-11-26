@@ -1141,7 +1141,7 @@ describe('TASK-443 Luma guest list', () => {
   })
 
   describe('organizer view', () => {
-    test('shows counts and refresh state without any guest email or status', async () => {
+    test('shows the guest list, registration and check-in counts and the last update without any guest email or status', async () => {
       const { harness } = await createContext({
         lumaGuestListSyncedAt: '2026-11-20T09:00:00.000Z',
         lumaGuestListSyncError: 'Luma did not return the guest list. Check the connection details and try again.'
@@ -1149,9 +1149,15 @@ describe('TASK-443 Luma guest list', () => {
       await saveGuests(harness, {
         'first-approved@luma.example': 'approved',
         'second-approved@luma.example': 'approved',
+        'guest@luma.example': 'approved',
         'pending@luma.example': 'pending_approval',
         'declined@luma.example': 'declined'
       })
+      // The participant registered and Luma checked them in; another person waits for a Luma
+      // approval; a webhook added a guest after the last refresh.
+      await addApplication(harness, 'participant', 'approved', { checkedInAt: '2026-11-21T08:00:00.000Z', checkInSource: 'luma' })
+      await addParticipant(harness, 'waiting_person', 'pending@luma.example', 'submitted')
+      await saveGuests(harness, { 'webhook@luma.example': 'approved' }, '2026-11-22T10:00:00.000Z')
 
       const response = await harness.request('/api/account/events/build-day/settings')
 
@@ -1160,8 +1166,13 @@ describe('TASK-443 Luma guest list', () => {
       const page = accountEventSettingsPageSchema.parse(JSON.parse(responseText).data.page)
       expect(page.event.lumaGuestListEnabled).toBe(true)
       expect(page.lumaGuestList).toEqual({
-        approvedGuestCount: 2,
+        approvedGuestCount: 4,
         waitingGuestCount: 1,
+        declinedGuestCount: 1,
+        registeredGuestCount: 1,
+        waitingRegistrationCount: 1,
+        lumaCheckInCount: 1,
+        lastUpdateAt: '2026-11-22T10:00:00.000Z',
         syncedAt: '2026-11-20T09:00:00.000Z',
         syncError: 'Luma did not return the guest list. Check the connection details and try again.'
       })

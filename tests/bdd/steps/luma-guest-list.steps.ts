@@ -37,7 +37,7 @@ Then('I should see the Luma guest list with {int} approved and {int} waiting gue
 
   await expect(controls.getByLabel('Confirm registrations from the Luma guest list')).toBeChecked()
   await expect(controls.getByText(`${approved} approved · ${waiting} waiting`)).toBeVisible()
-  await expect(controls.getByText('Last refreshed')).toBeVisible()
+  await expect(controls.getByText('Last update')).toBeVisible()
   await expect(controls.getByRole('button', { name: 'Refresh guest list' })).toBeEnabled()
 })
 
@@ -73,7 +73,7 @@ Then('the uploaded Luma guest list should show {int} approved and {int} waiting 
   const controls = await guestListControls(page)
 
   await expect(controls.getByText(`${approved} approved · ${waiting} waiting`)).toBeVisible()
-  await expect(controls.getByText('Last refreshed')).toBeVisible()
+  await expect(controls.getByText('Last update')).toBeVisible()
   // Without a Luma connection, only an upload updates the list.
   await expect(controls.getByRole('button', { name: 'Refresh guest list' })).toHaveCount(0)
   await expect(controls.getByRole('button', { name: 'Upload Luma CSV' })).toBeEnabled()

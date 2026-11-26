@@ -506,7 +506,7 @@ Rules:
 - Signed Luma guest registration and guest update webhooks add or update the one guest they describe. A repeated delivery or a repeated refresh leaves the same list.
 - After every webhook update and every refresh, the matching application follows the guest as described for `UserApplication`.
 - Turning off the list or changing its external event ID clears all guests and refresh history in the same write. Only the latest refresh for the current connection can publish a list or act on a matching registration. Signed guest updates received during the refresh take precedence.
-- In the event builder, the Luma extra holds the guest list setting of a connected event. Turning it on makes the Luma email a required registration field. A saved guest-list event shows the approved and waiting guest counts, the last refresh time, the import or refresh action, and a warning when the list was never imported, the last refresh failed, or Luma is not connected.
+- In the event builder, the Luma extra holds the guest list setting of a connected event. Turning it on makes the Luma email a required registration field. A saved guest-list event shows the approved, waiting and declined guest counts, how many approved guests registered here, how many registrations still wait for an approval on Luma, how many registrations Luma checked in, the time of the last update from Luma however it arrived (refresh, upload, guest webhook, or Luma check-in), the import or refresh action, and a warning when the list was never imported, the last refresh failed, or Luma is not connected.
 
 ### Participation Certificate
 

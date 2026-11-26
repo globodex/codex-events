@@ -1,5 +1,5 @@
 import { parse } from 'csv-parse/sync'
-import { and, count, eq, sql, type SQL } from 'drizzle-orm'
+import { and, count, eq, isNotNull, max, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { ApiError } from '#server/http/api-error'
@@ -10,8 +10,8 @@ import { normalizeLumaEmail } from '#server/domains/credits/simplified-claiming'
 
 // The private per-event copy of the Luma guest list (see EventLumaGuest in docs/domain-model.md).
 //
-// Privacy rule: guest emails and statuses stay on the server. `countEventLumaGuests` is the
-// only function here whose result may be sent to a client.
+// Privacy rule: guest emails and statuses stay on the server. Only the counts of
+// `countEventLumaGuests` and `summarizeEventLumaGuestList` may be sent to a client.
 
 export interface LumaGuestListEntry {
   /** Normalized with `normalizeLumaEmail`. */
@@ -173,7 +173,17 @@ export function upsertGuestListRows(database: AppDatabase, rows: LumaGuestListEn
   })
 }
 
-/** The only guest list data an organizer sees: how many guests are approved and how many are waiting. */
+function countByStanding(rows: Array<{ approvalStatus: string | null, total: number }>) {
+  const totals: Record<LumaGuestStanding, number> = { approved: 0, waiting: 0, declined: 0 }
+
+  for (const row of rows) {
+    if (row.approvalStatus !== null) totals[getLumaGuestStanding(row.approvalStatus)] += row.total
+  }
+
+  return totals
+}
+
+/** How many guests are approved and how many are waiting, for the answer of a refresh or an upload. */
 export async function countEventLumaGuests(database: AppDatabase, eventId: string, source?: SQL) {
   const rows = await database
     .select({ approvalStatus: eventLumaGuests.approvalStatus, total: count(eventLumaGuests.email) })
@@ -183,14 +193,69 @@ export async function countEventLumaGuests(database: AppDatabase, eventId: strin
     .groupBy(eventLumaGuests.approvalStatus)
   if (source && !rows.length) throw guestListChangedError()
 
-  const totals: Record<LumaGuestStanding, number> = { approved: 0, waiting: 0, declined: 0 }
-
-  for (const row of rows) {
-    if (row.approvalStatus !== null) totals[getLumaGuestStanding(row.approvalStatus)] += row.total
-  }
+  const totals = countByStanding(rows)
 
   return {
     approvedGuestCount: totals.approved,
     waitingGuestCount: totals.waiting
+  }
+}
+
+export const emptyLumaGuestListSummary = {
+  approvedGuestCount: 0,
+  waitingGuestCount: 0,
+  declinedGuestCount: 0,
+  registeredGuestCount: 0,
+  waitingRegistrationCount: 0,
+  lumaCheckInCount: 0,
+  lastUpdateAt: null as string | null
+}
+
+/**
+ * What the event builder shows about the Luma guest list, as counts only: the guests by standing,
+ * the approved guests who registered here, the registrations that wait for an approval on Luma,
+ * the registrations that Luma checked in, and when data from Luma last arrived. That time is the
+ * latest refresh or upload, guest webhook, or Luma check-in, however it arrived.
+ */
+export async function summarizeEventLumaGuestList(
+  database: AppDatabase,
+  event: Pick<typeof events.$inferSelect, 'id' | 'lumaGuestListSyncedAt'>
+): Promise<typeof emptyLumaGuestListSummary> {
+  const [guestRows, registrationRows, [lumaCheckIns]] = await Promise.all([
+    database.select({ approvalStatus: eventLumaGuests.approvalStatus, total: count(), lastSyncedAt: max(eventLumaGuests.syncedAt) })
+      .from(eventLumaGuests)
+      .where(eq(eventLumaGuests.eventId, event.id))
+      .groupBy(eventLumaGuests.approvalStatus),
+    database.select({ approvalStatus: eventLumaGuests.approvalStatus, applicationStatus: userApplications.status, total: count() })
+      .from(userApplications)
+      .innerJoin(eventLumaGuests, and(
+        eq(eventLumaGuests.eventId, userApplications.eventId),
+        eq(eventLumaGuests.email, userApplications.activeLumaEmail)
+      ))
+      .where(eq(userApplications.eventId, event.id))
+      .groupBy(eventLumaGuests.approvalStatus, userApplications.status),
+    database.select({ total: count(), lastCheckedInAt: max(userApplications.checkedInAt) })
+      .from(userApplications)
+      .where(and(
+        eq(userApplications.eventId, event.id),
+        eq(userApplications.checkInSource, 'luma'),
+        isNotNull(userApplications.checkedInAt)
+      ))
+  ])
+  const guests = countByStanding(guestRows)
+  const registrations = (standing: LumaGuestStanding, status: string) => registrationRows
+    .filter(row => getLumaGuestStanding(row.approvalStatus) === standing && row.applicationStatus === status)
+    .reduce((total, row) => total + row.total, 0)
+  // ISO times in UTC sort as text, so the last one is the latest.
+  const updateTimes = [event.lumaGuestListSyncedAt, lumaCheckIns?.lastCheckedInAt, ...guestRows.map(row => row.lastSyncedAt)]
+
+  return {
+    approvedGuestCount: guests.approved,
+    waitingGuestCount: guests.waiting,
+    declinedGuestCount: guests.declined,
+    registeredGuestCount: registrations('approved', 'approved'),
+    waitingRegistrationCount: registrations('waiting', 'submitted'),
+    lumaCheckInCount: lumaCheckIns?.total ?? 0,
+    lastUpdateAt: updateTimes.filter(time => time !== null && time !== undefined).sort().at(-1) ?? null
   }
 }

@@ -260,6 +260,16 @@ export const accountEventSimplifiedClaimingStatusSchema = z.object({
 export const accountEventLumaGuestListSchema = z.object({
   approvedGuestCount: z.number().int().nonnegative(),
   waitingGuestCount: z.number().int().nonnegative(),
+  declinedGuestCount: z.number().int().nonnegative(),
+  // Approved guests whose registration here is confirmed.
+  registeredGuestCount: z.number().int().nonnegative(),
+  // Registrations here whose guest still waits for an approval on Luma.
+  waitingRegistrationCount: z.number().int().nonnegative(),
+  // Registrations that Luma checked in, by webhook or by an uploaded guest CSV.
+  lumaCheckInCount: z.number().int().nonnegative(),
+  // When data from Luma last arrived: a refresh, an upload, a guest webhook or a Luma check-in.
+  lastUpdateAt: z.string().nullable(),
+  // When the whole list was last imported or uploaded.
   syncedAt: z.string().nullable(),
   syncError: z.string().nullable()
 })

@@ -379,7 +379,7 @@ Notes:
 - Public event discovery and detail responses expose only public-safe fields. They do not expose internal record identifiers, creator identifiers, or audit timestamps.
 - Public current-terms references expose document type, version, title, and published time only.
 - Event admin serialization includes `hiddenAt`, `hiddenByUserId`, and `hiddenReason`.
-- Event admin serialization includes `lumaGuestListEnabled`. The account-event `settings` page adds the Luma guest list summary for event admins and platform admins: the approved and waiting guest counts, the last refresh time, and the latest refresh failure message. No response contains guest emails or individual guest statuses.
+- Event admin serialization includes `lumaGuestListEnabled`. The account-event `settings` page adds the Luma guest list summary for event admins and platform admins: the approved, waiting and declined guest counts, the number of approved guests with a confirmed registration (`registeredGuestCount`), the number of registrations whose guest waits for a Luma approval (`waitingRegistrationCount`), the number of registrations with a Luma check-in (`lumaCheckInCount`), the latest time any Luma data arrived by refresh, upload, guest webhook or Luma check-in (`lastUpdateAt`), the last full refresh or upload time (`syncedAt`), and the latest refresh failure message. No response contains guest emails or individual guest statuses.
 - Event admin serialization includes `checkInFlowEnabled` and `registrationQuestions`.
 - Event admin serialization includes `challenges` with every challenge of the event, drafts included. No other event serialization includes challenges.
 - Event admin serialization includes `participantPhotosEnabled`.

@@ -19,7 +19,7 @@ import {
   talkProposals,
   users
 } from '#server/database/schema'
-import { countEventLumaGuests } from '#server/domains/applications/luma-guest-list'
+import { emptyLumaGuestListSummary, summarizeEventLumaGuestList } from '#server/domains/applications/luma-guest-list'
 import { getSimplifiedClaimingSummary } from '#server/domains/credits/simplified-claiming'
 import { listAdminEventCreditOffers } from '#server/domains/credits'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
@@ -92,7 +92,7 @@ export const createAccountEventSettingsPageRoute = (appBaseUrl: string) => defin
       imageOptions,
       credits,
       simplifiedClaimingSummary,
-      lumaGuestCounts,
+      lumaGuestSummary,
       existingTalkProposals,
       programSessionCount
     ] = await Promise.all([
@@ -149,8 +149,8 @@ export const createAccountEventSettingsPageRoute = (appBaseUrl: string) => defin
         ? getSimplifiedClaimingSummary(context.database, event)
         : Promise.resolve(emptySimplifiedClaimingSummary),
       event.lumaGuestListEnabled
-        ? countEventLumaGuests(context.database, event.id)
-        : Promise.resolve({ approvedGuestCount: 0, waitingGuestCount: 0 }),
+        ? summarizeEventLumaGuestList(context.database, event)
+        : Promise.resolve(emptyLumaGuestListSummary),
       context.database.query.talkProposals.findMany({
         columns: { id: true },
         where: eq(talkProposals.eventId, event.id),
@@ -216,7 +216,7 @@ export const createAccountEventSettingsPageRoute = (appBaseUrl: string) => defin
         ...simplifiedClaimingSummary
       },
       lumaGuestList: {
-        ...lumaGuestCounts,
+        ...lumaGuestSummary,
         syncedAt: event.lumaGuestListSyncedAt,
         syncError: event.lumaGuestListSyncError
       },
