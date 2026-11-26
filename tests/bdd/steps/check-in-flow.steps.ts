@@ -59,9 +59,10 @@ Then('my next step should be to check in with the event team', async ({ page }) 
 })
 
 // "Show the way" opens the Agenda tab with the first session or agenda item that has a room selected.
+// The link names it `first`, and the address then names the selected one by its id.
 When('I open the agenda from my next step', async ({ page }) => {
   await nextStepCard(page).getByRole('link', { name: 'Show the way' }).click()
-  await expect(page).toHaveURL(/tab=program&session=first/)
+  await expect(page).toHaveURL(/tab=program&session=/)
 })
 
 // After check-in with credit offers, the credits stand at the top of the Overview in place of the

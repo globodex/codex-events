@@ -11,8 +11,10 @@ Feature: Parallel event agenda
     When I explore the "Upper floor" using the map
     And I select the build session in the agenda
     Then the map should return to the build session's room on "Ground floor"
+    And the address should name the build session
     When I reload the Agenda tab
     Then both tracks should show their sessions at the same start time
+    And the map should return to the build session's room on "Ground floor"
 
   Scenario: Replacing a floor image keeps the organizer's unsaved track edits
     Given the event has two parallel sessions with rooms on "Editing floor"

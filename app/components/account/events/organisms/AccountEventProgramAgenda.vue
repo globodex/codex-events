@@ -17,8 +17,8 @@ const props = defineProps<{
   /** The published challenges that this person may read. A room of a floor plan names its challenge. */
   challenges: AgendaChallenge[]
   /**
-   * The session that the link to this tab names: its id, or `first` for the earliest session or
-   * agenda block with a room. "How to get there" on the Overview tab links to `first`.
+   * The session or agenda block that the link to this tab names: its id, or `first` for the earliest
+   * session or agenda block with a room. "How to get there" on the Overview tab links to `first`.
    */
   linkedSession?: string | null
   /** The session of the workshop page that the link to this tab opens, by its id. */
@@ -30,6 +30,11 @@ const props = defineProps<{
 const emit = defineEmits<{
   /** The workshop page closes, and the Agenda tab shows the map again. */
   closeWorkshop: []
+  /**
+   * The id of the selected session or agenda block, or `null` while something else is selected. The page
+   * puts it in its address, so a shared link opens the same selection. It also closes an open workshop page.
+   */
+  linkSelection: [id: string | null]
 }>()
 
 // The public agenda blocks before and after the program's block. The sessions cover the block itself.
@@ -114,12 +119,9 @@ function clearSelection() {
 }
 
 async function selectSession(session: ProgramSession) {
-  // A session chosen on the agenda shows its room on the map, so an open workshop page closes.
-  if (openWorkshop.value) {
-    emit('closeWorkshop')
-  }
   clearSelection()
   selectedSessionId.value = session.id
+  emit('linkSelection', session.id)
   await revealMap()
 }
 
@@ -127,6 +129,7 @@ async function selectSession(session: ProgramSession) {
 async function selectAgendaItem(agendaItemId: string) {
   clearSelection()
   selectedAgendaItemId.value = agendaItemId
+  emit('linkSelection', agendaItemId)
   await revealMap()
 }
 
@@ -145,25 +148,32 @@ async function revealMap() {
 function selectMapLocation(floorPlanId: string, roomId: string | null = null) {
   clearSelection()
   mapSelection.value = { floorPlanId, roomId }
+  emit('linkSelection', null)
 }
 
 // A challenge shows its rooms on the map, like a session that has a room.
 async function selectChallenge(challengeId: string) {
   clearSelection()
   selectedChallengeId.value = challengeId
+  emit('linkSelection', null)
 
   await nextTick()
   // On a narrow screen the challenges stand below the map. Scroll just enough to show the whole map.
   floorPlan.value?.$el.scrollIntoView({ block: 'nearest' })
 }
 
-// The tab opens with the linked session selected, so the map shows its room and the way there.
-// `first` selects the earliest session or agenda block with a room, which is usually the check-in.
+// The tab opens with the linked session or agenda block selected, so the map shows its room and the way
+// there. `first` selects the earliest session or agenda block with a room, which is usually the check-in.
 onMounted(() => {
+  const linkedId = props.linkedSession
   const sessionsWithRoom = props.program.tracks.flatMap(track => track.sessions).filter(session => session.room)
-  if (props.linkedSession !== 'first') {
-    const linked = sessionsWithRoom.find(session => session.id === props.linkedSession)
-    if (linked) selectSession(linked)
+  if (linkedId !== 'first') {
+    const linked = sessionsWithRoom.find(session => session.id === linkedId)
+    if (linked) {
+      selectSession(linked)
+    } else if (linkedId && props.program.agendaItemRooms.some(entry => entry.agendaItemId === linkedId)) {
+      selectAgendaItem(linkedId)
+    }
     return
   }
 

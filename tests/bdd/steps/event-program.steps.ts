@@ -225,6 +225,11 @@ Then('the map should return to the build session\'s room on {string}', async ({ 
   await expect(plan.locator('figcaption').getByText('Makers Room', { exact: true })).toBeVisible()
 })
 
+// The selected session goes into the address, so a shared link opens the same selection.
+Then('the address should name the build session', async ({ page }) => {
+  await expect(page).toHaveURL(url => url.pathname + url.search === `${agendaTabPath}&session=${buildSessionId}`)
+})
+
 When('I reload the Agenda tab', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 })
   const workspaceReads: string[] = []
@@ -237,8 +242,9 @@ When('I reload the Agenda tab', async ({ page }) => {
 
   page.on('request', trackWorkspaceRead)
   try {
+    const addressBeforeReload = page.url()
     await page.reload()
-    await expect(page).toHaveURL(url => url.pathname + url.search === agendaTabPath)
+    await expect(page).toHaveURL(addressBeforeReload)
     await expect(page.getByRole('tab', { name: 'Agenda', exact: true })).toHaveAttribute('aria-selected', 'true')
     await expect(page.getByTestId(`program-session-${designSessionId}`)).toBeVisible()
     expect(workspaceReads).toEqual([`${workspaceApiPath}/program?includeEventShell=true`])

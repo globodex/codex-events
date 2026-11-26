@@ -753,7 +753,7 @@ const participantActivities = computed(() => {
 const nextStepWayHref = computed(() => availableTabs.value.includes('program')
   ? `/account/events/${slug.value}?tab=program&session=first`
   : null)
-// The session that a link to the Agenda tab names (`normalizeSessionQueryValue`).
+// The session or agenda block that a link to the Agenda tab names (`normalizeSessionQueryValue`).
 const linkedAgendaSession = computed(() => normalizeSessionQueryValue(route.query.session))
 // The workshop whose page the Agenda tab opens beside the agenda, by its session id.
 const linkedWorkshop = computed(() => normalizeSessionQueryValue(route.query.workshop))
@@ -762,6 +762,12 @@ const presentationMode = usePresentationMode()
 
 function closeWorkshop() {
   void navigateTo({ query: { ...route.query, workshop: undefined } }, { replace: true })
+}
+
+// The address names the session or agenda block selected on the Agenda tab, so a shared link opens the
+// same selection. A selection on the agenda also closes an open workshop page.
+function linkAgendaSelection(id: string | null) {
+  void navigateTo({ query: { ...route.query, workshop: undefined, session: id ?? undefined } }, { replace: true })
 }
 
 // After check-in the credit offers stand at the top of the Overview in place of the next step.
@@ -1747,6 +1753,7 @@ useSeoMeta({
             :linked-workshop="linkedWorkshop"
             :refresh-page="programPageRequest.refresh"
             @close-workshop="closeWorkshop"
+            @link-selection="linkAgendaSelection"
           />
           <!--
             A person who does not read the program sees the public agenda blocks with the sessions
