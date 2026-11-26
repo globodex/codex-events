@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2026-11-26T08:22:00Z'
-updated_date: '2026-11-26T08:36:00Z'
+updated_date: '2026-11-26T09:07:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -54,6 +54,8 @@ A participant can confirm their address in Auth0 and still see the confirmation 
 1. Check current Auth0 user status within the account registration and resend routes.
 2. Refresh the verification step when the registration page opens or regains focus.
 3. Verify the browser handoff, server guards, and ordinary session behavior.
+
+4. Recheck on a visible page or a focused window following the Gemini 4 Neon XHigh review.
 <!-- SECTION:PLAN:END -->
 
 ## Final Summary
@@ -61,5 +63,7 @@ A participant can confirm their address in Auth0 and still see the confirmation 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
 Account registration checks Auth0 when the signed-in participant returns after email confirmation. It shows the consent form in the same session and keeps the original event destination. The server verifies the same subject and email before writing the account when the session has a stale claim. Resend checks the current status before requesting another email.
 
-Lint, type checking, 725 unit tests, 787 integration tests, and 147 public and authenticated browser scenarios passed. The separate account-recovery scenario passed after its test waited for the token list to finish refreshing before reload. Code Hygiene found no issues in the changed lines. Local tests simulate Auth0 and browser focus. The live Auth0 email link is outside this test coverage.
+The agy review with Gemini 4 Neon XHigh found that a visibility change without a focus event could miss the automatic check. Registration now responds to either signal and can check while a resend is in progress. XHigh reviewed the follow-up and found no remaining blocking issue in the return flow.
+
+Lint, type checking, 725 unit tests, 787 integration tests, and 149 browser scenarios passed. The browser tests cover both return signals and simulate Auth0. Code Hygiene found no issues in the follow-up files. The live Auth0 email link is outside this test coverage.
 <!-- SECTION:FINAL_SUMMARY:END -->

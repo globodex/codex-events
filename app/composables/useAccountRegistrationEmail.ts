@@ -2,7 +2,7 @@ import type { Ref } from 'vue'
 import type { SessionActor } from '~/domains/accounts/session-actor'
 import type { ApiDataResponse } from '~/lib/api'
 
-import { useDocumentVisibility, useEventListener, useWindowFocus } from '@vueuse/core'
+import { useDocumentVisibility, useEventListener, useThrottleFn } from '@vueuse/core'
 import { getIdentityEmailVerificationResendErrorMessage } from '~/domains/accounts/registration'
 import { normalizeApiError } from '~/lib/api'
 
@@ -37,43 +37,48 @@ export function useAccountRegistrationEmail(actor: Readonly<Ref<SessionActor | n
   const requests = useAbortableRequest()
 
   async function checkConfirmation() {
-    if (confirmationRequired.value && !resendState.pending) {
+    if (confirmationRequired.value) {
       await verification.refresh()
     }
   }
 
   const visibility = useDocumentVisibility()
-  const focused = useWindowFocus()
-  watch(() => visibility.value === 'visible' && focused.value, (active) => {
-    if (active) {
-      void checkConfirmation()
+  const checkOnReturn = useThrottleFn(checkConfirmation, 250)
+
+  function checkVisibleConfirmation() {
+    if (visibility.value === 'visible') {
+      void checkOnReturn()
     }
-  })
+  }
+
+  watch(visibility, checkVisibleConfirmation)
+  useEventListener('focus', checkVisibleConfirmation)
   useEventListener('pageshow', (event) => {
     if (event.persisted) {
-      void checkConfirmation()
+      checkVisibleConfirmation()
     }
   })
   onMounted(checkConfirmation)
 
   async function resendConfirmation() {
-    const identity = actor.value
+    const key = confirmationKey.value
     const signal = requests.createSignal('resend-confirmation')
     Object.assign(resendState, { pending: true, sent: false, error: '' })
 
     try {
       await apiFetch(verificationPath, { method: 'POST', signal })
-      if (!signal.aborted && actor.value === identity) {
+      if (!signal.aborted && confirmationKey.value === key) {
         resendState.sent = true
       }
     } catch (error) {
-      if (signal.aborted || actor.value !== identity) {
+      if (signal.aborted || confirmationKey.value !== key) {
         return
       }
 
       const apiError = normalizeApiError(error)
       if (apiError.code === 'identity_email_already_verified') {
-        verification.data.value = { key: confirmationKey.value, verified: true }
+        verification.clear()
+        verification.data.value = { key, verified: true }
       } else {
         resendState.error = getIdentityEmailVerificationResendErrorMessage(apiError)
       }

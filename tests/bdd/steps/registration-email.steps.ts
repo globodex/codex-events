@@ -11,9 +11,9 @@ interface EmailConfirmationFixture {
 
 const emailConfirmation = new WeakMap<Page, EmailConfirmationFixture>()
 
-Given('I began registering for {string} with an unconfirmed email', async ({ page }, slug: string) => {
+Given('I began registering for {string} with the unconfirmed email {string}', async ({ page }, slug: string, email: string) => {
   const [cookie] = personaStorageState('regular_user').cookies
-  await page.context().addCookies([{ ...cookie!, value: 'registration-email@bdd.codex-events.test' }])
+  await page.context().addCookies([{ ...cookie!, value: email }])
 
   await page.route('**/api/session', async (route) => {
     const response = await route.fetch()
@@ -52,13 +52,27 @@ Given('I began registering for {string} with an unconfirmed email', async ({ pag
   await expect(page.getByRole('checkbox', { name: 'I accept the current Platform Terms.' })).toHaveCount(0)
 })
 
-When('I return after confirming my email', async ({ page }) => {
-  // Headless Chromium keeps the fixture page focused when a second tab opens.
-  await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+When('I return after confirming my email using {string}', async ({ page }, returnSignal: 'window focus' | 'visibility') => {
+  // Simulate app and tab switching. Headless Chromium keeps the fixture page focused.
+  await page.evaluate((signal) => {
+    window.dispatchEvent(new Event('blur'))
+    if (signal === 'visibility') {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
+      document.dispatchEvent(new Event('visibilitychange'))
+    }
+  }, returnSignal)
+
   emailConfirmation.get(page)!.status = 'verified'
   const [response] = await Promise.all([
     page.waitForResponse(response => new URL(response.url()).pathname === '/api/account/email-verification'),
-    page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    page.evaluate((signal) => {
+      if (signal === 'visibility') {
+        Reflect.deleteProperty(document, 'visibilityState')
+        document.dispatchEvent(new Event('visibilitychange'))
+      } else {
+        window.dispatchEvent(new Event('focus'))
+      }
+    }, returnSignal)
   ])
   expect(await response.json()).toEqual({ data: { verified: true } })
   expect(response.headers()['cache-control']).toBe('private, no-store')

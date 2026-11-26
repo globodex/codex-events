@@ -1,6 +1,11 @@
 Feature: Email confirmation during account registration
 
-  Scenario: Returning from email confirmation resumes the intended event registration
-    Given I began registering for "registration-questions-fixture-event" with an unconfirmed email
-    When I return after confirming my email
+  Scenario Outline: Returning from email confirmation resumes the intended event registration
+    Given I began registering for "registration-questions-fixture-event" with the unconfirmed email "<email>"
+    When I return after confirming my email using "<return signal>"
     Then I can accept the platform terms and continue registering for "registration-questions-fixture-event"
+
+    Examples:
+      | email                                      | return signal |
+      | registration-focus@bdd.codex-events.test   | window focus  |
+      | registration-visible@bdd.codex-events.test | visibility    |
