@@ -72,7 +72,7 @@ describe('Auth0 email verification utilities', () => {
     }
   })
 
-  test('requests a Management API token and creates a verification email job', async () => {
+  test('checks the same Auth0 identity and reuses the token to resend its confirmation email', async () => {
     const requests: Array<{ url: string, init?: RequestInit }> = []
     const fetcher = vi.fn(async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
       const url = String(input)
@@ -94,6 +94,14 @@ describe('Auth0 email verification utilities', () => {
         })
       }
 
+      if (new URL(url).pathname === '/api/v2/users/auth0%7Cuser_1') {
+        return Response.json({
+          user_id: 'auth0|user_1',
+          email: 'user@example.com',
+          email_verified: false
+        })
+      }
+
       return new Response(JSON.stringify({
         id: 'job_email_verification',
         type: 'verification_email',
@@ -108,20 +116,24 @@ describe('Auth0 email verification utilities', () => {
 
     await expect(sendAuth0VerificationEmail({
       runtimeConfig: createRuntimeConfig(),
-      userId: 'auth0|user_1',
+      user: { sub: 'auth0|user_1', email: 'user@example.com' },
       fetcher
     })).resolves.toEqual({
       id: 'job_email_verification',
       status: 'pending'
     })
 
-    expect(requests).toHaveLength(2)
+    expect(requests).toHaveLength(3)
     expect(requests[0]?.url).toBe('https://codex-events-test.eu.auth0.com/oauth/token')
     expect(String(requests[0]?.init?.body)).toContain('grant_type=client_credentials')
     expect(String(requests[0]?.init?.body)).toContain('audience=https%3A%2F%2Fcodex-events-test.eu.auth0.com%2Fapi%2Fv2%2F')
-    expect(requests[1]?.url).toBe('https://codex-events-test.eu.auth0.com/api/v2/jobs/verification-email')
+    const profileUrl = new URL(requests[1]!.url)
+    expect(profileUrl.pathname).toBe('/api/v2/users/auth0%7Cuser_1')
+    expect(profileUrl.searchParams.get('fields')).toBe('user_id,email,email_verified')
     expect(new Headers(requests[1]?.init?.headers).get('authorization')).toBe('Bearer management-access-token')
-    expect(JSON.parse(String(requests[1]?.init?.body))).toEqual({
+    expect(requests[2]?.url).toBe('https://codex-events-test.eu.auth0.com/api/v2/jobs/verification-email')
+    expect(new Headers(requests[2]?.init?.headers).get('authorization')).toBe('Bearer management-access-token')
+    expect(JSON.parse(String(requests[2]?.init?.body))).toEqual({
       user_id: 'auth0|user_1',
       client_id: 'application-client-id'
     })
@@ -140,7 +152,7 @@ describe('Auth0 email verification utilities', () => {
 
     await expect(sendAuth0VerificationEmail({
       runtimeConfig: createRuntimeConfig(),
-      userId: 'auth0|user_1',
+      user: { sub: 'auth0|user_1', email: 'user@example.com' },
       fetcher
     })).rejects.toMatchObject({
       code: 'auth0_email_verification_rate_limited',

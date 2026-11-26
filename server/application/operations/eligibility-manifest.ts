@@ -22,6 +22,7 @@ export const mcpEligibilityManifest = [
   { route: 'account.delete.ts', disposition: 'exclude', reason: 'account_deletion' },
   { route: 'account.patch.ts', disposition: 'include' },
   { route: 'account/admin-workspace.get.ts', disposition: 'include' },
+  { route: 'account/email-verification.get.ts', disposition: 'exclude', reason: 'account_registration_or_verification' },
   { route: 'account/email-verification.post.ts', disposition: 'exclude', reason: 'account_registration_or_verification' },
   { route: 'account/events.get.ts', disposition: 'include' },
   { route: 'account/events/[slug]/certificates.get.ts', disposition: 'include' },

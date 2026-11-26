@@ -27,6 +27,7 @@ import {
   getCurrentPlatformDocuments
 } from '#server/domains/platform/documents'
 import { findPlatformUserByAuth0Subject } from './auth-identities'
+import { isRegistrationEmailVerified, type Auth0EmailVerificationRuntimeConfig } from './email-verification'
 import { findLinkablePlatformAccountIdentity } from './linking'
 
 function sanitizeTimestampForIdentifier(timestamp: string) {
@@ -334,7 +335,8 @@ async function resolveRegistrationPlatformDocuments(
 
 async function assertPlatformAccountRegistrationAllowed(
   database: AppDatabase,
-  actor: AuthenticatedIdentityActor
+  actor: AuthenticatedIdentityActor,
+  runtimeConfig: Auth0EmailVerificationRuntimeConfig
 ) {
   const existingSubject = await findPlatformUserByAuth0Subject(database, actor.sessionUser.sub)
 
@@ -351,7 +353,7 @@ async function assertPlatformAccountRegistrationAllowed(
     message: 'The authenticated identity does not expose an email address required for platform account registration.'
   })
 
-  assertGuard(actor.sessionUser.email_verified === true, {
+  assertGuard(await isRegistrationEmailVerified(actor.sessionUser, runtimeConfig), {
     statusCode: 409,
     code: 'identity_email_unverified',
     message: 'Verify your email address with your sign-in provider before creating a platform account.'
@@ -364,7 +366,10 @@ async function assertPlatformAccountRegistrationAllowed(
     )
   })
 
-  const linkableIdentity = await findLinkablePlatformAccountIdentity(database, actor.sessionUser)
+  const linkableIdentity = await findLinkablePlatformAccountIdentity(database, {
+    ...actor.sessionUser,
+    email_verified: true
+  })
 
   if (linkableIdentity) {
     throw new ApiError({
@@ -390,17 +395,17 @@ export async function registerPlatformAccount(
   database: AppDatabase,
   actor: AuthenticatedIdentityActor,
   input: PlatformAccountRegistrationInput,
-  options?: {
+  runtimeConfig: Auth0EmailVerificationRuntimeConfig & {
     firstPlatformAdminEmail?: string | null
   }
 ) {
-  await assertPlatformAccountRegistrationAllowed(database, actor)
+  await assertPlatformAccountRegistrationAllowed(database, actor, runtimeConfig)
 
   const registrationDocuments = await resolveRegistrationPlatformDocuments(
     database,
     actor,
     input,
-    options?.firstPlatformAdminEmail
+    runtimeConfig.firstPlatformAdminEmail
   )
 
   const createdAt = new Date().toISOString()
@@ -448,7 +453,7 @@ export async function registerPlatformAccount(
 
   const platformUser = await grantConfiguredFirstPlatformAdminAccess(database, {
     user: userRecord,
-    configuredEmail: options?.firstPlatformAdminEmail
+    configuredEmail: runtimeConfig.firstPlatformAdminEmail
   })
 
   return {

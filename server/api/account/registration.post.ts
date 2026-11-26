@@ -9,6 +9,7 @@ import {
   registerPlatformAccount
 } from '#server/domains/accounts'
 import { ApiError } from '#server/http/api-error'
+import { measureRequestPhase } from '#server/http/request-timing'
 import { parseValidatedBody } from '#server/http/validation'
 
 const registrationRequestBodySchema = platformAccountRegistrationBodySchema.extend({
@@ -16,7 +17,7 @@ const registrationRequestBodySchema = platformAccountRegistrationBodySchema.exte
 })
 
 export default defineApiHandler(async (h3Event) => {
-  const actor = await requireAuthenticatedActor(h3Event)
+  const actor = await measureRequestPhase(h3Event, 'actor', () => requireAuthenticatedActor(h3Event))
 
   if (actor.hasPlatformAccount) {
     throw new ApiError({
@@ -32,9 +33,7 @@ export default defineApiHandler(async (h3Event) => {
   const result = await registerPlatformAccount(getDatabase(h3Event), actor, {
     privacyPolicyDocumentId: body.privacyPolicyDocumentId,
     platformTermsDocumentId: body.platformTermsDocumentId
-  }, {
-    firstPlatformAdminEmail: runtimeConfig.firstPlatformAdminEmail
-  })
+  }, runtimeConfig)
 
   return apiData(result)
 })

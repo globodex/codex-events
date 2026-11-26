@@ -5,6 +5,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { and, asc, eq } from 'drizzle-orm'
 
 import accountDeleteHandler from '../../../../server/api/account.delete'
+import accountEmailVerificationGetHandler from '../../../../server/api/account/email-verification.get'
 import accountEmailVerificationPostHandler from '../../../../server/api/account/email-verification.post'
 import accountEventsGetHandler from '../../../../server/api/account/events.get'
 import accountPatchHandler from '../../../../server/api/account.patch'
@@ -54,6 +55,31 @@ describe('TASK-3.5 actor-facing API routes', () => {
   const profileIconBindingName = 'PROFILE_ICONS'
   const eventImagesBindingName = 'EVENT_IMAGES'
   const pngSignatureBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+  const auth0VerificationConfig = {
+    auth0: {
+      domain: 'auth.codex-events.example',
+      managementDomain: 'codex-events-test.eu.auth0.com',
+      clientId: 'application-client-id',
+      managementClientId: 'management-client-id',
+      managementClientSecret: 'management-client-secret'
+    }
+  }
+
+  function stubAuth0VerificationProfile(sub: string, profile: () => Response) {
+    const auth0Fetch = vi.fn(async (input: Parameters<typeof fetch>[0]) => {
+      const url = new URL(String(input))
+      expect(url.hostname).toBe(auth0VerificationConfig.auth0.managementDomain)
+
+      if (url.pathname === '/oauth/token') {
+        return Response.json({ access_token: 'management-access-token' })
+      }
+
+      expect(url.pathname).toBe(`/api/v2/users/${encodeURIComponent(sub)}`)
+      return profile()
+    })
+    vi.stubGlobal('fetch', auth0Fetch)
+    return auth0Fetch
+  }
 
   function createOversizedPngBytes(size: number) {
     const data = new Uint8Array(size)
@@ -2470,71 +2496,37 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(createdUser).toBeUndefined()
   })
 
-  test('POST /api/account/registration rejects identities with unverified or missing email verification before writes', async () => {
-    const cases = [
-      {
-        auth0Subject: 'auth0|unverified-email-user',
-        emailVerified: false
-      },
-      {
-        auth0Subject: 'auth0|missing-email-verification-user',
-        emailVerified: undefined
-      }
-    ]
+  test.each([
+    { reason: 'an unverified email', profile: { email_verified: false }, status: 409, code: 'identity_email_unverified' },
+    { reason: 'missing verification', profile: {}, status: 409, code: 'identity_email_unverified' },
+    { reason: 'a different email', profile: { email: 'different@example.com', email_verified: true }, status: 409, code: 'identity_email_changed' },
+    { reason: 'a different subject', profile: { user_id: 'auth0|different', email_verified: true }, status: 503, code: 'auth0_email_verification_unavailable' }
+  ])('POST /api/account/registration rejects $reason before writes', async ({ profile, status, code }) => {
+    const sessionUser = { sub: 'auth0|registration-guard-user', email: 'unverified@example.com' }
+    const harness = createApiRouteTestHarness({
+      routes: [{ method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler }],
+      runtimeConfig: auth0VerificationConfig,
+      sessionUser
+    })
+    databases.push(harness)
+    stubAuth0VerificationProfile(sessionUser.sub, () => Response.json({
+      user_id: sessionUser.sub,
+      email: sessionUser.email,
+      ...profile
+    }))
+    await seedCurrentPlatformDocuments(harness)
 
-    for (const testCase of cases) {
-      const harness = createApiRouteTestHarness({
-        routes: [
-          { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler }
-        ],
-        sessionUser: {
-          sub: testCase.auth0Subject,
-          email: `${testCase.auth0Subject.split('|')[1]}@example.com`,
-          ...(testCase.emailVerified === undefined ? {} : { email_verified: testCase.emailVerified }),
-          name: 'Unverified User'
-        }
-      })
-      databases.push(harness)
+    const response = await harness.request('/api/account/registration', {
+      method: 'POST',
+      body: JSON.stringify({ privacyPolicyDocumentId: 'privacy_v1', platformTermsDocumentId: 'terms_v1' })
+    })
 
-      await harness.database.insert(platformDocuments).values([
-        {
-          id: 'privacy_v1',
-          documentType: 'privacy_policy',
-          version: 1,
-          title: 'Privacy Policy v1',
-          content: 'Privacy',
-          publishedAt: '2026-03-01T00:00:00.000Z'
-        },
-        {
-          id: 'terms_v1',
-          documentType: 'platform_terms',
-          version: 1,
-          title: 'Platform Terms v1',
-          content: 'Terms',
-          publishedAt: '2026-03-02T00:00:00.000Z'
-        }
-      ])
-
-      const response = await harness.request('/api/account/registration', {
-        method: 'POST',
-        body: JSON.stringify({
-          privacyPolicyDocumentId: 'privacy_v1',
-          platformTermsDocumentId: 'terms_v1'
-        })
-      })
-
-      expect(response.status).toBe(409)
-      expect(await response.json()).toMatchObject({
-        error: {
-          code: 'identity_email_unverified',
-          message: 'Verify your email address with your sign-in provider before creating a platform account.'
-        }
-      })
-      expect(await harness.database.select().from(users)).toHaveLength(0)
-      expect(await harness.database.select().from(userAuthIdentities)).toHaveLength(0)
-      expect(await harness.database.select().from(userPlatformDocumentAcceptances)).toHaveLength(0)
-      expect(await harness.database.select().from(auditLogs)).toHaveLength(0)
-    }
+    expect(response.status).toBe(status)
+    expect(await response.json()).toMatchObject({ error: { code } })
+    expect(await harness.database.select().from(users)).toHaveLength(0)
+    expect(await harness.database.select().from(userAuthIdentities)).toHaveLength(0)
+    expect(await harness.database.select().from(userPlatformDocumentAcceptances)).toHaveLength(0)
+    expect(await harness.database.select().from(auditLogs)).toHaveLength(0)
   })
 
   test('POST /api/account/email-verification sends another Auth0 confirmation email for an unverified identity', async () => {
@@ -2555,6 +2547,14 @@ describe('TASK-3.5 actor-facing API routes', () => {
           headers: {
             'content-type': 'application/json'
           }
+        })
+      }
+
+      if (new URL(url).pathname === '/api/v2/users/auth0%7Cunverified-email-user') {
+        return Response.json({
+          user_id: 'auth0|unverified-email-user',
+          email: 'unverified@example.com',
+          email_verified: false
         })
       }
 
@@ -2582,14 +2582,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       routes: [
         { method: 'post', path: '/api/account/email-verification', handler: accountEmailVerificationPostHandler }
       ],
-      runtimeConfig: {
-        auth0: {
-          domain: 'codex-events-test.eu.auth0.com',
-          clientId: 'application-client-id',
-          managementClientId: 'management-client-id',
-          managementClientSecret: 'management-client-secret'
-        }
-      },
+      runtimeConfig: auth0VerificationConfig,
       sessionUser: {
         sub: 'auth0|unverified-email-user',
         email: 'unverified@example.com',
@@ -2609,7 +2602,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
         sent: true
       }
     })
-    expect(auth0Fetch).toHaveBeenCalledTimes(2)
+    expect(auth0Fetch).toHaveBeenCalledTimes(3)
   })
 
   test('POST /api/account/email-verification rejects identities that are already verified', async () => {
@@ -2651,41 +2644,39 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(auth0Fetch).not.toHaveBeenCalled()
   })
 
-  test('POST /api/account/registration rejects an unverified session without an Auth0 refresh', async () => {
+  test('a user can confirm their email and register with the same Auth0 session', async () => {
     const sessionUser = {
       sub: 'auth0|stale-verification-user',
       email: 'stale-verification@example.com',
       email_verified: false,
       name: 'Stale Verification'
     }
-    const getAccessToken = vi.fn(async () => ({
-      accessToken: 'userinfo-token',
-      audience: 'default',
-      expiresAt: Math.floor(Date.now() / 1000) + 300,
-      scope: 'openid profile email'
-    }))
-    const userInfoFetch = vi.fn()
     const harness = createApiRouteTestHarness({
       routes: [
+        { method: 'get', path: '/api/account/email-verification', handler: accountEmailVerificationGetHandler },
+        { method: 'post', path: '/api/account/email-verification', handler: accountEmailVerificationPostHandler },
         { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler },
         { method: 'get', path: '/api/session', handler: sessionHandler }
       ],
-      runtimeConfig: {
-        auth0: {
-          domain: 'codex-events-test.eu.auth0.com'
-        }
-      },
+      runtimeConfig: auth0VerificationConfig,
       sessionUser
     })
     databases.push(harness)
-    vi.stubGlobal('useAuth0', vi.fn(() => ({
-      getSession: vi.fn(async () => ({ user: sessionUser })),
-      getAccessToken
-    })))
-    vi.stubGlobal('fetch', userInfoFetch)
+    let verifiedInAuth0 = false
+    const auth0Fetch = stubAuth0VerificationProfile(sessionUser.sub, () => Response.json({
+      user_id: sessionUser.sub,
+      email: sessionUser.email,
+      email_verified: verifiedInAuth0
+    }))
 
     await seedCurrentPlatformDocuments(harness)
 
+    const unverifiedStatus = await harness.request('/api/account/email-verification')
+    expect(unverifiedStatus.status).toBe(200)
+    expect(await unverifiedStatus.json()).toEqual({ data: { verified: false } })
+
+    verifiedInAuth0 = true
+    auth0Fetch.mockClear()
     const sessionResponse = await harness.request('/api/session')
 
     expect(sessionResponse.status).toBe(200)
@@ -2700,6 +2691,15 @@ describe('TASK-3.5 actor-facing API routes', () => {
         }
       }
     })
+    expect(auth0Fetch).not.toHaveBeenCalled()
+
+    const verifiedStatus = await harness.request('/api/account/email-verification')
+    expect(verifiedStatus.status).toBe(200)
+    expect(await verifiedStatus.json()).toEqual({ data: { verified: true } })
+
+    const resendResponse = await harness.request('/api/account/email-verification', { method: 'POST' })
+    expect(resendResponse.status).toBe(409)
+    expect(await resendResponse.json()).toMatchObject({ error: { code: 'identity_email_already_verified' } })
 
     const registrationResponse = await harness.request('/api/account/registration', {
       method: 'POST',
@@ -2712,15 +2712,10 @@ describe('TASK-3.5 actor-facing API routes', () => {
       where: eq(users.auth0Subject, sessionUser.sub)
     })
 
-    expect(registrationResponse.status).toBe(409)
-    expect(await registrationResponse.json()).toMatchObject({
-      error: {
-        code: 'identity_email_unverified'
-      }
-    })
-    expect(createdUser).toBeUndefined()
-    expect(getAccessToken).not.toHaveBeenCalled()
-    expect(userInfoFetch).not.toHaveBeenCalled()
+    expect(registrationResponse.status).toBe(200)
+    expect(createdUser?.email).toBe(sessionUser.email)
+    expect(await harness.database.select().from(userPlatformDocumentAcceptances)).toHaveLength(2)
+    expect(auth0Fetch).toHaveBeenCalledTimes(6)
   })
 
   test('POST /api/account/registration rejects outdated or mismatched platform document ids', async () => {
@@ -2876,25 +2871,25 @@ describe('TASK-3.5 actor-facing API routes', () => {
   })
 
   test('POST /api/account/registration keeps unverified social identities blocked on existing platform account email conflicts', async () => {
+    const sessionUser = {
+      sub: 'google-oauth2|unverified-google-user',
+      email: 'existing-user@example.com',
+      email_verified: false,
+      name: 'Existing User'
+    }
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler }
       ],
-      sessionUser: {
-        sub: 'google-oauth2|unverified-google-user',
-        email: 'existing-user@example.com',
-        email_verified: false,
-        name: 'Existing User'
-      },
-      runtimeConfig: {
-        auth0: {
-          appBaseUrl: 'https://test.codex-events.com',
-          databaseConnectionName: 'Username-Password-Authentication',
-          accountLinkChallengeSecret: 'link-secret'
-        }
-      }
+      sessionUser,
+      runtimeConfig: auth0VerificationConfig
     })
     databases.push(harness)
+    stubAuth0VerificationProfile(sessionUser.sub, () => Response.json({
+      user_id: sessionUser.sub,
+      email: sessionUser.email,
+      email_verified: false
+    }))
 
     await harness.database.insert(users).values({
       id: 'existing_platform_user',

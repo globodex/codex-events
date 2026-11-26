@@ -7,7 +7,6 @@ import {
   getAccountRegistrationMissingDocumentsCopy,
   getAccountRegistrationSubmitErrorMessage,
   getAccountRegistrationIntro,
-  getIdentityEmailVerificationResendErrorMessage,
   getUnverifiedIdentityEmailMessage,
   identityEmailVerificationResentMessage,
   missingIdentityEmailMessage,
@@ -28,6 +27,16 @@ const returnTo = computed(() => normalizeAuthReturnTo(
 ))
 const { actor, status, refresh, error: sessionError } = useAccountBootstrap()
 const {
+  emailToConfirm,
+  confirmationRequired: identityEmailUnverified,
+  checking: checkingEmailConfirmation,
+  checkError: emailConfirmationError,
+  checkConfirmation,
+  clearConfirmation,
+  resendState: identityEmailVerificationState,
+  resendConfirmation
+} = useAccountRegistrationEmail(actor)
+const {
   privacyPolicyDocument,
   platformTermsDocument,
   status: documentsStatus,
@@ -43,12 +52,6 @@ const submitState = reactive({
   pending: false,
   error: ''
 })
-const identityEmailVerificationState = reactive({
-  pending: false,
-  sent: false,
-  error: ''
-})
-
 const linkingError = computed<ApiErrorShape | null>(() => {
   const errorCode = typeof route.query.linkingError === 'string'
     ? route.query.linkingError.trim()
@@ -105,16 +108,6 @@ const identityEmailUnavailable = computed(() =>
   actor.value?.kind === 'authenticated_identity'
   && !actor.value.sessionUser.email?.trim()
 )
-const identityEmailUnverified = computed(() =>
-  actor.value?.kind === 'authenticated_identity'
-  && Boolean(actor.value.sessionUser.email?.trim())
-  && actor.value.sessionUser.email_verified !== true
-)
-const identityEmailVerificationMessage = computed(() =>
-  actor.value?.kind === 'authenticated_identity' && actor.value.sessionUser.email?.trim()
-    ? getUnverifiedIdentityEmailMessage(actor.value.sessionUser.email.trim())
-    : ''
-)
 const accountRegistrationBlocked = computed(() =>
   identityEmailUnavailable.value || identityEmailUnverified.value
 )
@@ -163,6 +156,9 @@ async function submitInitialPlatformSetupAccount() {
   } catch (error) {
     const apiError = normalizeApiError(error)
 
+    if (apiError.code === 'identity_email_unverified') {
+      clearConfirmation()
+    }
     submitState.error = getAccountRegistrationSubmitErrorMessage(apiError)
     submitState.pending = false
     return
@@ -179,31 +175,6 @@ async function submitInitialPlatformSetupAccount() {
     await navigateTo(nextTransition.to, { replace: true })
   } catch {
     // Keep the completed handoff visible if navigation fails after account creation.
-  }
-}
-
-async function resendIdentityEmailVerification() {
-  identityEmailVerificationState.pending = true
-  identityEmailVerificationState.sent = false
-  identityEmailVerificationState.error = ''
-
-  try {
-    await apiFetch('/api/account/email-verification', {
-      method: 'POST'
-    })
-
-    identityEmailVerificationState.sent = true
-  } catch (error) {
-    const apiError = normalizeApiError(error)
-
-    if (apiError.code === 'identity_email_already_verified') {
-      await refresh()
-      return
-    }
-
-    identityEmailVerificationState.error = getIdentityEmailVerificationResendErrorMessage(apiError)
-  } finally {
-    identityEmailVerificationState.pending = false
   }
 }
 
@@ -264,6 +235,9 @@ async function submitPlatformConsent() {
   } catch (error) {
     const apiError = normalizeApiError(error)
 
+    if (apiError.code === 'identity_email_unverified') {
+      clearConfirmation()
+    }
     submitState.error = getAccountRegistrationSubmitErrorMessage(apiError)
     submitState.pending = false
     return
@@ -358,7 +332,7 @@ useSeoMeta({
           color="info"
           variant="soft"
           title="Confirm your email to finish registration"
-          :description="identityEmailVerificationMessage"
+          :description="getUnverifiedIdentityEmailMessage(emailToConfirm)"
         />
         <AppAlert
           v-if="identityEmailVerificationState.sent"
@@ -368,23 +342,40 @@ useSeoMeta({
           :description="identityEmailVerificationResentMessage"
         />
         <AppAlert
+          v-if="emailConfirmationError"
+          color="error"
+          variant="soft"
+          title="Could not check email confirmation"
+          :description="emailConfirmationError"
+        />
+        <AppAlert
           v-if="identityEmailVerificationState.error"
           color="error"
           variant="soft"
           title="Confirmation email could not be sent"
           :description="identityEmailVerificationState.error"
         />
-        <div class="flex justify-end">
+        <div class="flex flex-wrap justify-end gap-2">
+          <AppButton
+            type="button"
+            color="neutral"
+            variant="outline"
+            :loading="identityEmailVerificationState.pending"
+            :disabled="identityEmailVerificationState.pending || checkingEmailConfirmation"
+            @click="resendConfirmation"
+          >
+            Resend confirmation email
+          </AppButton>
           <AppButton
             type="button"
             color="neutral"
             variant="solid"
-            :loading="identityEmailVerificationState.pending"
-            :disabled="identityEmailVerificationState.pending"
+            :loading="checkingEmailConfirmation"
+            :disabled="identityEmailVerificationState.pending || checkingEmailConfirmation"
             class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-            @click="resendIdentityEmailVerification"
+            @click="checkConfirmation"
           >
-            Resend confirmation email
+            Check email confirmation
           </AppButton>
         </div>
       </section>

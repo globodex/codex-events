@@ -1,0 +1,72 @@
+import { expect, type Page } from '@playwright/test'
+import { createBdd } from 'playwright-bdd'
+
+import { personaStorageState } from '../support/session-state'
+
+const { Given, When, Then } = createBdd()
+
+interface EmailConfirmationFixture {
+  status: 'unavailable' | 'unverified' | 'verified'
+}
+
+const emailConfirmation = new WeakMap<Page, EmailConfirmationFixture>()
+
+Given('I began registering for {string} with an unconfirmed email', async ({ page }, slug: string) => {
+  const [cookie] = personaStorageState('regular_user').cookies
+  await page.context().addCookies([{ ...cookie!, value: 'registration-email@bdd.codex-events.test' }])
+
+  await page.route('**/api/session', async (route) => {
+    const response = await route.fetch()
+    const body = await response.json()
+    if (body.data?.actor?.kind === 'authenticated_identity') {
+      body.data.actor.sessionUser.email_verified = false
+    }
+    await route.fulfill({ response, json: body })
+  })
+
+  const confirmation: EmailConfirmationFixture = { status: 'unavailable' }
+  emailConfirmation.set(page, confirmation)
+  await page.route('**/api/account/email-verification', async (route) => {
+    if (confirmation.status === 'unavailable') {
+      await route.fulfill({
+        status: 503,
+        json: { error: { code: 'auth0_email_verification_unavailable', message: 'Try again.' } }
+      })
+      return
+    }
+    if (confirmation.status === 'unverified') {
+      await route.fulfill({ json: { data: { verified: false } } })
+      return
+    }
+    await route.continue()
+  })
+
+  await page.goto(`/events/${slug}/register`)
+  const error = page.getByText('Could not check email confirmation')
+  await expect(error).toBeVisible()
+
+  confirmation.status = 'unverified'
+  await page.getByRole('button', { name: 'Check email confirmation' }).click()
+  await expect(error).toHaveCount(0)
+  await expect(page.getByText('Confirm your email to finish registration')).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: 'I accept the current Platform Terms.' })).toHaveCount(0)
+})
+
+When('I return after confirming my email', async ({ page }) => {
+  // Headless Chromium keeps the fixture page focused when a second tab opens.
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+  emailConfirmation.get(page)!.status = 'verified'
+  const [response] = await Promise.all([
+    page.waitForResponse(response => new URL(response.url()).pathname === '/api/account/email-verification'),
+    page.evaluate(() => window.dispatchEvent(new Event('focus')))
+  ])
+  expect(await response.json()).toEqual({ data: { verified: true } })
+  expect(response.headers()['cache-control']).toBe('private, no-store')
+})
+
+Then('I can accept the platform terms and continue registering for {string}', async ({ page }, slug: string) => {
+  await page.getByRole('checkbox', { name: 'I accept the current Privacy Policy.' }).check()
+  await page.getByRole('checkbox', { name: 'I accept the current Platform Terms.' }).check()
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await expect(page).toHaveURL(url => url.pathname === `/events/${slug}/register`)
+})

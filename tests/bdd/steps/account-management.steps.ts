@@ -93,6 +93,7 @@ When('I revoke the MCP access token named {string}', async ({ page }, tokenName:
   page.once('dialog', dialog => dialog.accept())
   await row.getByRole('button', { name: 'Revoke' }).click()
   await expect(token).toHaveCount(0)
+  await expect(page.getByText('Loading access tokens', { exact: true })).toBeHidden()
 })
 
 Then('the revoked MCP access token named {string} should be hidden after refresh', async ({ page }, tokenName: string) => {

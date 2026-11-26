@@ -21,7 +21,7 @@ export const missingIdentityEmailMessage = 'This sign-in method did not share an
 export const identityEmailVerificationResentMessage = 'Check your inbox for a new confirmation email, then return to this page to finish creating your account.'
 
 export function getUnverifiedIdentityEmailMessage(email: string) {
-  return `Thanks for signing up. Confirm ${email} from the verification email, then return to this page to finish creating your account.`
+  return `Open the confirmation link sent to ${email}, then return here to continue.`
 }
 
 export function getAccountRegistrationIntro() {
@@ -107,10 +107,6 @@ export function getAccountRegistrationSubmitErrorMessage(error: AccountRegistrat
 export function getIdentityEmailVerificationResendErrorMessage(error: AccountRegistrationErrorLike | null | undefined) {
   if (error?.code === 'identity_email_unavailable') {
     return missingIdentityEmailMessage
-  }
-
-  if (error?.code === 'identity_email_already_verified') {
-    return 'Your email address is already confirmed. Continue registration below.'
   }
 
   if (
