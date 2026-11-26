@@ -35,3 +35,15 @@ Feature: Parallel event agenda
     Then the build session should be running with 25 minutes left
     And the map should show both routes to "Makers Room" only for the build session
     And the check-in should show both routes to "Makers Room"
+
+  @workshop
+  Scenario: Workshop staff share a link and slides that confirmed participants open
+    Given the event has two parallel sessions with rooms on "Workshop floor"
+    And the build session is a workshop run by a staff member
+    When the staff member opens the workshop page from the session popup
+    And the staff member adds a link and a PDF to the workshop
+    Then the workshop page should show the link and the PDF
+    When the staff member shows the workshop page in fullscreen
+    Then only the agenda and the workshop page should be shown until fullscreen ends
+    When I open the workshop page as a confirmed participant
+    Then I should see the link and the PDF without an Edit button

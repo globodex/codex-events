@@ -8,7 +8,7 @@ import { openBuilderExtra, openBuilderLevel } from '../support/event-builder'
 import { platformFixtureIds } from '../support/platform-fixtures'
 import { signInAs } from '../support/session-state'
 
-const { Given, When, Then } = createBdd()
+const { Given, When, Then, After } = createBdd()
 const eventPath = `/api/events/${platformFixtureIds.participantApprovedEventId}`
 const eventSlug = 'participant-approved-fixture-event'
 const workspacePath = `/account/events/${eventSlug}`
@@ -369,4 +369,112 @@ Then('the check-in should show both routes to {string}', async ({ page }, roomNa
   await page.getByTestId(`program-agenda-item-${checkInItem.id}`).click()
   await expect(plan.getByRole('img', { name: `Routes to ${roomName}`, exact: true })).toBeVisible()
   await expect(plan.getByTestId('program-room-route')).toHaveCount(2)
+})
+
+// The workshop scenario makes the judge persona staff of the event and of the build session.
+const workshopStaffUserId = 'user_judge'
+const workshopPath = `${agendaTabPath}&workshop=${buildSessionId}`
+const workshopLink = { title: 'Workflow guide', url: 'https://example.com/workflow-guide' }
+const workshopPdf = { name: 'Workflow slides.pdf', title: 'Workflow slides' }
+
+// The staff role is removed after the workshop scenario, also when it fails, so the other scenarios
+// see this event without staff.
+After('@workshop', async () => {
+  const api = await createAuthenticatedApiClient('platform_admin')
+  try {
+    await api.delete(`${eventPath}/roles/${workshopStaffUserId}`)
+  } finally {
+    await api.dispose()
+  }
+})
+
+Given('the build session is a workshop run by a staff member', async ({ request }) => {
+  void request
+  const api = await createAuthenticatedApiClient('platform_admin')
+  try {
+    await expect(await api.put(`${eventPath}/roles/${workshopStaffUserId}`, { data: { role: 'staff', isStaff: true } })).toBeOK()
+    const response = await api.get(`${eventPath}/program`)
+    await expect(response).toBeOK()
+    const { data: { program } }: { data: { program: EventProgram } } = await response.json()
+    const tracks = program.tracks.map(track => ({
+      ...track,
+      sessions: track.sessions.map(session =>
+        session.id === buildSessionId ? { ...session, staffIds: [workshopStaffUserId] } : session)
+    }))
+    await expect(await api.put(`${eventPath}/program`, { data: { ...program, tracks } })).toBeOK()
+  } finally {
+    await api.dispose()
+  }
+})
+
+When('the staff member opens the workshop page from the session popup', async ({ page }) => {
+  await signInAs('judge', page)
+  await page.goto(agendaTabPath)
+  const sessionCard = page.getByTestId(`program-session-${buildSessionId}`).locator('xpath=..')
+  await sessionCard.getByRole('button', { name: 'Details', exact: true }).click()
+
+  const popup = page.getByRole('dialog', { name: 'Build a workflow' })
+  await expect(popup.getByTestId('program-session-details-staff')).toContainText('Judge Persona')
+  await popup.getByRole('link', { name: 'Open workshop page' }).click()
+  await expect(page).toHaveURL(url => url.pathname + url.search === workshopPath)
+  await expect(page.getByTestId('program-workshop').getByRole('heading', { name: 'Build a workflow' })).toBeVisible()
+})
+
+When('the staff member adds a link and a PDF to the workshop', async ({ page }) => {
+  const workshop = page.getByTestId('program-workshop')
+  await workshop.getByRole('button', { name: 'Edit', exact: true }).click()
+  const editor = workshop.getByTestId('program-workshop-editor')
+  await editor.getByRole('button', { name: 'Add link' }).click()
+  await editor.getByLabel('Title', { exact: true }).fill(workshopLink.title)
+  await editor.getByLabel('Link', { exact: true }).fill(workshopLink.url)
+  // An uploaded PDF becomes a slides item named after the file.
+  await editor.getByTestId('program-workshop-file').setInputFiles({
+    name: workshopPdf.name,
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.4\n%%EOF\n')
+  })
+  await expect(editor.getByText(workshopPdf.name)).toBeVisible()
+  await editor.getByRole('button', { name: 'Save workshop' }).click()
+  await expect(editor).toHaveCount(0)
+})
+
+Then('the workshop page should show the link and the PDF', async ({ page }) => {
+  const workshop = page.getByTestId('program-workshop')
+  await expect(workshop.getByTestId('program-workshop-link').getByRole('link', { name: workshopLink.title }))
+    .toHaveAttribute('href', workshopLink.url)
+  await expect(workshop.getByTestId('program-workshop-slides').getByRole('link', { name: workshopPdf.title }))
+    .toHaveAttribute('href', /\/workshops\/bdd-build-session\/files\//u)
+})
+
+When('the staff member shows the workshop page in fullscreen', async ({ page }) => {
+  await page.getByRole('button', { name: 'Fullscreen', exact: true }).click()
+})
+
+// Fullscreen hides the app header, sidebar and footer and the event header with its tabs.
+Then('only the agenda and the workshop page should be shown until fullscreen ends', async ({ page }) => {
+  const agendaTab = page.getByRole('tab', { name: 'Agenda', exact: true })
+  await expect(page.getByRole('banner')).toHaveCount(0)
+  await expect(agendaTab).toBeHidden()
+  await expect(page.getByRole('region', { name: 'Agenda timeline' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Leave fullscreen', exact: true }).click()
+  await expect(page.getByRole('banner')).toBeVisible()
+  await expect(agendaTab).toBeVisible()
+})
+
+When('I open the workshop page as a confirmed participant', async ({ page }) => {
+  await signInAs('regular_user', page)
+  await page.goto(workshopPath)
+  await expect(page.getByTestId('program-workshop').getByRole('heading', { name: 'Build a workflow' })).toBeVisible()
+})
+
+Then('I should see the link and the PDF without an Edit button', async ({ page }) => {
+  const workshop = page.getByTestId('program-workshop')
+  await expect(workshop.getByRole('link', { name: workshopLink.title })).toBeVisible()
+  await expect(workshop.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0)
+
+  const pdfHref = await workshop.getByRole('link', { name: workshopPdf.title }).getAttribute('href')
+  const pdf = await page.request.get(pdfHref!)
+  expect(pdf.status()).toBe(200)
+  expect(pdf.headers()['content-type']).toBe('application/pdf')
 })
