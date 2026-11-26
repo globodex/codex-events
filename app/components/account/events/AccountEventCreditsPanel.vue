@@ -89,7 +89,7 @@ async function copyCode(value: string) {
 <template>
   <AppCard data-testid="participant-credits">
     <template #header>
-      <div class="space-y-1">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
           Claim credits
         </h2>
@@ -99,16 +99,22 @@ async function copyCode(value: string) {
       </div>
     </template>
 
-    <!-- The offers are rows of this card with a line between them, not cards of their own. -->
-    <div class="divide-y divide-black/8 dark:divide-white/[0.08]">
+    <!--
+      The offers are parts of this card, not cards of their own: one below the other with a line
+      between them, and side by side on a wide screen.
+    -->
+    <div
+      class="grid gap-4 lg:gap-x-8"
+      :class="{ 'lg:grid-cols-2': shownOffers.length > 1 }"
+    >
       <article
         v-for="offer in shownOffers"
         :key="offer.id"
         :data-testid="`participant-credit-offer-${offer.id}`"
-        class="space-y-4 py-5 first:pt-0 last:pb-0"
+        class="min-w-0 space-y-3 border-t border-black/8 pt-4 first:border-t-0 first:pt-0 lg:border-t-0 lg:pt-0 lg:even:border-l lg:even:pl-8 dark:border-white/[0.08]"
       >
         <div class="flex flex-wrap items-center gap-2">
-          <h3 class="text-lg font-semibold text-highlighted">
+          <h3 class="text-base font-semibold text-highlighted">
             {{ offer.name }}
           </h3>
           <AppBadge
@@ -132,6 +138,17 @@ async function copyCode(value: string) {
           >
             Available
           </AppBadge>
+          <!-- The button stays after a refused claim, so the person can try again. -->
+          <AppButton
+            v-if="!offer.claimedCode && offer.availableCount > 0"
+            color="primary"
+            size="sm"
+            class="ml-auto"
+            :loading="claimPendingById[offer.id]"
+            @click="claimOffer(offer.id)"
+          >
+            Claim credit
+          </AppButton>
         </div>
 
         <AppMarkdownRenderer :source="offer.description" />
@@ -197,25 +214,13 @@ async function copyCode(value: string) {
           </p>
         </div>
 
-        <template v-else>
-          <AppAlert
-            v-if="claimErrorById[offer.id]"
-            color="error"
-            variant="soft"
-            title="Credit could not be claimed"
-            :description="claimErrorById[offer.id]"
-          />
-
-          <!-- The button stays below a refused claim, so the person can try again. -->
-          <AppButton
-            v-if="offer.availableCount > 0"
-            color="primary"
-            :loading="claimPendingById[offer.id]"
-            @click="claimOffer(offer.id)"
-          >
-            Claim credit
-          </AppButton>
-        </template>
+        <AppAlert
+          v-else-if="claimErrorById[offer.id]"
+          color="error"
+          variant="soft"
+          title="Credit could not be claimed"
+          :description="claimErrorById[offer.id]"
+        />
       </article>
     </div>
   </AppCard>
