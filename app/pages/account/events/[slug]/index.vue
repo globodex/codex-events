@@ -826,6 +826,15 @@ const showNextStepCard = computed(() =>
   && applicationStatus.value === 'approved'
   && event.value?.state !== 'completed'
 )
+// Event admins and staff without a confirmed registration of their own see the event's activities in
+// the same card, without the check-in step.
+const showEventTeamActivities = computed(() =>
+  entryPage.value?.checkInFlowEnabled === true
+  && applicationStatus.value !== 'approved'
+  && event.value?.state !== 'completed'
+  && (canAdmin.value || Boolean(currentEventRole.value?.isStaff))
+  && participantActivities.value.length > 0
+)
 
 // Until a confirmed participant is checked in, the Overview with its next step and the Agenda tab
 // read their data again every few seconds. They change by themselves once the event team checks the
@@ -1256,7 +1265,8 @@ useSeoMeta({
       >
         <!-- After check-in the event's credit offers stand below the next step with its activities. -->
         <AccountEventNextStepCard
-          v-if="showNextStepCard"
+          v-if="showNextStepCard || showEventTeamActivities"
+          :for-event-team="showEventTeamActivities"
           :is-checked-in="participantApplication?.isCheckedIn ?? false"
           :way-href="nextStepWayHref"
           :activities="participantActivities"

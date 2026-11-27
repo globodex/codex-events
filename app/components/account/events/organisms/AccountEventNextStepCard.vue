@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Shows a confirmed participant the one thing to do next at the event: before check-in, how to get
-// there; after check-in, the event's activities. The page reads its data again every few seconds
+// there; after check-in, the event's activities. The event team sees the activities without the
+// check-in step. The page reads its data again every few seconds
 // until the participant is checked in, so the card changes by itself. After check-in the page shows
 // the event's credit offers below it.
 defineProps<{
@@ -10,17 +11,19 @@ defineProps<{
   wayHref: string | null
   /** What the participant can open at the event after check-in, in the order shown. */
   activities: Array<{ label: string, to: string }>
+  /** An event admin or staff member without a confirmed registration, who sees the activities at once. */
+  forEventTeam?: boolean
 }>()
 </script>
 
 <template>
   <!-- Before check-in the card shows the way. An event without an agenda has none, so its card appears after check-in. -->
   <AppCard
-    v-if="isCheckedIn || wayHref"
+    v-if="isCheckedIn || forEventTeam || wayHref"
     data-testid="account-event-next-step"
   >
     <div
-      v-if="wayHref && !isCheckedIn"
+      v-if="wayHref && !isCheckedIn && !forEventTeam"
       class="space-y-4"
     >
       <h2 class="text-lg font-semibold text-highlighted">
@@ -39,7 +42,7 @@ defineProps<{
       class="space-y-4"
     >
       <h2 class="text-lg font-semibold text-highlighted">
-        You're checked in
+        {{ forEventTeam ? 'Event activities' : 'You\'re checked in' }}
       </h2>
       <div class="flex flex-wrap gap-3">
         <AppButton

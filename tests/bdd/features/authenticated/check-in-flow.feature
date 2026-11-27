@@ -16,6 +16,10 @@ Feature: Next step after check-in
     And my event page should stop checking my check-in
     And my next step should still list the activity "Agenda" after I reload the page
 
+  Scenario: Event team sees the activities without a registration of its own
+    Given I open the event page of "check-in-flow-fixture-event" as its event admin
+    Then the event team should see the activity "Agenda" on the Overview
+
   Scenario: Event that does not use the next step keeps its page
     Given I open my event page of "participant-approved-fixture-event" as "regular_user"
     Then I should see no next step

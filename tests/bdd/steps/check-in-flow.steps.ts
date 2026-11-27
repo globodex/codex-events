@@ -48,6 +48,20 @@ Given('I open my event page of {string} as {string}', async ({ page }, eventSlug
   await expect(page.getByText('Withdraw from this event')).toBeVisible()
 })
 
+// An event admin has no registration, so the page has no withdraw button; the Overview tab shows it loaded.
+Given('I open the event page of {string} as its event admin', async ({ page }, eventSlug: string) => {
+  await signInAs('event_admin', page)
+  await page.goto(`/account/events/${eventSlug}`)
+  await expect(page.getByRole('tab', { name: 'Overview', exact: true })).toHaveAttribute('aria-selected', 'true')
+})
+
+Then('the event team should see the activity {string} on the Overview', async ({ page }, activity: string) => {
+  const card = nextStepCard(page)
+
+  await expect(card.getByRole('heading', { name: 'Event activities' })).toBeVisible()
+  await expect(card.getByRole('link', { name: activity })).toBeVisible()
+})
+
 Then('I should see no next step', async ({ page }) => {
   await expect(nextStepCard(page)).toHaveCount(0)
 })
