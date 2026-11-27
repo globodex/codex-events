@@ -79,8 +79,20 @@ When('I return after confirming my email using {string}', async ({ page }, retur
 })
 
 Then('I can accept the platform terms and continue registering for {string}', async ({ page }, slug: string) => {
-  await page.getByRole('checkbox', { name: 'I accept the current Privacy Policy.' }).check()
+  const continueButton = page.getByRole('button', { name: 'Continue', exact: true })
+  const summary = page.getByRole('alert').filter({ hasText: 'Review the required checkboxes' })
+  await expect(summary).toHaveCount(0)
+  await continueButton.click()
+  await expect(summary).toContainText('Accept the Privacy Policy and Platform Terms above to continue.')
+
   await page.getByRole('checkbox', { name: 'I accept the current Platform Terms.' }).check()
-  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await continueButton.click()
+  await expect(summary).toContainText('Accept the Privacy Policy above to continue.')
+  await expect(page.getByText('Accept the Privacy Policy to continue.', { exact: true })).toBeVisible()
+  await expect(page.getByText('Accept the Platform Terms to continue.', { exact: true })).toHaveCount(0)
+
+  await page.getByRole('checkbox', { name: 'I accept the current Privacy Policy.' }).check()
+  await expect(summary).toHaveCount(0)
+  await continueButton.click()
   await expect(page).toHaveURL(url => url.pathname === `/events/${slug}/register`)
 })

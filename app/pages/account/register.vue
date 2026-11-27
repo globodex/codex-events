@@ -97,6 +97,10 @@ const isReadyToSubmit = computed(() =>
   && privacyAccepted.value
   && termsAccepted.value
 )
+const missingConsentDocuments = computed(() => [
+  ...(!privacyAccepted.value ? ['Privacy Policy'] : []),
+  ...(!termsAccepted.value ? ['Platform Terms'] : [])
+])
 const isSubmitLocked = computed(() =>
   submitState.pending || Boolean(registrationCompletedTransition.value)
 )
@@ -537,6 +541,14 @@ useSeoMeta({
         </section>
 
         <div class="space-y-4">
+          <AppAlert
+            v-if="submitAttempted && missingConsentDocuments.length"
+            color="error"
+            variant="soft"
+            title="Review the required checkboxes"
+            :description="`Accept the ${missingConsentDocuments.join(' and ')} above to continue.`"
+          />
+
           <AppAlert
             v-if="submitState.error"
             color="error"
