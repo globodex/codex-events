@@ -197,12 +197,14 @@ const partialListNote = computed(() => {
     : null
 })
 // "Load more" adds the next registrations to the list. A search has no "Load more": it already
-// covers every registration, and the viewer narrows it by typing more.
+// covers every registration, and the viewer narrows it by typing more. An event that approves
+// participants automatically shows no list while it has nothing to review, so it has no "Load more".
 const canLoadMore = computed(() =>
   props.pagination !== undefined
   && isParticipantListCut(props.pagination)
   && props.pagination.pageSize < participantListMaxRows
   && !hasSearchQuery.value
+  && !showAutoApproveApplicationsNotice.value
 )
 const filteredReviewGroups = computed(() => {
   let groups = filterAdminApplicationReviewGroups(
