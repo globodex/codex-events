@@ -1,89 +1,40 @@
 import type { H3Event } from 'h3'
 import type { AppDatabase } from '#server/database/client'
-import type {
-  CookieHandler,
-  CookieSerializeOptions,
-  SessionConfiguration,
-  SessionStore
-} from '@auth0/auth0-server-js'
+import type { CookieHandler, CookieSerializeOptions, SessionConfiguration, SessionStore } from '@auth0/auth0-server-js'
 
-import {
-  CookieTransactionStore,
-  ServerClient,
-  StatefulStateStore,
-  StatelessStateStore
-} from '@auth0/auth0-server-js'
-import { and, eq, isNull } from 'drizzle-orm'
-import { deleteCookie, getCookie, getQuery, getRequestURL, parseCookies, setCookie } from 'h3'
+import { CookieTransactionStore, ServerClient, StatefulStateStore, StatelessStateStore } from '@auth0/auth0-server-js'
+import { and, eq, isNull, sql } from 'drizzle-orm'
+import { defineEventHandler, deleteCookie, getCookie, getQuery, getRequestURL, parseCookies, sendRedirect, setCookie, setResponseHeader } from 'h3'
+import { decodeJwt, errors, jwtVerify, SignJWT } from 'jose'
+import { z } from 'zod'
 
-import { buildAccountRegisterHref } from '#shared/domains/accounts/auth-navigation'
-import { getDatabase } from '#server/database/client'
-import { userAuthIdentities, users } from '#server/database/schema'
-import {
-  findPlatformUserAuthIdentity,
-  findPlatformUserByAuth0Subject
-} from '#server/domains/accounts/auth-identities'
-import { ApiError } from '#server/http/api-error'
+import { buildAccountRegisterHref, buildAuthLoginHref, normalizeAuthReturnTo } from '#shared/domains/accounts/auth-navigation'
+import { getDatabase, getDatabaseSession } from '#server/database/client'
+import { users } from '#server/database/schema'
+import { findPlatformUserAuthIdentity } from '#server/domains/accounts/auth-identities'
 
 const challengeCookieName = 'codex_platform_account_link'
-const challengeLifetimeSeconds = 10 * 60
-const actionResultLifetimeSeconds = 60
+const challengeLifetimeSeconds = 600
 const linkSessionIdentifier = '__a0_platform_account_link_session'
 const linkTransactionIdentifier = '__a0_platform_account_link_tx'
-const accountLinkClaimNamespace = 'https://codex-events/account_linking'
-export const linkedAuth0SubjectsClaim = `${accountLinkClaimNamespace}/auth0_subjects`
-const textEncoder = new TextEncoder()
+export const accountLinkProofClaim = 'https://codex-events/account_linking/proof'
+export const accountLinkReceiptClaim = 'https://codex-events/account_linking/receipt'
 
-export interface PlatformAccountLinkChallenge {
-  primaryAuth0Subject: string
-  secondaryAuth0Subject: string
-  email: string
-  actionState: string
-  continueUri: string
-  expiresAt: string
-}
-
-type PlatformAccountLinkChallengeStatus = 'missing' | 'invalid' | 'expired'
-type PlatformAccountLinkErrorReason = 'expired' | 'invalid' | 'login_failed' | 'mismatch' | 'failed'
-
-interface PlatformAccountLinkConfig {
-  challengeSecret: string
-}
-
-interface PlatformAccountLinkLoginConfig extends PlatformAccountLinkConfig {
-  databaseConnectionName: string
-  appBaseUrl: string
-  domain: string
-  clientId: string
-  clientSecret: string
-  sessionSecret: string
-  sessionConfiguration?: SessionConfiguration
-}
-
-interface PlatformAccountLinkChallengeResult {
-  ok: boolean
-  reason?: PlatformAccountLinkChallengeStatus
-  challenge?: PlatformAccountLinkChallenge
-}
-
-export interface LinkablePlatformAccountIdentity {
-  userId: string
-  email: string
-  primaryAuth0Subject: string
-}
-
-interface PlatformAccountLinkActionPayload {
-  primaryAuth0Subject: string
-  secondaryAuth0Subject: string
-  email: string
-  continueUri: string
-}
-
-interface PlatformAccountLinkSessionLike {
-  user?: {
-    sub?: string | null
-  } | null
-}
+const challengeSchema = z.object({
+  userId: z.string(),
+  primaryAuth0Subject: z.string(),
+  secondaryAuth0Subject: z.string(),
+  secondaryConnectionId: z.string().optional(),
+  email: z.string(),
+  returnTo: z.string(),
+  step: z.enum(['secondary', 'primary', 'link']),
+  transactionId: z.string().uuid(),
+  startedAt: z.number().int(),
+  callbackComplete: z.boolean(),
+  exp: z.number().int()
+})
+type Challenge = z.infer<typeof challengeSchema>
+type LinkTarget = Pick<Challenge, 'userId' | 'primaryAuth0Subject' | 'secondaryAuth0Subject' | 'email'>
 
 interface PlatformAccountLinkAuth0StoreOptions {
   event: H3Event
@@ -142,220 +93,70 @@ class H3PlatformAccountLinkCookieHandler implements CookieHandler<PlatformAccoun
   }
 }
 
-function bytesToBase64Url(bytes: Uint8Array) {
-  let binary = ''
-
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte)
-  }
-
-  return btoa(binary)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/g, '')
+function readLoginConfig(event: H3Event) {
+  const config = useRuntimeConfig(event).auth0
+  return { ...config, ...(event.context as RequestScopedPlatformAccountLinkAuth0Context).auth0ClientOptions }
 }
 
-function base64UrlToBytes(value: string) {
-  const normalized = value
-    .replace(/-/g, '+')
-    .replace(/_/g, '/')
-    .padEnd(Math.ceil(value.length / 4) * 4, '=')
-  const binary = atob(normalized)
-  const bytes = new Uint8Array(binary.length)
-
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index)
-  }
-
-  return bytes
+function challengeKey(event: H3Event) {
+  const secret = readLoginConfig(event).accountLinkChallengeSecret
+  if (!secret) throw new Error('Missing account-link challenge secret.')
+  return new TextEncoder().encode(secret)
 }
 
-function buildAccountLinkError(message: string) {
-  return new ApiError({
-    statusCode: 500,
-    code: 'platform_account_linking_unavailable',
-    message
+function cookieOptions(event: H3Event) {
+  return { httpOnly: true, sameSite: 'lax' as const, secure: getRequestURL(event).protocol === 'https:', path: '/auth/link' }
+}
+
+async function saveChallenge(event: H3Event, challenge: Challenge) {
+  const signed = await new SignJWT(challenge).setProtectedHeader({ alg: 'HS256' })
+    .setAudience('account-link-browser').sign(challengeKey(event))
+  // Keep the return path across a timed-out sign-in. JWT expiry ends all linking authority.
+  setCookie(event, challengeCookieName, signed, cookieOptions(event))
+}
+
+export function defineLinkStep<Result>(
+  action: (event: H3Event, challenge: Challenge) => Promise<Result>,
+  failure: 'invalid' | 'login_failed' | 'failed'
+) {
+  return defineEventHandler(async (event) => {
+    setResponseHeader(event, 'cache-control', 'private, no-store')
+    setResponseHeader(event, 'referrer-policy', 'no-referrer')
+    const cookie = getCookie(event, challengeCookieName)
+    if (!cookie) {
+      const { returnTo } = getQuery(event)
+      return endLink(event, normalizeAuthReturnTo(typeof returnTo === 'string' ? returnTo : null, '/account'), 'expired')
+    }
+
+    let challenge: Challenge
+    try {
+      const { payload } = await jwtVerify(cookie, challengeKey(event), { algorithms: ['HS256'], audience: 'account-link-browser' })
+      challenge = challengeSchema.parse(payload)
+    } catch (error) {
+      if (error instanceof errors.JWTExpired && typeof error.payload.returnTo === 'string') {
+        const returnTo = normalizeAuthReturnTo(error.payload.returnTo, '/account')
+        if (error.payload.step === 'link' && error.payload.callbackComplete === true) {
+          return endLink(event, buildAuthLoginHref(returnTo))
+        }
+        return endLink(event, returnTo, 'expired')
+      }
+      return endLink(event, '/account', 'invalid')
+    }
+
+    try {
+      return await action(event, challenge)
+    } catch {
+      return endLink(event, challenge.returnTo, failure)
+    }
   })
 }
 
-function readBaseConfig(event: H3Event): PlatformAccountLinkConfig {
-  const auth0Config = useRuntimeConfig(event).auth0 as Record<string, string | undefined>
-  const challengeSecret = auth0Config.accountLinkChallengeSecret?.trim() ?? ''
-
-  if (!challengeSecret) {
-    throw buildAccountLinkError('This login method cannot be linked right now. Sign in with your existing password instead.')
-  }
-
-  return {
-    challengeSecret
-  }
+function now() {
+  return Math.floor(Date.now() / 1000)
 }
 
-function readLoginConfig(event: H3Event): PlatformAccountLinkLoginConfig {
-  const runtimeAuth0Config = useRuntimeConfig(event).auth0 as Record<string, string | SessionConfiguration | undefined>
-  const auth0ClientOptions = (event.context as RequestScopedPlatformAccountLinkAuth0Context).auth0ClientOptions
-  const auth0Config = (
-    auth0ClientOptions
-      ? { ...runtimeAuth0Config, ...auth0ClientOptions }
-      : runtimeAuth0Config
-  ) as Record<string, string | SessionConfiguration | undefined>
-  const appBaseUrl = typeof auth0Config.appBaseUrl === 'string' ? auth0Config.appBaseUrl.trim() : ''
-  const databaseConnectionName = typeof auth0Config.databaseConnectionName === 'string'
-    ? auth0Config.databaseConnectionName.trim()
-    : ''
-  const domain = typeof auth0Config.domain === 'string' ? auth0Config.domain.trim() : ''
-  const clientId = typeof auth0Config.clientId === 'string' ? auth0Config.clientId.trim() : ''
-  const clientSecret = typeof auth0Config.clientSecret === 'string' ? auth0Config.clientSecret.trim() : ''
-  const sessionSecret = typeof auth0Config.sessionSecret === 'string' ? auth0Config.sessionSecret.trim() : ''
-
-  if (!appBaseUrl || !databaseConnectionName || !domain || !clientId || !clientSecret || !sessionSecret) {
-    throw buildAccountLinkError('Account linking is not configured correctly yet. Sign in with your existing password instead.')
-  }
-
-  return {
-    ...readBaseConfig(event),
-    appBaseUrl,
-    databaseConnectionName,
-    domain,
-    clientId,
-    clientSecret,
-    sessionSecret,
-    sessionConfiguration: typeof auth0Config.sessionConfiguration === 'object' && auth0Config.sessionConfiguration
-      ? auth0Config.sessionConfiguration as SessionConfiguration
-      : undefined
-  }
-}
-
-async function importHmacKey(secret: string, usage: 'sign' | 'verify') {
-  return await crypto.subtle.importKey(
-    'raw',
-    textEncoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    [usage]
-  )
-}
-
-async function signChallengePayload(payload: string, secret: string) {
-  const key = await importHmacKey(secret, 'sign')
-  const signature = await crypto.subtle.sign('HMAC', key, textEncoder.encode(payload))
-
-  return bytesToBase64Url(new Uint8Array(signature))
-}
-
-async function verifyChallengePayload(payload: string, signature: string, secret: string) {
-  const key = await importHmacKey(secret, 'verify')
-  return await crypto.subtle.verify(
-    'HMAC',
-    key,
-    base64UrlToBytes(signature),
-    textEncoder.encode(payload)
-  )
-}
-
-function encodeJsonToBase64Url(value: unknown) {
-  return bytesToBase64Url(textEncoder.encode(JSON.stringify(value)))
-}
-
-function decodeBase64UrlJson(value: string) {
-  return JSON.parse(new TextDecoder().decode(base64UrlToBytes(value))) as Record<string, unknown>
-}
-
-async function signJwt(payload: Record<string, unknown>, secret: string) {
-  const header = encodeJsonToBase64Url({
-    alg: 'HS256',
-    typ: 'JWT'
-  })
-  const encodedPayload = encodeJsonToBase64Url(payload)
-  const signingInput = `${header}.${encodedPayload}`
-  const signature = await signChallengePayload(signingInput, secret)
-
-  return `${signingInput}.${signature}`
-}
-
-async function verifyJwtPayload(token: string, secret: string) {
-  const parts = token.split('.')
-
-  if (parts.length !== 3) {
-    throw buildAccountLinkError('The account-linking request could not be verified.')
-  }
-
-  const [encodedHeader, encodedPayload, signature] = parts
-
-  if (!encodedHeader || !encodedPayload || !signature) {
-    throw buildAccountLinkError('The account-linking request could not be verified.')
-  }
-
-  let header: Record<string, unknown>
-  let payload: Record<string, unknown>
-
-  try {
-    header = decodeBase64UrlJson(encodedHeader)
-    payload = decodeBase64UrlJson(encodedPayload)
-  } catch {
-    throw buildAccountLinkError('The account-linking request could not be verified.')
-  }
-
-  if (header.alg !== 'HS256') {
-    throw buildAccountLinkError('The account-linking request could not be verified.')
-  }
-
-  const isValid = await verifyChallengePayload(`${encodedHeader}.${encodedPayload}`, signature, secret)
-
-  if (!isValid) {
-    throw buildAccountLinkError('The account-linking request could not be verified.')
-  }
-
-  if (typeof payload.exp !== 'number' || payload.exp * 1000 <= Date.now()) {
-    throw buildAccountLinkError('The account-linking request expired.')
-  }
-
-  return payload
-}
-
-function serializeChallenge(challenge: PlatformAccountLinkChallenge) {
-  return bytesToBase64Url(textEncoder.encode(JSON.stringify(challenge)))
-}
-
-function deserializeChallenge(value: string): PlatformAccountLinkChallenge | null {
-  try {
-    const decoded = new TextDecoder().decode(base64UrlToBytes(value))
-    const parsed = JSON.parse(decoded) as Partial<PlatformAccountLinkChallenge>
-
-    if (
-      typeof parsed.primaryAuth0Subject !== 'string'
-      || typeof parsed.secondaryAuth0Subject !== 'string'
-      || typeof parsed.email !== 'string'
-      || typeof parsed.actionState !== 'string'
-      || typeof parsed.continueUri !== 'string'
-      || typeof parsed.expiresAt !== 'string'
-    ) {
-      return null
-    }
-
-    return {
-      primaryAuth0Subject: parsed.primaryAuth0Subject,
-      secondaryAuth0Subject: parsed.secondaryAuth0Subject,
-      email: parsed.email,
-      actionState: parsed.actionState,
-      continueUri: parsed.continueUri,
-      expiresAt: parsed.expiresAt
-    }
-  } catch {
-    return null
-  }
-}
-
-function buildCookieOptions(event: H3Event) {
-  const protocol = getRequestURL(event).protocol
-
-  return {
-    httpOnly: true,
-    sameSite: 'lax' as const,
-    secure: protocol === 'https:',
-    path: '/',
-    maxAge: challengeLifetimeSeconds
-  }
+function getPlatformAccountLinkCallbackUrl(event: H3Event) {
+  return new URL('/auth/link/callback', readLoginConfig(event).appBaseUrl).href
 }
 
 function getPlatformAccountLinkAuth0Client(event: H3Event) {
@@ -413,402 +214,194 @@ function getPlatformAccountLinkAuth0Client(event: H3Event) {
   }
 }
 
-export function isVerifiedSocialIdentityLinkCandidate(options: {
-  currentAuth0Subject: string
-  currentIdentityEmailVerified: boolean
-  existingPlatformAuth0Subject: string
-}) {
-  return options.currentIdentityEmailVerified
-    && !options.currentAuth0Subject.startsWith('auth0|')
-    && options.existingPlatformAuth0Subject.startsWith('auth0|')
+function provider(subject: string) {
+  const separator = subject.indexOf('|')
+  return separator > 0 && separator < subject.length - 1 ? subject.slice(0, separator) : ''
 }
 
-export async function findLinkablePlatformAccountIdentity(
-  database: AppDatabase,
-  sessionUser: {
-    sub: string
-    email?: string | null
-    email_verified?: boolean | null
-  }
-) {
-  const email = sessionUser.email?.trim()
+export async function findRegistrationLinkTarget(database: AppDatabase, secondaryAuth0Subject: string, address: string) {
+  const email = address.trim().toLowerCase()
+  const matches = await database.select({ userId: users.id, primaryAuth0Subject: users.auth0Subject })
+    .from(users).where(and(eq(sql<string>`lower(trim(${users.email}))`, email), isNull(users.deletedAt))).limit(2)
+  const [target] = matches
+  if (!target) return null
 
-  if (!email) {
-    return null
-  }
+  const primary = provider(target.primaryAuth0Subject)
+  const secondary = provider(secondaryAuth0Subject)
+  if (matches.length !== 1 || !(
+    (primary === 'auth0' && ['google-oauth2', 'github'].includes(secondary))
+    || (primary === 'google-oauth2' && secondary === 'auth0')
+  )) return 'conflict' as const
 
-  const existingPlatformAccount = await database.query.users.findFirst({
-    where: and(
-      eq(users.email, email),
-      isNull(users.deletedAt)
-    )
-  })
-
-  if (
-    !existingPlatformAccount
-    || !isVerifiedSocialIdentityLinkCandidate({
-      currentAuth0Subject: sessionUser.sub,
-      currentIdentityEmailVerified: sessionUser.email_verified === true,
-      existingPlatformAuth0Subject: existingPlatformAccount.auth0Subject
-    })
-  ) {
-    return null
-  }
-
-  return {
-    userId: existingPlatformAccount.id,
-    email,
-    primaryAuth0Subject: existingPlatformAccount.auth0Subject
-  } satisfies LinkablePlatformAccountIdentity
+  return { ...target, email, secondaryAuth0Subject }
 }
 
-export async function issuePlatformAccountLinkChallenge(
-  event: H3Event,
-  input: {
-    primaryAuth0Subject: string
-    secondaryAuth0Subject: string
-    email: string
-    actionState: string
-    continueUri: string
-  }
-) {
-  const config = readBaseConfig(event)
-  const challenge: PlatformAccountLinkChallenge = {
-    primaryAuth0Subject: input.primaryAuth0Subject,
-    secondaryAuth0Subject: input.secondaryAuth0Subject,
-    email: input.email,
-    actionState: input.actionState,
-    continueUri: input.continueUri,
-    expiresAt: new Date(Date.now() + challengeLifetimeSeconds * 1000).toISOString()
-  }
-  const payload = serializeChallenge(challenge)
-  const signature = await signChallengePayload(payload, config.challengeSecret)
-
-  setCookie(event, challengeCookieName, `${payload}.${signature}`, buildCookieOptions(event))
-
-  return challenge
-}
-
-function readRequiredString(value: unknown) {
-  return typeof value === 'string' ? value.trim() : ''
-}
-
-function normalizeContinueUri(value: string) {
-  let url: URL
-
-  try {
-    url = new URL(value)
-  } catch {
-    throw buildAccountLinkError('The account-linking continuation target is invalid.')
-  }
-
-  if (url.protocol !== 'https:' || url.pathname !== '/continue') {
-    throw buildAccountLinkError('The account-linking continuation target is invalid.')
-  }
-
-  return url.toString()
-}
-
-async function readPlatformAccountLinkActionPayload(event: H3Event): Promise<PlatformAccountLinkActionPayload> {
-  const config = readBaseConfig(event)
-  const query = getQuery(event)
-  const sessionToken = readRequiredString(query.session_token)
-  const actionState = readRequiredString(query.state)
-
-  if (!sessionToken || !actionState) {
-    throw buildAccountLinkError('The account-linking request is missing required Auth0 state.')
-  }
-
-  const payload = await verifyJwtPayload(sessionToken, config.challengeSecret)
-  const primaryAuth0Subject = readRequiredString(payload.primary_user_id)
-  const secondaryAuth0Subject = readRequiredString(payload.secondary_user_id)
-  const email = readRequiredString(payload.primary_email)
-  const continueUri = normalizeContinueUri(readRequiredString(payload.continue_uri))
-  const tokenSubject = readRequiredString(payload.sub)
-
-  if (
-    !primaryAuth0Subject
-    || !secondaryAuth0Subject
-    || !email
-    || !continueUri
-    || tokenSubject !== secondaryAuth0Subject
-  ) {
-    throw buildAccountLinkError('The account-linking request could not be verified.')
-  }
-
-  return {
-    primaryAuth0Subject,
-    secondaryAuth0Subject,
-    email,
-    continueUri
-  }
-}
-
-export async function issuePlatformAccountLinkActionChallenge(event: H3Event) {
-  const query = getQuery(event)
-  const actionState = readRequiredString(query.state)
-  const payload = await readPlatformAccountLinkActionPayload(event)
-
-  return await issuePlatformAccountLinkChallenge(event, {
-    ...payload,
-    actionState
-  })
-}
-
-export async function readPlatformAccountLinkChallenge(event: H3Event): Promise<PlatformAccountLinkChallengeResult> {
-  const config = readBaseConfig(event)
-  const token = getCookie(event, challengeCookieName)
-
-  if (!token) {
-    return { ok: false, reason: 'missing' }
-  }
-
-  const separatorIndex = token.lastIndexOf('.')
-
-  if (separatorIndex <= 0 || separatorIndex === token.length - 1) {
-    return { ok: false, reason: 'invalid' }
-  }
-
-  const payload = token.slice(0, separatorIndex)
-  const signature = token.slice(separatorIndex + 1)
-  const isValid = await verifyChallengePayload(payload, signature, config.challengeSecret)
-
-  if (!isValid) {
-    return { ok: false, reason: 'invalid' }
-  }
-
-  const challenge = deserializeChallenge(payload)
-
-  if (!challenge) {
-    return { ok: false, reason: 'invalid' }
-  }
-
-  if (new Date(challenge.expiresAt).getTime() <= Date.now()) {
-    return { ok: false, reason: 'expired' }
-  }
-
-  return {
-    ok: true,
-    challenge
-  }
-}
-
-export function clearPlatformAccountLinkChallenge(event: H3Event) {
-  deleteCookie(event, challengeCookieName, {
-    ...buildCookieOptions(event),
-    maxAge: 0
-  })
-}
-
-export async function startPlatformAccountLinkAuthentication(event: H3Event, email: string) {
-  const { client } = getPlatformAccountLinkAuth0Client(event)
-
-  return await client.startInteractiveLogin({
-    authorizationParams: {
-      connection: getPlatformAccountLinkDatabaseConnectionName(event),
-      prompt: 'login',
-      login_hint: email,
-      redirect_uri: getPlatformAccountLinkCallbackUrl(event)
-    }
-  }, {
-    event
-  })
-}
-
-export async function completePlatformAccountLinkAuthentication(event: H3Event) {
-  const { client } = getPlatformAccountLinkAuth0Client(event)
-
-  await client.completeInteractiveLogin(
-    new URL(event.node.req.url as string, readLoginConfig(event).appBaseUrl),
-    { event }
-  )
-}
-
-export async function readPlatformAccountLinkAuthenticatedSubject(event: H3Event) {
-  const { client } = getPlatformAccountLinkAuth0Client(event)
-  const session = await client.getSession({ event }) as PlatformAccountLinkSessionLike | undefined
-
-  return session?.user?.sub?.trim() ?? ''
-}
-
-async function persistValidatedPlatformAccountLinkIdentity(
-  database: AppDatabase,
-  input: {
-    userId: string
-    auth0Subject: string
-    createdAt: string
-  }
-) {
-  const auth0Subject = input.auth0Subject.trim()
-  const existingIdentity = await findPlatformUserAuthIdentity(database, auth0Subject)
-
-  if (existingIdentity) {
-    if (existingIdentity.userId !== input.userId) {
-      throw new ApiError({
-        statusCode: 409,
-        code: 'platform_user_auth_identity_conflict',
-        message: 'This Auth0 identity is already linked to another platform user.',
-        details: {
-          auth0Subject,
-          userId: existingIdentity.userId
-        }
-      })
-    }
-
-    return existingIdentity
-  }
-
-  const identityRecord = {
-    id: crypto.randomUUID(),
-    userId: input.userId,
-    auth0Subject,
-    createdAt: input.createdAt
-  } satisfies typeof userAuthIdentities.$inferInsert
-
-  await database.insert(userAuthIdentities)
-    .values(identityRecord)
-    .onConflictDoNothing({ target: userAuthIdentities.auth0Subject })
-
-  const persistedIdentity = await findPlatformUserAuthIdentity(database, auth0Subject)
-
-  if (!persistedIdentity) {
-    throw new ApiError({
-      statusCode: 500,
-      code: 'platform_user_auth_identity_persistence_failed',
-      message: 'The Auth0 identity could not be recorded for this platform account.'
-    })
-  }
-
-  if (persistedIdentity.userId !== input.userId) {
-    throw new ApiError({
-      statusCode: 409,
-      code: 'platform_user_auth_identity_conflict',
-      message: 'This Auth0 identity is already linked to another platform user.',
-      details: {
-        auth0Subject,
-        userId: persistedIdentity.userId
-      }
-    })
-  }
-
-  return persistedIdentity
-}
-
-export async function persistPlatformAccountLinkIdentities(
-  event: H3Event,
-  challenge: Pick<PlatformAccountLinkChallenge, 'primaryAuth0Subject' | 'secondaryAuth0Subject'>
-) {
+async function matchesPlatformOwner(event: H3Event, challenge: LinkTarget) {
   const database = getDatabase(event)
-  const platformUser = await findPlatformUserByAuth0Subject(database, challenge.primaryAuth0Subject)
+  const target = await findRegistrationLinkTarget(database, challenge.secondaryAuth0Subject, challenge.email)
+  if (!target || target === 'conflict' || target.userId !== challenge.userId || target.primaryAuth0Subject !== challenge.primaryAuth0Subject) return false
+  const identity = await findPlatformUserAuthIdentity(database, challenge.secondaryAuth0Subject)
+  return !identity || identity.userId === target.userId
+}
 
-  if (!platformUser) {
-    throw new ApiError({
-      statusCode: 409,
-      code: 'platform_account_link_target_not_found',
-      message: 'The platform account for this link could not be found.'
-    })
-  }
-
-  const createdAt = new Date().toISOString()
-  const uniqueSubjects = new Set([
-    challenge.primaryAuth0Subject.trim(),
-    challenge.secondaryAuth0Subject.trim()
-  ].filter(Boolean))
-
-  for (const auth0Subject of uniqueSubjects) {
-    await persistValidatedPlatformAccountLinkIdentity(database, {
-      userId: platformUser.id,
-      auth0Subject,
-      createdAt
-    })
+function proofConnection(event: H3Event, subject: string) {
+  const config = readLoginConfig(event)
+  switch (provider(subject)) {
+    case 'auth0': return config.databaseConnectionName
+    case 'google-oauth2': return config.googleConnectionName
+    case 'github': return config.githubConnectionName
+    default: throw new Error('Unsupported account-link provider.')
   }
 }
 
-export async function clearPlatformAccountLinkAuthentication(event: H3Event) {
-  const { stateStore, transactionStore } = getPlatformAccountLinkAuth0Client(event)
+export async function startLinkStep(event: H3Event, target: LinkTarget & { returnTo: string, exp?: number, secondaryConnectionId?: string }, step: Challenge['step']) {
+  const startedAt = now()
+  const challenge: Challenge = {
+    ...target, step, transactionId: crypto.randomUUID(), callbackComplete: false, startedAt,
+    exp: target.exp ?? startedAt + challengeLifetimeSeconds
+  }
+  const subject = step === 'secondary' ? target.secondaryAuth0Subject : target.primaryAuth0Subject
+  const { client } = getPlatformAccountLinkAuth0Client(event)
+  const authorizationUrl = await client.startInteractiveLogin({
+    appState: challenge.transactionId,
+    authorizationParams: {
+      scope: 'openid email profile',
+      login_hint: target.email,
+      redirect_uri: getPlatformAccountLinkCallbackUrl(event),
+      ...(step === 'link'
+        ? { codex_account_link: challenge.transactionId }
+        : { codex_account_proof: challenge.transactionId, connection: proofConnection(event, subject), prompt: 'login', max_age: 0 })
+    }
+  }, { event })
+  await saveChallenge(event, challenge)
+  return sendRedirect(event, authorizationUrl.href)
+}
 
+export async function completeLinkCallback(event: H3Event, challenge: Challenge) {
+  const { client } = getPlatformAccountLinkAuth0Client(event)
+  const { appState } = await client.completeInteractiveLogin(
+    new URL(event.node.req.url!, readLoginConfig(event).appBaseUrl), { event }
+  )
+  if (appState !== challenge.transactionId) throw new Error('Account-link transaction mismatch.')
+  await saveChallenge(event, { ...challenge, callbackComplete: true })
+  return sendRedirect(event, '/auth/link/complete')
+}
+
+async function currentAppSubject(event: H3Event) {
+  return (await useAuth0(event).getSession())?.user?.sub
+}
+
+export async function advanceLink(event: H3Event, challenge: Challenge) {
+  if (!challenge.callbackComplete || await currentAppSubject(event) !== challenge.secondaryAuth0Subject) {
+    return endLink(event, challenge.returnTo, 'mismatch')
+  }
+  const { client } = getPlatformAccountLinkAuth0Client(event)
+  const session = await client.getSession({ event })
+  // The SDK validated this ID token during the code exchange. Its cached user profile
+  // can retain older claims when a later exchange returns the same subject.
+  const claims = session?.idToken ? decodeJwt(session.idToken) : null
+  const expected = challenge.step === 'secondary' ? challenge.secondaryAuth0Subject : challenge.primaryAuth0Subject
+  if (!claims || claims.email_verified !== true || typeof claims.email !== 'string'
+    || claims.email.trim().toLowerCase() !== challenge.email) {
+    return endLink(event, challenge.returnTo, 'mismatch')
+  }
+
+  if (challenge.step === 'link') {
+    if (claims.sub !== expected || claims[accountLinkReceiptClaim] !== challenge.transactionId) {
+      return endLink(event, challenge.returnTo, 'failed')
+    }
+    try {
+      if (await persistPlatformAccountLinkIdentities(event, challenge)) return endLink(event, challenge.returnTo)
+    } catch {
+      // Auth0 already linked the profiles. Retain the verified receipt so a D1
+      // interruption can be retried without requesting either old subject again.
+      return sendRedirect(event, buildAccountRegisterHref(challenge.returnTo) + '&linkingError=retry')
+    }
+    return endLink(event, challenge.returnTo, 'failed')
+  }
+
+  const authenticatedAt = claims.auth_time
+  const proof = claims[accountLinkProofClaim] as { id?: string, connection?: string, connectionId?: string } | undefined
+  if (proof?.id !== challenge.transactionId || proof.connection !== proofConnection(event, expected)
+    || typeof proof.connectionId !== 'string' || !proof.connectionId
+    || typeof authenticatedAt !== 'number' || !Number.isSafeInteger(authenticatedAt)
+    || authenticatedAt < challenge.startedAt || authenticatedAt > now()) {
+    return endLink(event, challenge.returnTo, 'mismatch')
+  }
+  if (claims.sub !== expected) {
+    // A completed Auth0 link can precede a lost callback. A fresh login with
+    // the new method already returns the original subject in that case.
+    if (challenge.step === 'secondary' && claims.sub === challenge.primaryAuth0Subject) {
+      return endLink(event, buildAuthLoginHref(challenge.returnTo))
+    }
+    return endLink(event, challenge.returnTo, 'mismatch')
+  }
+  if (challenge.step === 'secondary') {
+    return startLinkStep(event, { ...challenge, secondaryConnectionId: proof.connectionId }, 'primary')
+  }
+  return startLinkStep(event, challenge, 'link')
+}
+
+export async function authorizeActionLink(event: H3Event, challenge: Challenge) {
+  const { state, session_token: token } = getQuery(event)
+  if (challenge.step !== 'link' || challenge.callbackComplete || typeof token !== 'string' || typeof state !== 'string' || !state) {
+    return endLink(event, challenge.returnTo, 'invalid')
+  }
+  const key = challengeKey(event)
+  const { payload } = await jwtVerify(token, key, {
+    algorithms: ['HS256'], audience: readLoginConfig(event).clientId, requiredClaims: ['exp']
+  })
+  if (payload.purpose !== 'account-link-request' || payload.sub !== challenge.primaryAuth0Subject
+    || payload.transaction_id !== challenge.transactionId || await currentAppSubject(event) !== challenge.secondaryAuth0Subject
+    || !await matchesPlatformOwner(event, challenge)) {
+    return endLink(event, challenge.returnTo, 'mismatch')
+  }
+  const result = await new SignJWT({
+    purpose: 'account-link-approved', state, transaction_id: challenge.transactionId,
+    secondary_user_id: challenge.secondaryAuth0Subject, secondary_connection_id: challenge.secondaryConnectionId
+  }).setProtectedHeader({ alg: 'HS256' })
+    .setSubject(challenge.primaryAuth0Subject)
+    .setIssuer(new URL(readLoginConfig(event).appBaseUrl).origin)
+    .setAudience('account-link-action')
+    .setIssuedAt()
+    .setExpirationTime(Math.min(challenge.exp, now() + 60))
+    .sign(key)
+
+  const url = new URL('/continue', `https://${readLoginConfig(event).domain}`)
+  setResponseHeader(event, 'content-type', 'text/html; charset=utf-8')
+  const escapedState = state.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;')
+  return `<!doctype html><title>Continue sign-in</title>
+<form method="post" action="${url.href}">
+  <input type="hidden" name="state" value="${escapedState}">
+  <input type="hidden" name="session_token" value="${result}">
+  <button>Continue</button>
+</form>
+<script>document.forms[0].submit()</script>`
+}
+
+export async function persistPlatformAccountLinkIdentities(event: H3Event, target: LinkTarget) {
+  const database = getDatabase(event)
+  // The users insert trigger already records the original subject. Only add the
+  // proven alias, conditionally against the same still-active, unambiguous owner.
+  await getDatabaseSession(event).prepare(`
+    INSERT INTO user_auth_identities (id, user_id, auth0_subject, created_at)
+    SELECT ?, id, ?, ?
+    FROM users WHERE id = ? AND auth0_subject = ?
+      AND deleted_at IS NULL AND lower(trim(email)) = ?
+      AND NOT EXISTS (SELECT 1 FROM users other WHERE other.id <> users.id
+        AND other.deleted_at IS NULL AND lower(trim(other.email)) = ?)
+    ON CONFLICT(auth0_subject) DO NOTHING
+  `).bind(crypto.randomUUID(), target.secondaryAuth0Subject, new Date().toISOString(),
+    target.userId, target.primaryAuth0Subject, target.email, target.email).run()
+  return (await findPlatformUserAuthIdentity(database, target.secondaryAuth0Subject))?.userId === target.userId
+}
+
+export async function endLink(event: H3Event, returnTo: string, error?: string) {
+  deleteCookie(event, challengeCookieName, cookieOptions(event))
+  const { stateStore, transactionStore } = getPlatformAccountLinkAuth0Client(event)
   await Promise.all([
     stateStore.delete(linkSessionIdentifier, { event }),
     transactionStore.delete(linkTransactionIdentifier, { event })
   ])
-}
-
-export function buildPlatformAccountLinkRedirect(returnTo: string | null | undefined, reason?: PlatformAccountLinkErrorReason) {
-  const registerHref = buildAccountRegisterHref(returnTo)
-
-  if (!reason) {
-    return registerHref
-  }
-
-  const url = new URL(registerHref, 'http://localhost')
-  url.searchParams.set('linkingError', reason)
-  return `${url.pathname}${url.search}`
-}
-
-function escapeHtmlAttribute(value: string) {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('"', '&quot;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-}
-
-async function buildPlatformAccountLinkActionResultToken(
-  event: H3Event,
-  challenge: PlatformAccountLinkChallenge,
-  options: {
-    ok: boolean
-    reason?: PlatformAccountLinkErrorReason
-  }
-) {
-  const config = readBaseConfig(event)
-  const issuedAt = Math.floor(Date.now() / 1000)
-  const payload = {
-    sub: challenge.secondaryAuth0Subject,
-    iss: readLoginConfig(event).appBaseUrl,
-    aud: challenge.continueUri,
-    iat: issuedAt,
-    exp: issuedAt + actionResultLifetimeSeconds,
-    state: challenge.actionState,
-    result: options.ok ? 'link_verified' : 'link_failed',
-    error: options.reason,
-    primary_user_id: challenge.primaryAuth0Subject,
-    secondary_user_id: challenge.secondaryAuth0Subject
-  }
-
-  return await signJwt(payload, config.challengeSecret)
-}
-
-export async function buildPlatformAccountLinkActionContinueResponse(
-  event: H3Event,
-  challenge: PlatformAccountLinkChallenge,
-  options: {
-    ok: boolean
-    reason?: PlatformAccountLinkErrorReason
-  }
-) {
-  const sessionToken = await buildPlatformAccountLinkActionResultToken(event, challenge, options)
-
-  return [
-    '<!doctype html>',
-    '<html>',
-    '  <head><meta charset="utf-8"><title>Continue sign-in</title></head>',
-    '  <body>',
-    `    <form method="post" action="${escapeHtmlAttribute(challenge.continueUri)}">`,
-    `      <input type="hidden" name="state" value="${escapeHtmlAttribute(challenge.actionState)}">`,
-    `      <input type="hidden" name="session_token" value="${escapeHtmlAttribute(sessionToken)}">`,
-    '      <button type="submit">Continue</button>',
-    '    </form>',
-    '    <script>document.forms[0].submit();</script>',
-    '  </body>',
-    '</html>'
-  ].join('\n')
-}
-
-export function getPlatformAccountLinkDatabaseConnectionName(event: H3Event) {
-  return readLoginConfig(event).databaseConnectionName
-}
-
-export function getPlatformAccountLinkCallbackUrl(event: H3Event) {
-  return new URL('/auth/link/callback', `${readLoginConfig(event).appBaseUrl}/`).toString()
+  return sendRedirect(event, error ? `${buildAccountRegisterHref(returnTo)}&linkingError=${error}` : returnTo)
 }

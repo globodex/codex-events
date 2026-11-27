@@ -1,3 +1,6 @@
+import { createEvent as createH3Event } from 'h3'
+import { IncomingMessage, ServerResponse } from 'node:http'
+import { Socket } from 'node:net'
 import type { H3Event } from 'h3'
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
@@ -61,29 +64,15 @@ vi.mock('@auth0/auth0-server-js', () => ({
 }))
 
 function createEvent() {
-  return {
-    node: {
-      req: {
-        url: '/auth/link/callback?code=fixture&state=fixture'
-      }
-    },
-    context: {
-      runtimeConfig: {
-        auth0: {
-          accountLinkChallengeSecret: 'link-secret',
-          appBaseUrl: 'https://test.codex-events.com',
-          clientId: 'client-id',
-          clientSecret: 'client-secret',
-          databaseConnectionName: 'Username-Password-Authentication',
-          domain: 'codex-events-test.eu.auth0.com',
-          sessionConfiguration: {
-            rolling: false
-          },
-          sessionSecret: 'session-secret'
-        }
-      }
-    }
-  } as H3Event
+  const req = new IncomingMessage(new Socket())
+  req.url = '/auth/link/start'
+  const event = createH3Event(req, new ServerResponse(req))
+  event.context.runtimeConfig = { auth0: {
+    accountLinkChallengeSecret: 'link-secret', appBaseUrl: 'https://app.example.test',
+    clientId: 'client-id', clientSecret: 'client-secret', databaseConnectionName: 'password-fixture',
+    googleConnectionName: 'google-fixture', domain: 'auth.example.test', sessionSecret: 'session-secret'
+  } }
+  return event
 }
 
 describe('platform account-link Auth0 helper', () => {
@@ -114,73 +103,29 @@ describe('platform account-link Auth0 helper', () => {
     vi.unstubAllGlobals()
   })
 
-  test('uses isolated Auth0 state and transaction identifiers for the link verification flow', async () => {
+  test.each([
+    ['secondary', 'google-fixture'],
+    ['primary', 'password-fixture']
+  ] as const)('requests a fresh sign-in through the isolated %s connection', async (step, connection) => {
     const event = createEvent()
-    const linking = await import('../../../../../server/domains/accounts/linking')
-
-    const authorizationUrl = await linking.startPlatformAccountLinkAuthentication(event, 'existing-user@example.com')
-
-    expect(authorizationUrl.toString()).toBe('https://auth.example.test/authorize')
-    expect(ServerClient).toHaveBeenCalledTimes(1)
+    const { startLinkStep } = await import('../../../../../server/domains/accounts/linking')
+    await startLinkStep(event, {
+      userId: 'owner', primaryAuth0Subject: 'auth0|fixture', secondaryAuth0Subject: 'google-oauth2|fixture',
+      email: 'fixture@example.test', returnTo: '/events/fixture/register'
+    }, step)
     expect(ServerClient).toHaveBeenCalledWith(expect.objectContaining({
-      authorizationParams: {
-        redirect_uri: 'https://test.codex-events.com/auth/link/callback'
-      },
       stateIdentifier: '__a0_platform_account_link_session',
       transactionIdentifier: '__a0_platform_account_link_tx'
     }))
+    expect(startInteractiveLogin).toHaveBeenCalledWith({
+      appState: expect.any(String),
+      authorizationParams: {
+        connection, prompt: 'login', max_age: 0, scope: 'openid email profile',
+        codex_account_proof: expect.any(String), login_hint: 'fixture@example.test',
+        redirect_uri: 'https://app.example.test/auth/link/callback'
+      }
+    }, { event })
     expect(StatelessStateStore).toHaveBeenCalledTimes(1)
     expect(StatefulStateStore).not.toHaveBeenCalled()
-    expect(startInteractiveLogin).toHaveBeenCalledWith({
-      authorizationParams: {
-        connection: 'Username-Password-Authentication',
-        prompt: 'login',
-        login_hint: 'existing-user@example.com',
-        redirect_uri: 'https://test.codex-events.com/auth/link/callback'
-      }
-    }, {
-      event
-    })
-  })
-
-  test('reuses the isolated client to complete verification, read the authenticated subject, and clear link-session state', async () => {
-    const event = createEvent()
-    const linking = await import('../../../../../server/domains/accounts/linking')
-
-    await linking.startPlatformAccountLinkAuthentication(event, 'existing-user@example.com')
-    await linking.completePlatformAccountLinkAuthentication(event)
-    const authenticatedSubject = await linking.readPlatformAccountLinkAuthenticatedSubject(event)
-    await linking.clearPlatformAccountLinkAuthentication(event)
-
-    expect(ServerClient).toHaveBeenCalledTimes(1)
-    expect(completeInteractiveLogin).toHaveBeenCalledWith(
-      new URL('https://test.codex-events.com/auth/link/callback?code=fixture&state=fixture'),
-      { event }
-    )
-    expect(authenticatedSubject).toBe('auth0|existing-password-user')
-    expect(getSession).toHaveBeenCalledWith({ event })
-    expect(stateStoreDelete).toHaveBeenCalledWith('__a0_platform_account_link_session', { event })
-    expect(transactionStoreDelete).toHaveBeenCalledWith('__a0_platform_account_link_tx', { event })
-  })
-
-  test('builds an Auth0 Action continuation form after primary-account verification', async () => {
-    const event = createEvent()
-    const linking = await import('../../../../../server/domains/accounts/linking')
-
-    const responseHtml = await linking.buildPlatformAccountLinkActionContinueResponse(event, {
-      primaryAuth0Subject: 'auth0|existing-password-user',
-      secondaryAuth0Subject: 'google-oauth2|existing-google-user',
-      email: 'existing-user@example.com',
-      actionState: 'auth0-action-state',
-      continueUri: 'https://codex-events-test.eu.auth0.com/continue',
-      expiresAt: new Date(Date.now() + 60_000).toISOString()
-    }, {
-      ok: true
-    })
-
-    expect(responseHtml).toContain('method="post"')
-    expect(responseHtml).toContain('action="https://codex-events-test.eu.auth0.com/continue"')
-    expect(responseHtml).toContain('name="state" value="auth0-action-state"')
-    expect(responseHtml).toContain('name="session_token"')
   })
 })

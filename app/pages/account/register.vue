@@ -47,6 +47,7 @@ const platformLegalSettingsHref = '/account/platform-settings?tab=legal'
 const privacyAccepted = ref(false)
 const termsAccepted = ref(false)
 const submitAttempted = ref(false)
+const accountLinkRequired = ref(false)
 const registrationCompletedTransition = ref<AccountRegistrationCompletedTransition | null>(null)
 const submitState = reactive({
   pending: false,
@@ -65,8 +66,9 @@ const linkingError = computed<ApiErrorShape | null>(() => {
     expired: 'Your account-linking session expired. Try signing in to your existing account again.',
     invalid: 'The account-linking session could not be verified. Try signing in to your existing account again.',
     login_failed: 'We could not complete the sign-in to your existing account. Try again.',
-    mismatch: 'You signed in with a different account. Sign in with the existing password account for this email address instead.',
-    failed: 'The login method could not be linked right now. Try signing in to your existing account again.'
+    mismatch: 'The sign-in did not match. Try again with the accounts you used to register.',
+    failed: 'Your sign-in methods could not be linked. Try again.',
+    retry: 'Your sign-ins were confirmed. Continue to finish opening your account.'
   }
 
   return {
@@ -104,10 +106,17 @@ const missingConsentDocuments = computed(() => [
 const isSubmitLocked = computed(() =>
   submitState.pending || Boolean(registrationCompletedTransition.value)
 )
-const accountRegistrationIntro = computed(() => actor.value && platformDocumentsUnavailable.value
-  ? missingDocumentsCopy.value.intro
-  : getAccountRegistrationIntro()
-)
+const recoveringAccount = computed(() => actor.value?.kind === 'authenticated_identity' && (accountLinkRequired.value || linkingError.value))
+const retryingLink = computed(() => linkingError.value?.code === 'retry')
+const accountRegistrationIntro = computed(() => {
+  if (recoveringAccount.value) {
+    return {
+      title: 'Link your sign-in methods',
+      description: linkingError.value?.message ?? 'Sign in with the method you just used, then the one you originally registered with. Both will open your existing account.'
+    }
+  }
+  return actor.value && platformDocumentsUnavailable.value ? missingDocumentsCopy.value.intro : getAccountRegistrationIntro()
+})
 const identityEmailUnavailable = computed(() =>
   actor.value?.kind === 'authenticated_identity'
   && !actor.value.sessionUser.email?.trim()
@@ -120,7 +129,6 @@ if (
   status.value === 'success'
   && actor.value?.kind === 'platform_user'
   && actor.value.hasAcceptedCurrentPlatformDocuments
-  && !linkingError.value
 ) {
   await navigateTo(returnTo.value, { replace: true })
 }
@@ -160,6 +168,7 @@ async function submitInitialPlatformSetupAccount() {
   } catch (error) {
     const apiError = normalizeApiError(error)
 
+    accountLinkRequired.value = apiError.code === 'platform_account_link_required'
     if (apiError.code === 'identity_email_unverified') {
       clearConfirmation()
     }
@@ -239,6 +248,7 @@ async function submitPlatformConsent() {
   } catch (error) {
     const apiError = normalizeApiError(error)
 
+    accountLinkRequired.value = apiError.code === 'platform_account_link_required'
     if (apiError.code === 'identity_email_unverified') {
       clearConfirmation()
     }
@@ -327,6 +337,26 @@ useSeoMeta({
         title="Loading account registration"
         description="Resolving your account state and the current platform documents."
       />
+
+      <form
+        v-else-if="recoveringAccount"
+        :action="retryingLink ? '/auth/link/complete' : '/auth/link/start'"
+        :method="retryingLink ? 'get' : 'post'"
+        class="space-y-4"
+      >
+        <input
+          type="hidden"
+          name="returnTo"
+          :value="returnTo"
+        >
+        <AppButton
+          type="submit"
+          color="neutral"
+          variant="solid"
+        >
+          {{ retryingLink ? 'Continue to my account' : 'Link sign-in methods' }}
+        </AppButton>
+      </form>
 
       <section
         v-else-if="identityEmailUnverified"
@@ -454,14 +484,6 @@ useSeoMeta({
           variant="soft"
           title="Platform consent is required"
           description="You need current platform consent before you can use account settings, register for events, or enter participant workspaces."
-        />
-
-        <AppAlert
-          v-if="linkingError"
-          color="warning"
-          variant="soft"
-          title="Existing account sign-in required"
-          :description="linkingError.message"
         />
 
         <AppAlert

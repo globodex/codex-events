@@ -62,6 +62,8 @@ export default defineNuxtConfig({
       sessionSecret: localCodexAuth ? 'local-session-secret' : '',
       appBaseUrl: 'http://localhost:3000',
       databaseConnectionName: '',
+      googleConnectionName: 'google-oauth2',
+      githubConnectionName: 'github',
       accountLinkChallengeSecret: ''
     },
     outboundEmail: {

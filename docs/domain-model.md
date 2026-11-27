@@ -38,7 +38,7 @@ Rules:
 - Platform account registration requires an authenticated identity with an email address verified by Auth0. The participant can confirm the address and finish registration in the same session.
 - Platform account registration can create the user before canonical `first_name` and `family_name` are filled. Those fields are completed through later profile or application flows.
 - A platform user stores one primary Auth0 subject on the user record and can have additional linked Auth0 identities recorded separately.
-- When Auth0 links an authenticated social identity to an existing platform account, the pre-link identity does not record platform-document acceptance. After linking, Auth0 issues the session for the primary identity and the existing platform account either proceeds immediately if current acceptance already exists or completes current platform consent through `/account/register`.
+- A participant who used both Google and email/password can link the two methods in either signup order. Matching a confirmed address identifies a candidate. The participant proves control of both exact sign-in identities before linking. The original user ID, registration, roles and document acceptances carry through to the event destination. If the original account needs current consent, it completes consent through `/account/register`.
 - Regular platform-user actor resolution uses the linked Auth0 identity records rather than only the primary Auth0 subject stored on the user row.
 - Regular platform-user access requires current accepted versions of the platform `privacy_policy` and `platform_terms` in platform data.
 - The reusable platform profile fields are managed from account settings.

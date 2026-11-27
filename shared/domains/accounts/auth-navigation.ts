@@ -6,7 +6,8 @@ export const accountSettingsHref = '/account/settings'
 export function normalizeAuthReturnTo(returnTo: string | null | undefined, fallback = '/') {
   const normalizedReturnTo = returnTo?.trim() || fallback
 
-  if (!normalizedReturnTo.startsWith('/') || normalizedReturnTo.startsWith('//')) {
+  if (!normalizedReturnTo.startsWith('/') || normalizedReturnTo.startsWith('//')
+    || /[\\\t\r\n]/u.test(normalizedReturnTo)) {
     return fallback
   }
 

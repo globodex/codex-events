@@ -96,3 +96,36 @@ Then('I can accept the platform terms and continue registering for {string}', as
   await continueButton.click()
   await expect(page).toHaveURL(url => url.pathname === `/events/${slug}/register`)
 })
+
+const linkReturnTo = '/events/registration-questions-fixture-event/register'
+const linkStartRequests = new WeakMap<Page, string | null>()
+
+Given('I reach platform consent from an event with a second sign-in method', async ({ page }) => {
+  const [cookie] = personaStorageState('regular_user').cookies
+  await page.context().addCookies([{ ...cookie!, value: 'link-participant@bdd.codex-events.test' }])
+  // Persona mode has no external providers. Drive the UI with the registration
+  // conflict contract. The route integration suite exercises both provider orders.
+  await page.route('**/api/account/registration', route => route.fulfill({
+    status: 409,
+    json: { error: { code: 'platform_account_link_required', message: 'Link your sign-in methods.' } }
+  }))
+  await page.route('**/auth/link/start', async (route) => {
+    const request = route.request()
+    expect(request.method()).toBe('POST')
+    linkStartRequests.set(page, new URLSearchParams(request.postData() ?? '').get('returnTo'))
+    await route.fulfill({ contentType: 'text/plain', body: 'Synthetic identity provider' })
+  })
+  await page.goto(linkReturnTo)
+})
+
+When('I continue from consent and choose to link my sign-in methods', async ({ page }) => {
+  await page.getByRole('checkbox', { name: 'I accept the current Privacy Policy.' }).check()
+  await page.getByRole('checkbox', { name: 'I accept the current Platform Terms.' }).check()
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await page.getByRole('button', { name: 'Link sign-in methods' }).click()
+})
+
+Then('the link request includes my original event registration page', async ({ page }) => {
+  await expect(page).toHaveURL(url => url.pathname === '/auth/link/start')
+  expect(linkStartRequests.get(page)).toBe(linkReturnTo)
+})

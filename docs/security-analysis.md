@@ -101,7 +101,7 @@ Current control:
 
 - Registration requires that an Auth0 identity exposes an email address.
 - Registration requires Auth0 to confirm the signed-in email address before creating a platform user, linked identity, platform-document acceptance, or account-registration audit entry. A session with a stale or missing verification claim can proceed once an Auth0 lookup verifies the same subject and email.
-- Auth0 account linking requires its own verified identity and fresh sign-in to the existing account.
+- Auth0 account linking requires fresh authentication of both exact identities and a provider-confirmed link to the original platform account.
 
 ### 4. Medium: Internal exceptions are returned to clients verbatim
 

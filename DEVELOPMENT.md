@@ -93,7 +93,7 @@ Local Auth0 dashboard settings:
 
 - Allowed Callback URLs: `http://localhost:3000/auth/callback, http://localhost:3000/auth/link/callback`
 - Allowed Logout URLs: `http://localhost:3000`
-- If you enable Google social login, create an Auth0 Google connection and configure the Google OAuth Web application's authorized redirect URI as `https://<your-auth0-domain>/login/callback`. Set `AUTH0_GOOGLE_CONNECTION_NAME` to that connection's Auth0 name when running the bootstrap.
+- If you enable Google social login, create an Auth0 Google connection and configure the Google OAuth Web application's authorized redirect URI as `https://<your-auth0-domain>/login/callback`. Set `AUTH0_GOOGLE_CONNECTION_NAME` to that connection's Auth0 name when running the bootstrap. For local Auth0 sign-in with a custom connection name, also set `NUXT_AUTH0_GOOGLE_CONNECTION_NAME` (default `google-oauth2`) or `NUXT_AUTH0_GITHUB_CONNECTION_NAME` (default `github`) to the corresponding name.
 
 Local Auth0 runtime notes:
 
@@ -121,7 +121,7 @@ These commands enforce required Auth0 tenant configuration:
 - required callback/logout/origin URL inclusion on the Auth0 application
 - default login URI (`initiate_login_uri`) for password-reset return routing
 - tenant default redirection URI fallback (`default_redirection_uri`) for reset-password error states
-- required callback inclusion for the account-linking ownership check at `/auth/link/callback`
+- required callback inclusion for both account-linking sign-in checks and the provider receipt at `/auth/link/callback`
 
 The checked-in bootstrap does not create a Google connection or handle its provider credentials. Create the connection in Auth0 first; when `AUTH0_GOOGLE_CONNECTION_NAME` is set, the bootstrap verifies that it uses the `google-oauth2` strategy and makes it domain-level without reading or replacing its credential options.
 If a tenant lacks the paid Universal Login page-template feature, the bootstrap now warns and skips page-template-dependent login prompt customization instead of failing outright. Custom domains, branding, client URLs, and Actions remain required and still fail on drift or API errors.

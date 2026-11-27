@@ -45,7 +45,7 @@ import {
   users
 } from '../../../../server/database/schema'
 import loginHandler from '../../../../server/routes/auth/login'
-import { linkedAuth0SubjectsClaim } from '../../../../server/domains/accounts/linking'
+import { accountLinkReceiptClaim } from '../../../../server/domains/accounts/linking'
 import { authenticatedUploadRateLimitBindingName } from '../../../../server/utils/rate-limit'
 import { fixtureTimestamp } from '../../../support/backend/runtime'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
@@ -969,10 +969,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
         email: 'existing-user@example.com',
         email_verified: true,
         name: 'Existing User',
-        [linkedAuth0SubjectsClaim]: [
-          'auth0|existing-password-user',
-          'google-oauth2|existing-google-user'
-        ]
+        [accountLinkReceiptClaim]: 'untrusted-outside-link-callback'
       }
     })
     databases.push(harness)

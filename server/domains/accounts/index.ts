@@ -28,7 +28,7 @@ import {
 } from '#server/domains/platform/documents'
 import { findPlatformUserByAuth0Subject } from './auth-identities'
 import { isRegistrationEmailVerified, type Auth0EmailVerificationRuntimeConfig } from './email-verification'
-import { findLinkablePlatformAccountIdentity } from './linking'
+import { findRegistrationLinkTarget } from './linking'
 
 function sanitizeTimestampForIdentifier(timestamp: string) {
   return timestamp.replaceAll(/[^0-9]/g, '')
@@ -192,7 +192,7 @@ function buildPlatformAccountInsert(
   return {
     id: crypto.randomUUID(),
     auth0Subject: actor.sessionUser.sub,
-    email: email!,
+    email: email!.toLowerCase(),
     displayName: buildRegistrationDisplayName(actor),
     firstName: '',
     familyName: '',
@@ -359,35 +359,18 @@ async function assertPlatformAccountRegistrationAllowed(
     message: 'Verify your email address with your sign-in provider before creating a platform account.'
   })
 
-  const existingEmail = await database.query.users.findFirst({
-    where: and(
-      eq(users.email, email!),
-      isNull(users.deletedAt)
-    )
-  })
-
-  const linkableIdentity = await findLinkablePlatformAccountIdentity(database, {
-    ...actor.sessionUser,
-    email_verified: true
-  })
-
-  if (linkableIdentity) {
+  const target = await findRegistrationLinkTarget(database, actor.sessionUser.sub, email!)
+  if (target && target !== 'conflict') {
     throw new ApiError({
       statusCode: 409,
       code: 'platform_account_link_required',
-      message: 'A platform account already exists for this email address. Sign out, then sign in with your existing account.',
-      details: {
-        email: linkableIdentity.email
-      }
+      message: 'Sign in with both methods to link them to your existing account.',
+      details: { email: target.email }
     })
   }
-
-  assertGuard(!existingEmail, {
+  assertGuard(!target, {
     code: 'platform_account_email_conflict',
-    message: 'An active platform account already exists for this email address.',
-    details: {
-      email
-    }
+    message: 'An active platform account already exists for this email address.'
   })
 }
 

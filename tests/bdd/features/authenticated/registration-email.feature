@@ -9,3 +9,8 @@ Feature: Email confirmation during account registration
       | email                                      | return signal |
       | registration-focus@bdd.codex-events.test   | window focus  |
       | registration-visible@bdd.codex-events.test | visibility    |
+
+  Scenario: Linking two sign-in methods keeps the participant's event destination
+    Given I reach platform consent from an event with a second sign-in method
+    When I continue from consent and choose to link my sign-in methods
+    Then the link request includes my original event registration page

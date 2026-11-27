@@ -134,6 +134,8 @@ logout, account linking, management automation, and email verification is
 covered by focused unit and integration tests. The local persona suite does not
 claim to test Auth0-hosted pages or tenant behavior.
 
+The account-link integration suite runs the Auth0 SDK and checked-in post-login Action against an in-process synthetic provider. It exercises both signup orders, exact subjects and fresh sign-ins from registration through provider confirmation and platform alias persistence. The browser fixture covers the event-to-consent recovery button and event return path. A hosted check uses disposable Google and password identities in each signup order and verifies a denied sign-in before rollout.
+
 ## Fixture Bootstrap
 
 The BDD launcher creates a fresh local D1 database and uses a free loopback port for each suite. It applies migrations and seeds the fixture data. Before Chromium starts, the session API must resolve all four test personas to their local platform accounts. Destructive account tests use a separate database.

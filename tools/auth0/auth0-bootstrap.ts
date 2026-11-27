@@ -268,20 +268,82 @@ export function buildUniversalLoginPageTemplate(config: TenantConfig) {
   ].join('\n')
 }
 
-const postLoginActionCode = `const consentClaimNamespace = '${consentClaimNamespace}';
+export const postLoginActionCode = `const consentClaimNamespace = '${consentClaimNamespace}';
 const accountLinkClaimNamespace = '${accountLinkClaimNamespace}';
 const accountLinkTokenParameterName = 'session_token';
 
 exports.onExecutePostLogin = async (event, api) => {
-  if (await redirectForAccountLink(event, api)) {
+  const query = event.request?.query || {};
+  if (event.client.client_id === event.secrets.APP_CLIENT_ID && typeof query.codex_account_proof === 'string') {
+    api.idToken.setCustomClaim(accountLinkClaimNamespace + '/proof', {
+      id: query.codex_account_proof, connection: event.connection.name, connectionId: event.connection.id
+    });
+  }
+  const transactionId = query.codex_account_link;
+  if (event.client.client_id === event.secrets.APP_CLIENT_ID && typeof transactionId === 'string' && transactionId) {
+    if (event.user.email_verified !== true) {
+      api.access.deny('account_linking_unverified');
+      return;
+    }
+    api.transaction.setMetadata('codex_account_link', transactionId);
+    const token = api.redirect.encodeToken({
+      secret: requireSecret(event, 'ACCOUNT_LINK_CHALLENGE_SECRET'),
+      expiresInSeconds: 60,
+      payload: { purpose: 'account-link-request', aud: event.client.client_id, transaction_id: transactionId }
+    });
+    api.redirect.sendUserTo(requireSecret(event, 'APP_BASE_URL') + '/auth/link/login', {
+      query: { session_token: token }
+    });
     return;
   }
-
   recordConsentClaims(event, api);
 };
 
 exports.onContinuePostLogin = async (event, api) => {
-  await completeAccountLink(event, api);
+  const payload = api.redirect.validateToken({
+    secret: requireSecret(event, 'ACCOUNT_LINK_CHALLENGE_SECRET'),
+    tokenParameterName: accountLinkTokenParameterName
+  });
+  if (event.client.client_id !== event.secrets.APP_CLIENT_ID || event.user.email_verified !== true
+    || payload.purpose !== 'account-link-approved' || payload.aud !== 'account-link-action'
+    || payload.iss !== new URL(event.secrets.APP_BASE_URL).origin || payload.sub !== event.user.user_id
+    || !payload.transaction_id || payload.transaction_id !== event.transaction?.metadata?.codex_account_link) {
+    api.access.deny('account_linking_mismatch');
+    return;
+  }
+  const primary = event.user;
+  const secondary = parseAuth0Subject(payload.secondary_user_id);
+  const primarySubject = parseAuth0Subject(primary.user_id);
+  if (!primarySubject || !secondary || !((primarySubject.provider === 'auth0' && ['google-oauth2', 'github'].includes(secondary.provider))
+    || (primarySubject.provider === 'google-oauth2' && secondary.provider === 'auth0'))) {
+    api.access.deny('account_linking_mismatch');
+    return;
+  }
+  if (!identityIncludesSubject(primary.identities, payload.secondary_user_id)) {
+    const token = await getManagementToken(event);
+    const profile = await managementRequest(event, token, '/api/v2/users/' + encodeURIComponent(payload.secondary_user_id)
+      + '?fields=user_id,email,email_verified,identities&include_fields=true', { method: 'GET' });
+    if (profile.user_id !== payload.secondary_user_id || profile.email_verified !== true
+      || typeof profile.email !== 'string' || profile.email.trim().toLowerCase() !== primary.email.trim().toLowerCase()
+      || !Array.isArray(profile.identities) || profile.identities.length !== 1
+      || !identityIncludesSubject(profile.identities, payload.secondary_user_id)
+      || (secondary.provider === 'auth0' && profile.identities[0].connection !== event.secrets.DATABASE_CONNECTION_NAME)
+      || !payload.secondary_connection_id || primary.identities.some(identity => identity.provider === secondary.provider)) {
+      api.access.deny('account_linking_mismatch');
+      return;
+    }
+    const linked = await managementRequest(event, token, '/api/v2/users/' + encodeURIComponent(primary.user_id) + '/identities', {
+      method: 'POST', body: JSON.stringify({
+        provider: secondary.provider, user_id: secondary.userId,
+        ...(secondary.provider === 'auth0' ? { connection_id: payload.secondary_connection_id } : {})
+      })
+    });
+    if (!identityIncludesSubject(linked, payload.secondary_user_id)) {
+      api.access.deny('account_linking_failed');
+      return;
+    }
+  }
+  api.idToken.setCustomClaim(accountLinkClaimNamespace + '/receipt', payload.transaction_id);
   recordConsentClaims(event, api);
 };
 
@@ -318,123 +380,6 @@ function recordConsentClaims(event, api) {
   api.idToken.setCustomClaim(\`\${claimNamespace}/platform_terms\`, true);
 }
 
-async function redirectForAccountLink(event, api) {
-  if (!shouldEvaluateAccountLink(event)) {
-    return false;
-  }
-
-  const primaryUser = await findPrimaryDatabaseUser(event);
-
-  if (!primaryUser) {
-    return false;
-  }
-
-  if (identityIncludesSubject(primaryUser.identities, event.user.user_id)) {
-    api.authentication.setPrimaryUser(primaryUser.user_id);
-    api.idToken.setCustomClaim(accountLinkClaimNamespace + '/auth0_subjects', [
-      primaryUser.user_id,
-      event.user.user_id
-    ]);
-    return false;
-  }
-
-  const appBaseUrl = requireSecret(event, 'APP_BASE_URL').replace(/\\/+$/, '');
-  const token = api.redirect.encodeToken({
-    secret: requireSecret(event, 'ACCOUNT_LINK_CHALLENGE_SECRET'),
-    expiresInSeconds: 300,
-    payload: {
-      primary_user_id: primaryUser.user_id,
-      primary_email: primaryUser.email,
-      secondary_user_id: event.user.user_id,
-      secondary_email: event.user.email,
-      continue_uri: 'https://' + event.request.hostname + '/continue'
-    }
-  });
-
-  api.redirect.sendUserTo(appBaseUrl + '/auth/link/login', {
-    query: {
-      [accountLinkTokenParameterName]: token
-    }
-  });
-
-  return true;
-}
-
-async function completeAccountLink(event, api) {
-  const payload = api.redirect.validateToken({
-    secret: requireSecret(event, 'ACCOUNT_LINK_CHALLENGE_SECRET'),
-    tokenParameterName: accountLinkTokenParameterName
-  });
-
-  if (payload.result !== 'link_verified') {
-    api.access.deny('account_linking_failed');
-    return;
-  }
-
-  if (payload.secondary_user_id !== event.user.user_id) {
-    api.access.deny('account_linking_subject_mismatch');
-    return;
-  }
-
-  const linkedSubjects = await linkUserIdentities(event, payload.primary_user_id, payload.secondary_user_id);
-
-  api.authentication.setPrimaryUser(payload.primary_user_id);
-  api.idToken.setCustomClaim(accountLinkClaimNamespace + '/auth0_subjects', linkedSubjects);
-}
-
-function shouldEvaluateAccountLink(event) {
-  const configuredClientId = requireSecret(event, 'APP_CLIENT_ID');
-
-  return event.client
-    && event.client.client_id === configuredClientId
-    && event.user
-    && typeof event.user.user_id === 'string'
-    && !event.user.user_id.startsWith('auth0|')
-    && typeof event.user.email === 'string'
-    && event.user.email_verified === true;
-}
-
-async function findPrimaryDatabaseUser(event) {
-  const users = await managementRequest(event, '/api/v2/users-by-email?email=' + encodeURIComponent(event.user.email), {
-    method: 'GET'
-  });
-  const databaseConnectionName = requireSecret(event, 'DATABASE_CONNECTION_NAME');
-
-  return users.find((user) => {
-    if (!user || user.user_id === event.user.user_id || user.email_verified !== true) {
-      return false;
-    }
-
-    return Array.isArray(user.identities)
-      && user.identities.some((identity) => identity.provider === 'auth0' && identity.connection === databaseConnectionName);
-  }) || null;
-}
-
-async function linkUserIdentities(event, primaryUserId, secondaryUserId) {
-  const secondaryIdentity = parseAuth0Subject(secondaryUserId);
-
-  if (!secondaryIdentity) {
-    throw new Error('Invalid secondary Auth0 identity.');
-  }
-
-  const identities = await managementRequest(
-    event,
-    '/api/v2/users/' + encodeURIComponent(primaryUserId) + '/identities',
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        provider: secondaryIdentity.provider,
-        user_id: secondaryIdentity.userId
-      })
-    }
-  );
-
-  return Array.from(new Set([
-    primaryUserId,
-    ...serializeIdentitySubjects(identities)
-  ]));
-}
-
 function parseAuth0Subject(subject) {
   const separatorIndex = typeof subject === 'string' ? subject.indexOf('|') : -1;
 
@@ -456,18 +401,7 @@ function identityIncludesSubject(identities, subject) {
     && identities.some((identity) => identity.provider === parsedSubject.provider && identity.user_id === parsedSubject.userId);
 }
 
-function serializeIdentitySubjects(identities) {
-  if (!Array.isArray(identities)) {
-    return [];
-  }
-
-  return identities
-    .filter((identity) => typeof identity.provider === 'string' && typeof identity.user_id === 'string')
-    .map((identity) => identity.provider + '|' + identity.user_id);
-}
-
-async function managementRequest(event, path, init) {
-  const token = await getManagementToken(event);
+async function managementRequest(event, token, path, init) {
   const response = await fetch(normalizeDomain(requireSecret(event, 'MANAGEMENT_API_DOMAIN')) + path, {
     ...init,
     headers: {
@@ -479,7 +413,7 @@ async function managementRequest(event, path, init) {
   const responseText = await response.text();
 
   if (!response.ok) {
-    throw new Error('Auth0 Management API request failed: ' + response.status + ' ' + responseText);
+    throw new Error('Auth0 Management API request failed: ' + response.status);
   }
 
   return responseText ? JSON.parse(responseText) : null;

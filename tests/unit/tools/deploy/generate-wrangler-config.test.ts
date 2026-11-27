@@ -262,7 +262,9 @@ describe('deploy Wrangler config generator', () => {
       CF_MEDIA_CLEANUP_QUEUE: 'custom-media-cleanup',
       CF_MEDIA_CLEANUP_DLQ_QUEUE: 'custom-media-cleanup-dlq',
       NUXT_MEDIA_CLEANUP_QUEUE_BINDING: 'CUSTOM_MEDIA_CLEANUP_QUEUE',
-      NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'custom-users'
+      NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'custom-users',
+      AUTH0_GOOGLE_CONNECTION_NAME: 'custom-google',
+      NUXT_AUTH0_GITHUB_CONNECTION_NAME: 'custom-github'
     }))
 
     expect(input.environmentName).toBe('preview')
@@ -279,6 +281,10 @@ describe('deploy Wrangler config generator', () => {
     expect(input.mediaCleanup.binding).toBe('CUSTOM_MEDIA_CLEANUP_QUEUE')
     expect(input.mediaCleanup.queue).toBe('custom-media-cleanup')
     expect(input.mediaCleanup.deadLetterQueue).toBe('custom-media-cleanup-dlq')
-    expect(input.auth0DatabaseConnectionName).toBe('custom-users')
+    expect(buildDeployWranglerConfig(input).vars).toMatchObject({
+      NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'custom-users',
+      NUXT_AUTH0_GOOGLE_CONNECTION_NAME: 'custom-google',
+      NUXT_AUTH0_GITHUB_CONNECTION_NAME: 'custom-github'
+    })
   })
 })

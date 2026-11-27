@@ -69,6 +69,8 @@ export interface ResolvedDeployConfigInput {
   outboundEmailFromEmail: string
   outboundEmailFromName: string
   outboundEmailReplyTo: string
+  auth0GoogleConnectionName: string
+  auth0GithubConnectionName: string
   auth0DatabaseConnectionName: string
   applicationReviewEmails: QueueConfig
   talkProposalDecisionEmails: QueueConfig
@@ -415,6 +417,8 @@ export function resolveDeployConfigInput(
     outboundEmailFromEmail,
     outboundEmailFromName: readOptionalEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_FROM_NAME') || 'Codex Events',
     outboundEmailReplyTo: readOptionalEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_REPLY_TO') || outboundEmailFromEmail,
+    auth0GoogleConnectionName: readOptionalEnvironmentValue(environment, 'AUTH0_GOOGLE_CONNECTION_NAME') || 'google-oauth2',
+    auth0GithubConnectionName: readOptionalEnvironmentValue(environment, 'NUXT_AUTH0_GITHUB_CONNECTION_NAME') || 'github',
     auth0DatabaseConnectionName: readOptionalEnvironmentValue(environment, 'NUXT_AUTH0_DATABASE_CONNECTION_NAME') || defaultAuth0DatabaseConnectionName,
     applicationReviewEmails: resolveQueueConfig(environment, {
       bindingEnvName: 'NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING',
@@ -565,6 +569,8 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
       NUXT_AUTH0_DOMAIN: input.auth0CustomDomain,
       NUXT_AUTH0_APP_BASE_URL: input.appBaseUrl,
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: input.auth0DatabaseConnectionName,
+      NUXT_AUTH0_GOOGLE_CONNECTION_NAME: input.auth0GoogleConnectionName,
+      NUXT_AUTH0_GITHUB_CONNECTION_NAME: input.auth0GithubConnectionName,
       NUXT_FIRST_PLATFORM_ADMIN_EMAIL: input.firstPlatformAdminEmail,
       NUXT_OUTBOUND_EMAIL_BINDING: input.outboundEmailBinding,
       NUXT_OUTBOUND_EMAIL_FROM_EMAIL: input.outboundEmailFromEmail,

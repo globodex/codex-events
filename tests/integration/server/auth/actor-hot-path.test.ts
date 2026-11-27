@@ -194,6 +194,8 @@ describe('authenticated actor request topology', () => {
 
   test('persists both link subjects before the secondary subject resolves the account', async () => {
     const challenge = {
+      userId: 'linked-platform-user',
+      email: 'linked-user@example.com',
       primaryAuth0Subject: 'auth0|link-primary',
       secondaryAuth0Subject: 'google-oauth2|link-secondary'
     }
@@ -241,7 +243,7 @@ describe('authenticated actor request topology', () => {
     ]))
     expect(harness.d1Database.sessionStarts).toEqual(['first-primary'])
     expect(harness.d1Database.queries.some(query => query.isWrite && query.sql.includes('user_auth_identities'))).toBe(true)
-    expect(harness.d1Database.queries.filter(query => query.sql.includes('user_auth_identities') && query.sql.includes('inner join'))).toHaveLength(2)
+    expect(harness.d1Database.queries.filter(query => query.sql.includes('user_auth_identities') && query.sql.includes('inner join'))).toHaveLength(1)
   })
 
   test('permission resolution reuses the actor strong session', async () => {

@@ -42,7 +42,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Constraints
 
 - `auth0_subject` is unique among active users.
-- `email` is unique among active users.
+- `email` is unique among active users. Registration stores the trimmed, lower-case address. Linking requires exactly one active match after trimming and case normalization.
 
 ### Notes
 
