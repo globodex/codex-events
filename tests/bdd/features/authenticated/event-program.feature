@@ -29,6 +29,8 @@ Feature: Parallel event agenda
     When I draw two routes to "Makers Room" on "Route floor" and leave before the save finishes
     And I reopen the rooms and sessions from the event workspace
     Then the builder should show the two saved routes to "Makers Room" on "Route floor"
+    When I open the Agenda tab 10 minutes into the check-in
+    Then the check-in should be running with 20 minutes left at the current time
     When I open the Agenda tab 5 minutes into Build Time
     Then both sessions should start next in 10 minutes
     When I open the Agenda tab 20 minutes into Build Time

@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { useIntervalFn, useNow } from '@vueuse/core'
+
 import type { PublicProgramSessions } from '#shared/domains/events/program'
+import EventAgendaPhaseLabel from '~/components/events/molecules/EventAgendaPhaseLabel.vue'
+import { getAgendaBlockSpans, getAgendaPhases } from '~/domains/events/program-timeline'
 import {
   formatEventTime,
   getAgendaItemPresentation,
@@ -11,7 +15,18 @@ const props = defineProps<{
   agendaItems: PublicEventAgendaItem[]
   /** The sessions that the organizer made public. The panel lists them under their agenda block. */
   publicSessions?: PublicProgramSessions | null
+  /**
+   * Marks the running block and the next one, like the program timeline. The Agenda tab of the event
+   * workspace turns it on; the public event page does not.
+   */
+  showCurrentTime?: boolean
 }>()
+
+const now = useNow({ scheduler: callback => useIntervalFn(callback, 30_000) })
+// All times in minutes since 1970, so the blocks and the current time share one start.
+const phases = computed(() => props.showCurrentTime
+  ? getAgendaPhases(getAgendaBlockSpans(props.agendaItems, 0), now.value.getTime() / 60_000).phases
+  : null)
 
 const sortedAgendaItems = computed(() =>
   [...props.agendaItems]
@@ -21,6 +36,7 @@ const showAgendaDayContext = computed(() => shouldShowAgendaDayContext(sortedAge
 const agendaEntries = computed(() =>
   sortedAgendaItems.value.map(item => ({
     ...item,
+    phase: phases.value?.get(item.id),
     presentation: getAgendaItemPresentation(item, showAgendaDayContext.value),
     sessions: item.id === props.publicSessions?.agendaItemId ? props.publicSessions.sessions : []
   }))
@@ -104,7 +120,14 @@ const agendaTimeChipClasses = 'flex min-w-0 items-center justify-center rounded-
             </p>
           </div>
 
-          <div class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 group relative overflow-hidden rounded-[1.35rem] p-4 transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-[1px] hover:border-black/15 active:translate-y-px dark:hover:border-white/[0.16] sm:p-5">
+          <div
+            class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 group relative overflow-hidden rounded-[1.35rem] p-4 transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-[1px] hover:border-black/15 active:translate-y-px dark:hover:border-white/[0.16] sm:p-5"
+            :class="{
+              '!border-success/50 !bg-success/10 dark:!border-success/50 dark:!bg-success/10': item.phase?.phase === 'now',
+              'opacity-60': item.phase?.phase === 'past'
+            }"
+            :data-testid="`agenda-item-${item.id}`"
+          >
             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div class="min-w-0 flex-1">
                 <div
@@ -119,6 +142,12 @@ const agendaTimeChipClasses = 'flex min-w-0 items-center justify-center rounded-
                   </span>
                 </div>
 
+                <EventAgendaPhaseLabel
+                  v-if="item.phase?.label"
+                  :phase="item.phase.phase"
+                  :label="item.phase.label"
+                  class="mb-1.5"
+                />
                 <p class="text-[17px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
                   {{ item.title }}
                 </p>

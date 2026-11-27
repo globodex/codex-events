@@ -343,6 +343,21 @@ When('I open the Agenda tab {int} minutes into Build Time', async ({ page }, min
   await expect(page.getByRole('region', { name: 'Agenda timeline' })).toBeVisible()
 })
 
+When('I open the Agenda tab {int} minutes into the check-in', async ({ page }, minutes: number) => {
+  await signInAs('regular_user', page)
+  await page.clock.setFixedTime(new Date(Date.parse(checkInItem.startsAt) + minutes * 60_000))
+  await page.goto(agendaTabPath)
+  await expect(page.getByRole('region', { name: 'Agenda timeline' })).toBeVisible()
+})
+
+// An agenda block before the program is marked like a session, and the rail shows the current time.
+Then('the check-in should be running with {int} minutes left at the current time', async ({ page }, minutes: number) => {
+  const now = new Date(Date.parse(checkInItem.endsAt) - minutes * 60_000).toISOString()
+  await expect(page.getByTestId(`program-agenda-item-${checkInItem.id}`)).toContainText(`Now · ${minutes}m left`)
+  await expect(page.getByTestId('program-now-marker').locator('time')).toHaveAttribute('datetime', now)
+  await expect(page.getByTestId(`program-session-${buildSessionId}`)).toContainText('Next · in 35m')
+})
+
 Then('both sessions should start next in {int} minutes', async ({ page }, minutes: number) => {
   for (const sessionId of [buildSessionId, designSessionId]) {
     await expect(page.getByTestId(`program-session-${sessionId}`)).toContainText(`Next · in ${minutes}m`)

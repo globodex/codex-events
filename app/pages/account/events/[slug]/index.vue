@@ -1777,6 +1777,7 @@ useSeoMeta({
               class="min-w-0 lg:flex-1"
               :agenda-items="event.agendaItems"
               :public-sessions="programPage.publicSessions"
+              show-current-time
             />
             <LazyAccountEventChallengePage
               v-if="linkedChallengeWithoutProgram"

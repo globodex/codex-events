@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import AppButton from '~/components/AppButton.vue'
+import EventAgendaPhaseLabel from '~/components/events/molecules/EventAgendaPhaseLabel.vue'
 import type { PublicEventAgendaItem } from '~/domains/events/presentation'
+import { timelineCardClass, type SessionPhase } from '~/domains/events/program-timeline'
 
 // A public agenda item before or after the program on the Agenda tab, for example the check-in.
 // Like a session, an item with a room is a button: selecting it shows the room on the map.
@@ -10,6 +12,9 @@ const props = defineProps<{
   timeRange: string | null
   roomName?: string
   selected: boolean
+  phase: SessionPhase
+  /** Shown above the title while the item is running or next, for example "Now · 12m left". */
+  phaseLabel?: string
 }>()
 
 const emit = defineEmits<{
@@ -32,7 +37,7 @@ const summaryAttributes = computed(() => props.roomName
 <template>
   <div
     class="flex min-w-0 flex-col rounded-xl border transition-colors"
-    :class="selected ? 'border-primary bg-primary/5' : 'border-default bg-default'"
+    :class="[timelineCardClass(selected, phase), { 'opacity-60': phase === 'past' && !selected }]"
   >
     <component
       :is="summaryElement"
@@ -40,6 +45,11 @@ const summaryAttributes = computed(() => props.roomName
       :id="`program-agenda-item-${encodeURIComponent(item.id)}`"
       :data-testid="`program-agenda-item-${item.id}`"
     >
+      <EventAgendaPhaseLabel
+        v-if="phaseLabel"
+        :phase="phase"
+        :label="phaseLabel"
+      />
       <span class="break-words text-sm font-semibold leading-snug text-highlighted">{{ item.title }}</span>
       <span
         v-if="timeRange || roomName"

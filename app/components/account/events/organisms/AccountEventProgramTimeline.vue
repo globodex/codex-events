@@ -6,7 +6,7 @@ import type { AgendaWorkshop, EventFloorPlan, ParticipantEventProgram, ProgramSe
 import AccountEventProgramAgendaItem from '~/components/account/events/molecules/AccountEventProgramAgendaItem.vue'
 import AccountEventProgramSession from '~/components/account/events/molecules/AccountEventProgramSession.vue'
 import { formatEventTime, getAgendaItemPresentation, type PublicEventAgendaItem } from '~/domains/events/presentation'
-import { formatMinutes, getSessionPhase, type SessionPhase } from '~/domains/events/program-timeline'
+import { getAgendaBlockSpans, getAgendaPhases, type TimelineSpan } from '~/domains/events/program-timeline'
 
 const props = defineProps<{
   /** The event in which the staff icons are read. */
@@ -48,8 +48,6 @@ const programMinutes = computed(() => (Date.parse(props.endsAt) - baseTime.value
 
 // Minutes since the program started, like the session times. Negative before the start.
 const nowMinutes = computed(() => (props.now - baseTime.value) / minuteMs)
-// "Now" and "Next" appear from one hour before the program starts until it ends.
-const isLive = computed(() => nowMinutes.value >= -60 && nowMinutes.value < programMinutes.value)
 
 function atOffset(minutes: number) {
   return new Date(baseTime.value + minutes * minuteMs).toISOString()
@@ -72,9 +70,15 @@ const outsideGroups = computed(() => {
   return groups
 })
 
-const nextStart = computed(() => Math.min(...trackSessions.value
-  .map(({ session }) => session.startsAfterMinutes)
-  .filter(start => start > nowMinutes.value)))
+// Every item of the timeline in minutes since the program started: the sessions, and the blocks before
+// and after the program. The running item, the next one and the past ones are marked from one hour
+// before the first item until the last one ends (`getAgendaPhases`).
+const blockSpans = computed(() => getAgendaBlockSpans(props.outsideItems, baseTime.value))
+const agenda = computed(() => getAgendaPhases(new Map<string, TimelineSpan>([
+  ...trackSessions.value.map(({ session }) => [`session:${session.id}`, session] as const),
+  ...[...blockSpans.value].map(([id, span]) => [`block:${id}`, span] as const)
+]), nowMinutes.value))
+const isLive = computed(() => agenda.value.isLive)
 
 // Every moment a session or an outside block starts, or a session ends. Each boundary opens one grid row.
 const boundaries = computed(() => {
@@ -124,18 +128,10 @@ const nowMarker = computed(() => {
   }
 
   const progress = (nowMinutes.value - start.offset) / (end.offset - start.offset)
-  return { row: index + 2, top: `calc(${progress * 100}% + 1.3125rem)` }
+  // The current time stands next to the dot, for example "11:20 AM".
+  const time = new Date(props.now).toISOString()
+  return { row: index + 2, top: `calc(${progress * 100}% + 1.3125rem)`, time, label: formatEventTime(time) }
 })
-
-function phaseLabel(phase: SessionPhase, session: ProgramSession) {
-  if (phase === 'now') {
-    return `Now · ${formatMinutes(session.startsAfterMinutes + session.durationMinutes - nowMinutes.value)} left`
-  }
-  if (phase === 'next') {
-    return `Next · in ${formatMinutes(session.startsAfterMinutes - nowMinutes.value)}`
-  }
-  return undefined
-}
 
 // The grid row that starts at each boundary.
 const rows = computed(() => new Map(boundaries.value.map(({ offset }, index) => [offset, index + 2])))
@@ -156,6 +152,7 @@ const outsidePlacements = computed(() => [...outsideGroups.value].map(([offset, 
   offset,
   blocks: items.map(item => ({
     item,
+    ...agenda.value.phases.get(`block:${item.id}`)!,
     // The time column shows when a block starts, so a block shows its time range only when it ends later.
     timeRange: item.endsAt && Date.parse(item.endsAt) > Date.parse(item.startsAt)
       ? getAgendaItemPresentation(item, false).timeLabel
@@ -167,12 +164,12 @@ const outsidePlacements = computed(() => [...outsideGroups.value].map(([offset, 
 
 const placements = computed(() => trackSessions.value.map(({ session, column }) => {
   const end = session.startsAfterMinutes + session.durationMinutes
-  const phase = isLive.value ? getSessionPhase(session, nowMinutes.value, nextStart.value) : 'later'
+  const { phase, label } = agenda.value.phases.get(`session:${session.id}`)!
 
   return {
     session,
     phase,
-    phaseLabel: phaseLabel(phase, session),
+    phaseLabel: label,
     timeLabel: getAgendaItemPresentation({
       startsAt: atOffset(session.startsAfterMinutes),
       endsAt: atOffset(end)
@@ -247,6 +244,11 @@ const placements = computed(() => trackSessions.value.map(({ session, column }) 
           class="absolute left-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-success ring-4 ring-success/25"
           :style="{ top: nowMarker.top }"
         />
+        <time
+          :datetime="nowMarker.time"
+          class="absolute right-[calc(100%+0.125rem)] -translate-y-1/2 whitespace-nowrap rounded-full bg-success px-1.5 py-0.5 text-[10px] font-semibold leading-none tabular-nums text-inverted"
+          :style="{ top: nowMarker.top }"
+        >{{ nowMarker.label }}</time>
       </div>
 
       <div
@@ -262,6 +264,8 @@ const placements = computed(() => trackSessions.value.map(({ session, column }) 
           :time-range="block.timeRange"
           :room-name="block.roomName"
           :selected="block.item.id === selectedAgendaItemId"
+          :phase="block.phase"
+          :phase-label="block.label"
           @select="$emit('selectAgendaItem', $event)"
         />
       </div>

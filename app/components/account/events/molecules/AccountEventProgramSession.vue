@@ -4,7 +4,8 @@ import type { AgendaWorkshop, ProgramSession } from '#shared/domains/events/prog
 import AppButton from '~/components/AppButton.vue'
 import AccountEventDetailsDialog from '~/components/account/events/molecules/AccountEventDetailsDialog.vue'
 import AccountEventStaffList from '~/components/account/events/molecules/AccountEventStaffList.vue'
-import { formatMinutes, type SessionPhase } from '~/domains/events/program-timeline'
+import EventAgendaPhaseLabel from '~/components/events/molecules/EventAgendaPhaseLabel.vue'
+import { formatMinutes, timelineCardClass, type SessionPhase } from '~/domains/events/program-timeline'
 
 const props = defineProps<{
   /** The event in which the staff icons are read. */
@@ -46,18 +47,12 @@ const summaryAttributes = computed(() => props.session.room
       'onClick': () => emit('select', props.session)
     }
   : { class: 'flex min-w-0 flex-col items-start gap-1 px-3 py-2.5 font-medium' })
-
-const cardClass = computed(() => {
-  if (props.selected) return 'border-primary bg-primary/5'
-  if (props.phase === 'now') return 'border-success/50 bg-success/10'
-  return 'border-default bg-default'
-})
 </script>
 
 <template>
   <div
     class="relative m-1 flex min-w-0 flex-col rounded-xl border transition-colors"
-    :class="[cardClass, { 'opacity-60': phase === 'past' && !selected }]"
+    :class="[timelineCardClass(selected, phase), { 'opacity-60': phase === 'past' && !selected }]"
   >
     <component
       :is="summaryElement"
@@ -65,20 +60,11 @@ const cardClass = computed(() => {
       :id="`program-session-${encodeURIComponent(session.id)}`"
       :data-testid="`program-session-${session.id}`"
     >
-      <span
+      <EventAgendaPhaseLabel
         v-if="phaseLabel"
-        class="flex items-center gap-1.5 text-xs font-semibold leading-tight"
-        :class="phase === 'now' ? 'text-success' : 'text-info'"
-      >
-        <span
-          v-if="phase === 'now'"
-          class="relative flex size-2"
-        >
-          <span class="absolute inline-flex size-full rounded-full bg-success opacity-60 motion-safe:animate-ping" />
-          <span class="relative inline-flex size-2 rounded-full bg-success" />
-        </span>
-        {{ phaseLabel }}
-      </span>
+        :phase="phase"
+        :label="phaseLabel"
+      />
       <span class="break-words text-sm font-semibold leading-snug text-highlighted">{{ session.title }}</span>
       <!-- A session with a Details button, one with details or a workshop, keeps the right end of this line free for it. -->
       <span
